@@ -7,7 +7,7 @@ import click
 
 from qobuz_dl_rewrite.config import Config
 from qobuz_dl_rewrite.constants import CACHE_DIR, CONFIG_DIR
-from qobuz_dl_rewrite.core import QobuzDL
+from qobuz_dl_rewrite.core import MusicDL
 from qobuz_dl_rewrite.utils import init_log
 
 logger = logging.getLogger(__name__)
@@ -83,7 +83,7 @@ def download(ctx, items):
         * Tidal (album, artist, track, playlist)
     """
     config = _get_config(ctx)
-    core = QobuzDL(config)
+    core = MusicDL(config)
     for item in items:
         try:
             if os.path.isfile(item):
