@@ -98,7 +98,7 @@ class Config:
     def update_from_cli(self, **kwargs):
         for category in (self.downloads, self.metadata, self.filters):
             for key in category.keys():
-                if kwargs[key] is None:
+                if kwargs.get(key) is None:
                     continue
 
                 # For debugging's sake
