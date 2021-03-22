@@ -9,7 +9,7 @@ import click
 from .clients import DeezerClient, QobuzClient, TidalClient
 from .config import Config
 from .constants import CONFIG_PATH, DB_PATH, URL_REGEX
-from .db import QobuzDB
+from .db import MusicDB
 from .downloader import Album, Artist, Playlist, Track, Label
 from .exceptions import AuthenticationError, ParsingError
 from .utils import capitalize
@@ -44,9 +44,9 @@ class MusicDL:
         }
 
         if database is None:
-            self.db = QobuzDB(DB_PATH)
+            self.db = MusicDB(DB_PATH)
         else:
-            assert isinstance(database, QobuzDB)
+            assert isinstance(database, MusicDB)
             self.db = database
 
     def prompt_creds(self, source: str):

@@ -23,7 +23,7 @@ from .constants import (
     FOLDER_FORMAT,
     TRACK_FORMAT,
 )
-from .db import QobuzDB
+from .db import MusicDB
 from .exceptions import (
     InvalidQuality,
     InvalidSourceError,
@@ -139,7 +139,7 @@ class Track:
         quality: int = 7,
         parent_folder: str = "Downloads",
         progress_bar: bool = True,
-        database: QobuzDB = None,
+        database: MusicDB = None,
     ):
         """
         Download the track.
@@ -725,7 +725,7 @@ class Album(Tracklist):
         tag_tracks: bool = True,
         cover_key: str = "large",
         embed_cover: bool = False,
-        database: QobuzDB = None,
+        database: MusicDB = None,
     ):
         """Download all of the tracks in the album.
 
@@ -935,7 +935,7 @@ class Playlist(Tracklist):
         quality: int = 6,
         filters: Callable = None,
         embed_cover: bool = False,
-        database: QobuzDB = None,
+        database: MusicDB = None,
     ):
         """Download and tag all of the tracks.
 
@@ -1052,7 +1052,7 @@ class Artist(Tracklist):
         no_repeats: bool = False,
         quality: int = 6,
         embed_cover: bool = False,
-        database: QobuzDB = None,
+        database: MusicDB = None,
     ):
         """Download all albums in the discography.
 

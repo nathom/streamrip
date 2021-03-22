@@ -10,7 +10,7 @@ class MusicDB:
     """Simple interface for the downloaded track database."""
 
     def __init__(self, db_path: Union[str, os.PathLike]):
-        """Create a QobuzDB object
+        """Create a MusicDB object
 
         :param db_path: filepath of the database
         :type db_path: Union[str, os.PathLike]
