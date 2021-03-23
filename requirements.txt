@@ -1,0 +1,9 @@
+click
+tidalapi
+dogpile.cache
+ruamel.yaml
+pathvalidate
+requests
+mutagen
+tqdm
+colorama
