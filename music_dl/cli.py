@@ -9,6 +9,7 @@ import click
 from .config import Config
 from .constants import CACHE_DIR, CONFIG_DIR, CONFIG_PATH
 from .core import MusicDL
+from .utils import init_log
 
 logger = logging.getLogger(__name__)
 config = Config(CONFIG_PATH)
@@ -21,12 +22,7 @@ if not os.path.isdir(CACHE_DIR):
 config = Config(CONFIG_PATH)
 
 
-def _get_config(ctx):
-    config.update_from_cli(**ctx.params)
-
-
 @click.group()
-@click.option("--debug", default=False, is_flag=True, help="Enable debug logging")
 @click.option(
     "--flush-cache",
     metavar="PATH",
@@ -48,7 +44,6 @@ def cli(ctx, **kwargs):
 
     > download discography with given filters
     """
-    pass
 
 
 @click.command(name="dl")
@@ -59,6 +54,7 @@ def cli(ctx, **kwargs):
 @click.option("-c", "--convert", metavar="CODEC")
 @click.option("-sr", "--sampling-rate", metavar="INT")
 @click.option("-bd", "--bit-depth", metavar="INT")
+@click.option("--debug", default=False, is_flag=True, help="Enable debug logging")
 @click.argument("items", nargs=-1)
 @click.pass_context
 def download(ctx, **kwargs):
@@ -82,7 +78,10 @@ def download(ctx, **kwargs):
 
         * Tidal (album, artist, track, playlist)
     """
-    config = _get_config(ctx)
+    if kwargs.get("debug"):
+        init_log()
+
+    config.update_from_cli(**ctx.params)
     core = MusicDL(config, database=list() if kwargs["no_db"] else None)
     for item in kwargs["items"]:
         try:

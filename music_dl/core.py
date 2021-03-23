@@ -125,7 +125,7 @@ class MusicDL(list):
         logger.debug("Arguments from config: %s", arguments)
 
         item.load_meta()
-        click.secho(f"Downloading {item!s}")
+        click.secho(f"Downloading {item!s}", fg="bright_green")
         item.download(**arguments)
 
     def convert_all(self, codec, **kwargs):

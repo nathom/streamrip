@@ -18,7 +18,6 @@ __pycache__/
 *.db
 *.sh
 
-*.txt
 
 # Distribution / packaging
 .Python

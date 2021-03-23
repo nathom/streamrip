@@ -1,15 +1,15 @@
 import os
 
-import appdirs
+import click
 import mutagen.id3 as id3
 
-APPNAME = "qobuz-dl"
+APPNAME = "music-dl"
 
-CACHE_DIR = appdirs.user_cache_dir(APPNAME)
-CONFIG_DIR = appdirs.user_config_dir(APPNAME)
+CACHE_DIR = click.get_app_dir(APPNAME)
+CONFIG_DIR = click.get_app_dir(APPNAME)
 CONFIG_PATH = os.path.join(CONFIG_DIR, "config.yaml")
-LOG_DIR = appdirs.user_config_dir(APPNAME)
-DB_PATH = os.path.join(LOG_DIR, "qobuz-dl.db")
+LOG_DIR = click.get_app_dir(APPNAME)
+DB_PATH = os.path.join(LOG_DIR, "music-dl.db")
 
 AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:83.0) Gecko/20100101 Firefox/83.0"
 

@@ -164,14 +164,15 @@ class Track:
                 self.__is_downloaded = True
                 self.__is_tagged = True
                 click.secho(
-                    f"{self['title']} already logged in database, skipping.", fg="green"
+                    f"{self['title']} already logged in database, skipping.",
+                    fg="magenta",
                 )
                 return
 
         if os.path.isfile(self.format_final_path()):
             self.__is_downloaded = True
             self.__is_tagged = True
-            click.secho(f"Track already downloaded: {self.final_path}", fg="green")
+            click.secho(f"Track already downloaded: {self.final_path}", fg="magenta")
             return False
 
         if hasattr(self, "cover_url"):
@@ -395,6 +396,11 @@ class Track:
         self.container = codec.upper()
         if not hasattr(self, "final_path"):
             self.format_final_path()
+
+        if not os.path.isfile(self.final_path):
+            logger.debug(f"File {self.final_path} does not exist. Skipping conversion.")
+            click.secho(f"{self!s} does not exist. Skipping conversion.", fg="red")
+            return
 
         engine = CONV_CLASS[codec.upper()](
             filename=self.final_path,
