@@ -20,6 +20,7 @@ if not os.path.isdir(CACHE_DIR):
     os.makedirs(CONFIG_DIR)
 
 config = Config(CONFIG_PATH)
+core = MusicDL(config)
 
 
 @click.group()
@@ -82,7 +83,6 @@ def download(ctx, **kwargs):
         init_log()
 
     config.update_from_cli(**ctx.params)
-    core = MusicDL(config, database=list() if kwargs["no_db"] else None)
     for item in kwargs["items"]:
         try:
             if os.path.isfile(item):

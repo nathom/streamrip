@@ -2,9 +2,11 @@ import logging
 import os
 import re
 from getpass import getpass
+from string import Formatter
 from typing import Generator, Optional, Tuple, Union
 
 import click
+from simple_term_menu import TerminalMenu
 from tqdm import tqdm
 
 from .clients import DeezerClient, QobuzClient, TidalClient
@@ -62,12 +64,12 @@ class MusicDL(list):
         :type source: str
         """
         click.secho(f"Enter {capitalize(source)} email:", fg="green")
-        self.config[source]["email"] = input()
+        self.config.file[source]["email"] = input()
         click.secho(
             f"Enter {capitalize(source)} password (will not show on screen):",
             fg="green",
         )
-        self.config[source]["password"] = getpass(
+        self.config.file[source]["password"] = getpass(
             prompt=""
         )  # does hashing work for tidal?
 
@@ -81,8 +83,8 @@ class MusicDL(list):
             return
 
         if (
-            self.config[source]["email"] is None
-            or self.config[source]["password"] is None
+            self.config.file[source]["email"] is None
+            or self.config.file[source]["password"] is None
         ):
             self.prompt_creds(source)
 
@@ -110,8 +112,7 @@ class MusicDL(list):
             "embed_cover": self.config.metadata["embed_cover"],
         }
 
-        client = self.clients[source]
-        self.login(client)
+        client = self.get_client(source)
 
         item = MEDIA_CLASS[media_type](client=client, id=item_id)
         self.append(item)
@@ -127,6 +128,13 @@ class MusicDL(list):
         item.load_meta()
         click.secho(f"Downloading {item!s}", fg="bright_green")
         item.download(**arguments)
+
+    def get_client(self, source: str):
+        client = self.clients[source]
+        if not client.logged_in:
+            self.assert_creds(source)
+            self.login(client)
+        return client
 
     def convert_all(self, codec, **kwargs):
         click.secho("Converting the downloaded tracks...", fg="cyan")
@@ -198,14 +206,65 @@ class MusicDL(list):
                 self.handle_url(line)
 
     def search(
-        self, query: str, media_type: str = "album", limit: int = 200
+        self, source: str, query: str, media_type: str = "album", limit: int = 200
     ) -> Generator:
-        results = self.client.search(query, media_type, limit)
+        client = self.get_client(source)
+        results = client.search(query, media_type)
 
+        i = 0
         if isinstance(results, Generator):  # QobuzClient
             for page in results:
                 for item in page[f"{media_type}s"]["items"]:
-                    yield MEDIA_CLASS[media_type].from_api(item, self.client)
+                    yield MEDIA_CLASS[media_type].from_api(item, client)
+                    i += 1
+                    if i > limit:
+                        return
         else:
             for item in results.get("data") or results.get("items"):
-                yield MEDIA_CLASS[media_type].from_api(item, self.client)
+                yield MEDIA_CLASS[media_type].from_api(item, client)
+                i += 1
+                if i > limit:
+                    return
+
+    def preview_media(self, media):
+        if isinstance(media, Album):
+            fmt = (
+                "{albumartist} - {title}\n"
+                "Released on {year}\n{tracktotal} tracks\n"
+                "{bit_depth} bit / {sampling_rate} Hz\n"
+                "Version: {version}"
+            )
+            fields = (fname for _, fname, _, _ in Formatter().parse(fmt) if fname)
+            ret = fmt.format(**{k: media.get(k, "Unknown") for k in fields})
+        else:
+            raise NotImplementedError
+
+        return ret
+
+    def interactive_search(
+        self, query: str, source: str = "qobuz", media_type: str = "album"
+    ):
+        results = tuple(self.search(source, query, media_type, limit=30))
+
+        def title(res):
+            return f"{res[0]+1}. {res[1].title}"
+
+        def from_title(s):
+            num = []
+            for char in s:
+                if char.isdigit():
+                    num.append(char)
+                else:
+                    break
+            return self.preview_media(results[int("".join(num)) - 1])
+
+        menu = TerminalMenu(
+            map(title, enumerate(results)),
+            preview_command=from_title,
+            preview_size=0.5,
+            title=f"{capitalize(source)} {media_type} search",
+            cycle_cursor=True,
+            clear_screen=True,
+        )
+        choice = menu.show()
+        return results[choice]

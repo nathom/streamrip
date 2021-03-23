@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 
 import click
 import mutagen.id3 as id3
@@ -10,6 +11,8 @@ CONFIG_DIR = click.get_app_dir(APPNAME)
 CONFIG_PATH = os.path.join(CONFIG_DIR, "config.yaml")
 LOG_DIR = click.get_app_dir(APPNAME)
 DB_PATH = os.path.join(LOG_DIR, "music-dl.db")
+
+DOWNLOADS_DIR = os.path.join(Path.home(), "Music Downloads")
 
 AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:83.0) Gecko/20100101 Firefox/83.0"
 

@@ -359,6 +359,7 @@ class DeezerClient(ClientInterface):
         self.session = requests.Session()
         self.logged_in = True
 
+    @region.cache_on_arguments(expiration_time=RELEASE_CACHE_TIME)
     def search(self, query: str, media_type: str = "album", limit: int = 200) -> dict:
         """Search API for query.
 

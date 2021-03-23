@@ -692,7 +692,7 @@ class Album(Tracklist):
                 "title": resp.get("title"),
                 "_artist": safe_get(resp, "artist", "name"),
                 "albumartist": safe_get(resp, "artist", "name"),
-                "year": str(resp.get("year"))[:4],
+                "year": str(resp.get("year"))[:4] or "Unknown",
                 # version not given by API
                 "cover_urls": {
                     sk: resp.get(rk)  # size key, resp key
@@ -705,7 +705,7 @@ class Album(Tracklist):
                 "quality": 6,  # all tracks are 16/44.1 streamable
                 "bit_depth": 16,
                 "sampling_rate": 44100,
-                "tracktotal": resp.get("track_total"),
+                "tracktotal": resp.get("track_total") or resp.get("nb_tracks"),
             }
 
         raise InvalidSourceError(client.source)
@@ -733,7 +733,7 @@ class Album(Tracklist):
         :rtype: str
         """
         album_title = self._title
-        if isinstance(self.version, str):
+        if hasattr(self, "version") and isinstance(self.version, str):
             if self.version.lower() not in album_title.lower():
                 album_title = f"{album_title} ({self.version})"
 
