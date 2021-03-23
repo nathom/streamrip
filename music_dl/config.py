@@ -1,10 +1,12 @@
+import copy
 import logging
 import os
+from pathlib import Path
 from pprint import pformat
 
 from ruamel.yaml import YAML
 
-from .constants import CONFIG_PATH, FOLDER_FORMAT, TRACK_FORMAT
+from .constants import CONFIG_PATH, DOWNLOADS_DIR, FOLDER_FORMAT, TRACK_FORMAT
 from .exceptions import InvalidSourceError
 
 yaml = YAML()
@@ -28,70 +30,65 @@ class Config:
     This will update the config values based on command line args.
     """
 
-    def __init__(self, path: str):
-
-        # DEFAULTS
-        folder = "Downloads"
-        quality = 6
-        folder_format = FOLDER_FORMAT
-        track_format = TRACK_FORMAT
-
-        self.qobuz = {
+    defaults = {
+        "qobuz": {
             "enabled": True,
             "email": None,
             "password": None,
             "app_id": "",  # Avoid NoneType error
             "secrets": [],
-        }
-        self.tidal = {"enabled": True, "email": None, "password": None}
-        self.deezer = {"enabled": True}
-        self.downloads_database = None
-        self.conversion = {"codec": None, "sampling_rate": None, "bit_depth": None}
-        self.filters = {
+        },
+        "tidal": {"enabled": True, "email": None, "password": None},
+        "deezer": {"enabled": True},
+        "downloads_database": None,
+        "conversion": {"codec": None, "sampling_rate": None, "bit_depth": None},
+        "filters": {
             "no_extras": False,
             "albums_only": False,
             "no_features": False,
             "studio_albums": False,
             "remaster_only": False,
-        }
-        self.downloads = {"folder": folder, "quality": quality}
-        self.metadata = {
+        },
+        "downloads": {"folder": DOWNLOADS_DIR, "quality": 7},
+        "metadata": {
             "embed_cover": True,
             "large_cover": False,
             "default_comment": None,
             "remove_extra_tags": False,
-        }
-        self.path_format = {"folder": folder_format, "track": track_format}
+        },
+        "path_format": {"folder": FOLDER_FORMAT, "track": TRACK_FORMAT},
+    }
+
+    def __init__(self, path: str = None):
+        # to access settings loaded from yaml file
+        self.file = copy.deepcopy(self.defaults)
+        self.session = copy.deepcopy(self.defaults)
 
         if path is None:
             self._path = CONFIG_PATH
         else:
             self._path = path
 
-        if not os.path.exists(self._path):
-            logger.debug(f"Creating yaml config file at {self._path}")
-            self.dump(self.info)
+        if not os.path.isfile(self._path):
+            logger.debug(f"Creating yaml config file at '{self._path}'")
+            self.dump(self.defaults)
         else:
-            # sometimes the file gets erased, this will reset it
-            with open(self._path) as f:
-                if f.read().strip() == "":
-                    logger.debug(f"Config file {self._path} corrupted, resetting.")
-                    self.dump(self.info)
-                else:
-                    self.load()
+            self.load_file()
 
-    def save(self):
-        self.dump(self.info)
+    def save_file(self):
+        self.dump(self.file)
 
-    def reset(self):
-        os.remove(self._path)
-        # re initialize with default info
-        self.__init__(self._path)
+    def reset_file(self):
+        self.dump(self.defaults)
 
-    def load(self):
+    def load_file(self):
         with open(self._path) as cfg:
             for k, v in yaml.load(cfg).items():
-                setattr(self, k, v)
+                self.file[k] = v
+                if hasattr(v, "copy"):
+                    self.session[k] = v.copy()
+                else:
+                    self.session[k] = v
 
         logger.debug("Config loaded")
         self.__loaded = True
@@ -118,17 +115,17 @@ class Config:
     @property
     def tidal_creds(self):
         return {
-            "email": self.tidal["email"],
-            "pwd": self.tidal["password"],
+            "email": self.file["tidal"]["email"],
+            "pwd": self.file["tidal"]["password"],
         }
 
     @property
     def qobuz_creds(self):
         return {
-            "email": self.qobuz["email"],
-            "pwd": self.qobuz["password"],
-            "app_id": self.qobuz["app_id"],
-            "secrets": self.qobuz["secrets"],
+            "email": self.file["qobuz"]["email"],
+            "pwd": self.file["qobuz"]["password"],
+            "app_id": self.file["qobuz"]["app_id"],
+            "secrets": self.file["qobuz"]["secrets"],
         }
 
     def creds(self, source: str):
@@ -141,20 +138,13 @@ class Config:
         else:
             raise InvalidSourceError(source)
 
-    @property
-    def info(self):
-        return {k: v for k, v in self.__dict__.items() if not k.startswith("_")}
-
-    @info.setter
-    def info(self, val):
-        for k, v in val.items():
-            setattr(self, k, v)
-
     def __getitem__(self, key):
+        assert key in ("file", "defaults", "session")
         return getattr(self, key)
 
     def __setitem__(self, key, val):
+        assert key in ("file", "session")
         setattr(self, key, val)
 
     def __repr__(self):
-        return f"Config({pformat(self.info)})"
+        return f"Config({pformat(self.session)})"
