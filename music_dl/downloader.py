@@ -159,8 +159,16 @@ class Track:
 
         os.makedirs(self.folder, exist_ok=True)
 
-        assert database is not None  # remove this later
-        if os.path.isfile(self.format_final_path()) or self.id in database:
+        if database is not None:
+            if self.id in database:
+                self.__is_downloaded = True
+                self.__is_tagged = True
+                click.secho(
+                    f"{self['title']} already logged in database, skipping.", fg="green"
+                )
+                return
+
+        if os.path.isfile(self.format_final_path()):
             self.__is_downloaded = True
             self.__is_tagged = True
             click.secho(f"Track already downloaded: {self.final_path}", fg="green")
@@ -189,6 +197,8 @@ class Track:
             self.__is_downloaded = True
             self.__is_tagged = False
 
+        click.secho(f"\nDownloading {self!s}", fg="blue")
+
         if self.client.source in ("qobuz", "tidal"):
             logger.debug("Downloadable URL found: %s", dl_info.get("url"))
             tqdm_download(dl_info["url"], temp_file)  # downloads file
@@ -199,7 +209,11 @@ class Track:
             raise InvalidSourceError(self.client.source)
 
         shutil.move(temp_file, self.final_path)
-        database.add(self.id)
+
+        if isinstance(database, MusicDB):
+            database.add(self.id)
+            logger.debug(f"{self.id} added to database")
+
         logger.debug("Downloaded: %s -> %s", temp_file, self.final_path)
 
         self.__is_downloaded = True
@@ -379,6 +393,8 @@ class Track:
         }
 
         self.container = codec.upper()
+        if not hasattr(self, "final_path"):
+            self.format_final_path()
 
         engine = CONV_CLASS[codec.upper()](
             filename=self.final_path,
@@ -425,6 +441,14 @@ class Track:
         :rtype: str
         """
         return f"<Track - {self['title']}>"
+
+    def __str__(self) -> str:
+        """Return a readable string representation of
+        this track.
+
+        :rtype: str
+        """
+        return f"{self['artist']} - {self['title']}"
 
 
 class Tracklist(list, ABC):
@@ -818,6 +842,14 @@ class Album(Tracklist):
 
         return f"<Album: V/A - {self.title}>"
 
+    def __str__(self) -> str:
+        """Return a readable string representation of
+        this album.
+
+        :rtype: str
+        """
+        return f"{self['albumartist']} - {self['title']}"
+
 
 class Playlist(Tracklist):
     """Represents a downloadable Qobuz playlist.
@@ -989,6 +1021,14 @@ class Playlist(Tracklist):
         :rtype: str
         """
         return f"<Playlist: {self.name}>"
+
+    def __str__(self) -> str:
+        """Return a readable string representation of
+        this track.
+
+        :rtype: str
+        """
+        return f"{self.name} ({len(self)} tracks)"
 
 
 class Artist(Tracklist):
@@ -1255,6 +1295,14 @@ class Artist(Tracklist):
         """
         return f"<Artist: {self.name}>"
 
+    def __str__(self) -> str:
+        """Return a readable string representation of
+        this Artist.
+
+        :rtype: str
+        """
+        return self.name
+
 
 class Label(Artist):
     def load_meta(self):
@@ -1268,3 +1316,11 @@ class Label(Artist):
 
     def __repr__(self):
         return f"<Label - {self.name}>"
+
+    def __str__(self) -> str:
+        """Return a readable string representation of
+        this track.
+
+        :rtype: str
+        """
+        return self.name

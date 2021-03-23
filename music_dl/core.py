@@ -5,26 +5,33 @@ from getpass import getpass
 from typing import Generator, Optional, Tuple, Union
 
 import click
+from tqdm import tqdm
 
 from .clients import DeezerClient, QobuzClient, TidalClient
 from .config import Config
 from .constants import CONFIG_PATH, DB_PATH, URL_REGEX
 from .db import MusicDB
-from .downloader import Album, Artist, Playlist, Track, Label
+from .downloader import Album, Artist, Label, Playlist, Track
 from .exceptions import AuthenticationError, ParsingError
 from .utils import capitalize
 
 logger = logging.getLogger(__name__)
 
 
-MEDIA_CLASS = {"album": Album, "playlist": Playlist, "artist": Artist, "track": Track, "label": Label}
+MEDIA_CLASS = {
+    "album": Album,
+    "playlist": Playlist,
+    "artist": Artist,
+    "track": Track,
+    "label": Label,
+}
 CLIENTS = {"qobuz": QobuzClient, "tidal": TidalClient, "deezer": DeezerClient}
 Media = Union[Album, Playlist, Artist, Track]  # type hint
 
 # TODO: add support for database
 
 
-class MusicDL:
+class MusicDL(list):
     def __init__(
         self,
         config: Optional[Config] = None,
@@ -43,11 +50,10 @@ class MusicDL:
             "deezer": DeezerClient(),
         }
 
-        if database is None:
-            self.db = MusicDB(DB_PATH)
-        else:
-            assert isinstance(database, MusicDB)
+        if isinstance(database, (MusicDB, list)):
             self.db = database
+        elif database is None:
+            self.db = MusicDB(DB_PATH)
 
     def prompt_creds(self, source: str):
         """Prompt the user for credentials.
@@ -105,16 +111,10 @@ class MusicDL:
         }
 
         client = self.clients[source]
-        if not client.logged_in:
-            while True:
-                try:
-                    client.login(**self.config.creds(source))
-                    break
-                except AuthenticationError:
-                    click.secho("Invalid credentials, try again.")
-                    self.prompt_creds(source)
+        self.login(client)
 
         item = MEDIA_CLASS[media_type](client=client, id=item_id)
+        self.append(item)
         if isinstance(item, Artist):
             keys = self.config.filters.keys()
             # TODO: move this to config.py
@@ -125,7 +125,34 @@ class MusicDL:
         logger.debug("Arguments from config: %s", arguments)
 
         item.load_meta()
+        click.secho(f"Downloading {item!s}")
         item.download(**arguments)
+
+    def convert_all(self, codec, **kwargs):
+        click.secho("Converting the downloaded tracks...", fg="cyan")
+        for item in self:
+            item.convert(codec, **kwargs)
+
+    def login(self, client):
+        creds = self.config.creds(client.source)
+        if not client.logged_in:
+            while True:
+                try:
+                    client.login(**creds)
+                    break
+                except AuthenticationError:
+                    click.secho("Invalid credentials, try again.")
+                    self.prompt_creds(client.source)
+            if (
+                client.source == "qobuz"
+                and not creds.get("secrets")
+                and not creds.get("app_id")
+            ):
+                (
+                    self.config["qobuz"]["app_id"],
+                    self.config["qobuz"]["secrets"],
+                ) = client.get_tokens()
+                self.config.save()
 
     def parse_url(self, url: str) -> Tuple[str, str]:
         """Returns the type of the url and the id.

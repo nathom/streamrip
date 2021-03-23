@@ -103,6 +103,8 @@ class ClientInterface(ABC):
 
 
 class QobuzClient(ClientInterface):
+    source = "qobuz"
+
     # ------- Public Methods -------------
     def __init__(self):
         self.logged_in = False
@@ -192,10 +194,6 @@ class QobuzClient(ClientInterface):
 
     def get_file_url(self, item_id, quality=6) -> dict:
         return self._api_get_file_url(item_id, quality=quality)
-
-    @property
-    def source(self):
-        return "qobuz"
 
     # ---------- Private Methods ---------------
 
@@ -355,6 +353,8 @@ class QobuzClient(ClientInterface):
 
 
 class DeezerClient(ClientInterface):
+    source = "deezer"
+
     def __init__(self):
         self.session = requests.Session()
         self.logged_in = True
@@ -412,12 +412,10 @@ class DeezerClient(ClientInterface):
         logger.debug(f"Download url {url}")
         return url
 
-    @property
-    def source(self):
-        return "deezer"
-
 
 class TidalClient(ClientInterface):
+    source = "tidal"
+
     def __init__(self):
         self.logged_in = False
 
@@ -467,10 +465,6 @@ class TidalClient(ClientInterface):
         """
         logger.debug(f"Fetching file url with quality {quality}")
         return self._get_file_url(meta_id, quality=min(TIDAL_MAX_Q, quality))
-
-    @property
-    def source(self):
-        return "tidal"
 
     def _search(self, query, media_type="album", **kwargs):
         params = {

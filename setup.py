@@ -32,13 +32,13 @@ setup(
         "Operating System :: OS Independent",
         "Development Status :: 3 - Alpha",
     ],
-    package_dir={'', 'music-dl'},
-    packages=find_packages(where='music-dl'),
+    package_dir={"", "music-dl"},
+    packages=find_packages(where="music-dl"),
     python_requires=">=3.9",
     project_urls={
-        'Bug Reports': 'https://github.com/nathom/music-dl/issues',
-        'Source': 'https://github.com/nathom/music-dl',
-    }
+        "Bug Reports": "https://github.com/nathom/music-dl/issues",
+        "Source": "https://github.com/nathom/music-dl",
+    },
 )
 
 # rm -f dist/*

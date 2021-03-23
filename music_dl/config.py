@@ -46,6 +46,7 @@ class Config:
         self.tidal = {"enabled": True, "email": None, "password": None}
         self.deezer = {"enabled": True}
         self.downloads_database = None
+        self.conversion = {"codec": None, "sampling_rate": None, "bit_depth": None}
         self.filters = {
             "no_extras": False,
             "albums_only": False,
@@ -55,7 +56,7 @@ class Config:
         }
         self.downloads = {"folder": folder, "quality": quality}
         self.metadata = {
-            "embed_cover": False,
+            "embed_cover": True,
             "large_cover": False,
             "default_comment": None,
             "remove_extra_tags": False,
