@@ -96,7 +96,7 @@ class MusicDL(list):
         :raises InvalidSourceError
         :raises ParsingError
         """
-        source, url_type, item_id = self.parse_url(url)
+        source, url_type, item_id = self.parse_urls(url)[0]
         if item_id in self.db:
             logger.info(f"{url} already downloaded, use --no-db to override.")
             return
@@ -162,7 +162,7 @@ class MusicDL(list):
                 ) = client.get_tokens()
                 self.config.save()
 
-    def parse_url(self, url: str) -> Tuple[str, str]:
+    def parse_urls(self, url: str) -> Tuple[str, str]:
         """Returns the type of the url and the id.
 
         Compatible with urls of the form:
@@ -176,13 +176,10 @@ class MusicDL(list):
 
         :raises exceptions.ParsingError
         """
-        parsed = self.url_parse.search(url)
+        parsed = self.url_parse.findall(url)
 
-        if parsed is not None:
-            parsed = parsed.groups()
-
-            if len(parsed) == 3:
-                return tuple(parsed)  # Convert from Seq for the sake of typing
+        if parsed != []:
+            return parsed
 
         raise ParsingError(f"Error parsing URL: `{url}`")
 
@@ -196,14 +193,11 @@ class MusicDL(list):
         :raises exceptions.ParsingError
         """
         with open(filepath) as txt:
-            lines = (
+            lines = " ".join(
                 line for line in txt.readlines() if not line.strip().startswith("#")
             )
 
-            click.secho(f"URLs found in text file: {len(lines)}")
-
-            for line in lines:
-                self.handle_url(line)
+        return self.parse_urls(lines)
 
     def search(
         self, source: str, query: str, media_type: str = "album", limit: int = 200

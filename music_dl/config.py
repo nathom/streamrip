@@ -43,11 +43,12 @@ class Config:
         "downloads_database": None,
         "conversion": {"codec": None, "sampling_rate": None, "bit_depth": None},
         "filters": {
-            "no_extras": False,
-            "albums_only": False,
-            "no_features": False,
-            "studio_albums": False,
-            "remaster_only": False,
+            "extras": False,
+            "repeats": False,
+            "non_albums": False,
+            "features": False,
+            "non_studio_albums": False,
+            "non_remaster": False,
         },
         "downloads": {"folder": DOWNLOADS_DIR, "quality": 7},
         "metadata": {
