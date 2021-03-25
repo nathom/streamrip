@@ -3,3 +3,4 @@ __pycache__
 secrets.py
 dist
 build
+test.py
