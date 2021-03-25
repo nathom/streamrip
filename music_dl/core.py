@@ -2,12 +2,12 @@ import logging
 import os
 import re
 from getpass import getpass
+from pprint import pprint
 from string import Formatter
 from typing import Generator, Optional, Tuple, Union
 
 import click
 from simple_term_menu import TerminalMenu
-from tqdm import tqdm
 
 from .clients import DeezerClient, QobuzClient, TidalClient
 from .config import Config
@@ -30,16 +30,12 @@ MEDIA_CLASS = {
 CLIENTS = {"qobuz": QobuzClient, "tidal": TidalClient, "deezer": DeezerClient}
 Media = Union[Album, Playlist, Artist, Track]  # type hint
 
-# TODO: add support for database
-
 
 class MusicDL(list):
     def __init__(
         self,
         config: Optional[Config] = None,
-        database: Optional[str] = None,
     ):
-        logger.debug(locals())
 
         self.url_parse = re.compile(URL_REGEX)
         self.config = config
@@ -52,10 +48,15 @@ class MusicDL(list):
             "deezer": DeezerClient(),
         }
 
-        if isinstance(database, (MusicDB, list)):
-            self.db = database
-        elif database is None:
-            self.db = MusicDB(DB_PATH)
+        if config.session["database"]["enabled"]:
+            if config.session["database"]["path"] is not None:
+                self.db = MusicDB(config.session["database"]["path"])
+            else:
+                self.db = MusicDB(DB_PATH)
+                config.file["database"]["path"] = DB_PATH
+                config.save()
+        else:
+            self.db = []
 
     def prompt_creds(self, source: str):
         """Prompt the user for credentials.
@@ -88,7 +89,7 @@ class MusicDL(list):
         ):
             self.prompt_creds(source)
 
-    def handle_url(self, url: str):
+    def handle_urls(self, url: str):
         """Download an url
 
         :param url:
@@ -100,34 +101,43 @@ class MusicDL(list):
         if item_id in self.db:
             logger.info(f"{url} already downloaded, use --no-db to override.")
             return
+
         self.handle_item(source, url_type, item_id)
 
     def handle_item(self, source: str, media_type: str, item_id: str):
         self.assert_creds(source)
 
-        arguments = {
-            "database": self.db,
-            "parent_folder": self.config.downloads["folder"],
-            "quality": self.config.downloads["quality"],
-            "embed_cover": self.config.metadata["embed_cover"],
-        }
-
         client = self.get_client(source)
 
         item = MEDIA_CLASS[media_type](client=client, id=item_id)
         self.append(item)
-        if isinstance(item, Artist):
-            keys = self.config.filters.keys()
-            # TODO: move this to config.py
-            filters_ = tuple(key for key in keys if self.config.filters[key])
-            arguments["filters"] = filters_
-            logger.debug("Added filter argument for artist/label: %s", filters_)
 
+    def download(self):
+        arguments = {
+            "database": self.db,
+            "parent_folder": self.config.session["downloads"]["folder"],
+            "quality": self.config.session["downloads"]["quality"],
+            "embed_cover": self.config.session["metadata"]["embed_cover"],
+        }
         logger.debug("Arguments from config: %s", arguments)
+        for item in self:
+            if isinstance(item, Artist):
+                filters_ = tuple(
+                    k for k, v in self.config.session["filters"].items() if v
+                )
+                arguments["filters"] = filters_
+                logger.debug("Added filter argument for artist/label: %s", filters_)
 
-        item.load_meta()
-        click.secho(f"Downloading {item!s}", fg="bright_green")
-        item.download(**arguments)
+            item.load_meta()
+            click.secho(f"Downloading {item!s}", fg="bright_green")
+            item.download(**arguments)
+            pprint(self.config.session["conversion"])
+            if self.config.session["conversion"]["enabled"]:
+                click.secho(
+                    f"Converting {item!s} to {self.config.session['conversion']['codec']}",
+                    fg="cyan",
+                )
+                item.convert(**self.config.session["conversion"])
 
     def get_client(self, source: str):
         client = self.clients[source]
@@ -157,8 +167,8 @@ class MusicDL(list):
                 and not creds.get("app_id")
             ):
                 (
-                    self.config["qobuz"]["app_id"],
-                    self.config["qobuz"]["secrets"],
+                    self.config.file["qobuz"]["app_id"],
+                    self.config.file["qobuz"]["secrets"],
                 ) = client.get_tokens()
                 self.config.save()
 
@@ -208,8 +218,15 @@ class MusicDL(list):
         i = 0
         if isinstance(results, Generator):  # QobuzClient
             for page in results:
-                for item in page[f"{media_type}s"]["items"]:
-                    yield MEDIA_CLASS[media_type].from_api(item, client)
+                tracklist = (
+                    page[f"{media_type}s"]["items"]
+                    if media_type != "featured"
+                    else page["albums"]["items"]
+                )
+                for item in tracklist:
+                    yield MEDIA_CLASS[
+                        media_type if media_type != "featured" else "album"
+                    ].from_api(item, client)
                     i += 1
                     if i > limit:
                         return
@@ -238,7 +255,7 @@ class MusicDL(list):
     def interactive_search(
         self, query: str, source: str = "qobuz", media_type: str = "album"
     ):
-        results = tuple(self.search(source, query, media_type, limit=30))
+        results = tuple(self.search(source, query, media_type, limit=50))
 
         def title(res):
             return f"{res[0]+1}. {res[1].title}"
@@ -261,4 +278,8 @@ class MusicDL(list):
             clear_screen=True,
         )
         choice = menu.show()
-        return results[choice]
+        if choice is None:
+            return False
+        else:
+            self.append(results[choice])
+            return True

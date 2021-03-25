@@ -99,8 +99,8 @@ class Track:
         self.sampling_rate = 44100
         self.bit_depth = 16
 
-        self.__is_downloaded = False
-        self.__is_tagged = False
+        self._is_downloaded = False
+        self._is_tagged = False
         for attr in ("quality", "folder", "meta"):
             setattr(self, attr, None)
 
@@ -155,14 +155,14 @@ class Track:
             quality or self.quality,
             parent_folder or self.folder,
         )
-        self.folder = sanitize_filepath(parent_folder)
+        self.folder = sanitize_filepath(parent_folder, platform="auto")
 
         os.makedirs(self.folder, exist_ok=True)
 
         if database is not None:
             if self.id in database:
-                self.__is_downloaded = True
-                self.__is_tagged = True
+                self._is_downloaded = True
+                self._is_tagged = True
                 click.secho(
                     f"{self['title']} already logged in database, skipping.",
                     fg="magenta",
@@ -170,8 +170,8 @@ class Track:
                 return
 
         if os.path.isfile(self.format_final_path()):
-            self.__is_downloaded = True
-            self.__is_tagged = True
+            self._is_downloaded = True
+            self._is_tagged = True
             click.secho(f"Track already downloaded: {self.final_path}", fg="magenta")
             return False
 
@@ -195,8 +195,8 @@ class Track:
 
         if os.path.isfile(temp_file):
             logger.debug("Temporary file found: %s", temp_file)
-            self.__is_downloaded = True
-            self.__is_tagged = False
+            self._is_downloaded = True
+            self._is_tagged = False
 
         click.secho(f"\nDownloading {self!s}", fg="blue")
 
@@ -217,7 +217,7 @@ class Track:
 
         logger.debug("Downloaded: %s -> %s", temp_file, self.final_path)
 
-        self.__is_downloaded = True
+        self._is_downloaded = True
         return True
 
     def download_cover(self):
@@ -310,13 +310,13 @@ class Track:
         :type cover: Union[Picture, APIC]
         """
         assert isinstance(self.meta, TrackMetadata), "meta must be TrackMetadata"
-        if not self.__is_downloaded:
+        if not self._is_downloaded:
             logger.info(
                 "Track %s not tagged because it was not downloaded", self["title"]
             )
             return
 
-        if self.__is_tagged:
+        if self._is_tagged:
             logger.info(
                 "Track %s not tagged because it is already tagged", self["title"]
             )
@@ -361,7 +361,7 @@ class Track:
         else:
             raise ValueError(f"Unknown container type: {audio}")
 
-        self.__is_tagged = True
+        self._is_tagged = True
 
     def convert(self, codec: str = "ALAC", **kwargs):
         """Converts the track to another codec.
@@ -380,7 +380,7 @@ class Track:
         :type codec: str
         :param kwargs:
         """
-        assert self.__is_downloaded, "Track must be downloaded before conversion"
+        assert self._is_downloaded, "Track must be downloaded before conversion"
 
         CONV_CLASS = {
             "FLAC": converter.FLAC,

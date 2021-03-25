@@ -1,13 +1,10 @@
-# For tests
-
 import logging
 import os
-from pprint import pformat
 
 import click
 
 from .config import Config
-from .constants import CACHE_DIR, CONFIG_DIR, CONFIG_PATH, QOBUZ_FEATURED_KEYS
+from .constants import CACHE_DIR, CONFIG_DIR, CONFIG_PATH
 from .core import MusicDL
 from .utils import init_log
 
@@ -22,7 +19,10 @@ if not os.path.isdir(CACHE_DIR):
 
 @click.group(invoke_without_command=True)
 @click.option("-c", "--convert", metavar="CODEC")
-@click.option("-u", '--urls', metavar='URLS')
+@click.option("-u", "--urls", metavar="URLS")
+@click.option("-nd", "--no-db", is_flag=True)
+@click.option("--debug", is_flag=True)
+@click.option("--reset-config", is_flag=True)
 @click.pass_context
 def cli(ctx, **kwargs):
     """
@@ -56,8 +56,28 @@ def cli(ctx, **kwargs):
     global config
     global core
 
+    if kwargs["debug"]:
+        init_log()
+
     config = Config()
+    if kwargs["reset_config"]:
+        config.reset()
+        return
+
+    if kwargs["no_db"]:
+        config.session["database"]["enabled"] = False
+    if kwargs["convert"]:
+        config.session["conversion"]["enabled"] = True
+        config.session["conversion"]["codec"] = kwargs["convert"]
+
     core = MusicDL(config)
+
+    if kwargs["urls"]:
+        logger.debug(f"handling {kwargs['urls']}")
+        core.handle_urls(kwargs["urls"])
+
+    if ctx.invoked_subcommand is None:
+        core.download()
 
 
 @cli.command(name="filter")
@@ -79,27 +99,27 @@ def filter_discography(ctx, **kwargs):
     For basic filtering, use the `--repeats` and `--features` filters.
     """
 
-    filters = [k for k, v in kwargs.items() if v]
-    filters.remove('urls')
-    print(f"loaded filters {filters}")
+    filters = kwargs.copy()
+    filters.remove("urls")
     config.session["filters"] = filters
-    print(f"downloading {kwargs['urls']} with filters")
+    logger.debug(f"downloading {kwargs['urls']} with filters {filters}")
+    core.handle_urls(" ".join(kwargs["urls"]))
+    core.download()
 
 
 @cli.command()
 @click.option("-t", "--type", default="album")
+@click.option("-s", "--source", default="qobuz")
 @click.option("-d", "--discover", is_flag=True)
 @click.argument("QUERY", nargs=-1)
 @click.pass_context
 def interactive(ctx, **kwargs):
-    f"""Interactive search for a query. This will display a menu
+    """Interactive search for a query. This will display a menu
     from which you can choose an item to download.
 
     If the source is Qobuz, you can use the `--discover` option with
     one of the following queries to fetch and interactively download
     the featured albums.
-
-    {pformat(QOBUZ_FEATURED_KEYS)}
 
         * most-streamed
 
@@ -133,14 +153,18 @@ def interactive(ctx, **kwargs):
 
     """
 
-    print(f"starting interactive mode for type {kwargs['type']}")
-    if kwargs['discover']:
-        if kwargs['query'] == ():
-            kwargs['query'] = 'ideal-discography'
-        print(f"doing a discover search of type {kwargs['query']}")
+    logger.debug(f"starting interactive mode for type {kwargs['type']}")
+    if kwargs["discover"]:
+        if kwargs["query"] == ():
+            kwargs["query"] = ["ideal-discography"]
+        kwargs["type"] = "featured"
+
+    query = " ".join(kwargs["query"])
+
+    if core.interactive_search(query, kwargs["source"], kwargs["type"]):
+        core.download()
     else:
-        query = ' '.join(kwargs['query'])
-        print(f"searching for query '{query}'")
+        click.secho("No items chosen, exiting.", fg="bright_red")
 
 
 def parse_urls(arg: str):

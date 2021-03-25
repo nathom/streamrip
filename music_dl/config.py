@@ -40,8 +40,13 @@ class Config:
         },
         "tidal": {"enabled": True, "email": None, "password": None},
         "deezer": {"enabled": True},
-        "downloads_database": None,
-        "conversion": {"codec": None, "sampling_rate": None, "bit_depth": None},
+        "database": {"enabled": True, "path": None},
+        "conversion": {
+            "enabled": False,
+            "codec": None,
+            "sampling_rate": None,
+            "bit_depth": None,
+        },
         "filters": {
             "extras": False,
             "repeats": False,
@@ -74,15 +79,15 @@ class Config:
             logger.debug(f"Creating yaml config file at '{self._path}'")
             self.dump(self.defaults)
         else:
-            self.load_file()
+            self.load()
 
-    def save_file(self):
+    def save(self):
         self.dump(self.file)
 
-    def reset_file(self):
+    def reset(self):
         self.dump(self.defaults)
 
-    def load_file(self):
+    def load(self):
         with open(self._path) as cfg:
             for k, v in yaml.load(cfg).items():
                 self.file[k] = v
