@@ -19,8 +19,8 @@ setup(
     py_modules=["streamrip"],
     entry_points={
         "console_scripts": [
-            "rip = music_dl.cli:main",
-            "streamrip = music_dl.cli:main",
+            "rip = streamrip.cli:main",
+            "streamrip = streamrip.cli:main",
         ],
     },
     packages=find_packages(),
@@ -31,10 +31,10 @@ setup(
         "Operating System :: OS Independent",
         "Development Status :: 3 - Alpha",
     ],
-    python_requires=">=3.8",
+    python_requires=">=3.7",
     project_urls={
-        "Bug Reports": "https://github.com/nathom/music-dl/issues",
-        "Source": "https://github.com/nathom/music-dl",
+        "Bug Reports": "https://github.com/nathom/streamrip/issues",
+        "Source": "https://github.com/nathom/streamrip",
     },
 )
 
