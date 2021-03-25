@@ -4,7 +4,7 @@ import re
 import shutil
 import sys
 from abc import ABC, abstractmethod
-from pprint import pprint
+from pprint import pformat, pprint
 from tempfile import gettempdir
 from typing import Any, Callable, Optional, Tuple, Union
 
@@ -188,6 +188,7 @@ class Track:
                 "sample"
             ):
                 logger.debug("Track is not downloadable: %s", dl_info)
+                click.secho("Track is not available for download", fg="red")
                 return False
 
             self.sampling_rate = dl_info.get("sampling_rate")
@@ -205,7 +206,12 @@ class Track:
             tqdm_download(dl_info["url"], temp_file)  # downloads file
         elif isinstance(dl_info, str):  # Deezer
             logger.debug("Downloadable URL found: %s", dl_info)
-            tqdm_download(dl_info, temp_file)  # downloads file
+            try:
+                tqdm_download(dl_info, temp_file)  # downloads file
+            except NonStreamable:
+                logger.debug(f"Track is not downloadable {dl_info}")
+                click.secho("Track is not available for download", fg="red")
+                return False
         else:
             raise InvalidSourceError(self.client.source)
 
@@ -380,7 +386,10 @@ class Track:
         :type codec: str
         :param kwargs:
         """
-        assert self._is_downloaded, "Track must be downloaded before conversion"
+        if not self._is_downloaded:
+            logger.debug("Track not downloaded, skipping conversion")
+            click.secho("Track not downloaded, skipping conversion", fg="magenta")
+            return
 
         CONV_CLASS = {
             "FLAC": converter.FLAC,
@@ -687,6 +696,7 @@ class Album(Tracklist):
                 "tracktotal": resp.get("numberOfTracks"),
             }
         elif client.source == "deezer":
+            logger.debug(pformat(resp))
             return {
                 "id": resp.get("id"),
                 "title": resp.get("title"),

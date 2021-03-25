@@ -9,6 +9,7 @@ from pathvalidate import sanitize_filename
 from tqdm import tqdm
 
 from .constants import LOG_DIR, TIDAL_COVER_URL
+from .exceptions import NonStreamable
 
 logger = logging.getLogger(__name__)
 
@@ -62,11 +63,13 @@ def tqdm_download(url: str, filepath: str):
     :type url: str
     :type filepath: str
     """
-    # FIXME: add the conditional to the progress_bar bool
     logger.debug(f"Downloading {url} to {filepath}")
     r = requests.get(url, allow_redirects=True, stream=True)
     total = int(r.headers.get("content-length", 0))
     logger.debug(f"File size = {total}")
+    if total < 1000:
+        raise NonStreamable
+
     try:
         with open(filepath, "wb") as file, tqdm(
             total=total, unit="iB", unit_scale=True, unit_divisor=1024

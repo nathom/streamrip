@@ -2,7 +2,6 @@ import logging
 import os
 import re
 from getpass import getpass
-from pprint import pprint
 from string import Formatter
 from typing import Generator, Optional, Tuple, Union
 
@@ -131,7 +130,6 @@ class MusicDL(list):
             item.load_meta()
             click.secho(f"Downloading {item!s}", fg="bright_green")
             item.download(**arguments)
-            pprint(self.config.session["conversion"])
             if self.config.session["conversion"]["enabled"]:
                 click.secho(
                     f"Converting {item!s} to {self.config.session['conversion']['codec']}",
