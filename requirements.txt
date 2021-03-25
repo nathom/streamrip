@@ -6,4 +6,5 @@ pathvalidate
 requests
 mutagen
 tqdm
+simple-term-menu
 colorama
