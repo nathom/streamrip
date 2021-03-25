@@ -76,5 +76,9 @@ rip search --help
 rip discover --help
 ```
 
+```bash
+rip config --help
+```
+
 **This tool is still in development. If there are any features you would like to see, please open an issue.**
 
