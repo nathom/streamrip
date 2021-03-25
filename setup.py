@@ -15,6 +15,12 @@ requirements = read_file("requirements.txt").strip().split()
 setup(
     name=pkg_name,
     version="0.1",
+    author='Nathan',
+    author_email='nathanthomas707@gmail.com',
+    keywords='lossless, hi-res, qobuz, tidal, deezer, audio, convert',
+    description="A stream downloader for Qobuz, Tidal, and Deezer.",
+    long_description=read_file("README.md"),
+    long_description_content_type='text/markdown',
     install_requires=requirements,
     py_modules=["streamrip"],
     entry_points={
@@ -25,6 +31,7 @@ setup(
     },
     packages=find_packages(),
     classifiers=[
+        "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
         "License :: OSI Approved :: GNU General Public License (GPL)",
@@ -33,8 +40,8 @@ setup(
     ],
     python_requires=">=3.7",
     project_urls={
-        "Bug Reports": "https://github.com/nathom/streamrip/issues",
         "Source": "https://github.com/nathom/streamrip",
+        "Bug Reports": "https://github.com/nathom/streamrip/issues",
     },
 )
 

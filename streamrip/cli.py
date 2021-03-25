@@ -26,31 +26,6 @@ if not os.path.isdir(CACHE_DIR):
 @click.pass_context
 def cli(ctx, **kwargs):
     """
-    Examples:
-
-        $ rip {url} --convert alac
-
-        Download the url and convert to alac
-
-        $ rip {artist_url} -c alac filter --repeats --non-albums
-
-        Download a discography, filtering repeats and non-albums
-
-        $ rip interactive --search
-
-        Start an interactive search session
-
-        $ rip interactive --discover
-
-        Start an interactive discover session
-
-        $ rip config --open
-
-        Open config file
-
-        $ rip config --qobuz
-
-        Set qobuz credentials
 
     """
     global config

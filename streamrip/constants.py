@@ -4,13 +4,13 @@ from pathlib import Path
 import click
 import mutagen.id3 as id3
 
-APPNAME = "music-dl"
+APPNAME = "streamrip"
 
 CACHE_DIR = click.get_app_dir(APPNAME)
 CONFIG_DIR = click.get_app_dir(APPNAME)
 CONFIG_PATH = os.path.join(CONFIG_DIR, "config.yaml")
 LOG_DIR = click.get_app_dir(APPNAME)
-DB_PATH = os.path.join(LOG_DIR, "music-dl.db")
+DB_PATH = os.path.join(LOG_DIR, "downloads.db")
 
 DOWNLOADS_DIR = os.path.join(Path.home(), "Music Downloads")
 
