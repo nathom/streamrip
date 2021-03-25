@@ -1,4 +1,5 @@
 import datetime
+import click
 import hashlib
 import logging
 import os
@@ -122,6 +123,7 @@ class QobuzClient(ClientInterface):
         :type pwd: str
         :param kwargs: app_id: str, secrets: list, return_secrets: bool
         """
+        click.secho(f"Logging into {self.source}", fg='green')
         if self.logged_in:
             logger.debug("Already logged in")
             return
@@ -421,6 +423,7 @@ class TidalClient(ClientInterface):
         self.logged_in = False
 
     def login(self, email: str, pwd: str):
+        click.secho(f"Logging into {self.source}", fg='green')
         if self.logged_in:
             return
 
