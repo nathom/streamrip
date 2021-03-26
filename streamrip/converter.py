@@ -110,7 +110,9 @@ class Converter:
 
         if self.lossless:
             if isinstance(self.sampling_rate, int):
-                command.extend(["-ar", str(self.sampling_rate)])
+                audio = FLAC(self.filename)
+                old_sr = audio.info.sample_rate
+                command.extend(["-ar", str(min(old_sr, self.sampling_rate))])
             elif self.sampling_rate is not None:
                 raise TypeError(
                     f"Sampling rate must be int, not {type(self.sampling_rate)}"
