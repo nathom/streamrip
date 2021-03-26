@@ -1,4 +1,5 @@
 import logging
+from getpass import getpass
 import os
 
 import click
@@ -164,6 +165,28 @@ def discover(ctx, **kwargs):
         core.download()
     else:
         none_chosen()
+
+
+@cli.command()
+@click.option("-o", "--open", is_flag=True, help='Open the config file')
+@click.option("-q", "--qobuz", is_flag=True, help='Set Qobuz credentials')
+@click.option("-t", "--tidal", is_flag=True, help='Set Tidal credentials')
+@click.pass_context
+def config(ctx, **kwargs):
+    """Manage the streamrip configuration."""
+
+    if kwargs['open']:
+        click.launch(CONFIG_PATH)
+
+    if kwargs['qobuz']:
+        config.file['qobuz']['email'] = input("Qobuz email: ")
+        config.file['qobuz']['password'] = getpass()
+        config.save()
+
+    if kwargs['tidal']:
+        config.file['tidal']['email'] = input("Tidal email: ")
+        config.file['tidal']['password'] = getpass()
+        config.save()
 
 
 def none_chosen():
