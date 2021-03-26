@@ -4,3 +4,4 @@ secrets.py
 dist
 build
 test.py
+/urls.txt

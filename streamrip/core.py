@@ -96,13 +96,13 @@ class MusicDL(list):
         :raises InvalidSourceError
         :raises ParsingError
         """
-        source, url_type, item_id = self.parse_urls(url)[0]
-        if item_id in self.db:
-            logger.info(f"{url} already downloaded, use --no-db to override.")
-            click.secho(f"{url} already downloaded, use --no-db to override.", fg='magenta')
-            return
+        for source, url_type, item_id in self.parse_urls(url):
+            if item_id in self.db:
+                logger.info(f"{url} already downloaded, use --no-db to override.")
+                click.secho(f"{url} already downloaded, use --no-db to override.", fg='magenta')
+                break
 
-        self.handle_item(source, url_type, item_id)
+            self.handle_item(source, url_type, item_id)
 
     def handle_item(self, source: str, media_type: str, item_id: str):
         self.assert_creds(source)
@@ -138,6 +138,7 @@ class MusicDL(list):
             else:
                 item.download(**arguments)
 
+            self.db.add(item.id)
             if self.config.session["conversion"]["enabled"]:
                 click.secho(
                     f"Converting {item!s} to {self.config.session['conversion']['codec']}",
@@ -193,13 +194,14 @@ class MusicDL(list):
         :raises exceptions.ParsingError
         """
         parsed = self.url_parse.findall(url)
+        logger.debug(f"Parsed urls: {parsed}")
 
         if parsed != []:
             return parsed
 
         raise ParsingError(f"Error parsing URL: `{url}`")
 
-    def from_txt(self, filepath: Union[str, os.PathLike]):
+    def handle_txt(self, filepath: Union[str, os.PathLike]):
         """
         Handle a text file containing URLs. Lines starting with `#` are ignored.
 
@@ -209,11 +211,7 @@ class MusicDL(list):
         :raises exceptions.ParsingError
         """
         with open(filepath) as txt:
-            lines = " ".join(
-                line for line in txt.readlines() if not line.strip().startswith("#")
-            )
-
-        return self.parse_urls(lines)
+            self.handle_urls(txt.read())
 
     def search(
         self, source: str, query: str, media_type: str = "album", limit: int = 200

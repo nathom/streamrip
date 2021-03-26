@@ -21,6 +21,7 @@ if not os.path.isdir(CACHE_DIR):
 @click.group(invoke_without_command=True)
 @click.option("-c", "--convert", metavar="CODEC")
 @click.option("-u", "--urls", metavar="URLS")
+@click.option("-t", "--text", metavar='PATH')
 @click.option("-nd", "--no-db", is_flag=True)
 @click.option("--debug", is_flag=True)
 @click.option("--reset-config", is_flag=True)
@@ -51,6 +52,12 @@ def cli(ctx, **kwargs):
     if kwargs["urls"]:
         logger.debug(f"handling {kwargs['urls']}")
         core.handle_urls(kwargs["urls"])
+
+    if os.path.isfile(kwargs['text']):
+        logger.debug(f"Handling {kwargs['text']}")
+        core.handle_txt(kwargs['text'])
+    elif kwargs['txt'] is not None:
+        click.secho(f"Text file {kwargs['text']} does not exist.")
 
     if ctx.invoked_subcommand is None:
         core.download()
