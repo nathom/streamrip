@@ -132,7 +132,7 @@ FOLDER_FORMAT = (
 TRACK_FORMAT = "{tracknumber}. {artist} - {title}"
 
 URL_REGEX = (
-    r"https:\/\/(?:www|open|play)?\.?(\w+)\.com(?:(?:\/(track|playlist|album|"
+    r"https:\/\/(?:www|open|play|listen)?\.?(\w+)\.com(?:(?:\/(track|playlist|album|"
     r"artist|label))|(?:\/[-\w]+?))+\/(\w+)"
 )
 
