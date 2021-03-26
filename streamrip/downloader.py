@@ -40,7 +40,6 @@ from .utils import (
 
 logger = logging.getLogger(__name__)
 
-# TODO: add the other quality options
 TIDAL_Q_MAP = {
     "LOW": 4,
     "HIGH": 5,
@@ -265,6 +264,7 @@ class Track:
         the TrackMetadata object.
         """
         formatter = self.meta.get_formatter()
+        logger.debug("Track meta formatter %s", pformat(formatter))
         # filename = sanitize_filepath(self.file_format.format(**formatter))
         filename = clean_format(self.file_format, formatter)
         self.final_path = (
@@ -699,7 +699,7 @@ class Album(Tracklist):
                 "title": resp.get("title"),
                 "_artist": safe_get(resp, "artist", "name"),
                 "albumartist": safe_get(resp, "artist", "name"),
-                "year": str(resp.get("year"))[:4],
+                "year": resp.get("releaseDate")[:4],
                 "version": resp.get("version"),
                 "cover_urls": {
                     size: tidal_cover_url(resp.get("cover"), x)
