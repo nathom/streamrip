@@ -99,6 +99,7 @@ class MusicDL(list):
         source, url_type, item_id = self.parse_urls(url)[0]
         if item_id in self.db:
             logger.info(f"{url} already downloaded, use --no-db to override.")
+            click.secho(f"{url} already downloaded, use --no-db to override.", fg='magenta')
             return
 
         self.handle_item(source, url_type, item_id)
@@ -116,7 +117,8 @@ class MusicDL(list):
             "database": self.db,
             "parent_folder": self.config.session["downloads"]["folder"],
             "quality": self.config.session["downloads"]["quality"],
-            "embed_cover": self.config.session["metadata"]["embed_cover"],
+            # TODO: fully implement this
+            # "embed_cover": self.config.session["metadata"]["embed_cover"],
         }
         logger.debug("Arguments from config: %s", arguments)
         for item in self:
@@ -129,7 +131,13 @@ class MusicDL(list):
 
             item.load_meta()
             click.secho(f"Downloading {item!s}", fg="bright_green")
-            item.download(**arguments)
+
+            if isinstance(item, Track):
+                # track.download doesn't automatically tag
+                item.download(**arguments, tag=True)
+            else:
+                item.download(**arguments)
+
             if self.config.session["conversion"]["enabled"]:
                 click.secho(
                     f"Converting {item!s} to {self.config.session['conversion']['codec']}",

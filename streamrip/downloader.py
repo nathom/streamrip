@@ -2,7 +2,6 @@ import logging
 import os
 import re
 import shutil
-import sys
 from abc import ABC, abstractmethod
 from pprint import pformat, pprint
 from tempfile import gettempdir
@@ -124,6 +123,18 @@ class Track:
         self.meta = TrackMetadata(
             track=track_meta, source=self.client.source
         )  # meta dict -> TrackMetadata object
+        try:
+            if self.client.source == "qobuz":
+                self.cover_url = track_meta["album"]["image"]["small"]
+            elif self.client.source == "tidal":
+                self.cover_url = tidal_cover_url(track_meta["album"]["cover"], 320)
+            elif self.client.source == "deezer":
+                self.cover_url = track_meta["album"]["cover_medium"]
+            else:
+                raise InvalidSourceError(self.client.source)
+        except KeyError:
+            logger.debug("No cover found")
+            self.cover_url = None
 
     @staticmethod
     def _get_tracklist(resp, source):
@@ -140,6 +151,7 @@ class Track:
         parent_folder: str = "Downloads",
         progress_bar: bool = True,
         database: MusicDB = None,
+        tag: bool = False,
     ):
         """
         Download the track.
@@ -224,6 +236,10 @@ class Track:
         logger.debug("Downloaded: %s -> %s", temp_file, self.final_path)
 
         self._is_downloaded = True
+
+        if tag:
+            self.tag()
+
         return True
 
     def download_cover(self):
@@ -289,6 +305,7 @@ class Track:
             else:
                 raise InvalidSourceError(client.source)
         except KeyError:
+            logger.debug("No cover found")
             cover_url = None
 
         return cls(
@@ -352,17 +369,15 @@ class Track:
         for k, v in self.meta.tags(self.container):
             audio[k] = v
 
-        if cover is None and embed_cover:
+        if cover is None:
             assert hasattr(self, "cover")
             cover = self.cover
 
         if isinstance(audio, FLAC):
-            if embed_cover:
-                audio.add_picture(cover)
+            audio.add_picture(cover)
             audio.save()
         elif isinstance(audio, ID3):
-            if embed_cover:
-                audio.add(cover)
+            audio.add(cover)
             audio.save(self.final_path, "v2_version=3")
         else:
             raise ValueError(f"Unknown container type: {audio}")
@@ -416,6 +431,7 @@ class Track:
             sampling_rate=kwargs.get("sampling_rate"),
             remove_source=kwargs.get("remove_source", True),
         )
+        click.secho(f"Converting {self!s}", fg='blue')
         engine.convert()
 
     def get(self, *keys, default=None):
@@ -764,7 +780,6 @@ class Album(Tracklist):
         progress_bar: bool = True,
         tag_tracks: bool = True,
         cover_key: str = "large",
-        embed_cover: bool = False,
         database: MusicDB = None,
     ):
         """Download all of the tracks in the album.
@@ -803,7 +818,7 @@ class Album(Tracklist):
 
                 tqdm_download(cover_url, cover_path)
 
-        if self.client.source != "deezer" and embed_cover:
+        if self.client.source != "deezer":
             cover = self.get_cover_obj(cover_path, quality)
 
         for track in self:
@@ -811,7 +826,7 @@ class Album(Tracklist):
 
             track.download(quality, folder, progress_bar, database=database)
             if tag_tracks and self.client.source != "deezer":
-                track.tag(cover=cover, embed_cover=embed_cover)
+                track.tag(cover=cover)
 
         logger.debug("Final album folder: %s", folder)
 
@@ -964,7 +979,7 @@ class Playlist(Tracklist):
             # inside of a library folder
             meta = TrackMetadata(**meta_args(track))
             if new_tracknumbers:
-                meta["tracknumber"] = f"{i:02}"
+                meta["tracknumber"] = str(i + 1)
 
             self.append(
                 Track(
@@ -982,7 +997,6 @@ class Playlist(Tracklist):
         parent_folder: str = "Downloads",
         quality: int = 6,
         filters: Callable = None,
-        embed_cover: bool = False,
         database: MusicDB = None,
     ):
         """Download and tag all of the tracks.
@@ -1000,7 +1014,7 @@ class Playlist(Tracklist):
         for track in self:
             track.download(parent_folder=folder, quality=quality, database=database)
             if self.client.source != "deezer":
-                track.tag(embed_cover=embed_cover)
+                track.tag()
 
     @staticmethod
     def _parse_get_resp(item: dict, client: ClientInterface):
@@ -1077,9 +1091,9 @@ class Artist(Tracklist):
     def load_meta(self):
         """Send an API call to get album info based on id."""
         self.meta = self.client.get(self.id, media_type="artist")
+        # TODO find better fix for this
+        self.name = self.meta['items'][0]['artist']['name']
         self._load_albums()
-
-        self.name = self.meta.get("name")
 
     def _load_albums(self):
         """From the discography returned by client.get(query, 'artist'),
@@ -1107,7 +1121,6 @@ class Artist(Tracklist):
         filters: Optional[Tuple] = None,
         no_repeats: bool = False,
         quality: int = 6,
-        embed_cover: bool = False,
         database: MusicDB = None,
     ):
         """Download all albums in the discography.
@@ -1153,7 +1166,6 @@ class Artist(Tracklist):
             album.download(
                 parent_folder=folder,
                 quality=quality,
-                embed_cover=embed_cover,
                 database=database,
             )
 

@@ -4,6 +4,7 @@ import shutil
 import subprocess
 from tempfile import gettempdir
 from typing import Optional
+from mutagen.flac import FLAC as FLAC_META
 
 from .exceptions import ConversionError
 
@@ -110,7 +111,7 @@ class Converter:
 
         if self.lossless:
             if isinstance(self.sampling_rate, int):
-                audio = FLAC(self.filename)
+                audio = FLAC_META(self.filename)
                 old_sr = audio.info.sample_rate
                 command.extend(["-ar", str(min(old_sr, self.sampling_rate))])
             elif self.sampling_rate is not None:
