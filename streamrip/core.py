@@ -98,9 +98,9 @@ class MusicDL(list):
         """
         for source, url_type, item_id in self.parse_urls(url):
             if item_id in self.db:
-                logger.info(f"{url} already downloaded, use --no-db to override.")
-                click.secho(f"{url} already downloaded, use --no-db to override.", fg='magenta')
-                break
+                logger.info(f"ID {item_id} already downloaded, use --no-db to override.")
+                click.secho(f"ID {item_id} already downloaded, use --no-db to override.", fg='magenta')
+                continue
 
             self.handle_item(source, url_type, item_id)
 
@@ -138,7 +138,9 @@ class MusicDL(list):
             else:
                 item.download(**arguments)
 
-            self.db.add(item.id)
+            if self.db != []:
+                self.db.add(item.id)
+
             if self.config.session["conversion"]["enabled"]:
                 click.secho(
                     f"Converting {item!s} to {self.config.session['conversion']['codec']}",
