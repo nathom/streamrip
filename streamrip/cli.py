@@ -53,11 +53,12 @@ def cli(ctx, **kwargs):
         logger.debug(f"handling {kwargs['urls']}")
         core.handle_urls(kwargs["urls"])
 
-    if os.path.isfile(kwargs['text']):
-        logger.debug(f"Handling {kwargs['text']}")
-        core.handle_txt(kwargs['text'])
-    elif kwargs['txt'] is not None:
-        click.secho(f"Text file {kwargs['text']} does not exist.")
+    if kwargs['text'] is not None:
+        if os.path.isfile(kwargs['text']):
+            logger.debug(f"Handling {kwargs['text']}")
+            core.handle_txt(kwargs['text'])
+        else:
+            click.secho(f"Text file {kwargs['text']} does not exist.")
 
     if ctx.invoked_subcommand is None:
         core.download()
