@@ -35,6 +35,13 @@ region = make_region().configure(
     arguments={"filename": os.path.join(CACHE_DIR, "clients.db")},
 )
 
+TIDAL_BASE = 'https://api.tidalhifi.com/v1'
+TIDAL_AUTH_URL = 'https://auth.tidal.com/v1/oauth2'
+TIDAL_CLIENT_INFO = {
+    'id': 'aR7gUaTK1ihpXOEP',
+    'secret': 'eVWBEkuL2FCjxgjOkR3yK0RYZEbcrMXRc2l8fU3ZCdE=',
+}
+
 logger = logging.getLogger(__name__)
 
 TRACK_CACHE_TIME = datetime.timedelta(weeks=2).total_seconds()
@@ -499,3 +506,105 @@ class TidalClient(ClientInterface):
         resp = self.session.request("GET", f"tracks/{track_id}/streamUrl", params)
         resp.raise_for_status()
         return resp.json()
+
+
+class TidalMQAClient:
+    def __init__(self):
+        self.device_code = None
+        self.user_code = None
+        self.verification_url = None
+        self.auth_check_timeout = None
+        self.auth_check_interval = None
+        self.user_id = None
+        self.country_code = None
+        self.access_token = None
+        self.refresh_token = None
+        self.expiry = None
+
+    def login(self):
+        self.get_device_code()
+        print(f"{self.user_code=}")
+        start = time.time()
+        elapsed = 0
+        while elapsed < 600:  # change later
+            elapsed = time.time() - start
+            status = self.check_auth_status()
+            if status == 2:
+                # pending
+                time.sleep(4)
+                continue
+            elif status == 1:
+                # error checking
+                raise Exception
+            elif status == 0:
+                # successful
+                break
+            else:
+                raise Exception
+
+    def get_device_code(self):
+        data = {
+            'client_id': TIDAL_CLIENT_INFO['id'],
+            'scope': 'r_usr+w_usr+w_sub',
+        }
+        r = requests.post(f"{TIDAL_AUTH_URL}/device_authorization", data)
+        r.raise_for_status()
+
+        resp = r.json()
+        self.device_code = resp['deviceCode']
+        self.user_code = resp['userCode']
+        self.verification_url = resp['verificationUri']
+        self.expiry = resp['expiresIn']
+        self.auth_interval = resp['interval']
+
+    def check_auth_status(self):
+        data = {
+            'client_id': TIDAL_CLIENT_INFO['id'],
+            'device_code': self.device_code,
+            'grant_type': 'urn:ietf:params:oauth:grant-type:device_code',
+            'scope': 'r_usr+w_usr+w_sub',
+        }
+        logger.debug(data)
+        r = requests.post(f"{TIDAL_AUTH_URL}/token", data=data, auth=(TIDAL_CLIENT_INFO['id'], TIDAL_CLIENT_INFO['secret']), verify=False).json()
+        logger.debug(r)
+
+        if r.get("status"):
+            if r['status'] != 200:
+                if r['status'] == 400 and r['sub_status'] == 1002:
+                    return 2
+                else:
+                    return 1
+
+        self.user_id = r['user']['userId']
+        self.country_code = r['user']['countryCode']
+        self.access_token = r['access_token']
+        self.refresh_token = r['refresh_token']
+        self.expires_in = r['expires_in']
+        return 0
+
+    def verify_access_token(self, token):
+        headers = {
+            'authorization': f"Bearer {token}",
+        }
+        r = requests.get('https://api.tidal.com/v1/sessions', headers=headers).json()
+        if r.status != 200:
+            raise Exception("Login failed")
+
+        return True
+
+    def _api_request(self, path, params):
+        headers = {
+            'authorization': f"Bearer {self.access_token}"
+        }
+        params['countryCode'] = self.country_code
+        r = requests.get(f"{TIDAL_BASE}/{path}", headers=headers, params=params).json()
+        return r
+
+    def get_file_url(self, track_id, quality: int = 7):
+        params = {
+            "audioquality": TIDAL_Q_IDS[quality],
+            "playbackmode": "STREAM",
+            "assetpresentation": "FULL",
+        }
+        resp = self._api_request(f"tracks/{track_id}/playbackinfopostpaywall", params)
+        return resp
