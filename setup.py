@@ -14,7 +14,7 @@ requirements = read_file("requirements.txt").strip().split()
 # https://github.com/pypa/sampleproject/blob/main/setup.py
 setup(
     name=pkg_name,
-    version="0.1.1",
+    version="0.2",
     author='Nathan',
     author_email='nathanthomas707@gmail.com',
     keywords='lossless, hi-res, qobuz, tidal, deezer, audio, convert',
