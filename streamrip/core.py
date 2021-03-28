@@ -251,11 +251,13 @@ class MusicDL(list):
                 "{bit_depth} bit / {sampling_rate} Hz\n"
                 "Version: {version}"
             )
-            fields = (fname for _, fname, _, _ in Formatter().parse(fmt) if fname)
-            ret = fmt.format(**{k: media.get(k, "Unknown") for k in fields})
+        elif isinstance(media, Artist):
+            fmt = "{name}"
         else:
             raise NotImplementedError
 
+        fields = (fname for _, fname, _, _ in Formatter().parse(fmt) if fname)
+        ret = fmt.format(**{k: media.get(k, "Unknown") for k in fields})
         return ret
 
     def interactive_search(

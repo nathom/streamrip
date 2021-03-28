@@ -1091,8 +1091,6 @@ class Artist(Tracklist):
     def load_meta(self):
         """Send an API call to get album info based on id."""
         self.meta = self.client.get(self.id, media_type="artist")
-        # TODO find better fix for this
-        self.name = self.meta['items'][0]['artist']['name']
         self._load_albums()
 
     def _load_albums(self):
@@ -1100,12 +1098,15 @@ class Artist(Tracklist):
         generate album objects and append them to self.
         """
         if self.client.source == "qobuz":
+            self.name = self.meta['name']
             albums = self.meta["albums"]["items"]
 
         elif self.client.source == "tidal":
+            self.name = self.meta['items'][0]['artist']['name']
             albums = self.meta["items"]
 
         elif self.client.source == "deezer":
+            # TODO: load artist name
             albums = self.meta["albums"]
 
         else:
@@ -1170,6 +1171,10 @@ class Artist(Tracklist):
             )
 
         logger.debug(f"{i} albums downloaded")
+
+    @property
+    def title(self):
+        return self.name
 
     @classmethod
     def from_api(cls, item: dict, client: ClientInterface, source: str = "qobuz"):
