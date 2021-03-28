@@ -5,3 +5,4 @@ dist
 build
 test.py
 /urls.txt
+*.flac
