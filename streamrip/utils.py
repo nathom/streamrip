@@ -1,4 +1,5 @@
 import logging
+import base64
 import logging.handlers as handlers
 import os
 from string import Formatter
@@ -159,7 +160,28 @@ def capitalize(s: str) -> str:
     return s[0].upper() + s[1:]
 
 
-def decrypt_mqa_file(in_path, out_path, key, nonce):
+def decrypt_mqa_file(in_path, out_path, encryption_key):
+    # Do not change this
+    master_key = "UIlTTEMmmLfGowo/UC60x2H45W6MdGgTRfo/umg4754="
+
+    # Decode the base64 strings to ascii strings
+    master_key = base64.b64decode(master_key)
+    security_token = base64.b64decode(encryption_key)
+
+    # Get the IV from the first 16 bytes of the securityToken
+    iv = security_token[:16]
+    encrypted_st = security_token[16:]
+
+    # Initialize decryptor
+    decryptor = AES.new(master_key, AES.MODE_CBC, iv)
+
+    # Decrypt the security token
+    decrypted_st = decryptor.decrypt(encrypted_st)
+
+    # Get the audio stream decryption key and nonce from the decrypted security token
+    key = decrypted_st[:16]
+    nonce = decrypted_st[16:24]
+
     counter = Counter.new(64, prefix=nonce, initial_value=0)
     decryptor = AES.new(key, AES.MODE_CTR, counter=counter)
 

@@ -1,12 +1,13 @@
 import base64
-import json
 import datetime
 import hashlib
+import json
 import logging
 import os
+import sys
 import time
 from abc import ABC, abstractmethod
-from pprint import pformat
+from pprint import pformat, pprint
 from typing import Generator, Sequence, Tuple, Union
 
 import click
@@ -511,7 +512,9 @@ class TidalClient(ClientInterface):
         return resp.json()
 
 
-class TidalMQAClient:
+class TidalMQAClient(ClientInterface):
+    source = "tidal"
+
     def __init__(self):
         self.device_code = None
         self.user_code = None
@@ -524,9 +527,32 @@ class TidalMQAClient:
         self.refresh_token = None
         self.expiry = None
 
-    def login(self):
-        self.get_device_code()
-        print(f"{self.user_code=}")
+    def login(
+        self,
+        user_id=None,
+        country_code=None,
+        access_token=None,
+        token_expiry=None,
+        refresh_token=None,
+    ):
+        if access_token is not None:
+            self.token_expiry = token_expiry
+            self.refresh_token = refresh_token
+            self.login_by_access_token(access_token, user_id)
+        else:
+            self.login_new_user()
+
+    def get(self, item_id, media_type):
+        return self._api_get(item_id, media_type)
+
+    def search(self, query, media_type="album"):
+        raise NotImplementedError
+
+    def login_new_user(self):
+        login_link = self.get_device_code()
+        click.secho(
+            f"Go to {login_link} to log into Tidal within 5 minutes.", fg="blue"
+        )
         start = time.time()
         elapsed = 0
         while elapsed < 600:  # change later
@@ -558,9 +584,9 @@ class TidalMQAClient:
         logger.debug(pformat(resp))
         self.device_code = resp["deviceCode"]
         self.user_code = resp["userCode"]
-        self.verification_url = resp["verificationUri"]
         self.user_code_expiry = resp["expiresIn"]
         self.auth_interval = resp["interval"]
+        return resp["verificationUriComplete"]
 
     def check_auth_status(self):
         data = {
@@ -587,7 +613,7 @@ class TidalMQAClient:
         self.country_code = resp["user"]["countryCode"]
         self.access_token = resp["access_token"]
         self.refresh_token = resp["refresh_token"]
-        self.access_token_expiry = resp["expires_in"]
+        self.token_expiry = resp["expires_in"] + time.time()
         return 0
 
     def verify_access_token(self, token):
@@ -619,24 +645,48 @@ class TidalMQAClient:
         self.user_id = resp["user"]["userId"]
         self.country_code = resp["user"]["countryCode"]
         self.access_token = resp["access_token"]
-        self.access_token_expiry = resp["expires_in"]
+        self.token_expiry = resp["expires_in"] + time.time()
 
     def login_by_access_token(self, token, user_id=None):
         headers = {"authorization": f"Bearer {token}"}
         resp = requests.get("https://api.tidal.com/v1/sessions", headers=headers).json()
-        if resp.get("status") != 200:
-            raise Exception("Login failed")
+        if resp.get("status", 200) != 200:
+            raise Exception(f"Login failed {resp=}")
 
         if str(resp.get("userId")) != str(user_id):
-            raise Exception(f"User id mismatch {locals()}")
+            raise Exception(f"User id mismatch {resp['userId']} v {user_id}")
 
         self.user_id = resp["userId"]
         self.country_code = resp["countryCode"]
         self.access_token = token
 
-    def _api_request(self, path, params):
+    def get_tokens(self):
+        return {
+            k: getattr(self, k)
+            for k in (
+                "user_id",
+                "country_code",
+                "access_token",
+                "refresh_token",
+                "token_expiry",
+            )
+        }
+
+    def _api_get(self, item_id: str, media_type: str) -> dict:
+        item = self._api_request(f"{media_type}s/{item_id}")
+        if media_type in ("playlist", "album"):
+            resp = self._api_request(f"{media_type}s/{item_id}/items")
+            item["tracks"] = [item["item"] for item in resp["items"]]
+
+        return item
+
+    def _api_request(self, path, params=None) -> dict:
+        if params is None:
+            params = {}
+
         headers = {"authorization": f"Bearer {self.access_token}"}
         params["countryCode"] = self.country_code
+        params["limit"] = 100
         r = requests.get(f"{TIDAL_BASE}/{path}", headers=headers, params=params).json()
         return r
 
@@ -652,7 +702,8 @@ class TidalMQAClient:
         }
         resp = self._api_request(f"tracks/{track_id}/playbackinfopostpaywall", params)
         manifest = json.loads(base64.b64decode(resp["manifest"]).decode("utf-8"))
-        codec = manifest["codecs"]
-        file_url = manifest["urls"][0]
-        enc_key = manifest.get("keyId", "")
-        return manifest
+        return {
+            "url": manifest["urls"][0],
+            "enc_key": manifest.get("keyId", ""),
+            "codec": manifest["codecs"],
+        }

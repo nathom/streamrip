@@ -2,6 +2,7 @@ import logging
 import os
 import re
 import shutil
+import sys
 from abc import ABC, abstractmethod
 from pprint import pformat, pprint
 from tempfile import gettempdir
@@ -36,6 +37,7 @@ from .utils import (
     safe_get,
     tidal_cover_url,
     tqdm_download,
+    decrypt_mqa_file,
 )
 
 logger = logging.getLogger(__name__)
@@ -137,9 +139,9 @@ class Track:
 
     @staticmethod
     def _get_tracklist(resp, source):
-        if source in ("qobuz", "tidal"):
+        if source == "qobuz":
             return resp["tracks"]["items"]
-        elif source == "deezer":
+        elif source in ("tidal", "deezer"):
             return resp["tracks"]
 
         raise NotImplementedError(source)
@@ -226,7 +228,10 @@ class Track:
         else:
             raise InvalidSourceError(self.client.source)
 
-        shutil.move(temp_file, self.final_path)
+        if dl_info.get("enc_key"):
+            decrypt_mqa_file(temp_file, self.final_path, dl_info['enc_key'])
+        else:
+            shutil.move(temp_file, self.final_path)
 
         if isinstance(database, MusicDB):
             database.add(self.id)
@@ -288,7 +293,10 @@ class Track:
         :raises IndexError
         """
 
-        track = cls._get_tracklist(album, client.source)[pos]
+        logger.debug(pos)
+        tracklist = cls._get_tracklist(album, client.source)
+        logger.debug(len(tracklist))
+        track = tracklist[pos]
         meta = TrackMetadata(album=album, track=track, source=client.source)
         return cls(client=client, meta=meta, id=track["id"])
 
@@ -743,7 +751,7 @@ class Album(Tracklist):
         This uses a classmethod to convert an item into a Track object, which
         stores the metadata inside a TrackMetadata object.
         """
-        logging.debug("Loading tracks to album")
+        logging.debug(f"Loading {self.tracktotal} tracks to album")
         for i in range(self.tracktotal):
             # append method inherited from superclass list
             self.append(

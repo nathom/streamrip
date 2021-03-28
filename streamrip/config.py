@@ -42,7 +42,7 @@ class Config:
             "country_code": None,
             "access_token": None,
             "refresh_token": None,
-            "expires_after": 0,
+            "token_expiry": 0,
         },
         "database": {"enabled": True, "path": None},
         "conversion": {
@@ -124,10 +124,7 @@ class Config:
 
     @property
     def tidal_creds(self):
-        return {
-            "email": self.file["tidal"]["email"],
-            "pwd": self.file["tidal"]["password"],
-        }
+        return self.file["tidal"]
 
     @property
     def qobuz_creds(self):
