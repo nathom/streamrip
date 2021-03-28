@@ -32,14 +32,18 @@ class Config:
 
     defaults = {
         "qobuz": {
-            "enabled": True,
             "email": None,
             "password": None,
             "app_id": "",  # Avoid NoneType error
             "secrets": [],
         },
-        "tidal": {"enabled": True, "email": None, "password": None},
-        "deezer": {"enabled": True},
+        "tidal": {
+            "user_id": None,
+            "country_code": None,
+            "access_token": None,
+            "refresh_token": None,
+            "expires_after": 0,
+        },
         "database": {"enabled": True, "path": None},
         "conversion": {
             "enabled": False,

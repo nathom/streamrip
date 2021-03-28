@@ -1,5 +1,6 @@
-import datetime
 import base64
+import json
+import datetime
 import hashlib
 import logging
 import os
@@ -551,7 +552,7 @@ class TidalMQAClient:
         }
         resp = self._api_post(f"{TIDAL_AUTH_URL}/device_authorization", data)
 
-        if 'status' in resp and resp['status'] != 200:
+        if "status" in resp and resp["status"] != 200:
             raise Exception(f"Device authorization failed {resp}")
 
         logger.debug(pformat(resp))
@@ -650,8 +651,8 @@ class TidalMQAClient:
             "assetpresentation": "FULL",
         }
         resp = self._api_request(f"tracks/{track_id}/playbackinfopostpaywall", params)
-        manifest = json.loads(base64.b64decode(resp['manifest']).decode("utf-8"))
-        codec = manifest['codecs']
+        manifest = json.loads(base64.b64decode(resp["manifest"]).decode("utf-8"))
+        codec = manifest["codecs"]
         file_url = manifest["urls"][0]
         enc_key = manifest.get("keyId", "")
-        return resp
+        return manifest
