@@ -314,7 +314,7 @@ class TrackMetadata:
             tag = getattr(self, k)
             if tag:
                 logger.debug(f"Adding tag {v}: {repr(tag)}")
-                yield (v, tag)
+                yield (v, str(tag))
 
     def __gen_mp3_tags(self) -> Tuple[str, str]:
         """Generate key, value pairs to tag MP3 files.
