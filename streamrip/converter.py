@@ -4,6 +4,7 @@ import shutil
 import subprocess
 from tempfile import gettempdir
 from typing import Optional
+
 from mutagen.flac import FLAC as FLAC_META
 
 from .exceptions import ConversionError

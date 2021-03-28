@@ -1,6 +1,6 @@
 import logging
-from getpass import getpass
 import os
+from getpass import getpass
 
 import click
 
@@ -21,15 +21,13 @@ if not os.path.isdir(CACHE_DIR):
 @click.group(invoke_without_command=True)
 @click.option("-c", "--convert", metavar="CODEC")
 @click.option("-u", "--urls", metavar="URLS")
-@click.option("-t", "--text", metavar='PATH')
+@click.option("-t", "--text", metavar="PATH")
 @click.option("-nd", "--no-db", is_flag=True)
 @click.option("--debug", is_flag=True)
 @click.option("--reset-config", is_flag=True)
 @click.pass_context
 def cli(ctx, **kwargs):
-    """
-
-    """
+    """"""
     global config
     global core
 
@@ -53,10 +51,10 @@ def cli(ctx, **kwargs):
         logger.debug(f"handling {kwargs['urls']}")
         core.handle_urls(kwargs["urls"])
 
-    if kwargs['text'] is not None:
-        if os.path.isfile(kwargs['text']):
+    if kwargs["text"] is not None:
+        if os.path.isfile(kwargs["text"]):
             logger.debug(f"Handling {kwargs['text']}")
-            core.handle_txt(kwargs['text'])
+            core.handle_txt(kwargs["text"])
         else:
             click.secho(f"Text file {kwargs['text']} does not exist.")
 
@@ -176,24 +174,24 @@ def discover(ctx, **kwargs):
 
 
 @cli.command()
-@click.option("-o", "--open", is_flag=True, help='Open the config file')
-@click.option("-q", "--qobuz", is_flag=True, help='Set Qobuz credentials')
-@click.option("-t", "--tidal", is_flag=True, help='Set Tidal credentials')
+@click.option("-o", "--open", is_flag=True, help="Open the config file")
+@click.option("-q", "--qobuz", is_flag=True, help="Set Qobuz credentials")
+@click.option("-t", "--tidal", is_flag=True, help="Set Tidal credentials")
 @click.pass_context
 def config(ctx, **kwargs):
     """Manage the streamrip configuration."""
 
-    if kwargs['open']:
+    if kwargs["open"]:
         click.launch(CONFIG_PATH)
 
-    if kwargs['qobuz']:
-        config.file['qobuz']['email'] = input("Qobuz email: ")
-        config.file['qobuz']['password'] = getpass()
+    if kwargs["qobuz"]:
+        config.file["qobuz"]["email"] = input("Qobuz email: ")
+        config.file["qobuz"]["password"] = getpass()
         config.save()
 
-    if kwargs['tidal']:
-        config.file['tidal']['email'] = input("Tidal email: ")
-        config.file['tidal']['password'] = getpass()
+    if kwargs["tidal"]:
+        config.file["tidal"]["email"] = input("Tidal email: ")
+        config.file["tidal"]["password"] = getpass()
         config.save()
 
 

@@ -15,12 +15,12 @@ requirements = read_file("requirements.txt").strip().split()
 setup(
     name=pkg_name,
     version="0.2.2",
-    author='Nathan',
-    author_email='nathanthomas707@gmail.com',
-    keywords='lossless, hi-res, qobuz, tidal, deezer, audio, convert',
+    author="Nathan",
+    author_email="nathanthomas707@gmail.com",
+    keywords="lossless, hi-res, qobuz, tidal, deezer, audio, convert",
     description="A stream downloader for Qobuz, Tidal, and Deezer.",
     long_description=read_file("README.md"),
-    long_description_content_type='text/markdown',
+    long_description_content_type="text/markdown",
     install_requires=requirements,
     py_modules=["streamrip"],
     entry_points={

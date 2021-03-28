@@ -7,6 +7,8 @@ from typing import Optional
 import requests
 from pathvalidate import sanitize_filename
 from tqdm import tqdm
+from Crypto.Cipher import AES
+from Crypto.Util import Counter
 
 from .constants import LOG_DIR, TIDAL_COVER_URL
 from .exceptions import NonStreamable
@@ -155,3 +157,13 @@ def init_log(
 
 def capitalize(s: str) -> str:
     return s[0].upper() + s[1:]
+
+
+def decrypt_mqa_file(in_path, out_path, key, nonce):
+    counter = Counter.new(64, prefix=nonce, initial_value=0)
+    decryptor = AES.new(key, AES.MODE_CTR, counter=counter)
+
+    with open(in_path, "rb") as enc_file:
+        dec_bytes = decryptor.decrypt(enc_file.read())
+        with open(out_path, "wb") as dec_file:
+            dec_file.write(dec_bytes)

@@ -431,7 +431,7 @@ class Track:
             sampling_rate=kwargs.get("sampling_rate"),
             remove_source=kwargs.get("remove_source", True),
         )
-        click.secho(f"Converting {self!s}", fg='blue')
+        click.secho(f"Converting {self!s}", fg="blue")
         engine.convert()
 
     def get(self, *keys, default=None):
@@ -1092,7 +1092,7 @@ class Artist(Tracklist):
         """Send an API call to get album info based on id."""
         self.meta = self.client.get(self.id, media_type="artist")
         # TODO find better fix for this
-        self.name = self.meta['items'][0]['artist']['name']
+        self.name = self.meta["items"][0]["artist"]["name"]
         self._load_albums()
 
     def _load_albums(self):

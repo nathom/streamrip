@@ -98,8 +98,13 @@ class MusicDL(list):
         """
         for source, url_type, item_id in self.parse_urls(url):
             if item_id in self.db:
-                logger.info(f"ID {item_id} already downloaded, use --no-db to override.")
-                click.secho(f"ID {item_id} already downloaded, use --no-db to override.", fg='magenta')
+                logger.info(
+                    f"ID {item_id} already downloaded, use --no-db to override."
+                )
+                click.secho(
+                    f"ID {item_id} already downloaded, use --no-db to override.",
+                    fg="magenta",
+                )
                 continue
 
             self.handle_item(source, url_type, item_id)
