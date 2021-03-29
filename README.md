@@ -2,17 +2,25 @@
 
 A scriptable stream downloader for Qobuz, Tidal, and Deezer.
 
+## Features
 
+- Downloads tracks, albums, playlists, discographies, and labels from Qobuz, Tidal, and Deezer
+
+- Automatically converts files to a preferred format
+- Has a database that stores the downloaded tracks' IDs so that repeats are avoided
+- Easy to customize with the config file
 
 ## Installation
+
+First, ensure [pip](https://pip.pypa.io/en/stable/installing/) is installed.
 
 ```bash
 pip3 install streamrip --upgrade
 ```
 
+If you would like to use `streamrip`'s conversion capabilities, install [ffmpeg](https://ffmpeg.org/download.html).
 
-
-## Basic Usage
+## Example Usage
 
 **For Tidal and Qobuz, you NEED a premium subscription.**
 
