@@ -1,13 +1,18 @@
+import base64
 import datetime
-import click
 import hashlib
+import json
 import logging
 import os
+# import sys
 import time
 from abc import ABC, abstractmethod
+from pprint import pformat  # , pprint
 from typing import Generator, Sequence, Tuple, Union
 
+import click
 import requests
+from requests.packages import urllib3
 import tidalapi
 from dogpile.cache import make_region
 
@@ -29,11 +34,21 @@ from .exceptions import (
 )
 from .spoofbuz import Spoofer
 
+urllib3.disable_warnings()
+requests.adapters.DEFAULT_RETRIES = 5
+
 os.makedirs(CACHE_DIR, exist_ok=True)
 region = make_region().configure(
     "dogpile.cache.dbm",
     arguments={"filename": os.path.join(CACHE_DIR, "clients.db")},
 )
+
+TIDAL_BASE = "https://api.tidalhifi.com/v1"
+TIDAL_AUTH_URL = "https://auth.tidal.com/v1/oauth2"
+TIDAL_CLIENT_INFO = {
+    "id": "aR7gUaTK1ihpXOEP",
+    "secret": "eVWBEkuL2FCjxgjOkR3yK0RYZEbcrMXRc2l8fU3ZCdE=",
+}
 
 logger = logging.getLogger(__name__)
 
@@ -123,7 +138,7 @@ class QobuzClient(ClientInterface):
         :type pwd: str
         :param kwargs: app_id: str, secrets: list, return_secrets: bool
         """
-        click.secho(f"Logging into {self.source}", fg='green')
+        click.secho(f"Logging into {self.source}", fg="green")
         if self.logged_in:
             logger.debug("Already logged in")
             return
@@ -416,6 +431,7 @@ class DeezerClient(ClientInterface):
         return url
 
 
+'''
 class TidalClient(ClientInterface):
     source = "tidal"
 
@@ -423,7 +439,7 @@ class TidalClient(ClientInterface):
         self.logged_in = False
 
     def login(self, email: str, pwd: str):
-        click.secho(f"Logging into {self.source}", fg='green')
+        click.secho(f"Logging into {self.source}", fg="green")
         if self.logged_in:
             return
 
@@ -499,3 +515,217 @@ class TidalClient(ClientInterface):
         resp = self.session.request("GET", f"tracks/{track_id}/streamUrl", params)
         resp.raise_for_status()
         return resp.json()
+'''
+
+
+class TidalClient(ClientInterface):
+    source = "tidal"
+
+    def __init__(self):
+        self.logged_in = False
+
+        self.device_code = None
+        self.user_code = None
+        self.verification_url = None
+        self.auth_check_timeout = None
+        self.auth_check_interval = None
+        self.user_id = None
+        self.country_code = None
+        self.access_token = None
+        self.refresh_token = None
+        self.expiry = None
+
+    def login(
+        self,
+        user_id=None,
+        country_code=None,
+        access_token=None,
+        token_expiry=None,
+        refresh_token=None,
+    ):
+        if access_token is not None:
+            self.token_expiry = token_expiry
+            self.refresh_token = refresh_token
+            if self.token_expiry - time.time() < 86400:  # 1 day
+                self._refresh_access_token()
+            else:
+                self._login_by_access_token(access_token, user_id)
+        else:
+            self._login_new_user()
+
+        self.logged_in = True
+        click.secho("Logged into Tidal", fg='green')
+
+    def get(self, item_id, media_type):
+        return self._api_get(item_id, media_type)
+
+    def search(self, query, media_type="album", limit: int = 100):
+        params = {
+            "query": query,
+            "limit": limit,
+        }
+        return self._api_get(f"search/{media_type}s", params=params)
+
+    def get_file_url(self, track_id, quality: int = 7):
+        params = {
+            "audioquality": TIDAL_Q_IDS[quality],
+            "playbackmode": "STREAM",
+            "assetpresentation": "FULL",
+        }
+        resp = self._api_request(f"tracks/{track_id}/playbackinfopostpaywall", params)
+        manifest = json.loads(base64.b64decode(resp["manifest"]).decode("utf-8"))
+        return {
+            "url": manifest["urls"][0],
+            "enc_key": manifest.get("keyId"),
+            "codec": manifest["codecs"],
+        }
+
+    def _login_new_user(self, launch=True):
+        login_link = f"https://{self._get_device_code()}"
+
+        click.secho(
+            f"Go to {login_link} to log into Tidal within 5 minutes.", fg="blue"
+        )
+        if launch:
+            click.launch(login_link)
+
+        start = time.time()
+        elapsed = 0
+        while elapsed < 600:  # 5 mins to login
+            elapsed = time.time() - start
+            status = self._check_auth_status()
+            if status == 2:
+                # pending
+                time.sleep(4)
+                continue
+            elif status == 1:
+                # error checking
+                raise Exception
+            elif status == 0:
+                # successful
+                break
+            else:
+                raise Exception
+
+    def _get_device_code(self):
+        data = {
+            "client_id": TIDAL_CLIENT_INFO["id"],
+            "scope": "r_usr+w_usr+w_sub",
+        }
+        resp = self._api_post(f"{TIDAL_AUTH_URL}/device_authorization", data)
+
+        if "status" in resp and resp["status"] != 200:
+            raise Exception(f"Device authorization failed {resp}")
+
+        logger.debug(pformat(resp))
+        self.device_code = resp["deviceCode"]
+        self.user_code = resp["userCode"]
+        self.user_code_expiry = resp["expiresIn"]
+        self.auth_interval = resp["interval"]
+        return resp["verificationUriComplete"]
+
+    def _check_auth_status(self):
+        data = {
+            "client_id": TIDAL_CLIENT_INFO["id"],
+            "device_code": self.device_code,
+            "grant_type": "urn:ietf:params:oauth:grant-type:device_code",
+            "scope": "r_usr+w_usr+w_sub",
+        }
+        logger.debug(data)
+        resp = self._api_post(
+            f"{TIDAL_AUTH_URL}/token",
+            data,
+            (TIDAL_CLIENT_INFO["id"], TIDAL_CLIENT_INFO["secret"]),
+        )
+        logger.debug(resp)
+
+        if resp.get("status", 200) != 200:
+            if resp["status"] == 400 and resp["sub_status"] == 1002:
+                return 2
+            else:
+                return 1
+
+        self.user_id = resp["user"]["userId"]
+        self.country_code = resp["user"]["countryCode"]
+        self.access_token = resp["access_token"]
+        self.refresh_token = resp["refresh_token"]
+        self.token_expiry = resp["expires_in"] + time.time()
+        return 0
+
+    def _verify_access_token(self, token):
+        headers = {
+            "authorization": f"Bearer {token}",
+        }
+        r = requests.get("https://api.tidal.com/v1/sessions", headers=headers).json()
+        if r.status != 200:
+            raise Exception("Login failed")
+
+        return True
+
+    def _refresh_access_token(self):
+        data = {
+            "client_id": TIDAL_CLIENT_INFO["id"],
+            "refresh_token": self.refresh_token,
+            "grant_type": "refresh_token",
+            "scope": "r_usr+w_usr+w_sub",
+        }
+        resp = self._api_post(
+            f"{TIDAL_AUTH_URL}/token",
+            data,
+            (TIDAL_CLIENT_INFO["id"], TIDAL_CLIENT_INFO["secret"]),
+        )
+
+        if resp.get("status", 200) != 200:
+            raise Exception("Refresh failed")
+
+        self.user_id = resp["user"]["userId"]
+        self.country_code = resp["user"]["countryCode"]
+        self.access_token = resp["access_token"]
+        self.token_expiry = resp["expires_in"] + time.time()
+
+    def _login_by_access_token(self, token, user_id=None):
+        headers = {"authorization": f"Bearer {token}"}
+        resp = requests.get("https://api.tidal.com/v1/sessions", headers=headers).json()
+        if resp.get("status", 200) != 200:
+            raise Exception(f"Login failed {resp=}")
+
+        if str(resp.get("userId")) != str(user_id):
+            raise Exception(f"User id mismatch {resp['userId']} v {user_id}")
+
+        self.user_id = resp["userId"]
+        self.country_code = resp["countryCode"]
+        self.access_token = token
+
+    def get_tokens(self):
+        return {
+            k: getattr(self, k)
+            for k in (
+                "user_id",
+                "country_code",
+                "access_token",
+                "refresh_token",
+                "token_expiry",
+            )
+        }
+
+    def _api_get(self, item_id: str, media_type: str) -> dict:
+        item = self._api_request(f"{media_type}s/{item_id}")
+        if media_type in ("playlist", "album"):
+            resp = self._api_request(f"{media_type}s/{item_id}/items")
+            item["tracks"] = [item["item"] for item in resp["items"]]
+
+        return item
+
+    def _api_request(self, path, params=None) -> dict:
+        if params is None:
+            params = {}
+
+        headers = {"authorization": f"Bearer {self.access_token}"}
+        params["countryCode"] = self.country_code
+        params["limit"] = 100
+        r = requests.get(f"{TIDAL_BASE}/{path}", headers=headers, params=params).json()
+        return r
+
+    def _api_post(self, url, data, auth=None):
+        r = requests.post(url, data=data, auth=auth, verify=False).json()
+        return r

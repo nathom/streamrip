@@ -2,6 +2,7 @@ import logging
 import os
 import re
 import shutil
+import sys
 from abc import ABC, abstractmethod
 from pprint import pformat, pprint
 from tempfile import gettempdir
@@ -32,6 +33,7 @@ from .exceptions import (
 from .metadata import TrackMetadata
 from .utils import (
     clean_format,
+    decrypt_mqa_file,
     quality_id,
     safe_get,
     tidal_cover_url,
@@ -137,9 +139,9 @@ class Track:
 
     @staticmethod
     def _get_tracklist(resp, source):
-        if source in ("qobuz", "tidal"):
+        if source == "qobuz":
             return resp["tracks"]["items"]
-        elif source == "deezer":
+        elif source in ("tidal", "deezer"):
             return resp["tracks"]
 
         raise NotImplementedError(source)
@@ -226,7 +228,10 @@ class Track:
         else:
             raise InvalidSourceError(self.client.source)
 
-        shutil.move(temp_file, self.final_path)
+        if dl_info.get("enc_key"):
+            decrypt_mqa_file(temp_file, self.final_path, dl_info["enc_key"])
+        else:
+            shutil.move(temp_file, self.final_path)
 
         if isinstance(database, MusicDB):
             database.add(self.id)
@@ -288,7 +293,10 @@ class Track:
         :raises IndexError
         """
 
-        track = cls._get_tracklist(album, client.source)[pos]
+        logger.debug(pos)
+        tracklist = cls._get_tracklist(album, client.source)
+        logger.debug(len(tracklist))
+        track = tracklist[pos]
         meta = TrackMetadata(album=album, track=track, source=client.source)
         return cls(client=client, meta=meta, id=track["id"])
 
@@ -431,7 +439,7 @@ class Track:
             sampling_rate=kwargs.get("sampling_rate"),
             remove_source=kwargs.get("remove_source", True),
         )
-        click.secho(f"Converting {self!s}", fg='blue')
+        click.secho(f"Converting {self!s}", fg="blue")
         engine.convert()
 
     def get(self, *keys, default=None):
@@ -743,7 +751,7 @@ class Album(Tracklist):
         This uses a classmethod to convert an item into a Track object, which
         stores the metadata inside a TrackMetadata object.
         """
-        logging.debug("Loading tracks to album")
+        logging.debug(f"Loading {self.tracktotal} tracks to album")
         for i in range(self.tracktotal):
             # append method inherited from superclass list
             self.append(
@@ -1091,6 +1099,14 @@ class Artist(Tracklist):
     def load_meta(self):
         """Send an API call to get album info based on id."""
         self.meta = self.client.get(self.id, media_type="artist")
+<<<<<<< HEAD
+||||||| 24bf328
+        # TODO find better fix for this
+        self.name = self.meta['items'][0]['artist']['name']
+=======
+        # TODO find better fix for this
+        self.name = self.meta["items"][0]["artist"]["name"]
+>>>>>>> tidalmqa
         self._load_albums()
 
     def _load_albums(self):
