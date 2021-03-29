@@ -40,13 +40,13 @@ rip --convert mp3 -u https://open.qobuz.com/album/0060253780968
 
 To set the quality, use the `--quality` option to `0, 1, 2, 3, 4`:
 
-| Quality ID | Audio Quality       | Available Sources    |
-| ---------- | ------------------- | -------------------- |
-| 0          | 128 kbps MP3 or AAC | Deezer, Tidal        |
-| 1          | 320 kbps MP3 or AAC | Deezer, Tidal, Qobuz |
-| 2          | 16 bit / 44.1 kHz   | Deezer, Tidal, Qobuz |
-| 3          | 24 bit / ≤ 96 kHz   | Tidal (MQA), Qobuz   |
-| 4          | 24 bit / ≤ 192 kHz  | Qobuz                |
+| Quality ID | Audio Quality         | Available Sources    |
+| ---------- | --------------------- | -------------------- |
+| 0          | 128 kbps MP3 or AAC   | Deezer, Tidal        |
+| 1          | 320 kbps MP3 or AAC   | Deezer, Tidal, Qobuz |
+| 2          | 16 bit, 44.1 kHz (CD) | Deezer, Tidal, Qobuz |
+| 3          | 24 bit, ≤ 96 kHz      | Tidal (MQA), Qobuz   |
+| 4          | 24 bit, ≤ 192 kHz     | Qobuz                |
 
 
 
@@ -128,3 +128,16 @@ rip config --help
 
 **This tool is still in development. If there are any features you would like to see, please open an issue.**
 
+
+
+## Acknowledgements
+
+Thanks to Vitiko98, Sorrow446, and DashLt for their contributions to this project, and the previous projects that made this one possible.
+
+
+
+`streamrip` was inspired by:
+
+- [qobuz-dl](https://github.com/vitiko98/qobuz-dl)
+- [Qo-DL Reborn](https://github.com/badumbass/Qo-DL-Reborn)
+- [Tidal-Media-Downloader](https://github.com/yaronzz/Tidal-Media-Downloader)
