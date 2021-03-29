@@ -14,7 +14,7 @@ requirements = read_file("requirements.txt").strip().split()
 # https://github.com/pypa/sampleproject/blob/main/setup.py
 setup(
     name=pkg_name,
-    version="0.2.7",
+    version="0.2.8",
     author='Nathan',
     author_email='nathanthomas707@gmail.com',
     keywords='lossless, hi-res, qobuz, tidal, deezer, audio, convert',
@@ -26,7 +26,6 @@ setup(
     entry_points={
         "console_scripts": [
             "rip = streamrip.cli:main",
-            "streamrip = streamrip.cli:main",
         ],
     },
     packages=find_packages(),
