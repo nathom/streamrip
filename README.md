@@ -62,7 +62,7 @@ Search for *Fleetwood Mac - Rumours* on Qobuz
 rip search 'fleetwood mac rumours'
 ```
 
-![streamrip interactive search](demo/interactive_search.png)
+![streamrip interactive search](https://github.com/nathom/streamrip/blob/main/demo/interactive_search.png?raw=true)
 
 Search for *Rumours* on Tidal, download it, convert it to `ALAC`
 
