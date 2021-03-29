@@ -1,5 +1,4 @@
 click
-tidalapi
 dogpile.cache
 ruamel.yaml
 pathvalidate
