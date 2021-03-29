@@ -7,7 +7,7 @@ A scriptable stream downloader for Qobuz, Tidal, and Deezer.
 ## Installation
 
 ```bash
-pip3 install streamrip
+pip3 install streamrip --upgrade
 ```
 
 
