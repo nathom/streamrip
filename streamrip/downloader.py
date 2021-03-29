@@ -251,7 +251,7 @@ class Track:
 
         assert hasattr(self, "cover_url"), "must pass cover_url parameter"
 
-        self.cover_path = os.path.join(self.folder, f"cover{hash(self.cover_url)}.jpg")
+        self.cover_path = os.path.join(self.folder, f"cover{hash(self.id)}.jpg")
         logger.debug(f"Downloading cover from {self.cover_url}")
         if not os.path.exists(self.cover_path):
             tqdm_download(self.cover_url, self.cover_path)
