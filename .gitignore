@@ -6,3 +6,4 @@ build
 test.py
 /urls.txt
 *.flac
+/Downloads
