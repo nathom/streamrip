@@ -1099,14 +1099,6 @@ class Artist(Tracklist):
     def load_meta(self):
         """Send an API call to get album info based on id."""
         self.meta = self.client.get(self.id, media_type="artist")
-<<<<<<< HEAD
-||||||| 24bf328
-        # TODO find better fix for this
-        self.name = self.meta['items'][0]['artist']['name']
-=======
-        # TODO find better fix for this
-        self.name = self.meta["items"][0]["artist"]["name"]
->>>>>>> tidalmqa
         self._load_albums()
 
     def _load_albums(self):
