@@ -36,6 +36,8 @@ Download the album and convert it to `mp3`
 rip --convert mp3 -u https://open.qobuz.com/album/0060253780968
 ```
 
+
+
 To set the quality, use the `--quality` option to `0, 1, 2, 3, 4`:
 
 | Quality ID | Audio Quality       | Available Sources    |
@@ -45,6 +47,10 @@ To set the quality, use the `--quality` option to `0, 1, 2, 3, 4`:
 | 2          | 16 bit / 44.1 kHz   | Deezer, Tidal, Qobuz |
 | 3          | 24 bit / ≤ 96 kHz   | Tidal (MQA), Qobuz   |
 | 4          | 24 bit / ≤ 192 kHz  | Qobuz                |
+
+
+
+
 
 ```bash
 rip --quality 3 https://tidal.com/browse/album/147569387
@@ -77,6 +83,24 @@ Want to find some new music? Use the `discover` command (only on Qobuz)
 ```bash
 rip discover --list 'best-sellers'
 ```
+
+> Avaiable options for `--list`:
+>
+> - most-streamed
+> - recent-releases
+> - best-sellers
+> - press-awards
+> - ideal-discography
+> - editor-picks
+> - most-featured
+> - qobuzissims
+> - new-releases
+> - new-releases-full
+> - harmonia-mundi
+> - universal-classic
+> - universal-jazz
+> - universal-jeunesse
+> - universal-chanson
 
 
 
