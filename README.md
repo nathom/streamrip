@@ -141,3 +141,10 @@ Thanks to Vitiko98, Sorrow446, and DashLt for their contributions to this projec
 - [qobuz-dl](https://github.com/vitiko98/qobuz-dl)
 - [Qo-DL Reborn](https://github.com/badumbass/Qo-DL-Reborn)
 - [Tidal-Media-Downloader](https://github.com/yaronzz/Tidal-Media-Downloader)
+
+
+
+## Disclaimer
+
+
+I will not be responsible for how you use `streamrip`. By using `streamrip`, you agree to the terms and conditions of the Qobuz, Tidal, and Deezer APIs.
