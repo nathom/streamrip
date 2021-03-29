@@ -71,6 +71,7 @@ class Config:
             "default_comment": None,
             "remove_extra_tags": False,
         },
+        "keep_cover": True,
         "path_format": {"folder": FOLDER_FORMAT, "track": TRACK_FORMAT},
     }
 

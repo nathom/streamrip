@@ -3,7 +3,6 @@ import os
 import re
 import shutil
 # import sys
-from abc import ABC, abstractmethod
 from pprint import pformat
 # from pprint import pprint
 from tempfile import gettempdir
@@ -488,7 +487,7 @@ class Track:
         return f"{self['artist']} - {self['title']}"
 
 
-class Tracklist(list, ABC):
+class Tracklist(list):
     """A base class for tracklist-like objects.
 
     Implements methods to give it dict-like behavior. If a Tracklist
@@ -597,12 +596,10 @@ class Tracklist(list, ABC):
 
         return cover_obj
 
-    @abstractmethod
     @staticmethod
     def _parse_get_resp(item, client):
         pass
 
-    @abstractmethod
     def download(self, **kwargs):
         pass
 
@@ -782,11 +779,9 @@ class Album(Tracklist):
     def download(
         self,
         quality: int = 7,
-        parent_folder: Union[str, os.PathLike] = "Downloads",
-        progress_bar: bool = True,
-        tag_tracks: bool = True,
-        cover_key: str = "large",
+        parent_folder: Union[str, os.PathLike] = "StreamripDownloads",
         database: MusicDB = None,
+        **kwargs,
     ):
         """Download all of the tracks in the album.
 
@@ -796,6 +791,11 @@ class Album(Tracklist):
         :type parent_folder: Union[str, os.PathLike]
         :param progress_bar: turn on/off a tqdm progress bar
         :type progress_bar: bool
+        :param large_cover: Download the large cover. This may fail when
+        embedding covers.
+        :param tag_tracks: Tag the tracks after downloading, True by default
+        :param keep_cover: Keep the cover art image after downloading.
+        True by default.
         """
         folder = self._get_formatted_folder(parent_folder)
 
@@ -808,21 +808,24 @@ class Album(Tracklist):
 
         if os.path.isfile(cover_path):
             logger.debug("Cover already downloaded: %s. Skipping", cover_path)
-
         else:
-            if self.cover_urls:
-                cover_url = self.cover_urls.get(cover_key)
+            if kwargs.get("large_cover", False):
+                cover_url = self.cover_urls.get("large")
+                if self.client.source == 'qobuz':
+                    tqdm_download(cover_url.replace('600', 'org'), cover_path)
+                else:
+                    tqdm_download(cover_url, cover_path)
 
-                img = requests.head(cover_url)
-
-                if int(img.headers["Content-Length"]) > FLAC_MAX_BLOCKSIZE:  # 16.7 MB
-                    logger.info(
-                        f"{cover_key} cover size is too large to "
-                        "embed. Using small cover instead"
+                if os.path.getsize(cover_path) > FLAC_MAX_BLOCKSIZE:  # 16.7 MB
+                    click.secho(
+                        "Large cover is too large to embed, embedding small cover instead.",
+                        fg="yellow",
                     )
-                    cover_url = self.cover_urls.get("small")
-
-                tqdm_download(cover_url, cover_path)
+                    large_cover_path = cover_path.replace(".jpg", "_large") + ".jpg"
+                    shutil.move(cover_path, large_cover_path)
+                    tqdm_download(self.cover_urls["small"], cover_path)
+            else:
+                tqdm_download(self.cover_urls['small'], cover_path)
 
         if self.client.source != "deezer":
             cover = self.get_cover_obj(cover_path, quality)
@@ -830,11 +833,17 @@ class Album(Tracklist):
         for track in self:
             logger.debug("Downloading track to %s", folder)
 
-            track.download(quality, folder, progress_bar, database=database)
-            if tag_tracks and self.client.source != "deezer":
+            track.download(quality, folder, kwargs.get("progress_bar", True), database=database)
+            if kwargs.get("tag_tracks", True) and self.client.source != "deezer":
                 track.tag(cover=cover)
 
-        logger.debug("Final album folder: %s", folder)
+        if not kwargs.get("keep_cover", True):
+            logger.debug(f"Removing cover at {cover_path}")
+            try:
+                os.remove(cover_path)
+                os.remove(large_cover_path)
+            except Exception as e:
+                logger.debug(e)
 
         self.downloaded = True
 
@@ -886,6 +895,9 @@ class Album(Tracklist):
         :rtype: str
         """
         return f"{self['albumartist']} - {self['title']}"
+
+    def __len__(self) -> int:
+        return self.tracktotal
 
 
 class Playlist(Tracklist):
