@@ -4,14 +4,15 @@ import hashlib
 import json
 import logging
 import os
-import sys
+# import sys
 import time
 from abc import ABC, abstractmethod
-from pprint import pformat, pprint
+from pprint import pformat  # , pprint
 from typing import Generator, Sequence, Tuple, Union
 
 import click
 import requests
+from requests.packages import urllib3
 import tidalapi
 from dogpile.cache import make_region
 
@@ -32,6 +33,9 @@ from .exceptions import (
     InvalidQuality,
 )
 from .spoofbuz import Spoofer
+
+urllib3.disable_warnings()
+requests.adapters.DEFAULT_RETRIES = 5
 
 os.makedirs(CACHE_DIR, exist_ok=True)
 region = make_region().configure(
@@ -427,6 +431,7 @@ class DeezerClient(ClientInterface):
         return url
 
 
+'''
 class TidalClient(ClientInterface):
     source = "tidal"
 
@@ -510,12 +515,15 @@ class TidalClient(ClientInterface):
         resp = self.session.request("GET", f"tracks/{track_id}/streamUrl", params)
         resp.raise_for_status()
         return resp.json()
+'''
 
 
-class TidalMQAClient(ClientInterface):
+class TidalClient(ClientInterface):
     source = "tidal"
 
     def __init__(self):
+        self.logged_in = False
+
         self.device_code = None
         self.user_code = None
         self.verification_url = None
@@ -538,26 +546,54 @@ class TidalMQAClient(ClientInterface):
         if access_token is not None:
             self.token_expiry = token_expiry
             self.refresh_token = refresh_token
-            self.login_by_access_token(access_token, user_id)
+            if self.token_expiry - time.time() < 86400:  # 1 day
+                self._refresh_access_token()
+            else:
+                self._login_by_access_token(access_token, user_id)
         else:
-            self.login_new_user()
+            self._login_new_user()
+
+        self.logged_in = True
+        click.secho("Logged into Tidal", fg='green')
 
     def get(self, item_id, media_type):
         return self._api_get(item_id, media_type)
 
-    def search(self, query, media_type="album"):
-        raise NotImplementedError
+    def search(self, query, media_type="album", limit: int = 100):
+        params = {
+            "query": query,
+            "limit": limit,
+        }
+        return self._api_get(f"search/{media_type}s", params=params)
 
-    def login_new_user(self):
-        login_link = self.get_device_code()
+    def get_file_url(self, track_id, quality: int = 7):
+        params = {
+            "audioquality": TIDAL_Q_IDS[quality],
+            "playbackmode": "STREAM",
+            "assetpresentation": "FULL",
+        }
+        resp = self._api_request(f"tracks/{track_id}/playbackinfopostpaywall", params)
+        manifest = json.loads(base64.b64decode(resp["manifest"]).decode("utf-8"))
+        return {
+            "url": manifest["urls"][0],
+            "enc_key": manifest.get("keyId"),
+            "codec": manifest["codecs"],
+        }
+
+    def _login_new_user(self, launch=True):
+        login_link = f"https://{self._get_device_code()}"
+
         click.secho(
             f"Go to {login_link} to log into Tidal within 5 minutes.", fg="blue"
         )
+        if launch:
+            click.launch(login_link)
+
         start = time.time()
         elapsed = 0
-        while elapsed < 600:  # change later
+        while elapsed < 600:  # 5 mins to login
             elapsed = time.time() - start
-            status = self.check_auth_status()
+            status = self._check_auth_status()
             if status == 2:
                 # pending
                 time.sleep(4)
@@ -571,7 +607,7 @@ class TidalMQAClient(ClientInterface):
             else:
                 raise Exception
 
-    def get_device_code(self):
+    def _get_device_code(self):
         data = {
             "client_id": TIDAL_CLIENT_INFO["id"],
             "scope": "r_usr+w_usr+w_sub",
@@ -588,7 +624,7 @@ class TidalMQAClient(ClientInterface):
         self.auth_interval = resp["interval"]
         return resp["verificationUriComplete"]
 
-    def check_auth_status(self):
+    def _check_auth_status(self):
         data = {
             "client_id": TIDAL_CLIENT_INFO["id"],
             "device_code": self.device_code,
@@ -616,7 +652,7 @@ class TidalMQAClient(ClientInterface):
         self.token_expiry = resp["expires_in"] + time.time()
         return 0
 
-    def verify_access_token(self, token):
+    def _verify_access_token(self, token):
         headers = {
             "authorization": f"Bearer {token}",
         }
@@ -626,7 +662,7 @@ class TidalMQAClient(ClientInterface):
 
         return True
 
-    def refresh_access_token(self):
+    def _refresh_access_token(self):
         data = {
             "client_id": TIDAL_CLIENT_INFO["id"],
             "refresh_token": self.refresh_token,
@@ -639,7 +675,7 @@ class TidalMQAClient(ClientInterface):
             (TIDAL_CLIENT_INFO["id"], TIDAL_CLIENT_INFO["secret"]),
         )
 
-        if resp.get("status") != 200:
+        if resp.get("status", 200) != 200:
             raise Exception("Refresh failed")
 
         self.user_id = resp["user"]["userId"]
@@ -647,7 +683,7 @@ class TidalMQAClient(ClientInterface):
         self.access_token = resp["access_token"]
         self.token_expiry = resp["expires_in"] + time.time()
 
-    def login_by_access_token(self, token, user_id=None):
+    def _login_by_access_token(self, token, user_id=None):
         headers = {"authorization": f"Bearer {token}"}
         resp = requests.get("https://api.tidal.com/v1/sessions", headers=headers).json()
         if resp.get("status", 200) != 200:
@@ -693,17 +729,3 @@ class TidalMQAClient(ClientInterface):
     def _api_post(self, url, data, auth=None):
         r = requests.post(url, data=data, auth=auth, verify=False).json()
         return r
-
-    def get_file_url(self, track_id, quality: int = 7):
-        params = {
-            "audioquality": TIDAL_Q_IDS[quality],
-            "playbackmode": "STREAM",
-            "assetpresentation": "FULL",
-        }
-        resp = self._api_request(f"tracks/{track_id}/playbackinfopostpaywall", params)
-        manifest = json.loads(base64.b64decode(resp["manifest"]).decode("utf-8"))
-        return {
-            "url": manifest["urls"][0],
-            "enc_key": manifest.get("keyId", ""),
-            "codec": manifest["codecs"],
-        }

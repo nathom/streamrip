@@ -63,18 +63,21 @@ class MusicDL(list):
         :param source:
         :type source: str
         """
-        click.secho(f"Enter {capitalize(source)} email:", fg="green")
-        self.config.file[source]["email"] = input()
-        click.secho(
-            f"Enter {capitalize(source)} password (will not show on screen):",
-            fg="green",
-        )
-        self.config.file[source]["password"] = getpass(
-            prompt=""
-        )  # does hashing work for tidal?
+        if source == "qobuz":
+            click.secho(f"Enter {capitalize(source)} email:", fg="green")
+            self.config.file[source]["email"] = input()
+            click.secho(
+                f"Enter {capitalize(source)} password (will not show on screen):",
+                fg="green",
+            )
+            self.config.file[source]["password"] = getpass(
+                prompt=""
+            )  # does hashing work for tidal?
 
-        self.config.save()
-        click.secho(f'Credentials saved to config file at "{self.config._path}"')
+            self.config.save()
+            click.secho(f'Credentials saved to config file at "{self.config._path}"')
+        else:
+            raise Exception
 
     def assert_creds(self, source: str):
         assert source in ("qobuz", "tidal", "deezer"), f"Invalid source {source}"
@@ -82,7 +85,7 @@ class MusicDL(list):
             # no login for deezer
             return
 
-        if (
+        if source == "qobuz" and (
             self.config.file[source]["email"] is None
             or self.config.file[source]["password"] is None
         ):
@@ -184,6 +187,9 @@ class MusicDL(list):
                     self.config.file["qobuz"]["app_id"],
                     self.config.file["qobuz"]["secrets"],
                 ) = client.get_tokens()
+                self.config.save()
+            elif client.source == 'tidal':
+                self.config.file['tidal'] = client.get_tokens()
                 self.config.save()
 
     def parse_urls(self, url: str) -> Tuple[str, str]:

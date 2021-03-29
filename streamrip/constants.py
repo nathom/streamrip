@@ -8,7 +8,7 @@ APPNAME = "streamrip"
 
 CACHE_DIR = click.get_app_dir(APPNAME)
 CONFIG_DIR = click.get_app_dir(APPNAME)
-CONFIG_PATH = os.path.join(CONFIG_DIR, "configmqa.yaml")
+CONFIG_PATH = os.path.join(CONFIG_DIR, "config.yaml")
 LOG_DIR = click.get_app_dir(APPNAME)
 DB_PATH = os.path.join(LOG_DIR, "downloads.db")
 

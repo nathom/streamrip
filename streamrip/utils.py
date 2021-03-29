@@ -1,5 +1,5 @@
-import logging
 import base64
+import logging
 import logging.handlers as handlers
 import os
 from string import Formatter

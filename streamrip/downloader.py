@@ -33,11 +33,11 @@ from .exceptions import (
 from .metadata import TrackMetadata
 from .utils import (
     clean_format,
+    decrypt_mqa_file,
     quality_id,
     safe_get,
     tidal_cover_url,
     tqdm_download,
-    decrypt_mqa_file,
 )
 
 logger = logging.getLogger(__name__)
@@ -229,7 +229,7 @@ class Track:
             raise InvalidSourceError(self.client.source)
 
         if dl_info.get("enc_key"):
-            decrypt_mqa_file(temp_file, self.final_path, dl_info['enc_key'])
+            decrypt_mqa_file(temp_file, self.final_path, dl_info["enc_key"])
         else:
             shutil.move(temp_file, self.final_path)
 
