@@ -10,7 +10,6 @@ from tempfile import gettempdir
 from typing import Any, Callable, Optional, Tuple, Union
 
 import click
-import requests
 from mutagen.flac import FLAC, Picture
 from mutagen.id3 import APIC, ID3, ID3NoHeaderError
 from pathvalidate import sanitize_filename, sanitize_filepath
@@ -598,8 +597,8 @@ class Tracklist(list, ABC):
 
         return cover_obj
 
-    @staticmethod
     @abstractmethod
+    @staticmethod
     def _parse_get_resp(item, client):
         pass
 
@@ -664,7 +663,7 @@ class Album(Tracklist):
         for k, v in self._parse_get_resp(self.meta, self.client).items():
             setattr(self, k, v)  # prefer to __dict__.update for properties
 
-        if not self.get("streamable", False):  # Typing's sake
+        if not self.get("streamable", False):
             raise NonStreamable(f"This album is not streamable ({self.id} ID)")
 
         self._load_tracks()
@@ -714,7 +713,7 @@ class Album(Tracklist):
                 },
                 "streamable": resp.get("allowStreaming"),
                 "quality": TIDAL_Q_MAP[resp.get("audioQuality")],
-                "bit_depth": 24 if resp.get("audioQuality") == 'HI_RES' else 16,
+                "bit_depth": 24 if resp.get("audioQuality") == "HI_RES" else 16,
                 "sampling_rate": 44100,  # always 44.1 kHz
                 "tracktotal": resp.get("numberOfTracks"),
             }
@@ -1106,11 +1105,11 @@ class Artist(Tracklist):
         generate album objects and append them to self.
         """
         if self.client.source == "qobuz":
-            self.name = self.meta['name']
+            self.name = self.meta["name"]
             albums = self.meta["albums"]["items"]
 
         elif self.client.source == "tidal":
-            self.name = self.meta['items'][0]['artist']['name']
+            self.name = self.meta["items"][0]["artist"]["name"]
             albums = self.meta["items"]
 
         elif self.client.source == "deezer":

@@ -172,11 +172,11 @@ def discover(ctx, **kwargs):
 @cli.command()
 @click.option("-o", "--open", is_flag=True, help="Open the config file")
 @click.option("-q", "--qobuz", is_flag=True, help="Set Qobuz credentials")
-@click.option("--reset", is_flag=True, help='RESET the config file')
+@click.option("--reset", is_flag=True, help="RESET the config file")
 @click.pass_context
 def config(ctx, **kwargs):
     """Manage the streamrip configuration."""
-    if kwargs['reset']:
+    if kwargs["reset"]:
         config.reset()
 
     if kwargs["open"]:

@@ -129,9 +129,9 @@ class Config:
 
     @property
     def tidal_creds(self):
-        creds = dict(self.file['tidal'])
+        creds = dict(self.file["tidal"])
         logger.debug(creds)
-        del creds['quality']  # should not be included in creds
+        del creds["quality"]  # should not be included in creds
         return creds
 
     @property

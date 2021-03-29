@@ -124,12 +124,14 @@ class MusicDL(list):
         arguments = {
             "database": self.db,
             "parent_folder": self.config.session["downloads"]["folder"],
+            "keep_cover": self.config.session['keep_cover'],
+            "large_cover": self.config.session['metadata']['large_cover'],
             # TODO: fully implement this
             # "embed_cover": self.config.session["metadata"]["embed_cover"],
         }
         logger.debug("Arguments from config: %s", arguments)
         for item in self:
-            arguments['quality'] = self.config.session[item.client.source]['quality']
+            arguments["quality"] = self.config.session[item.client.source]["quality"]
             if isinstance(item, Artist):
                 filters_ = tuple(
                     k for k, v in self.config.session["filters"].items() if v
@@ -188,8 +190,8 @@ class MusicDL(list):
                     self.config.file["qobuz"]["secrets"],
                 ) = client.get_tokens()
                 self.config.save()
-            elif client.source == 'tidal':
-                self.config.file['tidal'].update(client.get_tokens())
+            elif client.source == "tidal":
+                self.config.file["tidal"].update(client.get_tokens())
                 self.config.save()
 
     def parse_urls(self, url: str) -> Tuple[str, str]:

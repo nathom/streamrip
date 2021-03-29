@@ -12,16 +12,16 @@ from typing import Generator, Sequence, Tuple, Union
 
 import click
 import requests
-from requests.packages import urllib3
 from dogpile.cache import make_region
+from requests.packages import urllib3
 
 from .constants import (
     AGENT,
+    AVAILABLE_QUALITY_IDS,
     CACHE_DIR,
     DEEZER_MAX_Q,
     QOBUZ_FEATURED_KEYS,
     TIDAL_MAX_Q,
-    AVAILABLE_QUALITY_IDS,
 )
 from .exceptions import (
     AuthenticationError,
@@ -30,8 +30,8 @@ from .exceptions import (
     InvalidAppSecretError,
     InvalidQuality,
 )
-from .utils import get_quality
 from .spoofbuz import Spoofer
+from .utils import get_quality
 
 urllib3.disable_warnings()
 requests.adapters.DEFAULT_RETRIES = 5
@@ -324,7 +324,9 @@ class QobuzClient(ClientInterface):
         unix_ts = time.time()
 
         if int(quality) not in AVAILABLE_QUALITY_IDS:  # Needed?
-            raise InvalidQuality(f"Invalid quality id {quality}. Choose from {AVAILABLE_QUALITY_IDS}")
+            raise InvalidQuality(
+                f"Invalid quality id {quality}. Choose from {AVAILABLE_QUALITY_IDS}"
+            )
 
         if sec is not None:
             secret = sec
@@ -472,7 +474,7 @@ class TidalClient(ClientInterface):
             self._login_new_user()
 
         self.logged_in = True
-        click.secho("Logged into Tidal", fg='green')
+        click.secho("Logged into Tidal", fg="green")
 
     def get(self, item_id, media_type):
         return self._api_get(item_id, media_type)

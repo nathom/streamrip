@@ -12,7 +12,7 @@ from pathvalidate import sanitize_filename
 from tqdm import tqdm
 
 from .constants import LOG_DIR, TIDAL_COVER_URL
-from .exceptions import NonStreamable, InvalidSourceError
+from .exceptions import InvalidSourceError, NonStreamable
 
 logger = logging.getLogger(__name__)
 
@@ -46,21 +46,21 @@ def get_quality(quality_id: int, source: str) -> Union[str, int]:
     :type source: str
     :rtype: Union[str, int]
     """
-    if source == 'qobuz':
+    if source == "qobuz":
         q_map = {
             1: 5,
             2: 6,
             3: 7,
             4: 27,
         }
-    elif source == 'tidal':
+    elif source == "tidal":
         q_map = {
             0: "LOW",  # AAC
             1: "HIGH",  # AAC
             2: "LOSSLESS",  # CD Quality
             3: "HI_RES",  # MQA
         }
-    elif source == 'deezer':
+    elif source == "deezer":
         q_map = {
             0: 128,
             1: 320,
