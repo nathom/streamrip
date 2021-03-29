@@ -12,7 +12,7 @@ A scriptable stream downloader for Qobuz, Tidal, and Deezer.
 
 ## Installation
 
-First, ensure [pip](https://pip.pypa.io/en/stable/installing/) is installed.
+First, ensure [pip](https://pip.pypa.io/en/stable/installing/) is installed. Then run the following in the command line:
 
 ```bash
 pip3 install streamrip --upgrade
