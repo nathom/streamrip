@@ -24,7 +24,6 @@ if not os.path.isdir(CACHE_DIR):
 @click.option("-t", "--text", metavar="PATH")
 @click.option("-nd", "--no-db", is_flag=True)
 @click.option("--debug", is_flag=True)
-@click.option("--reset-config", is_flag=True)
 @click.pass_context
 def cli(ctx, **kwargs):
     """"""
@@ -35,9 +34,6 @@ def cli(ctx, **kwargs):
         init_log()
 
     config = Config()
-    if kwargs["reset_config"]:
-        config.reset()
-        return
 
     if kwargs["no_db"]:
         config.session["database"]["enabled"] = False
@@ -176,10 +172,12 @@ def discover(ctx, **kwargs):
 @cli.command()
 @click.option("-o", "--open", is_flag=True, help="Open the config file")
 @click.option("-q", "--qobuz", is_flag=True, help="Set Qobuz credentials")
-@click.option("-t", "--tidal", is_flag=True, help="Set Tidal credentials")
+@click.option("--reset", is_flag=True, help='RESET the config file')
 @click.pass_context
 def config(ctx, **kwargs):
     """Manage the streamrip configuration."""
+    if kwargs['reset']:
+        config.reset()
 
     if kwargs["open"]:
         click.launch(CONFIG_PATH)
@@ -187,11 +185,6 @@ def config(ctx, **kwargs):
     if kwargs["qobuz"]:
         config.file["qobuz"]["email"] = input("Qobuz email: ")
         config.file["qobuz"]["password"] = getpass()
-        config.save()
-
-    if kwargs["tidal"]:
-        config.file["tidal"]["email"] = input("Tidal email: ")
-        config.file["tidal"]["password"] = getpass()
         config.save()
 
 
