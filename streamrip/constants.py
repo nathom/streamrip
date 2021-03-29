@@ -12,25 +12,25 @@ CONFIG_PATH = os.path.join(CONFIG_DIR, "config.yaml")
 LOG_DIR = click.get_app_dir(APPNAME)
 DB_PATH = os.path.join(LOG_DIR, "downloads.db")
 
-DOWNLOADS_DIR = os.path.join(Path.home(), "Music Downloads")
+DOWNLOADS_DIR = os.path.join(Path.home(), "StreamripDownloads")
 
 AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:83.0) Gecko/20100101 Firefox/83.0"
 
 TIDAL_COVER_URL = "https://resources.tidal.com/images/{uuid}/{width}x{height}.jpg"
 
 EXT = {
-    5: ".mp3",
-    6: ".flac",
-    7: ".flac",
-    27: ".flac",
+    1: ".mp3",
+    2: ".flac",
+    3: ".flac",
+    4: ".flac",
 }
 
 QUALITY_DESC = {
-    4: "128kbps",
-    5: "320kbps",
-    6: "16bit/44.1kHz",
-    7: "24bit/96kHz",
-    27: "24bit/192kHz",
+    0: "128kbps",
+    1: "320kbps",
+    2: "16bit/44.1kHz",
+    3: "24bit/96kHz",
+    4: "24bit/192kHz",
 }
 
 
@@ -133,17 +133,10 @@ TRACK_FORMAT = "{tracknumber}. {artist} - {title}"
 
 URL_REGEX = (
     r"https:\/\/(?:www|open|play|listen)?\.?(\w+)\.com(?:(?:\/(track|playlist|album|"
-    r"artist|label))|(?:\/[-\w]+?))+\/(\w+)"
+    r"artist|label))|(?:\/[-\w]+?))+\/([-\w]+)"
 )
 
 
-TIDAL_Q_IDS = {
-    4: "LOW",  # AAC
-    5: "HIGH",  # AAC
-    6: "LOSSLESS",  # Lossless, but it also could be MQA
-    7: "HI_RES",  # not available for download
-}
 TIDAL_MAX_Q = 7
-
-DEEZER_Q_IDS = {4: 128, 5: 320, 6: 1411}
 DEEZER_MAX_Q = 6
+AVAILABLE_QUALITY_IDS = (0, 1, 2, 3, 4)

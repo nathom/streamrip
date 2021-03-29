@@ -4,7 +4,7 @@ import hashlib
 import json
 import logging
 import os
-# import sys
+import sys
 import time
 from abc import ABC, abstractmethod
 from pprint import pformat  # , pprint
@@ -13,17 +13,15 @@ from typing import Generator, Sequence, Tuple, Union
 import click
 import requests
 from requests.packages import urllib3
-import tidalapi
 from dogpile.cache import make_region
 
 from .constants import (
     AGENT,
     CACHE_DIR,
     DEEZER_MAX_Q,
-    DEEZER_Q_IDS,
     QOBUZ_FEATURED_KEYS,
     TIDAL_MAX_Q,
-    TIDAL_Q_IDS,
+    AVAILABLE_QUALITY_IDS,
 )
 from .exceptions import (
     AuthenticationError,
@@ -32,6 +30,7 @@ from .exceptions import (
     InvalidAppSecretError,
     InvalidQuality,
 )
+from .utils import get_quality
 from .spoofbuz import Spoofer
 
 urllib3.disable_warnings()
@@ -102,7 +101,7 @@ class ClientInterface(ABC):
         pass
 
     @abstractmethod
-    def get_file_url(self, track_id, quality=6) -> Union[dict]:
+    def get_file_url(self, track_id, quality=3) -> Union[dict]:
         """Get the direct download url dict for a file.
 
         :param track_id: id of the track
@@ -144,6 +143,7 @@ class QobuzClient(ClientInterface):
             return
 
         if (kwargs.get("app_id") or kwargs.get("secrets")) in (None, [], ""):
+            click.secho("Fetching tokens, this may take a few seconds.")
             logger.info("Fetching tokens from Qobuz")
             spoofer = Spoofer()
             kwargs["app_id"] = spoofer.get_app_id()
@@ -209,7 +209,7 @@ class QobuzClient(ClientInterface):
     def get(self, item_id: Union[str, int], media_type: str = "album") -> dict:
         return self._api_get(media_type, item_id=item_id)
 
-    def get_file_url(self, item_id, quality=6) -> dict:
+    def get_file_url(self, item_id, quality=3) -> dict:
         return self._api_get_file_url(item_id, quality=quality)
 
     # ---------- Private Methods ---------------
@@ -319,12 +319,12 @@ class QobuzClient(ClientInterface):
         self.label = resp["user"]["credential"]["parameters"]["short_label"]
 
     def _api_get_file_url(
-        self, track_id: Union[str, int], quality: int = 6, sec: str = None
+        self, track_id: Union[str, int], quality: int = 3, sec: str = None
     ) -> dict:
         unix_ts = time.time()
 
-        if int(quality) not in (5, 6, 7, 27):  # Needed?
-            raise InvalidQuality(f"Invalid quality id {quality}. Choose 5, 6, 7 or 27")
+        if int(quality) not in AVAILABLE_QUALITY_IDS:  # Needed?
+            raise InvalidQuality(f"Invalid quality id {quality}. Choose from {AVAILABLE_QUALITY_IDS}")
 
         if sec is not None:
             secret = sec
@@ -333,6 +333,7 @@ class QobuzClient(ClientInterface):
         else:
             raise InvalidAppSecretError("Cannot find app secret")
 
+        quality = get_quality(quality, self.source)
         r_sig = f"trackgetFileUrlformat_id{quality}intentstreamtrack_id{track_id}{unix_ts}{secret}"
         logger.debug("Raw request signature: %s", r_sig)
         r_sig_hashed = hashlib.md5(r_sig.encode("utf-8")).hexdigest()
@@ -362,7 +363,7 @@ class QobuzClient(ClientInterface):
 
     def _test_secret(self, secret: str) -> bool:
         try:
-            self._api_get_file_url("19512574", sec=secret)
+            r = self._api_get_file_url("19512574", sec=secret)
             return True
         except InvalidAppSecretError as error:
             logger.debug("Test for %s secret didn't work: %s", secret, error)
@@ -426,96 +427,9 @@ class DeezerClient(ClientInterface):
     @staticmethod
     def get_file_url(meta_id: Union[str, int], quality: int = 6):
         quality = min(DEEZER_MAX_Q, quality)
-        url = f"{DEEZER_DL}/{DEEZER_Q_IDS[quality]}/{DEEZER_BASE}/track/{meta_id}"
+        url = f"{DEEZER_DL}/{get_quality(quality, 'deezer')}/{DEEZER_BASE}/track/{meta_id}"
         logger.debug(f"Download url {url}")
         return url
-
-
-'''
-class TidalClient(ClientInterface):
-    source = "tidal"
-
-    def __init__(self):
-        self.logged_in = False
-
-    def login(self, email: str, pwd: str):
-        click.secho(f"Logging into {self.source}", fg="green")
-        if self.logged_in:
-            return
-
-        config = tidalapi.Config()
-
-        self.session = tidalapi.Session(config=config)
-        self.session.login(email, pwd)
-        logger.info("Logged into Tidal")
-
-        self.logged_in = True
-
-    @region.cache_on_arguments(expiration_time=RELEASE_CACHE_TIME)
-    def search(self, query: str, media_type: str = "album", limit: int = 50):
-        """
-        :param query:
-        :type query: str
-        :param media_type: artist, album, playlist, or track
-        :type media_type: str
-        :param limit:
-        :type limit: int
-        :raises ValueError: if field value is invalid
-        """
-
-        return self._search(query, media_type, limit=limit)
-
-    @region.cache_on_arguments(expiration_time=RELEASE_CACHE_TIME)
-    def get(self, meta_id: Union[str, int], media_type: str = "album"):
-        """Get metadata.
-
-        :param meta_id:
-        :type meta_id: Union[str, int]
-        :param media_type:
-        :type media_type: str
-        """
-        return self._get(meta_id, media_type)
-
-    def get_file_url(self, meta_id: Union[str, int], quality: int = 6):
-        """
-        :param meta_id:
-        :type meta_id: Union[str, int]
-        :param quality:
-        :type quality: int
-        """
-        logger.debug(f"Fetching file url with quality {quality}")
-        return self._get_file_url(meta_id, quality=min(TIDAL_MAX_Q, quality))
-
-    def _search(self, query, media_type="album", **kwargs):
-        params = {
-            "query": query,
-            "limit": kwargs.get("limit", 50),
-        }
-        return self.session.request("GET", f"search/{media_type}s", params).json()
-
-    def _get(self, media_id, media_type="album"):
-        if media_type == "album":
-            info = self.session.request("GET", f"albums/{media_id}")
-            tracklist = self.session.request("GET", f"albums/{media_id}/tracks")
-            album = info.json()
-            album["tracks"] = tracklist.json()
-            return album
-
-        elif media_type == "track":
-            return self.session.request("GET", f"tracks/{media_id}").json()
-        elif media_type == "playlist":
-            return self.session.request("GET", f"playlists/{media_id}/tracks").json()
-        elif media_type == "artist":
-            return self.session.request("GET", f"artists/{media_id}/albums").json()
-        else:
-            raise ValueError
-
-    def _get_file_url(self, track_id, quality=6):
-        params = {"soundQuality": TIDAL_Q_IDS[quality]}
-        resp = self.session.request("GET", f"tracks/{track_id}/streamUrl", params)
-        resp.raise_for_status()
-        return resp.json()
-'''
 
 
 class TidalClient(ClientInterface):
@@ -546,11 +460,15 @@ class TidalClient(ClientInterface):
         if access_token is not None:
             self.token_expiry = token_expiry
             self.refresh_token = refresh_token
+
             if self.token_expiry - time.time() < 86400:  # 1 day
+                logger.debug("Refreshing access token")
                 self._refresh_access_token()
             else:
+                logger.debug("Logging in with access token")
                 self._login_by_access_token(access_token, user_id)
         else:
+            logger.debug("Logging in as a new user")
             self._login_new_user()
 
         self.logged_in = True
@@ -564,20 +482,33 @@ class TidalClient(ClientInterface):
             "query": query,
             "limit": limit,
         }
-        return self._api_get(f"search/{media_type}s", params=params)
+        return self._api_request(f"search/{media_type}s", params=params)
 
-    def get_file_url(self, track_id, quality: int = 7):
+    def get_file_url(self, track_id, quality: int = 3):
         params = {
-            "audioquality": TIDAL_Q_IDS[quality],
+            "audioquality": get_quality(min(quality, TIDAL_MAX_Q), self.source),
             "playbackmode": "STREAM",
             "assetpresentation": "FULL",
         }
         resp = self._api_request(f"tracks/{track_id}/playbackinfopostpaywall", params)
         manifest = json.loads(base64.b64decode(resp["manifest"]).decode("utf-8"))
+        logger.debug(f"{pformat(manifest)=}")
         return {
             "url": manifest["urls"][0],
             "enc_key": manifest.get("keyId"),
             "codec": manifest["codecs"],
+        }
+
+    def get_tokens(self):
+        return {
+            k: getattr(self, k)
+            for k in (
+                "user_id",
+                "country_code",
+                "access_token",
+                "refresh_token",
+                "token_expiry",
+            )
         }
 
     def _login_new_user(self, launch=True):
@@ -695,18 +626,6 @@ class TidalClient(ClientInterface):
         self.user_id = resp["userId"]
         self.country_code = resp["countryCode"]
         self.access_token = token
-
-    def get_tokens(self):
-        return {
-            k: getattr(self, k)
-            for k in (
-                "user_id",
-                "country_code",
-                "access_token",
-                "refresh_token",
-                "token_expiry",
-            )
-        }
 
     def _api_get(self, item_id: str, media_type: str) -> dict:
         item = self._api_request(f"{media_type}s/{item_id}")

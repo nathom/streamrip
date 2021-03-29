@@ -32,17 +32,22 @@ class Config:
 
     defaults = {
         "qobuz": {
+            "quality": 2,
             "email": None,
             "password": None,
             "app_id": "",  # Avoid NoneType error
             "secrets": [],
         },
         "tidal": {
+            "quality": 3,
             "user_id": None,
             "country_code": None,
             "access_token": None,
             "refresh_token": None,
             "token_expiry": 0,
+        },
+        "deezer": {
+            "quality": 2,
         },
         "database": {"enabled": True, "path": None},
         "conversion": {
@@ -59,7 +64,7 @@ class Config:
             "non_studio_albums": False,
             "non_remaster": False,
         },
-        "downloads": {"folder": DOWNLOADS_DIR, "quality": 7},
+        "downloads": {"folder": DOWNLOADS_DIR},
         "metadata": {
             "embed_cover": True,
             "large_cover": False,
@@ -124,7 +129,10 @@ class Config:
 
     @property
     def tidal_creds(self):
-        return self.file["tidal"]
+        creds = dict(self.file['tidal'])
+        logger.debug(creds)
+        del creds['quality']  # should not be included in creds
+        return creds
 
     @property
     def qobuz_creds(self):

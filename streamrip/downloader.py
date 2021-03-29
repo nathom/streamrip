@@ -2,9 +2,10 @@ import logging
 import os
 import re
 import shutil
-import sys
+# import sys
 from abc import ABC, abstractmethod
-from pprint import pformat, pprint
+from pprint import pformat
+# from pprint import pprint
 from tempfile import gettempdir
 from typing import Any, Callable, Optional, Tuple, Union
 
@@ -34,7 +35,7 @@ from .metadata import TrackMetadata
 from .utils import (
     clean_format,
     decrypt_mqa_file,
-    quality_id,
+    get_quality_id,
     safe_get,
     tidal_cover_url,
     tqdm_download,
@@ -43,10 +44,10 @@ from .utils import (
 logger = logging.getLogger(__name__)
 
 TIDAL_Q_MAP = {
-    "LOW": 4,
-    "HIGH": 5,
-    "LOSSLESS": 6,
-    "HI_RES": 7,
+    "LOW": 0,
+    "HIGH": 1,
+    "LOSSLESS": 2,
+    "HI_RES": 3,
 }
 
 # used to homogenize cover size keys
@@ -228,7 +229,7 @@ class Track:
         else:
             raise InvalidSourceError(self.client.source)
 
-        if dl_info.get("enc_key"):
+        if isinstance(dl_info, dict) and dl_info.get("enc_key"):
             decrypt_mqa_file(temp_file, self.final_path, dl_info["enc_key"])
         else:
             shutil.move(temp_file, self.final_path)
@@ -293,9 +294,7 @@ class Track:
         :raises IndexError
         """
 
-        logger.debug(pos)
         tracklist = cls._get_tracklist(album, client.source)
-        logger.debug(len(tracklist))
         track = tracklist[pos]
         meta = TrackMetadata(album=album, track=track, source=client.source)
         return cls(client=client, meta=meta, id=track["id"])
@@ -356,18 +355,18 @@ class Track:
         if album_meta is not None:
             self.meta.add_album_meta(album_meta)  # extend meta with album info
 
-        if self.quality in (6, 7, 27):
+        if self.quality in (2, 3, 4):
             self.container = "FLAC"
             logger.debug("Tagging file with %s container", self.container)
             audio = FLAC(self.final_path)
-        elif self.quality == 5:
+        elif self.quality == 1:
             self.container = "MP3"
             logger.debug("Tagging file with %s container", self.container)
             try:
                 audio = ID3(self.final_path)
             except ID3NoHeaderError:
                 audio = ID3()
-        elif self.quality == 4:  # tidal and deezer
+        elif self.quality == 0:  # tidal and deezer
             # TODO: add compatibility with MP4 container
             raise NotImplementedError("Qualities < 320kbps not implemented")
         else:
@@ -579,7 +578,7 @@ class Tracklist(list, ABC):
         :type quality: int
         :rtype: Union[Picture, APIC]
         """
-        cover_type = {5: APIC, 6: Picture, 7: Picture, 27: Picture}
+        cover_type = {1: APIC, 2: Picture, 3: Picture, 4: Picture}
 
         cover = cover_type.get(quality)
         if cover is Picture:
@@ -623,7 +622,7 @@ class Tracklist(list, ABC):
 
 
 class Album(Tracklist):
-    """Represents a downloadable Qobuz album.
+    """Represents a downloadable album.
 
     Usage:
 
@@ -694,7 +693,7 @@ class Album(Tracklist):
                 "release_type": resp.get("release_type", "album"),
                 "cover_urls": resp.get("image"),
                 "streamable": resp.get("streamable"),
-                "quality": quality_id(
+                "quality": get_quality_id(
                     resp.get("maximum_bit_depth"), resp.get("maximum_sampling_rate")
                 ),
                 "bit_depth": resp.get("maximum_bit_depth"),
@@ -715,8 +714,8 @@ class Album(Tracklist):
                 },
                 "streamable": resp.get("allowStreaming"),
                 "quality": TIDAL_Q_MAP[resp.get("audioQuality")],
-                "bit_depth": 16,
-                "sampling_rate": 44100,
+                "bit_depth": 24 if resp.get("audioQuality") == 'HI_RES' else 16,
+                "sampling_rate": 44100,  # always 44.1 kHz
                 "tracktotal": resp.get("numberOfTracks"),
             }
         elif client.source == "deezer":
@@ -726,7 +725,7 @@ class Album(Tracklist):
                 "title": resp.get("title"),
                 "_artist": safe_get(resp, "artist", "name"),
                 "albumartist": safe_get(resp, "artist", "name"),
-                "year": str(resp.get("year"))[:4] or "Unknown",
+                "year": str(resp.get("year"))[:4],
                 # version not given by API
                 "cover_urls": {
                     sk: resp.get(rk)  # size key, resp key
@@ -736,7 +735,7 @@ class Album(Tracklist):
                 },
                 "url": resp.get("link"),
                 "streamable": True,  # api only returns streamables
-                "quality": 6,  # all tracks are 16/44.1 streamable
+                "quality": 2,  # all tracks are 16/44.1 streamable
                 "bit_depth": 16,
                 "sampling_rate": 44100,
                 "tracktotal": resp.get("track_total") or resp.get("nb_tracks"),
@@ -891,7 +890,7 @@ class Album(Tracklist):
 
 
 class Playlist(Tracklist):
-    """Represents a downloadable Qobuz playlist.
+    """Represents a downloadable playlist.
 
     Usage:
     >>> resp = client.get('hip hop', 'playlist')
@@ -938,7 +937,7 @@ class Playlist(Tracklist):
         :param kwargs:
         """
         self.meta = self.client.get(self.id, "playlist")
-        self.name = self.meta.get("name")
+        self.name = self.meta.get("title")
         self._load_tracks(**kwargs)
 
     def _load_tracks(self, new_tracknumbers: bool = True):
@@ -957,7 +956,7 @@ class Playlist(Tracklist):
                 return {"track": track, "album": track["album"]}
 
         elif self.client.source == "tidal":
-            tracklist = self.meta["items"]
+            tracklist = self.meta["tracks"]
 
             def gen_cover(track):
                 cover_url = tidal_cover_url(track["album"]["cover"], 320)
@@ -1018,6 +1017,7 @@ class Playlist(Tracklist):
         """
         folder = sanitize_filename(self.name)
         folder = os.path.join(parent_folder, folder)
+        logger.debug(f"Parent folder {folder}")
 
         for track in self:
             track.download(parent_folder=folder, quality=quality, database=database)
@@ -1352,7 +1352,6 @@ class Label(Artist):
         resp = self.client.get(self.id, "label")
         self.name = resp["name"]
         for album in resp["albums"]["items"]:
-            pprint(album)
             self.append(Album.from_api(album, client=self.client))
 
     def __repr__(self):

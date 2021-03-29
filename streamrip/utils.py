@@ -3,7 +3,7 @@ import logging
 import logging.handlers as handlers
 import os
 from string import Formatter
-from typing import Optional
+from typing import Optional, Union
 
 import requests
 from Crypto.Cipher import AES
@@ -12,7 +12,7 @@ from pathvalidate import sanitize_filename
 from tqdm import tqdm
 
 from .constants import LOG_DIR, TIDAL_COVER_URL
-from .exceptions import NonStreamable
+from .exceptions import NonStreamable, InvalidSourceError
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +36,45 @@ def safe_get(d: dict, *keys, default=None):
     return res
 
 
-def quality_id(bit_depth: Optional[int], sampling_rate: Optional[int]):
+def get_quality(quality_id: int, source: str) -> Union[str, int]:
+    """Given the quality id in (0, 1, 2, 3, 4), return the streaming quality
+    value to send to the api for a given source.
+
+    :param quality_id: the quality id
+    :type quality_id: int
+    :param source: qobuz, tidal, or deezer
+    :type source: str
+    :rtype: Union[str, int]
+    """
+    if source == 'qobuz':
+        q_map = {
+            1: 5,
+            2: 6,
+            3: 7,
+            4: 27,
+        }
+    elif source == 'tidal':
+        q_map = {
+            0: "LOW",  # AAC
+            1: "HIGH",  # AAC
+            2: "LOSSLESS",  # CD Quality
+            3: "HI_RES",  # MQA
+        }
+    elif source == 'deezer':
+        q_map = {
+            0: 128,
+            1: 320,
+            2: 1411,
+        }
+    else:
+        raise InvalidSourceError(source)
+
+    possible_keys = set(q_map.keys())
+    assert quality_id in possible_keys, f"{quality_id} must be in {possible_keys}"
+    return q_map[quality_id]
+
+
+def get_quality_id(bit_depth: Optional[int], sampling_rate: Optional[int]):
     """Return a quality id in (5, 6, 7, 27) from bit depth and
     sampling rate. If None is provided, mp3/lossy is assumed.
 
@@ -46,16 +84,16 @@ def quality_id(bit_depth: Optional[int], sampling_rate: Optional[int]):
     :type sampling_rate: Optional[int]
     """
     if not (bit_depth or sampling_rate):  # is lossy
-        return 5
+        return 1
 
     if bit_depth == 16:
-        return 6
+        return 2
 
     if bit_depth == 24:
         if sampling_rate <= 96:
-            return 7
+            return 3
 
-        return 27
+        return 4
 
 
 def tqdm_download(url: str, filepath: str):
