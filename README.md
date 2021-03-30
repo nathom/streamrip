@@ -19,13 +19,13 @@ First, ensure [pip](https://pip.pypa.io/en/stable/installing/) is installed. The
 macOS/Linux:
 
 ```bash
-pip3 install streamrip --upgrade; pip3 install simple-term-menu
+pip3 install streamrip simple-term-menu --upgrade
 ```
 
 Windows:
 
 ```bash
-pip3 install streamrip --upgrade; pip3 install windows-curses
+pip3 install streamrip windows-curses --upgrade
 ```
 
 
