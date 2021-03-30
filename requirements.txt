@@ -1,5 +1,4 @@
 click
-dogpile.cache
 ruamel.yaml
 pathvalidate
 requests

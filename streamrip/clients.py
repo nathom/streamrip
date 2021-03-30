@@ -1,10 +1,7 @@
 import base64
-import datetime
 import hashlib
 import json
 import logging
-import os
-import sys
 import time
 from abc import ABC, abstractmethod
 from pprint import pformat  # , pprint
@@ -12,13 +9,11 @@ from typing import Generator, Sequence, Tuple, Union
 
 import click
 import requests
-from dogpile.cache import make_region
 from requests.packages import urllib3
 
 from .constants import (
     AGENT,
     AVAILABLE_QUALITY_IDS,
-    CACHE_DIR,
     DEEZER_MAX_Q,
     QOBUZ_FEATURED_KEYS,
     TIDAL_MAX_Q,
@@ -36,11 +31,6 @@ from .utils import get_quality
 urllib3.disable_warnings()
 requests.adapters.DEFAULT_RETRIES = 5
 
-os.makedirs(CACHE_DIR, exist_ok=True)
-region = make_region().configure(
-    "dogpile.cache.dbm",
-    arguments={"filename": os.path.join(CACHE_DIR, "clients.db")},
-)
 
 TIDAL_BASE = "https://api.tidalhifi.com/v1"
 TIDAL_AUTH_URL = "https://auth.tidal.com/v1/oauth2"
@@ -51,8 +41,6 @@ TIDAL_CLIENT_INFO = {
 
 logger = logging.getLogger(__name__)
 
-TRACK_CACHE_TIME = datetime.timedelta(weeks=2).total_seconds()
-RELEASE_CACHE_TIME = datetime.timedelta(days=1).total_seconds()
 
 # Qobuz
 QOBUZ_BASE = "https://www.qobuz.com/api.json/0.2"
@@ -205,7 +193,6 @@ class QobuzClient(ClientInterface):
         """
         return self._api_search(query, media_type, limit)
 
-    @region.cache_on_arguments(expiration_time=RELEASE_CACHE_TIME)
     def get(self, item_id: Union[str, int], media_type: str = "album") -> dict:
         return self._api_get(media_type, item_id=item_id)
 
@@ -365,7 +352,7 @@ class QobuzClient(ClientInterface):
 
     def _test_secret(self, secret: str) -> bool:
         try:
-            r = self._api_get_file_url("19512574", sec=secret)
+            self._api_get_file_url("19512574", sec=secret)
             return True
         except InvalidAppSecretError as error:
             logger.debug("Test for %s secret didn't work: %s", secret, error)
@@ -379,7 +366,6 @@ class DeezerClient(ClientInterface):
         self.session = requests.Session()
         self.logged_in = True
 
-    @region.cache_on_arguments(expiration_time=RELEASE_CACHE_TIME)
     def search(self, query: str, media_type: str = "album", limit: int = 200) -> dict:
         """Search API for query.
 
@@ -405,7 +391,6 @@ class DeezerClient(ClientInterface):
     def login(self, **kwargs):
         logger.debug("Deezer does not require login call, returning")
 
-    @region.cache_on_arguments(expiration_time=RELEASE_CACHE_TIME)
     def get(self, meta_id: Union[str, int], media_type: str = "album"):
         """Get metadata.
 
