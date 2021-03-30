@@ -289,10 +289,18 @@ class MusicDL(list):
 
             choice = pick(
                 tuple(enumerate(results)),
-                title=f"{capitalize(source)} {media_type} search. Press RETURN to download, ctrl-C to exit.",
+                title=(f"{capitalize(source)} {media_type} search.\n"
+                       "Press SPACE to select, RETURN to download, ctrl-C to exit."),
                 options_map_func=title,
+                multiselect=True,
             )
-            self.append(choice[0][1])
+
+            if isinstance(choice, list):
+                for item in choice:
+                    self.append(item[0][1])
+            elif isinstance(choice, tuple):
+                self.append(choice[0][1])
+
             return True
         else:
             try:
@@ -305,13 +313,19 @@ class MusicDL(list):
                 map(title, enumerate(results)),
                 preview_command=from_title,
                 preview_size=0.5,
-                title=f"{capitalize(source)} {media_type} search. Press ENTER to download, ESC to exit.",
+                title=(f"{capitalize(source)} {media_type} search.\n"
+                       "SPACE - multiselection, ENTER - download, ESC - exit"),
                 cycle_cursor=True,
                 clear_screen=True,
+                multi_select=True,
             )
             choice = menu.show()
             if choice is None:
                 return False
             else:
-                self.append(results[choice])
+                if isinstance(choice, int):
+                    self.append(results[choice])
+                elif isinstance(choice, tuple):
+                    for i in choice:
+                        self.append(results[i])
                 return True
