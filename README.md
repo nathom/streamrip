@@ -42,6 +42,8 @@ Download an album from Qobuz
 rip -u https://open.qobuz.com/album/0060253780968
 ```
 
+![Streamrip downloading an album](https://github.com/nathom/streamrip/blob/main/demo/download_url.png?raw=true)
+
 Download the album and convert it to `mp3`
 
 ```bash
