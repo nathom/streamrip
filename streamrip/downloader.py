@@ -506,20 +506,6 @@ class Tracklist(list):
     IndexError
     """
 
-    def __getitem__(self, key: Union[str, int]):
-        if isinstance(key, str):
-            return getattr(self, key)
-
-        if isinstance(key, int):
-            return super().__getitem__(key)
-
-    def __setitem__(self, key: Union[str, int], val: Any):
-        if isinstance(key, str):
-            setattr(self, key, val)
-
-        if isinstance(key, int):
-            super().__setitem__(key, val)
-
     def get(self, key: Union[str, int], default: Optional[Any]):
         if isinstance(key, str):
             if hasattr(self, key):
@@ -596,6 +582,12 @@ class Tracklist(list):
 
         return cover_obj
 
+    def download_message(self):
+        click.secho(
+            f"\nDownloading {self.title} ({self.__class__.__name__})\n",
+            fg="blue",
+        )
+
     @staticmethod
     def _parse_get_resp(item, client):
         pass
@@ -615,6 +607,20 @@ class Tracklist(list):
             return match.group(1).strip().lower()
 
         return album
+
+    def __getitem__(self, key: Union[str, int]):
+        if isinstance(key, str):
+            return getattr(self, key)
+
+        if isinstance(key, int):
+            return super().__getitem__(key)
+
+    def __setitem__(self, key: Union[str, int], val: Any):
+        if isinstance(key, str):
+            setattr(self, key, val)
+
+        if isinstance(key, int):
+            super().__setitem__(key, val)
 
 
 class Album(Tracklist):
@@ -809,10 +815,11 @@ class Album(Tracklist):
         if os.path.isfile(cover_path):
             logger.debug("Cover already downloaded: %s. Skipping", cover_path)
         else:
+            click.secho("Downloading cover art", fg="magenta")
             if kwargs.get("large_cover", False):
                 cover_url = self.cover_urls.get("large")
-                if self.client.source == 'qobuz':
-                    tqdm_download(cover_url.replace('600', 'org'), cover_path)
+                if self.client.source == "qobuz":
+                    tqdm_download(cover_url.replace("600", "org"), cover_path)
                 else:
                     tqdm_download(cover_url, cover_path)
 
@@ -825,15 +832,17 @@ class Album(Tracklist):
                     shutil.move(cover_path, large_cover_path)
                     tqdm_download(self.cover_urls["small"], cover_path)
             else:
-                tqdm_download(self.cover_urls['small'], cover_path)
+                tqdm_download(self.cover_urls["small"], cover_path)
 
         if self.client.source != "deezer":
             cover = self.get_cover_obj(cover_path, quality)
 
+        self.download_message()
         for track in self:
             logger.debug("Downloading track to %s", folder)
-
-            track.download(quality, folder, kwargs.get("progress_bar", True), database=database)
+            track.download(
+                quality, folder, kwargs.get("progress_bar", True), database=database
+            )
             if kwargs.get("tag_tracks", True) and self.client.source != "deezer":
                 track.tag(cover=cover)
 
@@ -1030,6 +1039,7 @@ class Playlist(Tracklist):
         folder = os.path.join(parent_folder, folder)
         logger.debug(f"Parent folder {folder}")
 
+        self.download_message()
         for track in self:
             track.download(parent_folder=folder, quality=quality, database=database)
             if self.client.source != "deezer":
@@ -1121,8 +1131,8 @@ class Artist(Tracklist):
             albums = self.meta["albums"]["items"]
 
         elif self.client.source == "tidal":
-            self.name = self.meta["items"][0]["artist"]["name"]
-            albums = self.meta["items"]
+            self.name = self.meta["name"]
+            albums = self.meta["albums"]
 
         elif self.client.source == "deezer":
             # TODO: load artist name
@@ -1142,6 +1152,7 @@ class Artist(Tracklist):
         no_repeats: bool = False,
         quality: int = 6,
         database: MusicDB = None,
+        **kwargs,
     ):
         """Download all albums in the discography.
 
@@ -1175,9 +1186,8 @@ class Artist(Tracklist):
 
                 final = filter(inter, final)
 
-        i = 0
+        self.download_message()
         for album in final:
-            i += 1
             click.secho(f"Downloading album: {album}", fg="blue")
             try:
                 album.load_meta()
@@ -1187,9 +1197,8 @@ class Artist(Tracklist):
                 parent_folder=folder,
                 quality=quality,
                 database=database,
+                **kwargs,
             )
-
-        logger.debug(f"{i} albums downloaded")
 
     @property
     def title(self):

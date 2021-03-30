@@ -630,10 +630,14 @@ class TidalClient(ClientInterface):
         self.access_token = token
 
     def _api_get(self, item_id: str, media_type: str) -> dict:
-        item = self._api_request(f"{media_type}s/{item_id}")
+        url = f"{media_type}s/{item_id}"
+        item = self._api_request(url)
         if media_type in ("playlist", "album"):
-            resp = self._api_request(f"{media_type}s/{item_id}/items")
+            resp = self._api_request(f"{url}/items")
             item["tracks"] = [item["item"] for item in resp["items"]]
+        elif media_type == "artist":
+            resp = self._api_request(f"{url}/albums")
+            item["albums"] = resp["items"]
 
         return item
 

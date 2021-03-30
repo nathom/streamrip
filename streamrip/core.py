@@ -124,8 +124,8 @@ class MusicDL(list):
         arguments = {
             "database": self.db,
             "parent_folder": self.config.session["downloads"]["folder"],
-            "keep_cover": self.config.session['keep_cover'],
-            "large_cover": self.config.session['metadata']['large_cover'],
+            "keep_cover": self.config.session["keep_cover"],
+            "large_cover": self.config.session["metadata"]["large_cover"],
             # TODO: fully implement this
             # "embed_cover": self.config.session["metadata"]["embed_cover"],
         }
@@ -140,7 +140,6 @@ class MusicDL(list):
                 logger.debug("Added filter argument for artist/label: %s", filters_)
 
             item.load_meta()
-            click.secho(f"Downloading {item!s}", fg="bright_green")
 
             if isinstance(item, Track):
                 # track.download doesn't automatically tag
@@ -152,10 +151,6 @@ class MusicDL(list):
                 self.db.add(item.id)
 
             if self.config.session["conversion"]["enabled"]:
-                click.secho(
-                    f"Converting {item!s} to {self.config.session['conversion']['codec']}",
-                    fg="cyan",
-                )
                 item.convert(**self.config.session["conversion"])
 
     def get_client(self, source: str):
@@ -164,11 +159,6 @@ class MusicDL(list):
             self.assert_creds(source)
             self.login(client)
         return client
-
-    def convert_all(self, codec, **kwargs):
-        click.secho("Converting the downloaded tracks...", fg="cyan")
-        for item in self:
-            item.convert(codec, **kwargs)
 
     def login(self, client):
         creds = self.config.creds(client.source)
