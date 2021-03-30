@@ -822,6 +822,8 @@ class Album(Tracklist):
         cover = None
         cover_path = os.path.join(folder, "cover.jpg")
 
+        self.download_message()
+
         if os.path.isfile(cover_path):
             logger.debug("Cover already downloaded: %s. Skipping", cover_path)
         else:
@@ -847,7 +849,6 @@ class Album(Tracklist):
         if self.client.source != "deezer":
             cover = self.get_cover_obj(cover_path, quality)
 
-        self.download_message()
         for track in self:
             logger.debug("Downloading track to %s", folder)
             track.download(
@@ -1199,7 +1200,6 @@ class Artist(Tracklist):
 
         self.download_message()
         for album in final:
-            click.secho(f"Downloading album: {album}", fg="blue")
             try:
                 album.load_meta()
             except NonStreamable:

@@ -37,6 +37,7 @@ class MusicDB:
         :type item_id: str
         :rtype: bool
         """
+        logger.debug(f"Checking database for ID {item_id}")
         with sqlite3.connect(self.path) as conn:
             return (
                 conn.execute(
@@ -51,6 +52,7 @@ class MusicDB:
         :param item_id:
         :type item_id: str
         """
+        logger.debug(f"Adding ID {item_id}")
         with sqlite3.connect(self.path) as conn:
             try:
                 conn.execute(
