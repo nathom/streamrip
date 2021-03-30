@@ -61,4 +61,4 @@ class MusicDB:
                 )
                 conn.commit()
             except sqlite3.Error as error:
-                logger.error("Unexpected DB error: %s", error)
+                logger.error("Unexpected DB error: %s, ID: %s", error, item_id)
