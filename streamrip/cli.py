@@ -10,12 +10,13 @@ from .core import MusicDL
 from .utils import init_log
 
 logger = logging.getLogger(__name__)
-config = Config(CONFIG_PATH)
 
 if not os.path.isdir(CONFIG_DIR):
-    os.makedirs(CONFIG_DIR)
+    os.makedirs(CONFIG_DIR, exist_ok=True)
 if not os.path.isdir(CACHE_DIR):
-    os.makedirs(CONFIG_DIR)
+    os.makedirs(CONFIG_DIR, exist_ok=True)
+
+config = Config(CONFIG_PATH)
 
 
 @click.group(invoke_without_command=True)
