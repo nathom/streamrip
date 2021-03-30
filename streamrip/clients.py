@@ -494,7 +494,7 @@ class TidalClient(ClientInterface):
         }
         resp = self._api_request(f"tracks/{track_id}/playbackinfopostpaywall", params)
         manifest = json.loads(base64.b64decode(resp["manifest"]).decode("utf-8"))
-        logger.debug(f"{pformat(manifest)=}")
+        logger.debug(f"{pformat(manifest)}")
         return {
             "url": manifest["urls"][0],
             "enc_key": manifest.get("keyId"),
@@ -620,7 +620,7 @@ class TidalClient(ClientInterface):
         headers = {"authorization": f"Bearer {token}"}
         resp = requests.get("https://api.tidal.com/v1/sessions", headers=headers).json()
         if resp.get("status", 200) != 200:
-            raise Exception(f"Login failed {resp=}")
+            raise Exception(f"Login failed {resp}")
 
         if str(resp.get("userId")) != str(user_id):
             raise Exception(f"User id mismatch {resp['userId']} v {user_id}")

@@ -879,7 +879,7 @@ class Album(Tracklist):
         elif self.client.source == "tidal":
             self.container = "AAC"
         else:
-            raise Exception(f"{self.bit_depth=}, {self.sampling_rate=}")
+            raise Exception(f"{self.bit_depth}, {self.sampling_rate}")
 
         formatted_folder = clean_format(self.folder_format, self._get_formatter())
 
