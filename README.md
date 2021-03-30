@@ -16,16 +16,16 @@ First, ensure [pip](https://pip.pypa.io/en/stable/installing/) is installed. The
 
 
 
-Windows:
-
-```bash
-pip3 install streamrip --upgrade; pip3 install windows-curses
-```
-
 macOS/Linux:
 
 ```bash
 pip3 install streamrip --upgrade; pip3 install simple-term-menu
+```
+
+Windows:
+
+```bash
+pip3 install streamrip --upgrade; pip3 install windows-curses
 ```
 
 
