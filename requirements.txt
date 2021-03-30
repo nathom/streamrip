@@ -5,6 +5,6 @@ pathvalidate
 requests
 mutagen
 tqdm
-simple-term-menu
 pycryptodome
+pick
 colorama

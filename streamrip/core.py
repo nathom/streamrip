@@ -1,12 +1,12 @@
 import logging
 import os
 import re
+import sys
 from getpass import getpass
 from string import Formatter
 from typing import Generator, Optional, Tuple, Union
 
 import click
-from simple_term_menu import TerminalMenu
 
 from .clients import DeezerClient, QobuzClient, TidalClient
 from .config import Config
@@ -280,17 +280,38 @@ class MusicDL(list):
                     break
             return self.preview_media(results[int("".join(num)) - 1])
 
-        menu = TerminalMenu(
-            map(title, enumerate(results)),
-            preview_command=from_title,
-            preview_size=0.5,
-            title=f"{capitalize(source)} {media_type} search",
-            cycle_cursor=True,
-            clear_screen=True,
-        )
-        choice = menu.show()
-        if choice is None:
-            return False
-        else:
-            self.append(results[choice])
+        if os.name == "nt":
+            try:
+                from pick import pick
+            except (ImportError, ModuleNotFoundError):
+                click.secho("Run `pip3 install windows-curses` to use interactive mode.", fg='red')
+                sys.exit()
+
+            choice = pick(
+                tuple(enumerate(results)),
+                title=f"{capitalize(source)} {media_type} search. Press RETURN to download, ctrl-C to exit.",
+                options_map_func=title,
+            )
+            self.append(choice[0][1])
             return True
+        else:
+            try:
+                from simple_term_menu import TerminalMenu
+            except (ImportError, ModuleNotFoundError):
+                click.secho("Run `pip3 install simple-term-menu` to use interactive mode.", fg='red')
+                sys.exit()
+
+            menu = TerminalMenu(
+                map(title, enumerate(results)),
+                preview_command=from_title,
+                preview_size=0.5,
+                title=f"{capitalize(source)} {media_type} search. Press ENTER to download, ESC to exit.",
+                cycle_cursor=True,
+                clear_screen=True,
+            )
+            choice = menu.show()
+            if choice is None:
+                return False
+            else:
+                self.append(results[choice])
+                return True
