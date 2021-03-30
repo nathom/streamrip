@@ -256,11 +256,13 @@ class MusicDL(list):
             )
         elif isinstance(media, Artist):
             fmt = "{name}"
+        elif isinstance(media, Track):
+            fmt = "{artist} - {title}\nReleased on {year}"
         else:
             raise NotImplementedError
 
         fields = (fname for _, fname, _, _ in Formatter().parse(fmt) if fname)
-        ret = fmt.format(**{k: media.get(k, "Unknown") for k in fields})
+        ret = fmt.format(**{k: media.get(k, default="Unknown") for k in fields})
         return ret
 
     def interactive_search(

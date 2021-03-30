@@ -152,11 +152,12 @@ class Track:
         progress_bar: bool = True,
         database: MusicDB = None,
         tag: bool = False,
+        **kwargs,
     ):
         """
         Download the track.
 
-        :param quality: (5, 6, 7, 27)
+        :param quality: (0, 1, 2, 3, 4)
         :type quality: int
         :param folder: folder to download the files to
         :type folder: Optional[Union[str, os.PathLike]]
@@ -243,6 +244,9 @@ class Track:
         if tag:
             self.tag()
 
+        if not kwargs.get("keep_cover", True) and hasattr(self, 'cover_path'):
+            os.remove(self.cover_path)
+
         return True
 
     def download_cover(self):
@@ -269,7 +273,6 @@ class Track:
         """
         formatter = self.meta.get_formatter()
         logger.debug("Track meta formatter %s", pformat(formatter))
-        # filename = sanitize_filepath(self.file_format.format(**formatter))
         filename = clean_format(self.file_format, formatter)
         self.final_path = (
             os.path.join(self.folder, filename)[:250].strip()
@@ -438,6 +441,13 @@ class Track:
         )
         click.secho(f"Converting {self!s}", fg="blue")
         engine.convert()
+
+    @property
+    def title(self):
+        if hasattr(self, 'meta'):
+            return self.meta.title
+        else:
+            raise Exception("Track must be loaded before accessing title")
 
     def get(self, *keys, default=None):
         """Safe get method that allows for layered access.
@@ -1025,6 +1035,7 @@ class Playlist(Tracklist):
         quality: int = 6,
         filters: Callable = None,
         database: MusicDB = None,
+        **kwargs,
     ):
         """Download and tag all of the tracks.
 

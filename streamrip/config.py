@@ -1,12 +1,11 @@
 import copy
 import logging
 import os
-from pathlib import Path
 from pprint import pformat
 
 from ruamel.yaml import YAML
 
-from .constants import CONFIG_PATH, DOWNLOADS_DIR, FOLDER_FORMAT, TRACK_FORMAT
+from .constants import (CONFIG_PATH, DOWNLOADS_DIR, FOLDER_FORMAT, TRACK_FORMAT, CONFIG_DIR)
 from .exceptions import InvalidSourceError
 
 yaml = YAML()
@@ -95,6 +94,9 @@ class Config:
         self.dump(self.file)
 
     def reset(self):
+        if not os.path.isdir(CONFIG_DIR):
+            os.makedirs(CONFIG_DIR, exist_ok=True)
+
         self.dump(self.defaults)
 
     def load(self):
