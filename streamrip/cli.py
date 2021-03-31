@@ -16,18 +16,27 @@ if not os.path.isdir(CONFIG_DIR):
 if not os.path.isdir(CACHE_DIR):
     os.makedirs(CONFIG_DIR, exist_ok=True)
 
-config = Config(CONFIG_PATH)
-
 
 @click.group(invoke_without_command=True)
-@click.option("-c", "--convert", metavar="CODEC")
-@click.option("-u", "--urls", metavar="URLS")
+@click.option("-c", "--convert", metavar="CODEC", help='alac, mp3, flac, or ogg')
+@click.option("-u", "--urls", metavar="URLS", help='Url from Qobuz, Tidal, or Deezer')
+@click.option("-q", "--quality", metavar='INT', help=', '.join(range(5)))
 @click.option("-t", "--text", metavar="PATH")
 @click.option("-nd", "--no-db", is_flag=True)
 @click.option("--debug", is_flag=True)
 @click.pass_context
 def cli(ctx, **kwargs):
-    """"""
+    """Streamrip: The all-in-one Qobuz, Tidal, and Deezer music downloader.
+
+    To get started, try:
+
+        $ rip -u https://www.deezer.com/en/album/6612814
+
+    For customization down to the details, see the config file:
+
+        $ rip config --open
+
+    """
     global config
     global core
 
@@ -41,6 +50,14 @@ def cli(ctx, **kwargs):
     if kwargs["convert"]:
         config.session["conversion"]["enabled"] = True
         config.session["conversion"]["codec"] = kwargs["convert"]
+    if kwargs['quality'] is not None:
+        if kwargs['quality'] not in range(5):
+            click.secho("Invalid quality", fg='red')
+            return
+
+        config.session['qobuz']['quality'] = kwargs['quality']
+        config.session['tidal']['quality'] = kwargs['quality']
+        config.session['deezer']['quality'] = kwargs['quality']
 
     core = MusicDL(config)
 
