@@ -72,7 +72,7 @@ class Config:
         "downloads": {"folder": DOWNLOADS_DIR},
         "metadata": {
             "embed_cover": True,
-            "large_cover": False,
+            "large_cover": True,
             "default_comment": None,
             "remove_extra_tags": False,
         },
