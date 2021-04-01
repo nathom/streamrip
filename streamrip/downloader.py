@@ -93,7 +93,6 @@ class Track:
         self.__dict__.update(kwargs)
 
         # adjustments after blind attribute sets
-        self.file_format = kwargs.get("track_format", TRACK_FORMAT)
         self.container = "FLAC"
         self.sampling_rate = 44100
         self.bit_depth = 16
@@ -148,7 +147,7 @@ class Track:
     def download(
         self,
         quality: int = 7,
-        parent_folder: str = "Downloads",
+        parent_folder: str = "StreamripDownloads",
         progress_bar: bool = True,
         database: MusicDB = None,
         tag: bool = False,
@@ -164,11 +163,14 @@ class Track:
         :param progress_bar: turn on/off progress bar
         :type progress_bar: bool
         """
+        # args override attributes
         self.quality, self.folder = (
             quality or self.quality,
             parent_folder or self.folder,
         )
-        self.folder = sanitize_filepath(parent_folder, platform="auto")
+
+        self.file_format = kwargs.get("track_format", TRACK_FORMAT)
+        self.folder = sanitize_filepath(self.folder, platform="auto")
 
         os.makedirs(self.folder, exist_ok=True)
 
@@ -180,18 +182,18 @@ class Track:
                     f"{self['title']} already logged in database, skipping.",
                     fg="magenta",
                 )
-                return
+                return False  # because the track was not downloaded
 
-        if os.path.isfile(self.format_final_path()):
+        if os.path.isfile(self.format_final_path()):  # track already exists
             self._is_downloaded = True
             self._is_tagged = True
             click.secho(f"Track already downloaded: {self.final_path}", fg="magenta")
             return False
 
-        if hasattr(self, "cover_url"):
+        if hasattr(self, "cover_url"):  # only for playlists and singles
             self.download_cover()
 
-        dl_info = self.client.get_file_url(self.id, quality)  # dict
+        dl_info = self.client.get_file_url(self.id, quality)
 
         temp_file = os.path.join(gettempdir(), f"~{self.id}_{quality}.tmp")
         logger.debug("Temporary file path: %s", temp_file)
@@ -206,11 +208,6 @@ class Track:
 
             self.sampling_rate = dl_info.get("sampling_rate")
             self.bit_depth = dl_info.get("bit_depth")
-
-        if os.path.isfile(temp_file):
-            logger.debug("Temporary file found: %s", temp_file)
-            self._is_downloaded = True
-            self._is_tagged = False
 
         click.secho(f"\nDownloading {self!s}", fg="blue")
 
@@ -244,7 +241,7 @@ class Track:
         if tag:
             self.tag()
 
-        if not kwargs.get("keep_cover", True) and hasattr(self, 'cover_path'):
+        if not kwargs.get("keep_cover", True) and hasattr(self, "cover_path"):
             os.remove(self.cover_path)
 
         return True
@@ -252,7 +249,7 @@ class Track:
     def download_cover(self):
         """Downloads the cover art, if cover_url is given."""
 
-        assert hasattr(self, "cover_url"), "must pass cover_url parameter"
+        assert hasattr(self, "cover_url"), "must set cover_url attribute"
 
         self.cover_path = os.path.join(self.folder, f"cover{hash(self.id)}.jpg")
         logger.debug(f"Downloading cover from {self.cover_url}")
@@ -444,7 +441,7 @@ class Track:
 
     @property
     def title(self):
-        if hasattr(self, 'meta'):
+        if hasattr(self, "meta"):
             return self.meta.title
         else:
             raise Exception("Track must be loaded before accessing title")
@@ -658,7 +655,6 @@ class Album(Tracklist):
         self.bit_depth = None
         self.container = None
 
-        self.folder_format = kwargs.get("album_format", FOLDER_FORMAT)
         for k, v in kwargs.items():
             setattr(self, k, v)
 
@@ -873,24 +869,24 @@ class Album(Tracklist):
         self.downloaded = True
 
     def _get_formatter(self) -> dict:
-        dict_ = dict()
+        fmt = dict()
         for key in ALBUM_KEYS:
             if hasattr(self, key):
-                dict_[key] = getattr(self, key)
+                fmt[key] = getattr(self, key)
             else:
-                dict_[key] = None
+                fmt[key] = None
 
-        dict_["sampling_rate"] /= 1000
+        fmt["sampling_rate"] /= 1000
         # 48.0kHz -> 48kHz, 44.1kHz -> 44.1kHz
-        if dict_["sampling_rate"] % 1 == 0.0:
-            dict_["sampling_rate"] = int(dict_["sampling_rate"])
+        if fmt["sampling_rate"] % 1 == 0.0:
+            fmt["sampling_rate"] = int(fmt["sampling_rate"])
 
-        return dict_
+        return fmt
 
     def _get_formatted_folder(self, parent_folder: str) -> str:
         if self.bit_depth is not None and self.sampling_rate is not None:
             self.container = "FLAC"
-        elif self.client.source == "qobuz":
+        elif self.client.source in ("qobuz", "deezer"):
             self.container = "MP3"
         elif self.client.source == "tidal":
             self.container = "AAC"

@@ -18,9 +18,14 @@ if not os.path.isdir(CACHE_DIR):
 
 
 @click.group(invoke_without_command=True)
-@click.option("-c", "--convert", metavar="CODEC", help='alac, mp3, flac, or ogg')
-@click.option("-u", "--urls", metavar="URLS", help='Url from Qobuz, Tidal, or Deezer')
-@click.option("-q", "--quality", metavar='INT', help=', '.join(range(5)))
+@click.option("-c", "--convert", metavar="CODEC", help="alac, mp3, flac, or ogg")
+@click.option("-u", "--urls", metavar="URLS", help="Url from Qobuz, Tidal, or Deezer")
+@click.option(
+    "-q",
+    "--quality",
+    metavar="INT",
+    help="0: < 320kbps, 1: 320 kbps, 2: 16 bit/44.1 kHz, 3: 24 bit/<=96 kHz, 4: 24 bit/<=192 kHz",
+)
 @click.option("-t", "--text", metavar="PATH")
 @click.option("-nd", "--no-db", is_flag=True)
 @click.option("--debug", is_flag=True)
@@ -50,14 +55,14 @@ def cli(ctx, **kwargs):
     if kwargs["convert"]:
         config.session["conversion"]["enabled"] = True
         config.session["conversion"]["codec"] = kwargs["convert"]
-    if kwargs['quality'] is not None:
-        if kwargs['quality'] not in range(5):
-            click.secho("Invalid quality", fg='red')
+    if kwargs["quality"] is not None:
+        if kwargs["quality"] not in range(5):
+            click.secho("Invalid quality", fg="red")
             return
 
-        config.session['qobuz']['quality'] = kwargs['quality']
-        config.session['tidal']['quality'] = kwargs['quality']
-        config.session['deezer']['quality'] = kwargs['quality']
+        config.session["qobuz"]["quality"] = kwargs["quality"]
+        config.session["tidal"]["quality"] = kwargs["quality"]
+        config.session["deezer"]["quality"] = kwargs["quality"]
 
     core = MusicDL(config)
 

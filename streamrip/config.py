@@ -5,7 +5,13 @@ from pprint import pformat
 
 from ruamel.yaml import YAML
 
-from .constants import (CONFIG_PATH, DOWNLOADS_DIR, FOLDER_FORMAT, TRACK_FORMAT, CONFIG_DIR)
+from .constants import (
+    CONFIG_DIR,
+    CONFIG_PATH,
+    DOWNLOADS_DIR,
+    FOLDER_FORMAT,
+    TRACK_FORMAT,
+)
 from .exceptions import InvalidSourceError
 
 yaml = YAML()
