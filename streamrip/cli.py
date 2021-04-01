@@ -1,9 +1,11 @@
 import logging
 import os
 from getpass import getpass
+from hashlib import md5
 
 import click
 
+from .clients import TidalClient
 from .config import Config
 from .constants import CACHE_DIR, CONFIG_DIR, CONFIG_PATH, QOBUZ_FEATURED_KEYS
 from .core import MusicDL
@@ -195,33 +197,39 @@ def discover(ctx, **kwargs):
 @cli.command()
 @click.option("-o", "--open", is_flag=True, help="Open the config file")
 @click.option("-q", "--qobuz", is_flag=True, help="Set Qobuz credentials")
+@click.option("-t", "--tidal", is_flag=True, help="Re-login into Tidal")
 @click.option("--reset", is_flag=True, help="RESET the config file")
 @click.pass_context
 def config(ctx, **kwargs):
-    """Manage the streamrip configuration."""
+    """Manage the streamrip configuration file."""
     if kwargs["reset"]:
         config.reset()
 
     if kwargs["open"]:
+        click.secho(f"Opening {CONFIG_PATH}", fg='green')
         click.launch(CONFIG_PATH)
 
     if kwargs["qobuz"]:
-        config.file["qobuz"]["email"] = input("Qobuz email: ")
-        config.file["qobuz"]["password"] = getpass()
+        config.file["qobuz"]["email"] = input(click.style("Qobuz email: ", fg="blue"))
+
+        click.secho("Qobuz password (will not show on screen):", fg="blue")
+        config.file["qobuz"]["password"] = md5(
+            getpass(prompt="").encode("utf-8")
+        ).hexdigest()
+
         config.save()
+        click.secho("Qobuz credentials hashed and saved to config.", fg="green")
+
+    if kwargs["tidal"]:
+        client = TidalClient()
+        client.login()
+        config.file["tidal"].update(client.get_tokens())
+        config.save()
+        click.secho("Credentials saved to config.", fg="green")
 
 
 def none_chosen():
     click.secho("No items chosen, exiting.", fg="bright_red")
-
-
-def parse_urls(arg: str):
-    if os.path.isfile(arg):
-        return arg, "txt"
-    if "http" in arg:
-        return arg, "urls"
-
-    raise ValueError(f"Invalid argument {arg}")
 
 
 def main():

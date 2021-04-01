@@ -126,8 +126,8 @@ class MusicDL(list):
             "parent_folder": self.config.session["downloads"]["folder"],
             "keep_cover": self.config.session["keep_cover"],
             "large_cover": self.config.session["metadata"]["large_cover"],
-            "folder_format": self.config.session['path_format']['folder'],
-            "track_format": self.config.session['path_format']['track']
+            "folder_format": self.config.session["path_format"]["folder"],
+            "track_format": self.config.session["path_format"]["track"]
             # TODO: fully implement this
             # "embed_cover": self.config.session["metadata"]["embed_cover"],
         }
