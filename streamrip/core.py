@@ -3,6 +3,7 @@ import os
 import re
 import sys
 from getpass import getpass
+from hashlib import md5
 from string import Formatter
 from typing import Generator, Optional, Tuple, Union
 
@@ -27,7 +28,7 @@ MEDIA_CLASS = {
     "label": Label,
 }
 CLIENTS = {"qobuz": QobuzClient, "tidal": TidalClient, "deezer": DeezerClient}
-Media = Union[Album, Playlist, Artist, Track]  # type hint
+Media = Union[Album, Playlist, Artist, Track]
 
 
 class MusicDL(list):
@@ -70,9 +71,9 @@ class MusicDL(list):
                 f"Enter {capitalize(source)} password (will not show on screen):",
                 fg="green",
             )
-            self.config.file[source]["password"] = getpass(
+            self.config.file[source]["password"] = md5(getpass(
                 prompt=""
-            )  # does hashing work for tidal?
+            ).encode('utf-8')).hexdigest()
 
             self.config.save()
             click.secho(f'Credentials saved to config file at "{self.config._path}"')
