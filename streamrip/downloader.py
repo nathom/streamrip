@@ -813,6 +813,7 @@ class Album(Tracklist):
         :param keep_cover: Keep the cover art image after downloading.
         True by default.
         """
+        self.folder_format = kwargs.get("folder_format", FOLDER_FORMAT)
         folder = self._get_formatted_folder(parent_folder)
 
         os.makedirs(folder, exist_ok=True)
@@ -852,7 +853,11 @@ class Album(Tracklist):
         for track in self:
             logger.debug("Downloading track to %s", folder)
             track.download(
-                quality, folder, kwargs.get("progress_bar", True), database=database
+                quality,
+                folder,
+                kwargs.get("progress_bar", True),
+                database=database,
+                track_format=kwargs.get("track_format", TRACK_FORMAT),
             )
             if kwargs.get("tag_tracks", True) and self.client.source != "deezer":
                 track.tag(cover=cover)

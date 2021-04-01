@@ -126,6 +126,8 @@ class MusicDL(list):
             "parent_folder": self.config.session["downloads"]["folder"],
             "keep_cover": self.config.session["keep_cover"],
             "large_cover": self.config.session["metadata"]["large_cover"],
+            "folder_format": self.config.session['path_format']['folder'],
+            "track_format": self.config.session['path_format']['track']
             # TODO: fully implement this
             # "embed_cover": self.config.session["metadata"]["embed_cover"],
         }
@@ -286,13 +288,18 @@ class MusicDL(list):
             try:
                 from pick import pick
             except (ImportError, ModuleNotFoundError):
-                click.secho("Run `pip3 install windows-curses` to use interactive mode.", fg='red')
+                click.secho(
+                    "Run `pip3 install windows-curses` to use interactive mode.",
+                    fg="red",
+                )
                 sys.exit()
 
             choice = pick(
                 tuple(enumerate(results)),
-                title=(f"{capitalize(source)} {media_type} search.\n"
-                       "Press SPACE to select, RETURN to download, ctrl-C to exit."),
+                title=(
+                    f"{capitalize(source)} {media_type} search.\n"
+                    "Press SPACE to select, RETURN to download, ctrl-C to exit."
+                ),
                 options_map_func=title,
                 multiselect=True,
             )
@@ -308,15 +315,20 @@ class MusicDL(list):
             try:
                 from simple_term_menu import TerminalMenu
             except (ImportError, ModuleNotFoundError):
-                click.secho("Run `pip3 install simple-term-menu` to use interactive mode.", fg='red')
+                click.secho(
+                    "Run `pip3 install simple-term-menu` to use interactive mode.",
+                    fg="red",
+                )
                 sys.exit()
 
             menu = TerminalMenu(
                 map(title, enumerate(results)),
                 preview_command=from_title,
                 preview_size=0.5,
-                title=(f"{capitalize(source)} {media_type} search.\n"
-                       "SPACE - multiselection, ENTER - download, ESC - exit"),
+                title=(
+                    f"{capitalize(source)} {media_type} search.\n"
+                    "SPACE - multiselection, ENTER - download, ESC - exit"
+                ),
                 cycle_cursor=True,
                 clear_screen=True,
                 multi_select=True,
