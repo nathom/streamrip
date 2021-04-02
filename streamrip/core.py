@@ -128,9 +128,8 @@ class MusicDL(list):
             "keep_cover": self.config.session["keep_cover"],
             "large_cover": self.config.session["metadata"]["large_cover"],
             "folder_format": self.config.session["path_format"]["folder"],
-            "track_format": self.config.session["path_format"]["track"]
-            # TODO: fully implement this
-            # "embed_cover": self.config.session["metadata"]["embed_cover"],
+            "track_format": self.config.session["path_format"]["track"],
+            "embed_cover": self.config.session["metadata"]["embed_cover"],
         }
         logger.debug("Arguments from config: %s", arguments)
         for item in self:

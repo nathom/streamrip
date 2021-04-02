@@ -2,9 +2,7 @@ import logging
 import os
 import re
 import shutil
-# import sys
 from pprint import pformat
-# from pprint import pprint
 from tempfile import gettempdir
 from typing import Any, Callable, Optional, Tuple, Union
 
@@ -251,8 +249,10 @@ class Track:
 
         assert hasattr(self, "cover_url"), "must set cover_url attribute"
 
-        self.cover_path = os.path.join(self.folder, f"cover{hash(self.id)}.jpg")
+        self.cover_path = os.path.join(self.folder, f"cover{hash(self.meta.album)}.jpg")
         logger.debug(f"Downloading cover from {self.cover_url}")
+        click.secho(f"\nDownloading cover art for {self!s}", fg='blue')
+
         if not os.path.exists(self.cover_path):
             tqdm_download(self.cover_url, self.cover_path)
         else:
@@ -324,7 +324,7 @@ class Track:
         self,
         album_meta: dict = None,
         cover: Union[Picture, APIC] = None,
-        embed_cover: bool = False,
+        embed_cover: bool = True,
     ):
         """Tag the track using the stored metadata.
 
@@ -336,6 +336,8 @@ class Track:
         :type album_meta: dict
         :param cover: initialized mutagen cover object
         :type cover: Union[Picture, APIC]
+        :param embed_cover: Embed cover art into file
+        :type embed_cover: bool
         """
         assert isinstance(self.meta, TrackMetadata), "meta must be TrackMetadata"
         if not self._is_downloaded:
@@ -374,15 +376,17 @@ class Track:
         for k, v in self.meta.tags(self.container):
             audio[k] = v
 
-        if cover is None:
+        if embed_cover and cover is None:
             assert hasattr(self, "cover")
             cover = self.cover
 
         if isinstance(audio, FLAC):
-            audio.add_picture(cover)
+            if embed_cover:
+                audio.add_picture(cover)
             audio.save()
         elif isinstance(audio, ID3):
-            audio.add(cover)
+            if embed_cover:
+                audio.add(cover)
             audio.save(self.final_path, "v2_version=3")
         else:
             raise ValueError(f"Unknown container type: {audio}")
@@ -843,7 +847,8 @@ class Album(Tracklist):
             else:
                 tqdm_download(self.cover_urls["small"], cover_path)
 
-        if self.client.source != "deezer":
+        embed_cover = kwargs.get('embed_cover', True)  # embed by default
+        if self.client.source != "deezer" and embed_cover:
             cover = self.get_cover_obj(cover_path, quality)
 
         for track in self:
@@ -856,7 +861,7 @@ class Album(Tracklist):
                 track_format=kwargs.get("track_format", TRACK_FORMAT),
             )
             if kwargs.get("tag_tracks", True) and self.client.source != "deezer":
-                track.tag(cover=cover)
+                track.tag(cover=cover, embed_cover=embed_cover)
 
         if not kwargs.get("keep_cover", True):
             logger.debug(f"Removing cover at {cover_path}")
@@ -969,7 +974,6 @@ class Playlist(Tracklist):
         :param kwargs:
         """
         self.meta = self.client.get(self.id, "playlist")
-        self.name = self.meta.get("title")
         self._load_tracks(**kwargs)
 
     def _load_tracks(self, new_tracknumbers: bool = True):
@@ -979,6 +983,7 @@ class Playlist(Tracklist):
         :type new_tracknumbers: bool
         """
         if self.client.source == "qobuz":
+            self.name = self.meta['name']
             tracklist = self.meta["tracks"]["items"]
 
             def gen_cover(track):  # ?
@@ -988,6 +993,7 @@ class Playlist(Tracklist):
                 return {"track": track, "album": track["album"]}
 
         elif self.client.source == "tidal":
+            self.name = self.meta['title']
             tracklist = self.meta["tracks"]
 
             def gen_cover(track):
@@ -1001,6 +1007,7 @@ class Playlist(Tracklist):
                 }
 
         elif self.client.source == "deezer":
+            self.name = self.meta['title']
             tracklist = self.meta["tracks"]
 
             def gen_cover(track):
@@ -1056,7 +1063,7 @@ class Playlist(Tracklist):
         for track in self:
             track.download(parent_folder=folder, quality=quality, database=database)
             if self.client.source != "deezer":
-                track.tag()
+                track.tag(embed_cover=kwargs.get('embed_cover', True))
 
     @staticmethod
     def _parse_get_resp(item: dict, client: ClientInterface):
@@ -1068,10 +1075,11 @@ class Playlist(Tracklist):
         :param client:
         :type client: ClientInterface
         """
+        print(item.keys())
         if client.source == "qobuz":
             return {
-                "name": item.get("name"),
-                "id": item.get("id"),
+                "name": item["name"],
+                "id": item['id'],
             }
         elif client.source == "tidal":
             return {
@@ -1085,6 +1093,10 @@ class Playlist(Tracklist):
             }
 
         raise InvalidSourceError(client.source)
+
+    @property
+    def title(self):
+        return self.name
 
     def __repr__(self) -> str:
         """Return a string representation of this Playlist object.
