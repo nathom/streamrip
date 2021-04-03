@@ -737,7 +737,7 @@ class Album(Tracklist):
                 "title": resp.get("title"),
                 "_artist": safe_get(resp, "artist", "name"),
                 "albumartist": safe_get(resp, "artist", "name"),
-                "year": str(resp.get("year"))[:4],
+                "year": resp.get("release_date")[:4],
                 # version not given by API
                 "cover_urls": {
                     sk: resp.get(rk)  # size key, resp key
