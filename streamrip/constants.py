@@ -71,6 +71,7 @@ __MP4_KEYS = (
     "covr",
     "trkn",
     "disk",
+    None,
 )
 
 __MP3_KEYS = (
@@ -92,6 +93,7 @@ __MP3_KEYS = (
     None,
     id3.TRCK,
     id3.TPOS,
+    None,
 )
 
 __METADATA_TYPES = (
@@ -113,6 +115,7 @@ __METADATA_TYPES = (
     "cover",
     "tracknumber",
     "discnumber",
+    "tracktotal",
 )
 
 
