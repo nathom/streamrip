@@ -71,9 +71,9 @@ class MusicDL(list):
                 f"Enter {capitalize(source)} password (will not show on screen):",
                 fg="green",
             )
-            self.config.file[source]["password"] = md5(getpass(
-                prompt=""
-            ).encode('utf-8')).hexdigest()
+            self.config.file[source]["password"] = md5(
+                getpass(prompt="").encode("utf-8")
+            ).hexdigest()
 
             self.config.save()
             click.secho(f'Credentials saved to config file at "{self.config._path}"')

@@ -1,4 +1,5 @@
 import logging
+import sys
 import os
 import re
 import shutil
@@ -251,7 +252,7 @@ class Track:
 
         self.cover_path = os.path.join(self.folder, f"cover{hash(self.meta.album)}.jpg")
         logger.debug(f"Downloading cover from {self.cover_url}")
-        click.secho(f"\nDownloading cover art for {self!s}", fg='blue')
+        click.secho(f"\nDownloading cover art for {self!s}", fg="blue")
 
         if not os.path.exists(self.cover_path):
             tqdm_download(self.cover_url, self.cover_path)
@@ -573,7 +574,7 @@ class Tracklist(list):
         :type quality: int
         :rtype: Union[Picture, APIC]
         """
-        cover_type = {1: APIC, 2: Picture, 3: Picture, 4: Picture}
+        cover_type = {0: APIC, 1: APIC, 2: Picture, 3: Picture, 4: Picture}
 
         cover = cover_type.get(quality)
         if cover is Picture:
@@ -731,7 +732,6 @@ class Album(Tracklist):
                 "tracktotal": resp.get("numberOfTracks"),
             }
         elif client.source == "deezer":
-            logger.debug(pformat(resp))
             return {
                 "id": resp.get("id"),
                 "title": resp.get("title"),
@@ -751,6 +751,25 @@ class Album(Tracklist):
                 "bit_depth": 16,
                 "sampling_rate": 44100,
                 "tracktotal": resp.get("track_total") or resp.get("nb_tracks"),
+            }
+        elif client.source == 'soundcloud':
+            print(resp.keys())
+            return {
+                "id": resp['id'],
+                "title": resp['title'],
+                "_artist": resp['user']['username'],
+                "albumartist": resp['user']['username'],
+                "year": resp['created_at'][:4],
+                "cover_urls": {
+                    "small": resp['artwork_url'],
+                    "large": resp['artwork_url'].replace('large', 't500x500') if resp['artwork_url'] is not None else None
+                },
+                "url": resp['uri'],
+                "streamable": True,  # assume to be true for convenience
+                "quality": 0,  # always 128 kbps mp3
+                # no bit depth
+                # no sampling rate
+                "tracktotal": resp['track_count'],
             }
 
         raise InvalidSourceError(client.source)
@@ -794,7 +813,7 @@ class Album(Tracklist):
 
     def download(
         self,
-        quality: int = 7,
+        quality: int = 3,
         parent_folder: Union[str, os.PathLike] = "StreamripDownloads",
         database: MusicDB = None,
         **kwargs,
@@ -829,7 +848,7 @@ class Album(Tracklist):
             logger.debug("Cover already downloaded: %s. Skipping", cover_path)
         else:
             click.secho("Downloading cover art", fg="magenta")
-            if kwargs.get("large_cover", False):
+            if kwargs.get("large_cover", True):
                 cover_url = self.cover_urls.get("large")
                 if self.client.source == "qobuz":
                     tqdm_download(cover_url.replace("600", "org"), cover_path)
@@ -847,7 +866,7 @@ class Album(Tracklist):
             else:
                 tqdm_download(self.cover_urls["small"], cover_path)
 
-        embed_cover = kwargs.get('embed_cover', True)  # embed by default
+        embed_cover = kwargs.get("embed_cover", True)  # embed by default
         if self.client.source != "deezer" and embed_cover:
             cover = self.get_cover_obj(cover_path, quality)
 
@@ -881,17 +900,18 @@ class Album(Tracklist):
             else:
                 fmt[key] = None
 
-        fmt["sampling_rate"] /= 1000
-        # 48.0kHz -> 48kHz, 44.1kHz -> 44.1kHz
-        if fmt["sampling_rate"] % 1 == 0.0:
-            fmt["sampling_rate"] = int(fmt["sampling_rate"])
+        if fmt.get('sampling_rate', False):
+            fmt["sampling_rate"] /= 1000
+            # 48.0kHz -> 48kHz, 44.1kHz -> 44.1kHz
+            if fmt["sampling_rate"] % 1 == 0.0:
+                fmt["sampling_rate"] = int(fmt["sampling_rate"])
 
         return fmt
 
     def _get_formatted_folder(self, parent_folder: str) -> str:
         if self.bit_depth is not None and self.sampling_rate is not None:
             self.container = "FLAC"
-        elif self.client.source in ("qobuz", "deezer"):
+        elif self.client.source in ("qobuz", "deezer", "soundcloud"):
             self.container = "MP3"
         elif self.client.source == "tidal":
             self.container = "AAC"
@@ -983,7 +1003,7 @@ class Playlist(Tracklist):
         :type new_tracknumbers: bool
         """
         if self.client.source == "qobuz":
-            self.name = self.meta['name']
+            self.name = self.meta["name"]
             tracklist = self.meta["tracks"]["items"]
 
             def gen_cover(track):  # ?
@@ -993,7 +1013,7 @@ class Playlist(Tracklist):
                 return {"track": track, "album": track["album"]}
 
         elif self.client.source == "tidal":
-            self.name = self.meta['title']
+            self.name = self.meta["title"]
             tracklist = self.meta["tracks"]
 
             def gen_cover(track):
@@ -1007,7 +1027,7 @@ class Playlist(Tracklist):
                 }
 
         elif self.client.source == "deezer":
-            self.name = self.meta['title']
+            self.name = self.meta["title"]
             tracklist = self.meta["tracks"]
 
             def gen_cover(track):
@@ -1063,7 +1083,7 @@ class Playlist(Tracklist):
         for track in self:
             track.download(parent_folder=folder, quality=quality, database=database)
             if self.client.source != "deezer":
-                track.tag(embed_cover=kwargs.get('embed_cover', True))
+                track.tag(embed_cover=kwargs.get("embed_cover", True))
 
     @staticmethod
     def _parse_get_resp(item: dict, client: ClientInterface):
@@ -1079,7 +1099,7 @@ class Playlist(Tracklist):
         if client.source == "qobuz":
             return {
                 "name": item["name"],
-                "id": item['id'],
+                "id": item["id"],
             }
         elif client.source == "tidal":
             return {

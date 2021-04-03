@@ -7,3 +7,5 @@ test.py
 /urls.txt
 *.flac
 /Downloads
+*.mp3
+StreamripDownloads

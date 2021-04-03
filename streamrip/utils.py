@@ -108,7 +108,7 @@ def tqdm_download(url: str, filepath: str):
     r = requests.get(url, allow_redirects=True, stream=True)
     total = int(r.headers.get("content-length", 0))
     logger.debug(f"File size = {total}")
-    if total < 1000:
+    if total < 1000 and not url.endswith('jpg'):
         raise NonStreamable
 
     try:
