@@ -89,7 +89,6 @@ class TrackMetadata:
         if self.__source == "qobuz":
             self.album = resp.get("title")
             self.tracktotal = str(resp.get("tracks_count", 1))
-            print(f"{self.tracktotal=}")
             self.genre = resp.get("genres_list", [])
             self.date = resp.get("release_date_original") or resp.get("release_date")
             self.copyright = resp.get("copyright")
