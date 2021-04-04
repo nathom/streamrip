@@ -660,14 +660,12 @@ class SoundCloudClient(ClientInterface):
         raise NotImplementedError
 
     def get(self, id=None, url=None, media_type="track"):
-        assert media_type in ("track", "playlist", "album"), f"{media_type} not supported"
-        if media_type == 'album':
-            media_type = 'playlist'
+        assert media_type in ("track", "playlist"), f"{media_type} not supported"
 
         if url is not None:
             resp, status = self._get(f"resolve?url={url}")
         elif id is not None:
-            resp, _ = self._get(f"tracks/{id}")
+            resp, _ = self._get(f"{media_type}s/{id}")
         else:
             raise Exception("Must provide id or url")
 

@@ -1,4 +1,5 @@
 import logging
+from pprint import pprint
 import sys
 import os
 import re
@@ -752,25 +753,6 @@ class Album(Tracklist):
                 "sampling_rate": 44100,
                 "tracktotal": resp.get("track_total") or resp.get("nb_tracks"),
             }
-        elif client.source == 'soundcloud':
-            print(resp.keys())
-            return {
-                "id": resp['id'],
-                "title": resp['title'],
-                "_artist": resp['user']['username'],
-                "albumartist": resp['user']['username'],
-                "year": resp['created_at'][:4],
-                "cover_urls": {
-                    "small": resp['artwork_url'],
-                    "large": resp['artwork_url'].replace('large', 't500x500') if resp['artwork_url'] is not None else None
-                },
-                "url": resp['uri'],
-                "streamable": True,  # assume to be true for convenience
-                "quality": 0,  # always 128 kbps mp3
-                # no bit depth
-                # no sampling rate
-                "tracktotal": resp['track_count'],
-            }
 
         raise InvalidSourceError(client.source)
 
@@ -950,7 +932,7 @@ class Playlist(Tracklist):
     """Represents a downloadable playlist.
 
     Usage:
-    >>> resp = client.get('hip hop', 'playlist')
+    >>> resp = client.search('hip hop', 'playlist')
     >>> pl = Playlist.from_api(resp['items'][0], client)
     >>> pl.load_meta()
     >>> pl.download()
@@ -993,7 +975,7 @@ class Playlist(Tracklist):
         :type new_tracknumbers: bool
         :param kwargs:
         """
-        self.meta = self.client.get(self.id, "playlist")
+        self.meta = self.client.get(id=self.id, media_type="playlist")
         self._load_tracks(**kwargs)
 
     def _load_tracks(self, new_tracknumbers: bool = True):
@@ -1035,6 +1017,10 @@ class Playlist(Tracklist):
 
             def meta_args(track):
                 return {"track": track, "source": self.client.source}
+
+        elif self.client.source == 'soundcloud':
+            self.name = self.meta['title']
+            tracklist = self.meta['tracks']
 
         else:
             raise NotImplementedError
