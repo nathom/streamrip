@@ -58,13 +58,14 @@ def cli(ctx, **kwargs):
         config.session["conversion"]["enabled"] = True
         config.session["conversion"]["codec"] = kwargs["convert"]
     if kwargs["quality"] is not None:
-        if kwargs["quality"] not in range(5):
+        quality = int(kwargs['quality'])
+        if quality not in range(5):
             click.secho("Invalid quality", fg="red")
             return
 
-        config.session["qobuz"]["quality"] = kwargs["quality"]
-        config.session["tidal"]["quality"] = kwargs["quality"]
-        config.session["deezer"]["quality"] = kwargs["quality"]
+        config.session["qobuz"]["quality"] = quality
+        config.session["tidal"]["quality"] = quality
+        config.session["deezer"]["quality"] = quality
 
     core = MusicDL(config)
 

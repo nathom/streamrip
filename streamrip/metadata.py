@@ -330,7 +330,7 @@ class TrackMetadata:
             else:
                 text = getattr(self, k)
 
-            if text is not None:
+            if text is not None and v is not None:
                 yield (v.__name__, v(encoding=3, text=text))
 
     def __mp4_tags(self) -> Tuple[str, str]:

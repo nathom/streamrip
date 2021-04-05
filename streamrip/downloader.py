@@ -1,4 +1,5 @@
 import logging
+from pprint import pprint
 import os
 import re
 import shutil
@@ -671,6 +672,7 @@ class Album(Tracklist):
     def load_meta(self):
         assert hasattr(self, "id"), "id must be set to load metadata"
         self.meta = self.client.get(self.id, media_type="album")
+        pprint(self.meta)
 
         # update attributes based on response
         for k, v in self._parse_get_resp(self.meta, self.client).items():
@@ -695,6 +697,11 @@ class Album(Tracklist):
         :rtype: dict
         """
         if client.source == "qobuz":
+            if resp.get("maximum_sampling_rate", False):
+                sampling_rate = resp['maximum_sampling_rate'] * 1000
+            else:
+                sampling_rate = None
+
             return {
                 "id": resp.get("id"),
                 "title": resp.get("title"),
@@ -709,7 +716,7 @@ class Album(Tracklist):
                     resp.get("maximum_bit_depth"), resp.get("maximum_sampling_rate")
                 ),
                 "bit_depth": resp.get("maximum_bit_depth"),
-                "sampling_rate": resp.get("maximum_sampling_rate") * 1000,
+                "sampling_rate": sampling_rate,
                 "tracktotal": resp.get("tracks_count"),
             }
         elif client.source == "tidal":
