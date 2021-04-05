@@ -97,7 +97,7 @@ class Converter:
             "-i",
             self.filename,
             "-loglevel",
-            "warning",
+            "panic",
             "-c:a",
             self.codec_lib,
         ]

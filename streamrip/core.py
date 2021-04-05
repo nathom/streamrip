@@ -9,9 +9,9 @@ from typing import Generator, Optional, Tuple, Union
 
 import click
 
-from .clients import DeezerClient, QobuzClient, TidalClient
+from .clients import DeezerClient, QobuzClient, SoundCloudClient, TidalClient
 from .config import Config
-from .constants import CONFIG_PATH, DB_PATH, URL_REGEX
+from .constants import CONFIG_PATH, DB_PATH, SOUNDCLOUD_URL_REGEX, URL_REGEX
 from .db import MusicDB
 from .downloader import Album, Artist, Label, Playlist, Track
 from .exceptions import AuthenticationError, ParsingError
@@ -27,7 +27,6 @@ MEDIA_CLASS = {
     "track": Track,
     "label": Label,
 }
-CLIENTS = {"qobuz": QobuzClient, "tidal": TidalClient, "deezer": DeezerClient}
 Media = Union[Album, Playlist, Artist, Track]
 
 
@@ -38,6 +37,7 @@ class MusicDL(list):
     ):
 
         self.url_parse = re.compile(URL_REGEX)
+        self.soundcloud_url_parse = re.compile(SOUNDCLOUD_URL_REGEX)
         self.config = config
         if self.config is None:
             self.config = Config(CONFIG_PATH)
@@ -46,6 +46,7 @@ class MusicDL(list):
             "qobuz": QobuzClient(),
             "tidal": TidalClient(),
             "deezer": DeezerClient(),
+            "soundcloud": SoundCloudClient(),
         }
 
         if config.session["database"]["enabled"]:
@@ -81,9 +82,17 @@ class MusicDL(list):
             raise Exception
 
     def assert_creds(self, source: str):
-        assert source in ("qobuz", "tidal", "deezer"), f"Invalid source {source}"
+        assert source in (
+            "qobuz",
+            "tidal",
+            "deezer",
+            "soundcloud",
+        ), f"Invalid source {source}"
         if source == "deezer":
             # no login for deezer
+            return
+
+        if source == "soundcloud":
             return
 
         if source == "qobuz" and (
@@ -201,6 +210,12 @@ class MusicDL(list):
         :raises exceptions.ParsingError
         """
         parsed = self.url_parse.findall(url)
+        soundcloud_urls = self.soundcloud_url_parse.findall(url)
+        if len(soundcloud_urls) > 0:
+            parsed.extend(
+                self.clients["soundcloud"].resolve(u) for u in soundcloud_urls
+            )
+
         logger.debug(f"Parsed urls: {parsed}")
 
         if parsed != []:

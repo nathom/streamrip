@@ -19,6 +19,7 @@ AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:83.0) Gecko/20100101 Firef
 TIDAL_COVER_URL = "https://resources.tidal.com/images/{uuid}/{width}x{height}.jpg"
 
 EXT = {
+    0: ".mp3",
     1: ".mp3",
     2: ".flac",
     3: ".flac",
@@ -137,6 +138,8 @@ URL_REGEX = (
     r"https:\/\/(?:www|open|play|listen)?\.?(\w+)\.com(?:(?:\/(track|playlist|album|"
     r"artist|label))|(?:\/[-\w]+?))+\/([-\w]+)"
 )
+SOUNDCLOUD_URL_REGEX = r"https://soundcloud.com/[-\w:]+"
+SOUNDCLOUD_CLIENT_ID = "a3e059563d7fd3372b49b37f00a00bcf"
 
 
 TIDAL_MAX_Q = 7

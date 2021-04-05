@@ -96,7 +96,7 @@ def get_quality_id(bit_depth: Optional[int], sampling_rate: Optional[int]):
         return 4
 
 
-def tqdm_download(url: str, filepath: str):
+def tqdm_download(url: str, filepath: str, params: dict = None):
     """Downloads a file with a progress bar.
 
     :param url: url to direct download
@@ -104,11 +104,14 @@ def tqdm_download(url: str, filepath: str):
     :type url: str
     :type filepath: str
     """
-    logger.debug(f"Downloading {url} to {filepath}")
-    r = requests.get(url, allow_redirects=True, stream=True)
+    logger.debug(f"Downloading {url} to {filepath} with params {params}")
+    if params is None:
+        params = {}
+
+    r = requests.get(url, allow_redirects=True, stream=True, params=params)
     total = int(r.headers.get("content-length", 0))
     logger.debug(f"File size = {total}")
-    if total < 1000 and not url.endswith('jpg'):
+    if total < 1000 and not url.endswith("jpg"):
         raise NonStreamable
 
     try:
