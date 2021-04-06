@@ -1,10 +1,10 @@
 import logging
-from pprint import pprint
 import os
 import re
 import sys
 from getpass import getpass
 from hashlib import md5
+from pprint import pprint
 from string import Formatter
 from typing import Generator, Optional, Tuple, Union
 
@@ -12,7 +12,13 @@ import click
 
 from .clients import DeezerClient, QobuzClient, SoundCloudClient, TidalClient
 from .config import Config
-from .constants import (CONFIG_PATH, DB_PATH, SOUNDCLOUD_URL_REGEX, URL_REGEX, MEDIA_TYPES)
+from .constants import (
+    CONFIG_PATH,
+    DB_PATH,
+    MEDIA_TYPES,
+    SOUNDCLOUD_URL_REGEX,
+    URL_REGEX,
+)
 from .db import MusicDB
 from .downloader import Album, Artist, Label, Playlist, Track
 from .exceptions import AuthenticationError, ParsingError
@@ -129,8 +135,8 @@ class MusicDL(list):
         client = self.get_client(source)
 
         if media_type not in MEDIA_TYPES:
-            if 'playlist' in media_type:  # for SoundCloud
-                media_type = 'playlist'
+            if "playlist" in media_type:  # for SoundCloud
+                media_type = "playlist"
 
         assert media_type in MEDIA_TYPES, media_type
         item = MEDIA_CLASS[media_type](client=client, id=item_id)
@@ -265,7 +271,9 @@ class MusicDL(list):
                     if i > limit:
                         return
         else:
-            for item in results.get("data") or results.get("items"):
+            for item in (
+                results.get("data") or results.get("items") or results.get("collection")
+            ):
                 yield MEDIA_CLASS[media_type].from_api(item, client)
                 i += 1
                 if i > limit:
@@ -283,6 +291,13 @@ class MusicDL(list):
             fmt = "{name}"
         elif isinstance(media, Track):
             fmt = "{artist} - {title}\nReleased on {year}"
+        elif isinstance(media, Playlist):
+            fmt = (
+                "{title}\n"
+                "{tracktotal} tracks\n"
+                "{popularity}\n"
+                "Description: {description}"
+            )
         else:
             raise NotImplementedError
 
@@ -301,7 +316,7 @@ class MusicDL(list):
         def from_title(s):
             num = []
             for char in s:
-                if char.isdigit():
+                if char != '.':
                     num.append(char)
                 else:
                     break

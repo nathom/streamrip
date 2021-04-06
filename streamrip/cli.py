@@ -58,7 +58,7 @@ def cli(ctx, **kwargs):
         config.session["conversion"]["enabled"] = True
         config.session["conversion"]["codec"] = kwargs["convert"]
     if kwargs["quality"] is not None:
-        quality = int(kwargs['quality'])
+        quality = int(kwargs["quality"])
         if quality not in range(5):
             click.secho("Invalid quality", fg="red")
             return

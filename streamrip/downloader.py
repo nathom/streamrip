@@ -1,5 +1,4 @@
 import logging
-from pprint import pprint
 import os
 import re
 import shutil
@@ -133,7 +132,9 @@ class Track:
             elif self.client.source == "deezer":
                 self.cover_url = self.resp["album"]["cover_medium"]
             elif self.client.source == "soundcloud":
-                self.cover_url = (self.resp["artwork_url"] or self.resp['user'].get("avatar_url")).replace("large", "t500x500")
+                self.cover_url = (
+                    self.resp["artwork_url"] or self.resp["user"].get("avatar_url")
+                ).replace("large", "t500x500")
             else:
                 raise InvalidSourceError(self.client.source)
         except KeyError:
@@ -241,7 +242,7 @@ class Track:
                     [
                         "ffmpeg",
                         "-i",
-                        dl_info['url'],
+                        dl_info["url"],
                         "-c",
                         "copy",
                         "-y",
@@ -718,6 +719,9 @@ class Album(Tracklist):
 
     @classmethod
     def from_api(cls, resp, client):
+        if client.source == "soundcloud":
+            return Playlist.from_api(resp, client)
+
         info = cls._parse_get_resp(resp, client)
         return cls(client, **info)
 
@@ -731,7 +735,7 @@ class Album(Tracklist):
         """
         if client.source == "qobuz":
             if resp.get("maximum_sampling_rate", False):
-                sampling_rate = resp['maximum_sampling_rate'] * 1000
+                sampling_rate = resp["maximum_sampling_rate"] * 1000
             else:
                 sampling_rate = None
 
@@ -1063,6 +1067,7 @@ class Playlist(Tracklist):
         else:
             raise NotImplementedError
 
+        self.tracktotal = len(tracklist)
         if self.client.source == "soundcloud":
             # No meta is included in soundcloud playlist
             # response, so it is loaded at download time
@@ -1146,6 +1151,14 @@ class Playlist(Tracklist):
             return {
                 "name": item["title"],
                 "id": item["id"],
+            }
+        elif client.source == "soundcloud":
+            return {
+                "name": item["title"],
+                "id": item["permalink_url"],
+                "description": item["description"],
+                "popularity": f"{item['likes_count']} likes",
+                "tracktotal": len(item["tracks"]),
             }
 
         raise InvalidSourceError(client.source)
