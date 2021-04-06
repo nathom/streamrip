@@ -4,7 +4,6 @@ import json
 import logging
 import time
 from abc import ABC, abstractmethod
-from pprint import pformat, pprint
 from typing import Generator, Sequence, Tuple, Union
 
 import click
@@ -491,7 +490,7 @@ class TidalClient(ClientInterface):
         }
         resp = self._api_request(f"tracks/{track_id}/playbackinfopostpaywall", params)
         manifest = json.loads(base64.b64decode(resp["manifest"]).decode("utf-8"))
-        logger.debug(f"{pformat(manifest)}")
+        logger.debug(manifest)
         return {
             "url": manifest["urls"][0],
             "enc_key": manifest.get("keyId"),
@@ -547,7 +546,6 @@ class TidalClient(ClientInterface):
         if "status" in resp and resp["status"] != 200:
             raise Exception(f"Device authorization failed {resp}")
 
-        logger.debug(pformat(resp))
         self.device_code = resp["deviceCode"]
         self.user_code = resp["userCode"]
         self.user_code_expiry = resp["expiresIn"]

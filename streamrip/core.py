@@ -4,7 +4,6 @@ import re
 import sys
 from getpass import getpass
 from hashlib import md5
-from pprint import pprint
 from string import Formatter
 from typing import Generator, Optional, Tuple, Union
 
@@ -316,7 +315,7 @@ class MusicDL(list):
         def from_title(s):
             num = []
             for char in s:
-                if char != '.':
+                if char != ".":
                     num.append(char)
                 else:
                     break

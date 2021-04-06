@@ -3,13 +3,11 @@ import os
 import re
 import shutil
 import subprocess
-import sys
 from pprint import pformat, pprint
 from tempfile import gettempdir
 from typing import Any, Callable, Optional, Tuple, Union
 
 import click
-import requests
 from mutagen.flac import FLAC, Picture
 from mutagen.id3 import APIC, ID3, ID3NoHeaderError
 from pathvalidate import sanitize_filename, sanitize_filepath
@@ -21,7 +19,6 @@ from .constants import (
     EXT,
     FLAC_MAX_BLOCKSIZE,
     FOLDER_FORMAT,
-    SOUNDCLOUD_CLIENT_ID,
     TRACK_FORMAT,
 )
 from .db import MusicDB
@@ -99,8 +96,8 @@ class Track:
         self.sampling_rate = 44100
         self.bit_depth = 16
 
-        self._is_downloaded = False
-        self._is_tagged = False
+        self.downloaded = False
+        self.tagged = False
         for attr in ("quality", "folder", "meta"):
             setattr(self, attr, None)
 
@@ -180,8 +177,8 @@ class Track:
 
         if database is not None:
             if self.id in database:
-                self._is_downloaded = True
-                self._is_tagged = True
+                self.downloaded = True
+                self.tagged = True
                 click.secho(
                     f"{self['title']} already logged in database, skipping.",
                     fg="magenta",
@@ -189,8 +186,8 @@ class Track:
                 return False  # because the track was not downloaded
 
         if os.path.isfile(self.format_final_path()):  # track already exists
-            self._is_downloaded = True
-            self._is_tagged = True
+            self.downloaded = True
+            self.tagged = True
             click.secho(f"Track already downloaded: {self.final_path}", fg="magenta")
             return False
 
@@ -235,32 +232,8 @@ class Track:
                 return False
 
         elif self.client.source == "soundcloud":
-            if dl_info["type"] == "mp3":
-                temp_file += ".mp3"
-                # convert hls stream to mp3
-                subprocess.call(
-                    [
-                        "ffmpeg",
-                        "-i",
-                        dl_info["url"],
-                        "-c",
-                        "copy",
-                        "-y",
-                        temp_file,
-                        "-loglevel",
-                        "fatal",
-                    ]
-                )
-            elif dl_info["type"] == "original":
-                tqdm_download(dl_info["url"], temp_file)
+            temp_file = self._soundcloud_download(dl_info, temp_file)
 
-                # if a wav is returned, convert to flac
-                engine = converter.FLAC(temp_file)
-                temp_file = f"{temp_file}.flac"
-                engine.convert(custom_fn=temp_file)
-
-                self.final_path = self.final_path.replace(".mp3", ".flac")
-                self.quality = 2
         else:
             raise InvalidSourceError(self.client.source)
 
@@ -275,7 +248,7 @@ class Track:
 
         logger.debug("Downloaded: %s -> %s", temp_file, self.final_path)
 
-        self._is_downloaded = True
+        self.downloaded = True
 
         if tag:
             self.tag()
@@ -284,6 +257,36 @@ class Track:
             os.remove(self.cover_path)
 
         return True
+
+    def _soundcloud_download(self, dl_info: dict, temp_file: str) -> str:
+        if dl_info["type"] == "mp3":
+            temp_file += ".mp3"
+            # convert hls stream to mp3
+            subprocess.call(
+                [
+                    "ffmpeg",
+                    "-i",
+                    dl_info["url"],
+                    "-c",
+                    "copy",
+                    "-y",
+                    temp_file,
+                    "-loglevel",
+                    "fatal",
+                ]
+            )
+        elif dl_info["type"] == "original":
+            tqdm_download(dl_info["url"], temp_file)
+
+            # if a wav is returned, convert to flac
+            engine = converter.FLAC(temp_file)
+            temp_file = f"{temp_file}.flac"
+            engine.convert(custom_fn=temp_file)
+
+            self.final_path = self.final_path.replace(".mp3", ".flac")
+            self.quality = 2
+
+        return temp_file
 
     def download_cover(self):
         """Downloads the cover art, if cover_url is given."""
@@ -378,13 +381,13 @@ class Track:
         :type embed_cover: bool
         """
         assert isinstance(self.meta, TrackMetadata), "meta must be TrackMetadata"
-        if not self._is_downloaded:
+        if not self.downloaded:
             logger.info(
                 "Track %s not tagged because it was not downloaded", self["title"]
             )
             return
 
-        if self._is_tagged:
+        if self.tagged:
             logger.info(
                 "Track %s not tagged because it is already tagged", self["title"]
             )
@@ -426,7 +429,7 @@ class Track:
         else:
             raise ValueError(f"Unknown container type: {audio}")
 
-        self._is_tagged = True
+        self.tagged = True
 
     def convert(self, codec: str = "ALAC", **kwargs):
         """Converts the track to another codec.
@@ -445,7 +448,7 @@ class Track:
         :type codec: str
         :param kwargs:
         """
-        if not self._is_downloaded:
+        if not self.downloaded:
             logger.debug("Track not downloaded, skipping conversion")
             click.secho("Track not downloaded, skipping conversion", fg="magenta")
             return
@@ -775,12 +778,17 @@ class Album(Tracklist):
                 "tracktotal": resp.get("numberOfTracks"),
             }
         elif client.source == "deezer":
+            if resp.get("release_date", False):
+                year = resp["release_date"][:4]
+            else:
+                year = None
+
             return {
                 "id": resp.get("id"),
                 "title": resp.get("title"),
                 "_artist": safe_get(resp, "artist", "name"),
                 "albumartist": safe_get(resp, "artist", "name"),
-                "year": resp.get("release_date")[:4],
+                "year": year,
                 # version not given by API
                 "cover_urls": {
                     sk: resp.get(rk)  # size key, resp key
