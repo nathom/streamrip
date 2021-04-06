@@ -2,6 +2,7 @@ import json
 import logging
 import re
 import sys
+from pprint import pprint
 from typing import Generator, Optional, Tuple, Union
 
 from .constants import (
@@ -114,9 +115,10 @@ class TrackMetadata:
             self.date = resp.get("release_date")
             self.albumartist = resp.get("artist", {}).get("name")
             self.label = resp.get("label")
-
+        elif self.__source == "soundcloud":
+            raise Exception
         else:
-            raise ValueError
+            raise ValueError(self.__source)
 
     def add_track_meta(self, track: dict):
         """Parse the metadata from a track dict returned by the
@@ -151,8 +153,19 @@ class TrackMetadata:
             self.discnumber = track.get("disk_number")
             self.artist = track.get("artist", {}).get("name")
 
+        elif self.__source == "soundcloud":
+            self.title = track["title"].strip()
+            self.genre = track["genre"]
+            self.artist = track["user"]["username"]
+            self.albumartist = self.artist
+            self.year = track["created_at"][:4]
+            self.label = track["label_name"]
+            self.description = track["description"]
+            self.tracknumber = 0
+            self.tracktotal = 0
+
         else:
-            raise ValueError
+            raise ValueError(self.__source)
 
         if track.get("album"):
             self.add_album_meta(track["album"])

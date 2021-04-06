@@ -61,5 +61,5 @@ class MusicDB:
                 )
                 conn.commit()
             except sqlite3.Error as e:
-                if 'UNIQUE' not in str(e):
+                if "UNIQUE" not in str(e):
                     raise

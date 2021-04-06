@@ -7,7 +7,8 @@ test.py
 /urls.txt
 *.flac
 /Downloads
-/Street Runner.mp3
 /StreamripDownloads
-/ADDYS.wav
 *.mp3
+*.mp3
+StreamripDownloads
+*.wav
