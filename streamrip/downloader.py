@@ -709,7 +709,6 @@ class Album(Tracklist):
     def load_meta(self):
         assert hasattr(self, "id"), "id must be set to load metadata"
         self.meta = self.client.get(self.id, media_type="album")
-        pprint(self.meta)
 
         # update attributes based on response
         for k, v in self._parse_get_resp(self.meta, self.client).items():
@@ -865,7 +864,8 @@ class Album(Tracklist):
         True by default.
         """
         self.folder_format = kwargs.get("folder_format", FOLDER_FORMAT)
-        folder = self._get_formatted_folder(parent_folder)
+        quality = min(quality, self.client.max_quality)
+        folder = self._get_formatted_folder(parent_folder, quality)
 
         os.makedirs(folder, exist_ok=True)
         logger.debug("Directory created: %s", folder)
@@ -940,15 +940,15 @@ class Album(Tracklist):
 
         return fmt
 
-    def _get_formatted_folder(self, parent_folder: str) -> str:
-        if self.bit_depth is not None and self.sampling_rate is not None:
-            self.container = "FLAC"
-        elif self.client.source in ("qobuz", "deezer", "soundcloud"):
-            self.container = "MP3"
-        elif self.client.source == "tidal":
-            self.container = "AAC"
+    def _get_formatted_folder(self, parent_folder: str, quality: int) -> str:
+        if quality >= 2:
+            self.container = 'FLAC'
         else:
-            raise Exception(f"{self.bit_depth}, {self.sampling_rate}")
+            self.bit_depth = self.sampling_rate = None
+            if self.client.source == 'tidal':
+                self.container = 'AAC'
+            else:
+                self.container = 'MP3'
 
         formatted_folder = clean_format(self.folder_format, self._get_formatter())
 

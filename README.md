@@ -1,10 +1,10 @@
 # streamrip
 
-A scriptable stream downloader for Qobuz, Tidal, and Deezer.
+A scriptable stream downloader for Qobuz, Tidal, Deezer and SoundCloud.
 
 ## Features
 
-- Downloads tracks, albums, playlists, discographies, and labels from Qobuz, Tidal, and Deezer
+- Downloads tracks, albums, playlists, discographies, and labels from Qobuz, Tidal, Deezer, and SoundCloud
 
 - Automatically converts files to a preferred format
 - Has a database that stores the downloaded tracks' IDs so that repeats are avoided
@@ -30,7 +30,7 @@ pip3 install streamrip windows-curses --upgrade
 
 
 
-If you would like to use `streamrip`'s conversion capabilities, install [ffmpeg](https://ffmpeg.org/download.html).
+If you would like to use `streamrip`'s conversion capabilities, or download music from SoundCloud, install [ffmpeg](https://ffmpeg.org/download.html).
 
 ## Example Usage
 
@@ -54,13 +54,13 @@ rip --convert mp3 -u https://open.qobuz.com/album/0060253780968
 
 To set the quality, use the `--quality` option to `0, 1, 2, 3, 4`:
 
-| Quality ID | Audio Quality         | Available Sources    |
-| ---------- | --------------------- | -------------------- |
-| 0          | 128 kbps MP3 or AAC   | Deezer, Tidal        |
-| 1          | 320 kbps MP3 or AAC   | Deezer, Tidal, Qobuz |
-| 2          | 16 bit, 44.1 kHz (CD) | Deezer, Tidal, Qobuz |
-| 3          | 24 bit, ≤ 96 kHz      | Tidal (MQA), Qobuz   |
-| 4          | 24 bit, ≤ 192 kHz     | Qobuz                |
+| Quality ID | Audio Quality         | Available Sources                            |
+| ---------- | --------------------- | -------------------------------------------- |
+| 0          | 128 kbps MP3 or AAC   | Deezer, Tidal, SoundCloud (most of the time) |
+| 1          | 320 kbps MP3 or AAC   | Deezer, Tidal, Qobuz, SoundCloud (rarely)    |
+| 2          | 16 bit, 44.1 kHz (CD) | Deezer, Tidal, Qobuz, SoundCloud (rarely)    |
+| 3          | 24 bit, ≤ 96 kHz      | Tidal (MQA), Qobuz, SoundCloud (rarely)      |
+| 4          | 24 bit, ≤ 192 kHz     | Qobuz                                        |
 
 
 
@@ -70,10 +70,10 @@ To set the quality, use the `--quality` option to `0, 1, 2, 3, 4`:
 rip --quality 3 https://tidal.com/browse/album/147569387
 ```
 
-Search for *Fleetwood Mac - Rumours* on Qobuz
+Search for albums matching `lil uzi vert` on SoundCloud
 
 ```bash
-rip search 'fleetwood mac rumours'
+rip search -s soundcloud 'lil uzi vert'
 ```
 
 ![streamrip interactive search](https://github.com/nathom/streamrip/blob/main/demo/interactive_search.png?raw=true)
@@ -155,6 +155,7 @@ Thanks to Vitiko98, Sorrow446, and DashLt for their contributions to this projec
 - [qobuz-dl](https://github.com/vitiko98/qobuz-dl)
 - [Qo-DL Reborn](https://github.com/badumbass/Qo-DL-Reborn)
 - [Tidal-Media-Downloader](https://github.com/yaronzz/Tidal-Media-Downloader)
+- [scdl](https://github.com/flyingrub/scdl)
 
 
 
