@@ -118,7 +118,9 @@ rip discover --list 'best-sellers'
 
 
 
-For more help and examples
+## Troubleshooting
+
+First, consult the help pages and their example commands.
 
 ```bash
 rip --help
@@ -140,7 +142,24 @@ rip discover --help
 rip config --help
 ```
 
-**This tool is still in development. If there are any features you would like to see, please open an issue.**
+Second, try resetting the config file with `rip config —reset`. Config errors often arise after an update where a new feature was added.
+
+
+
+If that doesn't work, open an issue on GitHub. Please include the traceback and the command you used. 
+
+
+
+## Contributions
+
+All contributions are appreciated! If you're new to Git, follow these steps to open your first Pull Request (PR):
+
+- Fork this repository
+- Clone the new repository
+- Commit your changes
+- Open a pull request to the `dev` branch
+
+Please document any functions or obscure lines of code.
 
 
 
