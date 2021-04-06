@@ -1,4 +1,5 @@
 import logging
+import sys
 import os
 import re
 import shutil
@@ -1263,30 +1264,26 @@ class Artist(Tracklist):
         :type filters: Optional[Tuple]
         :param no_repeats: Remove repeats
         :type no_repeats: bool
-        :param quality: in (4, 5, 6, 7, 27)
+        :param quality: in (0, 1, 2, 3, 4)
         :type quality: int
         """
         folder = sanitize_filename(self.name)
         folder = os.path.join(parent_folder, folder)
 
         logger.debug("Artist folder: %s", folder)
-
         logger.debug(f"Length of tracklist {len(self)}")
-        if no_repeats:
+        logger.debug(f"Filters: {filters}")
+
+        if 'repeats' in filters:
             final = self._remove_repeats(bit_depth=max, sampling_rate=min)
+            filters = tuple(f for f in filters if f != 'repeats')
         else:
             final = self
 
         if isinstance(filters, tuple) and self.client.source == "qobuz":
-            filters = [getattr(self, filter_) for filter_ in filters]
-            logger.debug("Filters: %s", filters)
-            for filter_ in filters:
-
-                def inter(album):
-                    """Intermediate function to pass self into f"""
-                    return filter_(self, album)
-
-                final = filter(inter, final)
+            filter_funcs = (getattr(self, f"_{filter_}") for filter_ in filters)
+            for func in filter_funcs:
+                final = filter(func, final)
 
         self.download_message()
         for album in final:
@@ -1294,6 +1291,7 @@ class Artist(Tracklist):
                 album.load_meta()
             except NonStreamable:
                 logger.info("Skipping album, not available to stream.")
+                continue
             album.download(
                 parent_folder=folder,
                 quality=quality,
@@ -1321,28 +1319,6 @@ class Artist(Tracklist):
         # equivalent to Artist(client=client, **info)
         return cls(client=client, **info)
 
-    def _remove_repeats(self, bit_depth=max, sampling_rate=max):
-        """Remove the repeated albums from self. May remove different
-        versions of the same album.
-
-        :param bit_depth: either max or min functions
-        :param sampling_rate: either max or min functions
-        """
-        groups = dict()
-        for album in self:
-            if (t := self.essence(album.title)) not in groups:
-                groups[t] = []
-            groups[t].append(album)
-
-        for group in groups.values():
-            assert bit_depth in (min, max) and sampling_rate in (min, max)
-            best_bd = bit_depth(a["bit_depth"] for a in group)
-            best_sr = sampling_rate(a["sampling_rate"] for a in group)
-            for album in group:
-                if album["bit_depth"] == best_bd and album["sampling_rate"] == best_sr:
-                    yield album
-                    break
-
     @staticmethod
     def _parse_get_resp(item: dict, client: ClientInterface):
         """Parse a result from a client.search call.
@@ -1369,11 +1345,30 @@ class Artist(Tracklist):
 
     # ----------- Filters --------------
 
-    @staticmethod
-    def studio_albums(artist, album: Album) -> bool:
-        """Passed as a parameter by the user.
+    def _remove_repeats(self, bit_depth=max, sampling_rate=max):
+        """Remove the repeated albums from self. May remove different
+        versions of the same album.
 
-        >>> artist.download(filters=Artist.studio_albums)
+        :param bit_depth: either max or min functions
+        :param sampling_rate: either max or min functions
+        """
+        groups = dict()
+        for album in self:
+            if (t := self.essence(album.title)) not in groups:
+                groups[t] = []
+            groups[t].append(album)
+
+        for group in groups.values():
+            assert bit_depth in (min, max) and sampling_rate in (min, max)
+            best_bd = bit_depth(a["bit_depth"] for a in group)
+            best_sr = sampling_rate(a["sampling_rate"] for a in group)
+            for album in group:
+                if album["bit_depth"] == best_bd and album["sampling_rate"] == best_sr:
+                    yield album
+                    break
+
+    def _non_studio_albums(self, album: Album) -> bool:
+        """Passed as a parameter by the user.
 
         This will download only studio albums.
 
@@ -1387,11 +1382,8 @@ class Artist(Tracklist):
             and TYPE_REGEXES["extra"].search(album.title) is None
         )
 
-    @staticmethod
-    def no_features(artist, album):
+    def _features(self, album):
         """Passed as a parameter by the user.
-
-        >>> artist.download(filters=Artist.no_features)
 
         This will download only albums where the requested
         artist is the album artist.
@@ -1401,13 +1393,10 @@ class Artist(Tracklist):
         :type album: Album
         :rtype: bool
         """
-        return artist["name"] == album["albumartist"]
+        return self["name"] == album["albumartist"]
 
-    @staticmethod
-    def no_extras(artist, album):
+    def _extras(self, album):
         """Passed as a parameter by the user.
-
-        >>> artist.download(filters=Artist.no_extras)
 
         This will skip any extras.
 
@@ -1418,11 +1407,8 @@ class Artist(Tracklist):
         """
         return TYPE_REGEXES["extra"].search(album.title) is None
 
-    @staticmethod
-    def remaster_only(artist, album):
+    def _non_remasters(self, album):
         """Passed as a parameter by the user.
-
-        >>> artist.download(filters=Artist.remaster_only)
 
         This will download only remasterd albums.
 
@@ -1433,11 +1419,8 @@ class Artist(Tracklist):
         """
         return TYPE_REGEXES["remaster"].search(album.title) is not None
 
-    @staticmethod
-    def albums_only(artist, album):
+    def _non_albums(self, album):
         """This will ignore non-album releases.
-
-        >>> artist.download(filters=(albums_only))
 
         :param artist: usually self
         :param album: the album to check

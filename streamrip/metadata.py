@@ -170,7 +170,6 @@ class TrackMetadata:
 
     def _mod_title(self, version, work):
         if version is not None:
-            logger.debug("Version found: %s", version)
             self.title = f"{self.title} ({version})"
         if work is not None:
             logger.debug("Work found: %s", work)

@@ -104,7 +104,7 @@ def filter_discography(ctx, **kwargs):
     """
 
     filters = kwargs.copy()
-    filters.remove("urls")
+    filters.pop("urls")
     config.session["filters"] = filters
     logger.debug(f"downloading {kwargs['urls']} with filters {filters}")
     core.handle_urls(" ".join(kwargs["urls"]))
