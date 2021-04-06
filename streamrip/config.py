@@ -54,6 +54,9 @@ class Config:
         "deezer": {
             "quality": 2,
         },
+        "soundcloud": {
+            "quality": 0,
+        },
         "database": {"enabled": True, "path": None},
         "conversion": {
             "enabled": False,

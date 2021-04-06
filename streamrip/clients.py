@@ -4,7 +4,7 @@ import json
 import logging
 import time
 from abc import ABC, abstractmethod
-from pprint import pformat  # , pprint
+from pprint import pformat, pprint
 from typing import Generator, Sequence, Tuple, Union
 
 import click
@@ -16,6 +16,7 @@ from .constants import (
     AVAILABLE_QUALITY_IDS,
     DEEZER_MAX_Q,
     QOBUZ_FEATURED_KEYS,
+    SOUNDCLOUD_CLIENT_ID,
     TIDAL_MAX_Q,
 )
 from .exceptions import (
@@ -49,6 +50,9 @@ QOBUZ_BASE = "https://www.qobuz.com/api.json/0.2"
 # Deezer
 DEEZER_BASE = "https://api.deezer.com"
 DEEZER_DL = "http://dz.loaderapp.info/deezer"
+
+# SoundCloud
+SOUNDCLOUD_BASE = "https://api-v2.soundcloud.com"
 
 
 # ----------- Abstract Classes -----------------
@@ -101,12 +105,18 @@ class ClientInterface(ABC):
     def source(self):
         pass
 
+    @property
+    @abstractmethod
+    def max_quality(self):
+        pass
+
 
 # ------------- Clients -----------------
 
 
 class QobuzClient(ClientInterface):
     source = "qobuz"
+    max_quality = 4
 
     # ------- Public Methods -------------
     def __init__(self):
@@ -361,6 +371,7 @@ class QobuzClient(ClientInterface):
 
 class DeezerClient(ClientInterface):
     source = "deezer"
+    max_quality = 2
 
     def __init__(self):
         self.session = requests.Session()
@@ -421,6 +432,7 @@ class DeezerClient(ClientInterface):
 
 class TidalClient(ClientInterface):
     source = "tidal"
+    max_quality = 3
 
     def __init__(self):
         self.logged_in = False
@@ -639,3 +651,66 @@ class TidalClient(ClientInterface):
     def _api_post(self, url, data, auth=None):
         r = requests.post(url, data=data, auth=auth, verify=False).json()
         return r
+
+
+class SoundCloudClient(ClientInterface):
+    source = "soundcloud"
+    max_quality = 0
+    logged_in = True
+
+    def login(self):
+        raise NotImplementedError
+
+    def get(self, id, media_type="track"):
+        assert media_type in ("track", "playlist"), f"{media_type} not supported"
+
+        if "http" in str(id):
+            resp, _ = self._get(f"resolve?url={id}")
+        elif media_type == "track":
+            resp, _ = self._get(f"{media_type}s/{id}")
+        else:
+            raise Exception(id)
+
+        return resp
+
+    def get_file_url(self, track: dict, quality) -> dict:
+        if not track["streamable"] or track["policy"] == "BLOCK":
+            raise Exception
+
+        if track["downloadable"] and track["has_downloads_left"]:
+            r = self._get(f"tracks/{track['id']}/download", resp_obj=True)
+            return {"url": r.json()["redirectUri"], "type": "original"}
+
+        else:
+            url = None
+            for tc in track["media"]["transcodings"]:
+                fmt = tc["format"]
+                if fmt["protocol"] == "hls" and fmt["mime_type"] == "audio/mpeg":
+                    url = tc["url"]
+                    break
+
+            assert url is not None
+
+            resp, _ = self._get(url, no_base=True)
+            return {"url": resp["url"], "type": "mp3"}
+
+    def search(self, query: str, media_type="album"):
+        params = {"q": query}
+        resp, _ = self._get(f"search/{media_type}s", params=params)
+        return resp
+
+    def _get(self, path, params=None, no_base=False, resp_obj=False):
+        if params is None:
+            params = {}
+        params["client_id"] = SOUNDCLOUD_CLIENT_ID
+        if no_base:
+            url = path
+        else:
+            url = f"{SOUNDCLOUD_BASE}/{path}"
+
+        logger.debug(f"Fetching url {url}")
+        r = requests.get(url, params=params)
+        if resp_obj:
+            return r
+
+        return r.json(), r.status_code

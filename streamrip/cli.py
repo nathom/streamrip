@@ -206,7 +206,7 @@ def config(ctx, **kwargs):
         config.reset()
 
     if kwargs["open"]:
-        click.secho(f"Opening {CONFIG_PATH}", fg='green')
+        click.secho(f"Opening {CONFIG_PATH}", fg="green")
         click.launch(CONFIG_PATH)
 
     if kwargs["qobuz"]:
