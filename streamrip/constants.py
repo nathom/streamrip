@@ -135,13 +135,14 @@ FOLDER_FORMAT = (
 TRACK_FORMAT = "{tracknumber}. {artist} - {title}"
 
 URL_REGEX = (
-    r"https:\/\/(?:www|open|play|listen)?\.?(\w+)\.com(?:(?:\/(track|playlist|album|"
+    r"https:\/\/(?:www|open|play|listen)?\.?(qobuz|tidal|deezer)\.com(?:(?:\/(track|playlist|album|"
     r"artist|label))|(?:\/[-\w]+?))+\/([-\w]+)"
 )
-SOUNDCLOUD_URL_REGEX = r"https://soundcloud.com/[-\w:]+"
+SOUNDCLOUD_URL_REGEX = r"https://soundcloud.com/[-\w:/]+"
 SOUNDCLOUD_CLIENT_ID = "a3e059563d7fd3372b49b37f00a00bcf"
 
 
 TIDAL_MAX_Q = 7
 DEEZER_MAX_Q = 6
 AVAILABLE_QUALITY_IDS = (0, 1, 2, 3, 4)
+MEDIA_TYPES = ("track", "album", "artist", "label", "playlist")

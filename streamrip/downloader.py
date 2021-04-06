@@ -121,7 +121,6 @@ class Track:
         assert hasattr(self, "id"), "id must be set before loading metadata"
 
         self.resp = self.client.get(self.id, media_type="track")
-        pprint(self.resp)
         self.meta = TrackMetadata(
             track=self.resp, source=self.client.source
         )  # meta dict -> TrackMetadata object
@@ -133,7 +132,7 @@ class Track:
             elif self.client.source == "deezer":
                 self.cover_url = self.resp["album"]["cover_medium"]
             elif self.client.source == "soundcloud":
-                self.cover_url = self.resp["artwork_url"].replace("large", "t500x500")
+                self.cover_url = (self.resp["artwork_url"] or self.resp['user'].get("avatar_url")).replace("large", "t500x500")
             else:
                 raise InvalidSourceError(self.client.source)
         except KeyError:
@@ -169,7 +168,7 @@ class Track:
         :type progress_bar: bool
         """
         # args override attributes
-        self.quality = min((quality or self.quality), self.client.max_quality)
+        self.quality = min(quality, self.client.max_quality)
         self.folder = parent_folder or self.folder
 
         self.file_format = kwargs.get("track_format", TRACK_FORMAT)
@@ -194,6 +193,7 @@ class Track:
             return False
 
         if hasattr(self, "cover_url"):  # only for playlists and singles
+            logger.debug("Downloading cover")
             self.download_cover()
 
         if self.client.source == "soundcloud":
@@ -203,7 +203,7 @@ class Track:
 
         dl_info = self.client.get_file_url(url_id, self.quality)
 
-        temp_file = os.path.join(gettempdir(), f"~{self.id}_{quality}.tmp")
+        temp_file = os.path.join(gettempdir(), f"~{hash(self.id)}_{quality}.tmp")
         logger.debug("Temporary file path: %s", temp_file)
 
         if self.client.source == "qobuz":
@@ -240,7 +240,7 @@ class Track:
                     [
                         "ffmpeg",
                         "-i",
-                        dl_info,
+                        dl_info['url'],
                         "-c",
                         "copy",
                         "-y",
@@ -288,7 +288,7 @@ class Track:
 
         assert hasattr(self, "cover_url"), "must set cover_url attribute"
 
-        self.cover_path = os.path.join(self.folder, f"cover{hash(self.meta.album)}.jpg")
+        self.cover_path = os.path.join(self.folder, f"cover{hash(self.cover_url)}.jpg")
         logger.debug(f"Downloading cover from {self.cover_url}")
         click.secho(f"\nDownloading cover art for {self!s}", fg="blue")
 
@@ -1019,7 +1019,7 @@ class Playlist(Tracklist):
             self.name = self.meta["name"]
             tracklist = self.meta["tracks"]["items"]
 
-            def gen_cover(track):  # ?
+            def gen_cover(track):
                 return track["album"]["image"]["small"]
 
             def meta_args(track):
@@ -1047,7 +1047,6 @@ class Playlist(Tracklist):
                 return track["album"]["cover_medium"]
 
         elif self.client.source == "soundcloud":
-            pprint(self.meta)
             self.name = self.meta["title"]
             tracklist = self.meta["tracks"]
 
@@ -1126,7 +1125,6 @@ class Playlist(Tracklist):
         :param client:
         :type client: ClientInterface
         """
-        print(item.keys())
         if client.source == "qobuz":
             return {
                 "name": item["name"],
@@ -1223,7 +1221,7 @@ class Artist(Tracklist):
 
     def download(
         self,
-        parent_folder: str = "Downloads",
+        parent_folder: str = "StreamripDownloads",
         filters: Optional[Tuple] = None,
         no_repeats: bool = False,
         quality: int = 6,

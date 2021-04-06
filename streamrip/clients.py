@@ -656,14 +656,7 @@ class TidalClient(ClientInterface):
 class SoundCloudClient(ClientInterface):
     source = "soundcloud"
     max_quality = 0
-
-    def __init__(self):
-        self.session = requests.Session()
-        self.session.headers.update(
-            {
-                "User-Agent": AGENT,
-            }
-        )
+    logged_in = True
 
     def login(self):
         raise NotImplementedError
@@ -671,10 +664,10 @@ class SoundCloudClient(ClientInterface):
     def get(self, id, media_type="track"):
         assert media_type in ("track", "playlist"), f"{media_type} not supported"
 
-        if media_type == "track":
-            resp, _ = self._get(f"{media_type}s/{id}")
-        elif "http" in id:
+        if "http" in str(id):
             resp, _ = self._get(f"resolve?url={id}")
+        elif media_type == "track":
+            resp, _ = self._get(f"{media_type}s/{id}")
         else:
             raise Exception(id)
 
@@ -716,7 +709,7 @@ class SoundCloudClient(ClientInterface):
             url = f"{SOUNDCLOUD_BASE}/{path}"
 
         logger.debug(f"Fetching url {url}")
-        r = self.session.get(url, params=params)
+        r = requests.get(url, params=params)
         if resp_obj:
             return r
 

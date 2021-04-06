@@ -1,4 +1,5 @@
 import logging
+from pprint import pprint
 import os
 import re
 import sys
@@ -11,7 +12,7 @@ import click
 
 from .clients import DeezerClient, QobuzClient, SoundCloudClient, TidalClient
 from .config import Config
-from .constants import CONFIG_PATH, DB_PATH, SOUNDCLOUD_URL_REGEX, URL_REGEX
+from .constants import (CONFIG_PATH, DB_PATH, SOUNDCLOUD_URL_REGEX, URL_REGEX, MEDIA_TYPES)
 from .db import MusicDB
 from .downloader import Album, Artist, Label, Playlist, Track
 from .exceptions import AuthenticationError, ParsingError
@@ -127,6 +128,11 @@ class MusicDL(list):
 
         client = self.get_client(source)
 
+        if media_type not in MEDIA_TYPES:
+            if 'playlist' in media_type:  # for SoundCloud
+                media_type = 'playlist'
+
+        assert media_type in MEDIA_TYPES, media_type
         item = MEDIA_CLASS[media_type](client=client, id=item_id)
         self.append(item)
 
@@ -209,12 +215,14 @@ class MusicDL(list):
 
         :raises exceptions.ParsingError
         """
-        parsed = self.url_parse.findall(url)
+        parsed = self.url_parse.findall(url)  # Qobuz, Tidal, Dezer
         soundcloud_urls = self.soundcloud_url_parse.findall(url)
-        if len(soundcloud_urls) > 0:
-            parsed.extend(
-                self.clients["soundcloud"].resolve(u) for u in soundcloud_urls
-            )
+        soundcloud_items = [self.clients["soundcloud"].get(u) for u in soundcloud_urls]
+
+        parsed.extend(
+            ("soundcloud", item["kind"], url)
+            for item, url in zip(soundcloud_items, soundcloud_urls)
+        )
 
         logger.debug(f"Parsed urls: {parsed}")
 

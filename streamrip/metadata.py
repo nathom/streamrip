@@ -154,22 +154,14 @@ class TrackMetadata:
 
         elif self.__source == "soundcloud":
             self.title = track["title"].strip()
-            print(f"{self.title=}")
             self.genre = track["genre"]
-            print(f"{self.genre=}")
             self.artist = track["user"]["username"]
             self.albumartist = self.artist
-            print(f"{self.artist=}")
             self.year = track["created_at"][:4]
-            print(f"{self.year=}")
             self.label = track["label_name"]
-            print(f"{self.label=}")
-            self.comment = track["description"]
-            print(f"{self.comment=}")
+            self.description = track["description"]
             self.tracknumber = 0
-            print(f"{self.tracknumber=}")
             self.tracktotal = 0
-            print(f"{self.tracktotal=}")
 
         else:
             raise ValueError(self.__source)
