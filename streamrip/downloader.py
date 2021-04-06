@@ -416,8 +416,8 @@ class Track:
 
         if embed_cover and cover is None:
             assert hasattr(self, "cover_path")
+            cover = Tracklist.get_cover_obj(self.cover_path, self.quality)
 
-        cover = Tracklist.get_cover_obj(self.cover_path, self.quality)
         if isinstance(audio, FLAC):
             if embed_cover:
                 audio.add_picture(cover)
