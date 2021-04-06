@@ -21,7 +21,9 @@ if not os.path.isdir(CACHE_DIR):
 
 @click.group(invoke_without_command=True)
 @click.option("-c", "--convert", metavar="CODEC", help="alac, mp3, flac, or ogg")
-@click.option("-u", "--urls", metavar="URLS", help="Url from Qobuz, Tidal, SoundCloud, or Deezer")
+@click.option(
+    "-u", "--urls", metavar="URLS", help="Url from Qobuz, Tidal, SoundCloud, or Deezer"
+)
 @click.option(
     "-q",
     "--quality",
@@ -113,7 +115,9 @@ def filter_discography(ctx, **kwargs):
 
 @cli.command()
 @click.option("-t", "--type", default="album", help="album, playlist, track, or artist")
-@click.option("-s", "--source", default="qobuz", help="qobuz, tidal, soundcloud, or deezer")
+@click.option(
+    "-s", "--source", default="qobuz", help="qobuz, tidal, soundcloud, or deezer"
+)
 @click.argument("QUERY", nargs=-1)
 @click.pass_context
 def search(ctx, **kwargs):

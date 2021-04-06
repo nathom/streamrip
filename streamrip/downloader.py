@@ -1,9 +1,9 @@
 import logging
-import sys
 import os
 import re
 import shutil
 import subprocess
+import sys
 from pprint import pformat, pprint
 from tempfile import gettempdir
 from typing import Any, Callable, Optional, Tuple, Union
@@ -619,7 +619,7 @@ class Tracklist(list):
             size_ = os.path.getsize(cover_path)
             if size_ > FLAC_MAX_BLOCKSIZE:
                 raise TooLargeCoverArt(
-                    "Not suitable for Picture embed: {size_ * 10 ** 6}MB"
+                    f"Not suitable for Picture embed: {size_ / 10 ** 6} MB"
                 )
         elif cover is None:
             raise InvalidQuality(f"Quality {quality} not allowed")
@@ -741,6 +741,8 @@ class Album(Tracklist):
                 sampling_rate = resp["maximum_sampling_rate"] * 1000
             else:
                 sampling_rate = None
+
+            resp["image"]["original"] = resp["image"]["large"].replace("600", "org")
 
             return {
                 "id": resp.get("id"),
@@ -877,27 +879,29 @@ class Album(Tracklist):
 
         self.download_message()
 
+        downloaded_cover_size = kwargs.get("download_cover_size", "original")
+        embed_cover_size = kwargs.get("embed_cover_size", "large")
         if os.path.isfile(cover_path):
             logger.debug("Cover already downloaded: %s. Skipping", cover_path)
         else:
             click.secho("Downloading cover art", fg="magenta")
-            if kwargs.get("large_cover", True):
-                cover_url = self.cover_urls.get("large")
-                if self.client.source == "qobuz":
-                    tqdm_download(cover_url.replace("600", "org"), cover_path)
-                else:
-                    tqdm_download(cover_url, cover_path)
-
-                if os.path.getsize(cover_path) > FLAC_MAX_BLOCKSIZE:  # 16.7 MB
-                    click.secho(
-                        "Large cover is too large to embed, embedding small cover instead.",
-                        fg="yellow",
-                    )
-                    large_cover_path = cover_path.replace(".jpg", "_large") + ".jpg"
-                    shutil.move(cover_path, large_cover_path)
-                    tqdm_download(self.cover_urls["small"], cover_path)
+            if downloaded_cover_size in self.cover_urls:
+                tqdm_download(self.cover_urls[downloaded_cover_size], cover_path)
             else:
-                tqdm_download(self.cover_urls["small"], cover_path)
+                logger.debug(
+                    f"Cover size {downloaded_cover_size} not available, defaulting to large"
+                )
+                tqdm_download(self.cover_urls["large"], cover_path)
+
+            if (
+                downloaded_cover_size != embed_cover_size
+                or os.path.size(cover_path) > FLAC_MAX_BLOCKSIZE
+            ):
+                dl_cover_path = cover_path.replace(
+                    ".jpg", f"_{downloaded_cover_size}.jpg"
+                )
+                shutil.move(cover_path, dl_cover_path)
+                tqdm_download(self.cover_urls[embed_cover_size], cover_path)
 
         embed_cover = kwargs.get("embed_cover", True)  # embed by default
         if self.client.source != "deezer" and embed_cover:
@@ -943,13 +947,13 @@ class Album(Tracklist):
 
     def _get_formatted_folder(self, parent_folder: str, quality: int) -> str:
         if quality >= 2:
-            self.container = 'FLAC'
+            self.container = "FLAC"
         else:
             self.bit_depth = self.sampling_rate = None
-            if self.client.source == 'tidal':
-                self.container = 'AAC'
+            if self.client.source == "tidal":
+                self.container = "AAC"
             else:
-                self.container = 'MP3'
+                self.container = "MP3"
 
         formatted_folder = clean_format(self.folder_format, self._get_formatter())
 
@@ -1274,9 +1278,9 @@ class Artist(Tracklist):
         logger.debug(f"Length of tracklist {len(self)}")
         logger.debug(f"Filters: {filters}")
 
-        if 'repeats' in filters:
+        if "repeats" in filters:
             final = self._remove_repeats(bit_depth=max, sampling_rate=min)
-            filters = tuple(f for f in filters if f != 'repeats')
+            filters = tuple(f for f in filters if f != "repeats")
         else:
             final = self
 

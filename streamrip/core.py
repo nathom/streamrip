@@ -145,11 +145,12 @@ class MusicDL(list):
         arguments = {
             "database": self.db,
             "parent_folder": self.config.session["downloads"]["folder"],
-            "keep_cover": self.config.session["keep_cover"],
-            "large_cover": self.config.session["metadata"]["large_cover"],
             "folder_format": self.config.session["path_format"]["folder"],
             "track_format": self.config.session["path_format"]["track"],
-            "embed_cover": self.config.session["metadata"]["embed_cover"],
+            "keep_cover": self.config.session["artwork"]["keep_image"],
+            "embed_cover": self.config.session["artwork"]["embed"],
+            "embed_cover_size": self.config.session["artwork"]["embed_size"],
+            "download_cover_size": self.config.session["artwork"]["download_size"],
         }
         logger.debug("Arguments from config: %s", arguments)
         for item in self:

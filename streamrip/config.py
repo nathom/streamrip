@@ -37,7 +37,7 @@ class Config:
 
     defaults = {
         "qobuz": {
-            "quality": 2,
+            "quality": 3,
             "email": None,
             "password": None,
             "app_id": "",  # Avoid NoneType error
@@ -73,13 +73,12 @@ class Config:
             "non_remaster": False,
         },
         "downloads": {"folder": DOWNLOADS_DIR},
-        "metadata": {
-            "embed_cover": True,
-            "large_cover": True,
-            "default_comment": None,
-            "remove_extra_tags": False,
+        "artwork": {
+            "embed": True,
+            "embed_size": "large",
+            "download_size": "original",
+            "keep_image": True,
         },
-        "keep_cover": True,
         "path_format": {"folder": FOLDER_FORMAT, "track": TRACK_FORMAT},
     }
 
