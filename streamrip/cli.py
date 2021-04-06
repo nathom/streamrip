@@ -21,7 +21,7 @@ if not os.path.isdir(CACHE_DIR):
 
 @click.group(invoke_without_command=True)
 @click.option("-c", "--convert", metavar="CODEC", help="alac, mp3, flac, or ogg")
-@click.option("-u", "--urls", metavar="URLS", help="Url from Qobuz, Tidal, or Deezer")
+@click.option("-u", "--urls", metavar="URLS", help="Url from Qobuz, Tidal, SoundCloud, or Deezer")
 @click.option(
     "-q",
     "--quality",
@@ -33,7 +33,7 @@ if not os.path.isdir(CACHE_DIR):
 @click.option("--debug", is_flag=True)
 @click.pass_context
 def cli(ctx, **kwargs):
-    """Streamrip: The all-in-one Qobuz, Tidal, and Deezer music downloader.
+    """Streamrip: The all-in-one Qobuz, Tidal, SoundCloud, and Deezer music downloader.
 
     To get started, try:
 
@@ -113,7 +113,7 @@ def filter_discography(ctx, **kwargs):
 
 @cli.command()
 @click.option("-t", "--type", default="album", help="album, playlist, track, or artist")
-@click.option("-s", "--source", default="qobuz", help="qobuz, tidal, or deezer")
+@click.option("-s", "--source", default="qobuz", help="qobuz, tidal, soundcloud, or deezer")
 @click.argument("QUERY", nargs=-1)
 @click.pass_context
 def search(ctx, **kwargs):
