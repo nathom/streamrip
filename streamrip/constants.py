@@ -73,6 +73,7 @@ __MP4_KEYS = (
     "trkn",
     "disk",
     None,
+    None,
 )
 
 __MP3_KEYS = (
@@ -94,6 +95,7 @@ __MP3_KEYS = (
     None,
     id3.TRCK,
     id3.TPOS,
+    None,
     None,
 )
 
@@ -117,6 +119,7 @@ __METADATA_TYPES = (
     "tracknumber",
     "discnumber",
     "tracktotal",
+    "disctotal",
 )
 
 

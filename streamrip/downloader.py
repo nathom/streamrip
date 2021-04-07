@@ -748,9 +748,10 @@ class Album(Tracklist):
                 "id": resp.get("id"),
                 "title": resp.get("title"),
                 "_artist": resp.get("artist") or resp.get("performer"),
-                "albumartist": resp.get("artist", {}).get("name"),
+                "albumartist": safe_get(resp, "artist", "name"),
                 "year": str(resp.get("release_date_original"))[:4],
                 "version": resp.get("version"),
+                "composer": safe_get(resp, "composer", "name"),
                 "release_type": resp.get("release_type", "album"),
                 "cover_urls": resp.get("image"),
                 "streamable": resp.get("streamable"),
@@ -760,6 +761,10 @@ class Album(Tracklist):
                 "bit_depth": resp.get("maximum_bit_depth"),
                 "sampling_rate": sampling_rate,
                 "tracktotal": resp.get("tracks_count"),
+                "description": resp.get("description"),
+                "disctotal": max(
+                    track.get("media_number", 1) for track in resp["tracks"]["items"]
+                ),
             }
         elif client.source == "tidal":
             return {
@@ -778,6 +783,7 @@ class Album(Tracklist):
                 "bit_depth": 24 if resp.get("audioQuality") == "HI_RES" else 16,
                 "sampling_rate": 44100,  # always 44.1 kHz
                 "tracktotal": resp.get("numberOfTracks"),
+                "disctotal": 1,
             }
         elif client.source == "deezer":
             if resp.get("release_date", False):
@@ -804,6 +810,7 @@ class Album(Tracklist):
                 "bit_depth": 16,
                 "sampling_rate": 44100,
                 "tracktotal": resp.get("track_total") or resp.get("nb_tracks"),
+                "disctotal": max(track['disk_number'] for track in resp['tracks']),
             }
 
         raise InvalidSourceError(client.source)
@@ -907,15 +914,21 @@ class Album(Tracklist):
         if self.client.source != "deezer" and embed_cover:
             cover = self.get_cover_obj(cover_path, quality)
 
+        download_args = {
+            'quality': quality,
+            'parent_folder': folder,
+            'progress_bar': kwargs.get("progress_bar", True),
+            'database': database,
+            'track_format': kwargs.get("track_format", TRACK_FORMAT),
+        }
         for track in self:
             logger.debug("Downloading track to %s", folder)
-            track.download(
-                quality,
-                folder,
-                kwargs.get("progress_bar", True),
-                database=database,
-                track_format=kwargs.get("track_format", TRACK_FORMAT),
-            )
+            if self.disctotal > 1:
+                disc_folder = os.path.join(folder, f"Disc {track.meta.discnumber}")
+                download_args['parent_folder'] = disc_folder
+
+            track.download(**download_args)
+
             if kwargs.get("tag_tracks", True) and self.client.source != "deezer":
                 track.tag(cover=cover, embed_cover=embed_cover)
 
@@ -923,7 +936,7 @@ class Album(Tracklist):
             logger.debug(f"Removing cover at {cover_path}")
             try:
                 os.remove(cover_path)
-                os.remove(large_cover_path)
+                os.remove(dl_cover_path)
             except Exception as e:
                 logger.debug(e)
 

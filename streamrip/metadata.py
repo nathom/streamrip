@@ -1,6 +1,8 @@
 import json
 import logging
 import re
+import sys
+from pprint import pprint
 from typing import Generator, Optional, Tuple, Union
 
 from .constants import (
@@ -83,7 +85,7 @@ class TrackMetadata:
         """Parse the metadata from an resp dict returned by the
         Qobuz API.
 
-        :param dict resp: from the Qobuz API
+        :param dict resp: from API
         """
         if self.__source == "qobuz":
             self.album = resp.get("title")
@@ -93,6 +95,10 @@ class TrackMetadata:
             self.copyright = resp.get("copyright")
             self.albumartist = resp.get("artist", {}).get("name")
             self.label = resp.get("label")
+            self.description = resp.get("description")
+            self.disctotal = max(
+                track.get("media_number", 1) for track in resp["tracks"]["items"]
+            )
 
             if isinstance(self.label, dict):
                 self.label = self.label.get("name")
@@ -114,7 +120,7 @@ class TrackMetadata:
             self.albumartist = resp.get("artist", {}).get("name")
             self.label = resp.get("label")
         elif self.__source == "soundcloud":
-            raise Exception
+            raise NotImplementedError
         else:
             raise ValueError(self.__source)
 
@@ -336,7 +342,7 @@ class TrackMetadata:
             if k == "tracknumber":
                 text = f"{self.tracknumber}/{self.tracktotal}"
             elif k == "discnumber":
-                text = str(self.discnumber)
+                text = f"{self.discnumber}/{self.get('disctotal', 1)}"
             else:
                 text = getattr(self, k)
 

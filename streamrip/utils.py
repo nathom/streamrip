@@ -173,7 +173,7 @@ def init_log(
     """
     if not path:
         os.makedirs(LOG_DIR, exist_ok=True)
-        path = os.path.join(LOG_DIR, "qobuz_dl.log")
+        path = os.path.join(LOG_DIR, "streamrip")
 
     logger = logging.getLogger()
     level = logging.getLevelName(level)
@@ -193,8 +193,7 @@ def init_log(
     logger.addHandler(printable)
     logger.addHandler(rotable)
 
-    logging.getLogger("urllib3").setLevel(logging.WARNING)
-    logging.getLogger("tidal_api").setLevel(logging.WARNING)
+    logging.getLogger("urllib3").setLevel(logging.DEBUG)
 
 
 def capitalize(s: str) -> str:
