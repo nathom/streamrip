@@ -77,7 +77,8 @@ class Config:
             "embed": True,
             "embed_size": "large",
             "download_size": "original",
-            "keep_image": True,
+            "keep_embedded_cover": False,
+            "keep_downloaded_cover": True,
         },
         "path_format": {"folder": FOLDER_FORMAT, "track": TRACK_FORMAT},
     }

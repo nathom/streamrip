@@ -810,7 +810,7 @@ class Album(Tracklist):
                 "bit_depth": 16,
                 "sampling_rate": 44100,
                 "tracktotal": resp.get("track_total") or resp.get("nb_tracks"),
-                "disctotal": max(track['disk_number'] for track in resp['tracks']),
+                "disctotal": max(track["disk_number"] for track in resp["tracks"]),
             }
 
         raise InvalidSourceError(client.source)
@@ -886,59 +886,56 @@ class Album(Tracklist):
 
         self.download_message()
 
-        downloaded_cover_size = kwargs.get("download_cover_size", "original")
+        click.secho("Downloading cover art", fg="magenta")
+        download_cover_size = kwargs.get("download_cover_size", "original")
         embed_cover_size = kwargs.get("embed_cover_size", "large")
-        if os.path.isfile(cover_path):
-            logger.debug("Cover already downloaded: %s. Skipping", cover_path)
-        else:
-            click.secho("Downloading cover art", fg="magenta")
-            if downloaded_cover_size in self.cover_urls:
-                tqdm_download(self.cover_urls[downloaded_cover_size], cover_path)
-            else:
-                logger.debug(
-                    f"Cover size {downloaded_cover_size} not available, defaulting to large"
-                )
-                tqdm_download(self.cover_urls["large"], cover_path)
+        if not os.path.isfile(cover_path):
+            if embed_cover_size not in self.cover_urls:
+                embed_cover_size = "large"
 
+            tqdm_download(self.cover_urls[embed_cover_size], cover_path)
             if (
-                downloaded_cover_size != embed_cover_size
-                or os.path.size(cover_path) > FLAC_MAX_BLOCKSIZE
+                self.cover_urls.get(download_cover_size, embed_cover_size)
+                != embed_cover_size
             ):
-                dl_cover_path = cover_path.replace(
-                    ".jpg", f"_{downloaded_cover_size}.jpg"
-                )
-                shutil.move(cover_path, dl_cover_path)
-                tqdm_download(self.cover_urls[embed_cover_size], cover_path)
+                embed_cover_path = cover_path.replace('.jpg', "_embed.jpg")
+                shutil.move(cover_path, embed_cover_path)
+                tqdm_download(self.cover_urls[download_cover_size], cover_path)
 
         embed_cover = kwargs.get("embed_cover", True)  # embed by default
         if self.client.source != "deezer" and embed_cover:
             cover = self.get_cover_obj(cover_path, quality)
 
         download_args = {
-            'quality': quality,
-            'parent_folder': folder,
-            'progress_bar': kwargs.get("progress_bar", True),
-            'database': database,
-            'track_format': kwargs.get("track_format", TRACK_FORMAT),
+            "quality": quality,
+            "parent_folder": folder,
+            "progress_bar": kwargs.get("progress_bar", True),
+            "database": database,
+            "track_format": kwargs.get("track_format", TRACK_FORMAT),
         }
         for track in self:
             logger.debug("Downloading track to %s", folder)
             if self.disctotal > 1:
                 disc_folder = os.path.join(folder, f"Disc {track.meta.discnumber}")
-                download_args['parent_folder'] = disc_folder
+                download_args["parent_folder"] = disc_folder
 
             track.download(**download_args)
 
             if kwargs.get("tag_tracks", True) and self.client.source != "deezer":
                 track.tag(cover=cover, embed_cover=embed_cover)
 
-        if not kwargs.get("keep_cover", True):
-            logger.debug(f"Removing cover at {cover_path}")
+        if not kwargs.get("keep_embedded_cover", True):
+            try:
+                os.remove(embed_cover_path)
+            except NameError:
+                pass
+
+        # TODO: fix this, bad solution
+        if not kwargs.get("keep_downloaded_cover", True):
             try:
                 os.remove(cover_path)
-                os.remove(dl_cover_path)
-            except Exception as e:
-                logger.debug(e)
+            except NameError:
+                pass
 
         self.downloaded = True
 
