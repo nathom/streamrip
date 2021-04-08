@@ -782,7 +782,7 @@ class Album(Tracklist):
                 "streamable": resp.get("allowStreaming"),
                 "quality": TIDAL_Q_MAP[resp.get("audioQuality")],
                 "bit_depth": 24 if resp.get("audioQuality") == "HI_RES" else 16,
-                "sampling_rate": 44100,  # always 44.1 kHz
+                "sampling_rate": 48000 if resp.get("audioQuality") == 'HI_RES' else 41000,
                 "tracktotal": resp.get("numberOfTracks"),
                 "disctotal": resp.get("numberOfVolumes"),
             }
