@@ -81,6 +81,7 @@ class Config:
             "keep_downloaded_cover": True,
         },
         "path_format": {"folder": FOLDER_FORMAT, "track": TRACK_FORMAT},
+        "check_for_updates": True,
     }
 
     def __init__(self, path: str = None):

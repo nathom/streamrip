@@ -4,6 +4,7 @@ from getpass import getpass
 from hashlib import md5
 
 import click
+import requests
 
 from .clients import TidalClient
 from .config import Config
@@ -53,6 +54,22 @@ def cli(ctx, **kwargs):
         init_log()
 
     config = Config()
+
+    if config.session["check_for_updates"]:
+        from importlib import metadata
+
+        from packaging import version
+
+        r = requests.get("https://pypi.org/pypi/streamrip/json").json()
+        newest = r['info']['version']
+        if version.parse(metadata.version("streamrip")) < version.parse(newest):
+            click.secho(
+                "A new version of streamrip is available! "
+                "Run `pip3 install streamrip --upgrade` to update.",
+                fg="yellow",
+            )
+        else:
+            click.secho("streamrip is up-to-date!", fg='green')
 
     if kwargs["no_db"]:
         config.session["database"]["enabled"] = False
