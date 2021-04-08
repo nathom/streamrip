@@ -898,7 +898,7 @@ class Album(Tracklist):
                 self.cover_urls.get(download_cover_size, embed_cover_size)
                 != embed_cover_size
             ):
-                embed_cover_path = cover_path.replace('.jpg', "_embed.jpg")
+                embed_cover_path = cover_path.replace(".jpg", "_embed.jpg")
                 shutil.move(cover_path, embed_cover_path)
                 tqdm_download(self.cover_urls[download_cover_size], cover_path)
 

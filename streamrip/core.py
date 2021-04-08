@@ -142,19 +142,29 @@ class MusicDL(list):
         self.append(item)
 
     def download(self):
+
         arguments = {
             "database": self.db,
             "parent_folder": self.config.session["downloads"]["folder"],
             "folder_format": self.config.session["path_format"]["folder"],
             "track_format": self.config.session["path_format"]["track"],
-            "keep_downloaded_cover": self.config.session["artwork"]["keep_downloaded_cover"],
-            "keep_embedded_cover": self.config.session["artwork"]["keep_embedded_cover"],
+            "keep_downloaded_cover": self.config.session["artwork"][
+                "keep_downloaded_cover"
+            ],
+            "keep_embedded_cover": self.config.session["artwork"][
+                "keep_embedded_cover"
+            ],
             "embed_cover": self.config.session["artwork"]["embed"],
             "embed_cover_size": self.config.session["artwork"]["embed_size"],
             "download_cover_size": self.config.session["artwork"]["download_size"],
         }
         logger.debug("Arguments from config: %s", arguments)
         for item in self:
+            if self.config.session["downloads"]["source_subdirectories"]:
+                arguments["parent_folder"] = os.path.join(
+                    arguments["parent_folder"], capitalize(item.client.source)
+                )
+
             arguments["quality"] = self.config.session[item.client.source]["quality"]
             if isinstance(item, Artist):
                 filters_ = tuple(

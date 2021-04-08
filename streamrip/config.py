@@ -72,7 +72,7 @@ class Config:
             "non_studio_albums": False,
             "non_remaster": False,
         },
-        "downloads": {"folder": DOWNLOADS_DIR},
+        "downloads": {"folder": DOWNLOADS_DIR, "source_subdirectories": False},
         "artwork": {
             "embed": True,
             "embed_size": "large",
