@@ -110,6 +110,8 @@ class TrackMetadata:
             self.date = resp.get("releaseDate")
             self.copyright = resp.get("copyright")
             self.albumartist = resp.get("artist", {}).get("name")
+            self.disctotal = resp.get("numberOfVolumes")
+            self.isrc = resp.get("isrc")
             # label not returned by API
 
         elif self.__source == "deezer":

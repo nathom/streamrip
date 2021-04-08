@@ -14,7 +14,7 @@ requirements = read_file("requirements.txt").strip().split()
 # https://github.com/pypa/sampleproject/blob/main/setup.py
 setup(
     name=pkg_name,
-    version="0.3",
+    version="0.3.1",
     author="Nathan",
     author_email="nathanthomas707@gmail.com",
     keywords="lossless, hi-res, qobuz, tidal, deezer, audio, convert",
@@ -30,14 +30,12 @@ setup(
     },
     packages=find_packages(),
     classifiers=[
-        "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
         "License :: OSI Approved :: GNU General Public License (GPL)",
         "Operating System :: OS Independent",
-        "Development Status :: 3 - Alpha",
     ],
-    python_requires=">=3.7",
+    python_requires=">=3.8",
     project_urls={
         "Source": "https://github.com/nathom/streamrip",
         "Bug Reports": "https://github.com/nathom/streamrip/issues",

@@ -335,6 +335,7 @@ class Track:
         """
 
         tracklist = cls._get_tracklist(album, client.source)
+        logger.debug(len(tracklist))
         track = tracklist[pos]
         meta = TrackMetadata(album=album, track=track, source=client.source)
         return cls(client=client, meta=meta, id=track["id"])
@@ -783,7 +784,7 @@ class Album(Tracklist):
                 "bit_depth": 24 if resp.get("audioQuality") == "HI_RES" else 16,
                 "sampling_rate": 44100,  # always 44.1 kHz
                 "tracktotal": resp.get("numberOfTracks"),
-                "disctotal": 1,
+                "disctotal": resp.get("numberOfVolumes"),
             }
         elif client.source == "deezer":
             if resp.get("release_date", False):

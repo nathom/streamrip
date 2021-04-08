@@ -2,8 +2,9 @@ import base64
 import logging
 import logging.handlers as handlers
 import os
+import time
 from string import Formatter
-from typing import Optional, Union
+from typing import Hashable, Optional, Union
 
 import requests
 from Crypto.Cipher import AES
@@ -17,7 +18,7 @@ from .exceptions import InvalidSourceError, NonStreamable
 logger = logging.getLogger(__name__)
 
 
-def safe_get(d: dict, *keys, default=None):
+def safe_get(d: dict, *keys: Hashable, default=None):
     """A replacement for chained `get()` statements on dicts:
     >>> d = {'foo': {'bar': 'baz'}}
     >>> _safe_get(d, 'baz')
@@ -157,12 +158,8 @@ def tidal_cover_url(uuid, size):
     return TIDAL_COVER_URL.format(uuid=uuid.replace("-", "/"), height=size, width=size)
 
 
-def init_log(
-    path: Optional[str] = None, level: str = "DEBUG", rotate: str = "midnight"
-):
-    """
-    Initialize a log instance with a stream handler and a rotating file handler.
-    If a path is not set, fallback to the default app log directory.
+def init_log(path: Optional[str] = None, level: str = "DEBUG"):
+    """Create a log.
 
     :param path:
     :type path: Optional[str]
@@ -171,29 +168,9 @@ def init_log(
     :param rotate:
     :type rotate: str
     """
-    if not path:
-        os.makedirs(LOG_DIR, exist_ok=True)
-        path = os.path.join(LOG_DIR, "streamrip")
-
-    logger = logging.getLogger()
+    path = os.path.join(LOG_DIR, "streamrip.log")
     level = logging.getLevelName(level)
-    logger.setLevel(level)
-
-    formatter = logging.Formatter(
-        fmt="%(asctime)s - %(module)s.%(funcName)s.%(levelname)s: %(message)s",
-        datefmt="%H:%M:%S",
-    )
-
-    rotable = handlers.TimedRotatingFileHandler(path, when=rotate)
-    printable = logging.StreamHandler()
-
-    rotable.setFormatter(formatter)
-    printable.setFormatter(formatter)
-
-    logger.addHandler(printable)
-    logger.addHandler(rotable)
-
-    logging.getLogger("urllib3").setLevel(logging.DEBUG)
+    logging.basicConfig(filename=path, filemode="a", level=level)
 
 
 def capitalize(s: str) -> str:

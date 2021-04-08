@@ -628,7 +628,17 @@ class TidalClient(ClientInterface):
         url = f"{media_type}s/{item_id}"
         item = self._api_request(url)
         if media_type in ("playlist", "album"):
+
             resp = self._api_request(f"{url}/items")
+            if (tracks_left := item["numberOfTracks"]) > 100:
+                offset = 0
+                while tracks_left > 0:
+                    offset += 100
+                    tracks_left -= 100
+                    resp["items"].extend(
+                        self._api_request(f"{url}/items", {"offset": offset})["items"]
+                    )
+
             item["tracks"] = [item["item"] for item in resp["items"]]
         elif media_type == "artist":
             resp = self._api_request(f"{url}/albums")
