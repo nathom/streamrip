@@ -217,6 +217,33 @@ def discover(ctx, **kwargs):
 
 
 @cli.command()
+@click.option(
+    "-s", "--source", help="Qobuz, Tidal, Deezer, or SoundCloud. Default: Qobuz."
+)
+@click.argument("URL")
+@click.pass_context
+def lastfm(ctx, source, url):
+    """Searches for tracks from a last.fm playlist on a given source.
+
+    Examples:
+
+        $ rip lastfm https://www.last.fm/user/nathan3895/playlists/12059037
+
+        Download a playlist using Qobuz as the source
+
+        $ rip lastfm -s tidal https://www.last.fm/user/nathan3895/playlists/12059037
+
+        Download a playlist using Tidal as the source
+    """
+
+    if source is not None:
+        config.session["lastfm"]["source"] = source
+
+    core.handle_lastfm_urls(url)
+    core.download()
+
+
+@cli.command()
 @click.option("-o", "--open", is_flag=True, help="Open the config file")
 @click.option("-q", "--qobuz", is_flag=True, help="Set Qobuz credentials")
 @click.option("-t", "--tidal", is_flag=True, help="Re-login into Tidal")

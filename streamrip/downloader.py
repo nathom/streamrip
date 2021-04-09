@@ -912,7 +912,8 @@ class Album(Tracklist):
             tqdm_download(self.cover_urls[embed_cover_size], cover_path)
             if (
                 self.cover_urls.get(download_cover_size, embed_cover_size)
-                != embed_cover_size or os.path.size(cover_path) > FLAC_MAX_BLOCKSIZE
+                != embed_cover_size
+                or os.path.size(cover_path) > FLAC_MAX_BLOCKSIZE
             ):
                 # download cover at another resolution but don't use for embed
                 embed_cover_path = cover_path.replace(".jpg", "_embed.jpg")

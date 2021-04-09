@@ -100,9 +100,13 @@ class TrackMetadata:
             self.albumartist = safe_get(resp, "artist", "name")
             self.label = resp.get("label")
             self.description = resp.get("description")
-            self.disctotal = max(
-                track.get("media_number", 1) for track in safe_get(resp, 'tracks', 'items', default=[{}])
-            ) or 1
+            self.disctotal = (
+                max(
+                    track.get("media_number", 1)
+                    for track in safe_get(resp, "tracks", "items", default=[{}])
+                )
+                or 1
+            )
             self.explicit = resp.get("parental_warning", False)
 
             if isinstance(self.label, dict):

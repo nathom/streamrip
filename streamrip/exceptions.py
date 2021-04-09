@@ -44,3 +44,7 @@ class BadEncoderOption(Exception):
 
 class ConversionError(Exception):
     pass
+
+
+class NoResultsFound(Exception):
+    pass
