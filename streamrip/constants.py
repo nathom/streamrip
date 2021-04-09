@@ -146,6 +146,7 @@ URL_REGEX = (
 )
 SOUNDCLOUD_URL_REGEX = r"https://soundcloud.com/[-\w:/]+"
 SOUNDCLOUD_CLIENT_ID = "a3e059563d7fd3372b49b37f00a00bcf"
+LASTFM_URL_REGEX = r"https://www.last.fm/user/\w+/playlists/\w+"
 
 
 TIDAL_MAX_Q = 7

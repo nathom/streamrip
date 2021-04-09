@@ -1,6 +1,7 @@
 click
 ruamel.yaml
 packaging
+bs4
 pathvalidate
 requests
 mutagen

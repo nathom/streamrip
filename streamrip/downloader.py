@@ -709,6 +709,7 @@ class Album(Tracklist):
         if kwargs.get("load_on_init"):
             self.load_meta()
 
+        self.loaded = False
         self.downloaded = False
 
     def load_meta(self):
@@ -723,6 +724,7 @@ class Album(Tracklist):
             raise NonStreamable(f"This album is not streamable ({self.id} ID)")
 
         self._load_tracks()
+        self.loaded = True
 
     @classmethod
     def from_api(cls, resp, client):
@@ -1032,6 +1034,8 @@ class Playlist(Tracklist):
         if kwargs.get("load_on_init"):
             self.load_meta()
 
+        self.loaded = False
+
     @classmethod
     def from_api(cls, resp: dict, client: ClientInterface):
         """Return a Playlist object initialized with information from
@@ -1054,6 +1058,7 @@ class Playlist(Tracklist):
         """
         self.meta = self.client.get(id=self.id, media_type="playlist")
         self._load_tracks(**kwargs)
+        self.loaded = True
 
     def _load_tracks(self, new_tracknumbers: bool = True):
         """Parses the tracklist returned by the API.
@@ -1246,10 +1251,13 @@ class Artist(Tracklist):
         if kwargs.get("load_on_init"):
             self.load_meta()
 
+        self.loaded = False
+
     def load_meta(self):
         """Send an API call to get album info based on id."""
         self.meta = self.client.get(self.id, media_type="artist")
         self._load_albums()
+        self.loaded = True
 
     def _load_albums(self):
         """From the discography returned by client.get(query, 'artist'),
@@ -1483,6 +1491,8 @@ class Label(Artist):
         self.name = resp["name"]
         for album in resp["albums"]["items"]:
             self.append(Album.from_api(album, client=self.client))
+
+        self.loaded = True
 
     def __repr__(self):
         return f"<Label - {self.name}>"

@@ -82,6 +82,7 @@ class Config:
         },
         "path_format": {"folder": FOLDER_FORMAT, "track": TRACK_FORMAT},
         "check_for_updates": True,
+        "lastfm": {"source": "qobuz"}
     }
 
     def __init__(self, path: str = None):
