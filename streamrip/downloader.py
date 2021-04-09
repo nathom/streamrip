@@ -912,15 +912,18 @@ class Album(Tracklist):
             tqdm_download(self.cover_urls[embed_cover_size], cover_path)
             if (
                 self.cover_urls.get(download_cover_size, embed_cover_size)
-                != embed_cover_size
+                != embed_cover_size or os.path.size(cover_path) > FLAC_MAX_BLOCKSIZE
             ):
+                # download cover at another resolution but don't use for embed
                 embed_cover_path = cover_path.replace(".jpg", "_embed.jpg")
                 shutil.move(cover_path, embed_cover_path)
                 tqdm_download(self.cover_urls[download_cover_size], cover_path)
+            else:
+                embed_cover_path = cover_path
 
         embed_cover = kwargs.get("embed_cover", True)  # embed by default
         if self.client.source != "deezer" and embed_cover:
-            cover = self.get_cover_obj(cover_path, quality)
+            cover = self.get_cover_obj(embed_cover_path, quality)
 
         download_args = {
             "quality": quality,
@@ -940,7 +943,7 @@ class Album(Tracklist):
             if kwargs.get("tag_tracks", True) and self.client.source != "deezer":
                 track.tag(cover=cover, embed_cover=embed_cover)
 
-        if not kwargs.get("keep_embedded_cover", True):
+        if not kwargs.get("keep_embedded_cover", False):
             try:
                 os.remove(embed_cover_path)
             except NameError:
