@@ -256,8 +256,8 @@ class TrackMetadata:
         if hasattr(self, "_copyright"):
             if self._copyright is None:
                 return None
-            cr = self._copyright.replace("(P)", PHON_COPYRIGHT)
-            cr = cr.replace("(C)", COPYRIGHT)
+            cr = re.sub(r"(?i)\(P\)", PHON_COPYRIGHT, self._copyright)
+            cr = re.sub(r"(?i)\(C\)", COPYRIGHT, cr)
             return cr
 
         logger.debug("Accessed copyright tag before setting, return None")
