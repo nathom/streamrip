@@ -14,6 +14,7 @@ from .constants import (
     TRACK_KEYS,
 )
 from .exceptions import InvalidContainerError
+from .utils import safe_get
 
 logger = logging.getLogger(__name__)
 
@@ -69,7 +70,10 @@ class TrackMetadata:
         self.tracknumber = None
         self.discnumber = None
 
-        self.__source = source  # not included in tags
+        # not included in tags
+        self.explicit = False
+
+        self.__source = source
 
         if track is None and album is None:
             logger.debug("No params passed, returning")
@@ -93,12 +97,13 @@ class TrackMetadata:
             self.genre = resp.get("genres_list", [])
             self.date = resp.get("release_date_original") or resp.get("release_date")
             self.copyright = resp.get("copyright")
-            self.albumartist = resp.get("artist", {}).get("name")
+            self.albumartist = safe_get(resp, "artist", "name")
             self.label = resp.get("label")
             self.description = resp.get("description")
             self.disctotal = max(
                 track.get("media_number", 1) for track in resp["tracks"]["items"]
             )
+            self.explicit = resp.get("parental_warning", False)
 
             if isinstance(self.label, dict):
                 self.label = self.label.get("name")
@@ -112,6 +117,7 @@ class TrackMetadata:
             self.albumartist = resp.get("artist", {}).get("name")
             self.disctotal = resp.get("numberOfVolumes")
             self.isrc = resp.get("isrc")
+            self.explicit = resp.get("explicit", False)
             # label not returned by API
 
         elif self.__source == "deezer":
@@ -121,6 +127,9 @@ class TrackMetadata:
             self.date = resp.get("release_date")
             self.albumartist = resp.get("artist", {}).get("name")
             self.label = resp.get("label")
+            # either 0 or 1
+            self.explicit = bool(resp.get("parental_warning"))
+
         elif self.__source == "soundcloud":
             raise NotImplementedError
         else:

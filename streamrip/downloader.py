@@ -124,7 +124,7 @@ class Track:
         )  # meta dict -> TrackMetadata object
         try:
             if self.client.source == "qobuz":
-                self.cover_url = self.resp["album"]["image"]["small"]
+                self.cover_url = self.resp["album"]["image"]["large"]
             elif self.client.source == "tidal":
                 self.cover_url = tidal_cover_url(self.resp["album"]["cover"], 320)
             elif self.client.source == "deezer":
@@ -486,7 +486,10 @@ class Track:
     @property
     def title(self):
         if hasattr(self, "meta"):
-            return self.meta.title
+            _title = self.meta.title
+            if self.meta.explicit:
+                _title = f"{_title} (Explicit)"
+            return _title
         else:
             raise Exception("Track must be loaded before accessing title")
 
@@ -557,7 +560,7 @@ class Tracklist(list):
     IndexError
     """
 
-    def get(self, key: Union[str, int], default: Optional[Any]):
+    def get(self, key: Union[str, int], default=None):
         if isinstance(key, str):
             if hasattr(self, key):
                 return getattr(self, key)
@@ -764,8 +767,11 @@ class Album(Tracklist):
                 "tracktotal": resp.get("tracks_count"),
                 "description": resp.get("description"),
                 "disctotal": max(
-                    track.get("media_number", 1) for track in resp["tracks"]["items"]
-                ),
+                    track.get("media_number", 1)
+                    for track in safe_get(resp, "tracks", "items", default=[{}])
+                )
+                or 1,
+                "explicit": resp.get("parental_warning", False),
             }
         elif client.source == "tidal":
             return {
@@ -787,6 +793,7 @@ class Album(Tracklist):
                 else 41000,
                 "tracktotal": resp.get("numberOfTracks"),
                 "disctotal": resp.get("numberOfVolumes"),
+                "explicit": resp.get("explicit", False),
             }
         elif client.source == "deezer":
             if resp.get("release_date", False):
@@ -814,6 +821,7 @@ class Album(Tracklist):
                 "sampling_rate": 44100,
                 "tracktotal": resp.get("track_total") or resp.get("nb_tracks"),
                 "disctotal": max(track["disk_number"] for track in resp["tracks"]),
+                "explicit": bool(resp.get("explicit_content_lyrics")),
             }
 
         raise InvalidSourceError(client.source)
@@ -844,6 +852,9 @@ class Album(Tracklist):
         if hasattr(self, "version") and isinstance(self.version, str):
             if self.version.lower() not in album_title.lower():
                 album_title = f"{album_title} ({self.version})"
+
+        if self.get("explicit", False):
+            album_title = f"{album_title} (Explicit)"
 
         return album_title
 
@@ -945,14 +956,12 @@ class Album(Tracklist):
     def _get_formatter(self) -> dict:
         fmt = dict()
         for key in ALBUM_KEYS:
-            if hasattr(self, key):
-                fmt[key] = getattr(self, key)
-            else:
-                fmt[key] = None
+            # default to None
+            fmt[key] = self.get(key)
 
         if fmt.get("sampling_rate", False):
             fmt["sampling_rate"] /= 1000
-            # 48.0kHz -> 48kHz, 44.1kHz -> 44.1kHz
+            # change 48.0kHz -> 48kHz, 44.1kHz -> 44.1kHz
             if fmt["sampling_rate"] % 1 == 0.0:
                 fmt["sampling_rate"] = int(fmt["sampling_rate"])
 

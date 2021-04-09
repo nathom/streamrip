@@ -61,7 +61,7 @@ def cli(ctx, **kwargs):
         from packaging import version
 
         r = requests.get("https://pypi.org/pypi/streamrip/json").json()
-        newest = r['info']['version']
+        newest = r["info"]["version"]
         if version.parse(metadata.version("streamrip")) < version.parse(newest):
             click.secho(
                 "A new version of streamrip is available! "
@@ -69,7 +69,7 @@ def cli(ctx, **kwargs):
                 fg="yellow",
             )
         else:
-            click.secho("streamrip is up-to-date!", fg='green')
+            click.secho("streamrip is up-to-date!", fg="green")
 
     if kwargs["no_db"]:
         config.session["database"]["enabled"] = False
