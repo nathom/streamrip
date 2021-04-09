@@ -921,6 +921,8 @@ class Album(Tracklist):
                 tqdm_download(self.cover_urls[download_cover_size], cover_path)
             else:
                 embed_cover_path = cover_path
+        else:
+            embed_cover_path = cover_path
 
         embed_cover = kwargs.get("embed_cover", True)  # embed by default
         if self.client.source != "deezer" and embed_cover:
