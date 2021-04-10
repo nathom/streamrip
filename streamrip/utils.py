@@ -206,3 +206,13 @@ def decrypt_mqa_file(in_path, out_path, encryption_key):
         dec_bytes = decryptor.decrypt(enc_file.read())
         with open(out_path, "wb") as dec_file:
             dec_file.write(dec_bytes)
+
+
+def ext(quality: int, source: str):
+    if quality <= 1:
+        if source == 'tidal':
+            return '.m4a'
+        else:
+            return '.mp3'
+    else:
+        return '.flac'

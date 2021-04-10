@@ -11,13 +11,13 @@ from typing import Any, Callable, Optional, Tuple, Union
 import click
 from mutagen.flac import FLAC, Picture
 from mutagen.id3 import APIC, ID3, ID3NoHeaderError
+from mutagen.mp4 import MP4, MP4Cover
 from pathvalidate import sanitize_filename, sanitize_filepath
 
 from . import converter
 from .clients import ClientInterface
 from .constants import (
     ALBUM_KEYS,
-    EXT,
     FLAC_MAX_BLOCKSIZE,
     FOLDER_FORMAT,
     TRACK_FORMAT,
@@ -37,6 +37,7 @@ from .utils import (
     safe_get,
     tidal_cover_url,
     tqdm_download,
+    ext,
 )
 
 logger = logging.getLogger(__name__)
@@ -315,7 +316,7 @@ class Track:
         filename = clean_format(self.file_format, formatter)
         self.final_path = (
             os.path.join(self.folder, filename)[:250].strip()
-            + EXT[self.quality]  # file extension dict
+            + ext(self.quality, self.client.source)
         )
 
         logger.debug("Formatted path: %s", self.final_path)
@@ -366,7 +367,7 @@ class Track:
     def tag(
         self,
         album_meta: dict = None,
-        cover: Union[Picture, APIC] = None,
+        cover: Union[Picture, APIC, MP4Cover] = None,
         embed_cover: bool = True,
     ):
         """Tag the track using the stored metadata.
@@ -403,22 +404,28 @@ class Track:
             logger.debug("Tagging file with %s container", self.container)
             audio = FLAC(self.final_path)
         elif self.quality <= 1:
-            self.container = "MP3"
+            if self.client.source == 'tidal':
+                self.container = 'AAC'
+                audio = MP4(self.final_path)
+            else:
+                self.container = 'MP3'
+                try:
+                    audio = ID3(self.final_path)
+                except ID3NoHeaderError:
+                    audio = ID3()
+
             logger.debug("Tagging file with %s container", self.container)
-            try:
-                audio = ID3(self.final_path)
-            except ID3NoHeaderError:
-                audio = ID3()
         else:
             raise InvalidQuality(f'Invalid quality: "{self.quality}"')
 
         # automatically generate key, value pairs based on container
-        for k, v in self.meta.tags(self.container):
+        tags = self.meta.tags(self.container)
+        for k, v in tags:
             audio[k] = v
 
         if embed_cover and cover is None:
             assert hasattr(self, "cover_path")
-            cover = Tracklist.get_cover_obj(self.cover_path, self.quality)
+            cover = Tracklist.get_cover_obj(self.cover_path, self.quality, self.client.source)
 
         if isinstance(audio, FLAC):
             if embed_cover:
@@ -428,6 +435,9 @@ class Track:
             if embed_cover:
                 audio.add(cover)
             audio.save(self.final_path, "v2_version=3")
+        elif isinstance(audio, MP4):
+            audio['covr'] = [cover]
+            audio.save()
         else:
             raise ValueError(f"Unknown container type: {audio}")
 
@@ -606,7 +616,7 @@ class Tracklist(list):
         return cls(client=client, **info)
 
     @staticmethod
-    def get_cover_obj(cover_path: str, quality: int) -> Union[Picture, APIC]:
+    def get_cover_obj(cover_path: str, quality: int, source: str) -> Union[Picture, APIC]:
         """Given the path to an image and a quality id, return an initialized
         cover object that can be used for every track in the album.
 
@@ -616,25 +626,38 @@ class Tracklist(list):
         :type quality: int
         :rtype: Union[Picture, APIC]
         """
-        cover_type = {0: APIC, 1: APIC, 2: Picture, 3: Picture, 4: Picture}
+        def flac_mp3_cover_obj(cover):
+            cover_obj = cover()
+            cover_obj.type = 3
+            cover_obj.mime = "image/jpeg"
+            with open(cover_path, "rb") as img:
+                cover_obj.data = img.read()
 
-        cover = cover_type.get(quality)
+            return cover_obj
+
+        if quality > 1:
+            cover = Picture
+        elif source == 'tidal':
+            cover = MP4Cover
+        else:
+            cover = APIC
+
         if cover is Picture:
             size_ = os.path.getsize(cover_path)
             if size_ > FLAC_MAX_BLOCKSIZE:
                 raise TooLargeCoverArt(
                     f"Not suitable for Picture embed: {size_ / 10 ** 6} MB"
                 )
-        elif cover is None:
-            raise InvalidQuality(f"Quality {quality} not allowed")
+            return flac_mp3_cover_obj(cover)
 
-        cover_obj = cover()
-        cover_obj.type = 3
-        cover_obj.mime = "image/jpeg"
-        with open(cover_path, "rb") as img:
-            cover_obj.data = img.read()
+        elif cover is APIC:
+            return flac_mp3_cover_obj(cover)
 
-        return cover_obj
+        elif cover is MP4Cover:
+            with open(cover_path, 'rb') as img:
+                return cover(img.read(), imageformat=MP4Cover.FORMAT_JPEG)
+
+        raise InvalidQuality(f"Quality {quality} not allowed")
 
     def download_message(self):
         click.secho(
@@ -913,7 +936,7 @@ class Album(Tracklist):
             if (
                 self.cover_urls.get(download_cover_size, embed_cover_size)
                 != embed_cover_size
-                or os.path.size(cover_path) > FLAC_MAX_BLOCKSIZE
+                or os.path.getsize(cover_path) > FLAC_MAX_BLOCKSIZE
             ):
                 # download cover at another resolution but don't use for embed
                 embed_cover_path = cover_path.replace(".jpg", "_embed.jpg")
@@ -921,10 +944,12 @@ class Album(Tracklist):
                 tqdm_download(self.cover_urls[download_cover_size], cover_path)
             else:
                 embed_cover_path = cover_path
+        else:
+            embed_cover_path = cover_path
 
         embed_cover = kwargs.get("embed_cover", True)  # embed by default
         if self.client.source != "deezer" and embed_cover:
-            cover = self.get_cover_obj(embed_cover_path, quality)
+            cover = self.get_cover_obj(embed_cover_path, quality, self.client.source)
 
         download_args = {
             "quality": quality,
