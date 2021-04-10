@@ -1,8 +1,6 @@
 import base64
 import logging
-import logging.handlers as handlers
 import os
-import time
 from string import Formatter
 from typing import Hashable, Optional, Union
 
@@ -112,8 +110,8 @@ def tqdm_download(url: str, filepath: str, params: dict = None):
     r = requests.get(url, allow_redirects=True, stream=True, params=params)
     total = int(r.headers.get("content-length", 0))
     logger.debug(f"File size = {total}")
-    if total < 1000 and not url.endswith("jpg"):
-        raise NonStreamable
+    if total < 1000 and not url.endswith("jpg") and not url.endswith("png"):
+        raise NonStreamable(url)
 
     try:
         with open(filepath, "wb") as file, tqdm(

@@ -848,7 +848,10 @@ class Album(Tracklist):
                 "bit_depth": 16,
                 "sampling_rate": 44100,
                 "tracktotal": resp.get("track_total") or resp.get("nb_tracks"),
-                "disctotal": max(track["disk_number"] for track in resp["tracks"]),
+                "disctotal": max(
+                    track.get("disk_number") for track in resp.get("tracks", [{}])
+                )
+                or 1,
                 "explicit": bool(resp.get("explicit_content_lyrics")),
             }
 
@@ -1088,7 +1091,8 @@ class Playlist(Tracklist):
         :type new_tracknumbers: bool
         :param kwargs:
         """
-        self.meta = self.client.get(id=self.id, media_type="playlist")
+        self.meta = self.client.get(self.id, media_type="playlist")
+        logger.debug(pformat(self.meta))
         self._load_tracks(**kwargs)
         self.loaded = True
 
@@ -1100,6 +1104,9 @@ class Playlist(Tracklist):
         """
         if self.client.source == "qobuz":
             self.name = self.meta["name"]
+            self.image = self.meta["images"]
+            self.creator = safe_get(self.meta, "owner", "name", default="Qobuz")
+
             tracklist = self.meta["tracks"]["items"]
 
             def gen_cover(track):
@@ -1110,10 +1117,13 @@ class Playlist(Tracklist):
 
         elif self.client.source == "tidal":
             self.name = self.meta["title"]
+            self.image = tidal_cover_url(self.meta["image"], 640)
+            self.creator = safe_get(self.meta, "creator", "name", default="TIDAL")
+
             tracklist = self.meta["tracks"]
 
             def gen_cover(track):
-                cover_url = tidal_cover_url(track["album"]["cover"], 320)
+                cover_url = tidal_cover_url(track["album"]["cover"], 640)
                 return cover_url
 
             def meta_args(track):
@@ -1124,6 +1134,9 @@ class Playlist(Tracklist):
 
         elif self.client.source == "deezer":
             self.name = self.meta["title"]
+            self.image = self.meta["picture_big"]
+            self.creator = safe_get(self.meta, "creator", "name", default="Deezer")
+
             tracklist = self.meta["tracks"]
 
             def gen_cover(track):
@@ -1131,6 +1144,8 @@ class Playlist(Tracklist):
 
         elif self.client.source == "soundcloud":
             self.name = self.meta["title"]
+            self.image = self.meta.get("artwork_url").replace("large", "t500x500")
+            self.creator = self.meta["user"]["username"]
             tracklist = self.meta["tracks"]
 
             def gen_cover(track):
@@ -1185,9 +1200,15 @@ class Playlist(Tracklist):
         logger.debug(f"Parent folder {folder}")
 
         self.download_message()
+        set_playlist_to_album = kwargs.get("set_playlist_to_album", False)
         for i, track in enumerate(self):
+
             if self.client.source == "soundcloud":
                 track.load_meta()
+
+            if set_playlist_to_album and hasattr(self, "image"):
+                track["album"] = self.name
+                track["albumartist"] = self.creator
 
             if kwargs.get("new_tracknumbers", True):
                 track.meta["tracknumber"] = str(i + 1)

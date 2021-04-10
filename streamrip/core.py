@@ -2,7 +2,6 @@ import logging
 import os
 import re
 import sys
-import time
 from getpass import getpass
 from hashlib import md5
 from string import Formatter
@@ -163,6 +162,9 @@ class MusicDL(list):
             "embed_cover": self.config.session["artwork"]["embed"],
             "embed_cover_size": self.config.session["artwork"]["embed_size"],
             "download_cover_size": self.config.session["artwork"]["download_size"],
+            "set_playlist_to_album": self.config.session["metadata"][
+                "set_playlist_to_album"
+            ],
         }
         logger.debug("Arguments from config: %s", arguments)
         for item in self:

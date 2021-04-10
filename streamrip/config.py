@@ -80,6 +80,9 @@ class Config:
             "keep_embedded_cover": False,
             "keep_downloaded_cover": True,
         },
+        "metadata": {
+            "set_playlist_to_album": False,
+        },
         "path_format": {"folder": FOLDER_FORMAT, "track": TRACK_FORMAT},
         "check_for_updates": True,
         "lastfm": {"source": "qobuz"},

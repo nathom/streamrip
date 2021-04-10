@@ -40,6 +40,7 @@ class TrackMetadata:
         * tracknumber
         * discnumber
         * tracktotal
+        * disctotal
 
     """
 
@@ -67,6 +68,7 @@ class TrackMetadata:
         self.cover = None
         self.tracknumber = None
         self.discnumber = None
+        self.disctotal = None
 
         # not included in tags
         self.explicit = False
