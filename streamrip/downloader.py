@@ -1,3 +1,7 @@
+'''These classes parse information from Clients into a universal,
+downloadable form.
+'''
+
 import logging
 import os
 import re
@@ -90,6 +94,7 @@ class Track:
         :param kwargs: id, filepath_format, meta, quality, folder
         """
         self.client = client
+        self.id = None
         self.__dict__.update(kwargs)
 
         # adjustments after blind attribute sets
@@ -116,7 +121,7 @@ class Track:
     def load_meta(self):
         """Send a request to the client to get metadata for this Track."""
 
-        assert hasattr(self, "id"), "id must be set before loading metadata"
+        assert self.id is not None, "id must be set before loading metadata"
 
         self.resp = self.client.get(self.id, media_type="track")
         self.meta = TrackMetadata(
@@ -143,7 +148,7 @@ class Track:
     def _get_tracklist(resp, source):
         if source == "qobuz":
             return resp["tracks"]["items"]
-        elif source in ("tidal", "deezer"):
+        if source in ("tidal", "deezer"):
             return resp["tracks"]
 
         raise NotImplementedError(source)
@@ -228,7 +233,7 @@ class Track:
             try:
                 tqdm_download(dl_info, temp_file)  # downloads file
             except NonStreamable:
-                logger.debug(f"Track is not downloadable {dl_info}")
+                logger.debug("Track is not downloadable %s", dl_info)
                 click.secho("Track is not available for download", fg="red")
                 return False
 
@@ -569,6 +574,7 @@ class Tracklist(list):
     >>> tlist[2]
     IndexError
     """
+    essence_regex = re.compile(r"([^\(]+)(?:\s*[\(\[][^\)][\)\]])*")
 
     def get(self, key: Union[str, int], default=None):
         if isinstance(key, str):
@@ -681,8 +687,7 @@ class Tracklist(list):
         Used to group two albums that may be named similarly, but not exactly
         the same.
         """
-        # fixme: compile this first
-        match = re.match(r"([^\(]+)(?:\s*[\(\[][^\)][\)\]])*", album)
+        match = Tracklist.essence_regex.match(album)
         if match:
             return match.group(1).strip().lower()
 

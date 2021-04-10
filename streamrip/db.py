@@ -1,3 +1,7 @@
+'''A simple wrapper over an sqlite database that stores
+the downloaded media IDs.
+'''
+
 import logging
 import os
 import sqlite3
@@ -37,7 +41,7 @@ class MusicDB:
         :type item_id: str
         :rtype: bool
         """
-        logger.debug(f"Checking database for ID {item_id}")
+        logger.debug("Checking database for ID %s", item_id)
         with sqlite3.connect(self.path) as conn:
             return (
                 conn.execute(
@@ -52,7 +56,7 @@ class MusicDB:
         :param item_id:
         :type item_id: str
         """
-        logger.debug(f"Adding ID {item_id}")
+        logger.debug("Adding ID %s", item_id)
         with sqlite3.connect(self.path) as conn:
             try:
                 conn.execute(
@@ -60,6 +64,6 @@ class MusicDB:
                     (item_id,),
                 )
                 conn.commit()
-            except sqlite3.Error as e:
-                if "UNIQUE" not in str(e):
+            except sqlite3.Error as err:
+                if "UNIQUE" not in str(err):
                     raise

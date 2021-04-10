@@ -1,3 +1,5 @@
+'''A config class that manages arguments between the config file and CLI.'''
+
 import copy
 import logging
 import os
@@ -99,21 +101,27 @@ class Config:
             self._path = path
 
         if not os.path.isfile(self._path):
-            logger.debug(f"Creating yaml config file at '{self._path}'")
+            logger.debug("Creating yaml config file at '%s'", self._path)
             self.dump(self.defaults)
         else:
             self.load()
 
     def save(self):
+        """Save the config state to file."""
+
         self.dump(self.file)
 
     def reset(self):
+        """Reset the config file."""
+
         if not os.path.isdir(CONFIG_DIR):
             os.makedirs(CONFIG_DIR, exist_ok=True)
 
         self.dump(self.defaults)
 
     def load(self):
+        """Load infomation from the config files, making a deepcopy."""
+
         with open(self._path) as cfg:
             for k, v in yaml.load(cfg).items():
                 self.file[k] = v
@@ -125,27 +133,18 @@ class Config:
         logger.debug("Config loaded")
         self.__loaded = True
 
-    def update_from_cli(self, **kwargs):
-        for category in (self.downloads, self.metadata, self.filters):
-            for key in category.keys():
-                if kwargs.get(key) is None:
-                    continue
-
-                # For debugging's sake
-                og_value = category[key]
-                new_value = kwargs[key] or og_value
-                category[key] = new_value
-
-                if og_value != new_value:
-                    logger.debug("Updated %s config key from args: %s", key, new_value)
-
     def dump(self, info):
+        """Given a state of the config, save it to the file.
+
+        :param info:
+        """
         with open(self._path, "w") as cfg:
             logger.debug("Config saved: %s", self._path)
             yaml.dump(info, cfg)
 
     @property
     def tidal_creds(self):
+        """Return a TidalClient compatible dict of credentials."""
         creds = dict(self.file["tidal"])
         logger.debug(creds)
         del creds["quality"]  # should not be included in creds
@@ -153,6 +152,7 @@ class Config:
 
     @property
     def qobuz_creds(self):
+        """Return a QobuzClient compatible dict of credentials."""
         return {
             "email": self.file["qobuz"]["email"],
             "pwd": self.file["qobuz"]["password"],
@@ -161,14 +161,19 @@ class Config:
         }
 
     def creds(self, source: str):
+        """Return a Client compatible dict of credentials.
+
+        :param source:
+        :type source: str
+        """
         if source == "qobuz":
             return self.qobuz_creds
-        elif source == "tidal":
+        if source == "tidal":
             return self.tidal_creds
-        elif source == "deezer":
+        if source == "deezer":
             return dict()
-        else:
-            raise InvalidSourceError(source)
+
+        raise InvalidSourceError(source)
 
     def __getitem__(self, key):
         assert key in ("file", "defaults", "session")

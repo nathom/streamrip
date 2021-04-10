@@ -1,3 +1,5 @@
+'''Manages the information that will be embeded in the audio file. '''
+
 import json
 import logging
 import re
@@ -55,6 +57,7 @@ class TrackMetadata:
         :param album: album dict from API
         :type album: Optional[dict]
         """
+        self.title = None
         self.album = None
         self.albumartist = None
         self.composer = None
@@ -201,7 +204,7 @@ class TrackMetadata:
             self.title = f"{work}: {self.title}"
 
     @property
-    def artist(self) -> Union[str, None]:
+    def artist(self) -> Optional[str]:
         """Returns the value to set for the artist tag. Defaults to
         `self.albumartist` if there is no track artist.
 
@@ -212,6 +215,8 @@ class TrackMetadata:
 
         if self._artist is not None:
             return self._artist
+
+        return None
 
     @artist.setter
     def artist(self, val: str):
@@ -237,8 +242,13 @@ class TrackMetadata:
         if isinstance(self._genres, list):
             genres = re.findall(r"([^\u2192\/]+)", "/".join(self._genres))
             no_repeats = []
-            [no_repeats.append(g) for g in genres if g not in no_repeats]
+
+            for genre in genres:
+                if genre not in no_repeats:
+                    no_repeats.append(genre)
+
             return ", ".join(no_repeats)
+
         elif isinstance(self._genres, str):
             return self._genres
 
@@ -264,9 +274,9 @@ class TrackMetadata:
         if hasattr(self, "_copyright"):
             if self._copyright is None:
                 return None
-            cr = re.sub(r"(?i)\(P\)", PHON_COPYRIGHT, self._copyright)
-            cr = re.sub(r"(?i)\(C\)", COPYRIGHT, cr)
-            return cr
+            copyright = re.sub(r"(?i)\(P\)", PHON_COPYRIGHT, self._copyright)
+            copyright = re.sub(r"(?i)\(C\)", COPYRIGHT, copyright)
+            return copyright
 
         logger.debug("Accessed copyright tag before setting, return None")
         return None
@@ -282,7 +292,7 @@ class TrackMetadata:
         self._copyright = val
 
     @property
-    def year(self) -> Union[str, None]:
+    def year(self) -> Optional[str]:
         """Returns the year published of the track.
 
         :rtype: str
@@ -293,6 +303,8 @@ class TrackMetadata:
         if hasattr(self, "date"):
             if self.date is not None:
                 return self.date[:4]
+
+        return None
 
     @year.setter
     def year(self, val):
@@ -334,12 +346,12 @@ class TrackMetadata:
         container = container.lower()
         if container in ("flac", "vorbis"):
             return self.__gen_flac_tags()
-        elif container in ("mp3", "id3"):
+        if container in ("mp3", "id3"):
             return self.__gen_mp3_tags()
-        elif container in ("alac", "m4a", "mp4", "aac"):
+        if container in ("alac", "m4a", "mp4", "aac"):
             return self.__gen_mp4_tags()
-        else:
-            raise InvalidContainerError(f"Invalid container {container}")
+
+        raise InvalidContainerError(f"Invalid container {container}")
 
     def __gen_flac_tags(self) -> Tuple[str, str]:
         """Generate key, value pairs to tag FLAC files.
@@ -349,7 +361,7 @@ class TrackMetadata:
         for k, v in FLAC_KEY.items():
             tag = getattr(self, k)
             if tag:
-                logger.debug(f"Adding tag {v}: {repr(tag)}")
+                logger.debug("Adding tag %s: %s", v, tag)
                 yield (v, str(tag))
 
     def __gen_mp3_tags(self) -> Tuple[str, str]:
