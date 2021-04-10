@@ -210,9 +210,9 @@ def decrypt_mqa_file(in_path, out_path, encryption_key):
 
 def ext(quality: int, source: str):
     if quality <= 1:
-        if source == 'tidal':
-            return '.m4a'
+        if source == "tidal":
+            return ".m4a"
         else:
-            return '.mp3'
+            return ".mp3"
     else:
-        return '.flac'
+        return ".flac"

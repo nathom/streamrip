@@ -3,8 +3,7 @@ import os
 import re
 import shutil
 import subprocess
-import sys
-from pprint import pformat, pprint
+from pprint import pformat
 from tempfile import gettempdir
 from typing import Any, Callable, Optional, Tuple, Union
 
@@ -33,11 +32,11 @@ from .metadata import TrackMetadata
 from .utils import (
     clean_format,
     decrypt_mqa_file,
+    ext,
     get_quality_id,
     safe_get,
     tidal_cover_url,
     tqdm_download,
-    ext,
 )
 
 logger = logging.getLogger(__name__)
@@ -314,9 +313,8 @@ class Track:
         formatter = self.meta.get_formatter()
         logger.debug("Track meta formatter %s", pformat(formatter))
         filename = clean_format(self.file_format, formatter)
-        self.final_path = (
-            os.path.join(self.folder, filename)[:250].strip()
-            + ext(self.quality, self.client.source)
+        self.final_path = os.path.join(self.folder, filename)[:250].strip() + ext(
+            self.quality, self.client.source
         )
 
         logger.debug("Formatted path: %s", self.final_path)
@@ -404,11 +402,11 @@ class Track:
             logger.debug("Tagging file with %s container", self.container)
             audio = FLAC(self.final_path)
         elif self.quality <= 1:
-            if self.client.source == 'tidal':
-                self.container = 'AAC'
+            if self.client.source == "tidal":
+                self.container = "AAC"
                 audio = MP4(self.final_path)
             else:
-                self.container = 'MP3'
+                self.container = "MP3"
                 try:
                     audio = ID3(self.final_path)
                 except ID3NoHeaderError:
@@ -425,7 +423,9 @@ class Track:
 
         if embed_cover and cover is None:
             assert hasattr(self, "cover_path")
-            cover = Tracklist.get_cover_obj(self.cover_path, self.quality, self.client.source)
+            cover = Tracklist.get_cover_obj(
+                self.cover_path, self.quality, self.client.source
+            )
 
         if isinstance(audio, FLAC):
             if embed_cover:
@@ -436,7 +436,7 @@ class Track:
                 audio.add(cover)
             audio.save(self.final_path, "v2_version=3")
         elif isinstance(audio, MP4):
-            audio['covr'] = [cover]
+            audio["covr"] = [cover]
             audio.save()
         else:
             raise ValueError(f"Unknown container type: {audio}")
@@ -616,7 +616,9 @@ class Tracklist(list):
         return cls(client=client, **info)
 
     @staticmethod
-    def get_cover_obj(cover_path: str, quality: int, source: str) -> Union[Picture, APIC]:
+    def get_cover_obj(
+        cover_path: str, quality: int, source: str
+    ) -> Union[Picture, APIC]:
         """Given the path to an image and a quality id, return an initialized
         cover object that can be used for every track in the album.
 
@@ -626,6 +628,7 @@ class Tracklist(list):
         :type quality: int
         :rtype: Union[Picture, APIC]
         """
+
         def flac_mp3_cover_obj(cover):
             cover_obj = cover()
             cover_obj.type = 3
@@ -637,7 +640,7 @@ class Tracklist(list):
 
         if quality > 1:
             cover = Picture
-        elif source == 'tidal':
+        elif source == "tidal":
             cover = MP4Cover
         else:
             cover = APIC
@@ -654,7 +657,7 @@ class Tracklist(list):
             return flac_mp3_cover_obj(cover)
 
         elif cover is MP4Cover:
-            with open(cover_path, 'rb') as img:
+            with open(cover_path, "rb") as img:
                 return cover(img.read(), imageformat=MP4Cover.FORMAT_JPEG)
 
         raise InvalidQuality(f"Quality {quality} not allowed")

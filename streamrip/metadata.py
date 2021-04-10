@@ -1,8 +1,6 @@
 import json
 import logging
 import re
-import sys
-from pprint import pprint
 from typing import Generator, Optional, Tuple, Union
 
 from .constants import (
@@ -124,7 +122,7 @@ class TrackMetadata:
                 self.year = self.date[:4]
 
             self.copyright = resp.get("copyright")
-            self.albumartist = safe_get(resp, 'artist', 'name')
+            self.albumartist = safe_get(resp, "artist", "name")
             self.disctotal = resp.get("numberOfVolumes")
             self.isrc = resp.get("isrc")
             self.explicit = resp.get("explicit", False)
@@ -133,9 +131,9 @@ class TrackMetadata:
         elif self.__source == "deezer":
             self.album = resp.get("title")
             self.tracktotal = resp.get("track_total")
-            self.genre = safe_get(resp, 'genres', 'data')
+            self.genre = safe_get(resp, "genres", "data")
             self.date = resp.get("release_date")
-            self.albumartist = safe_get(resp, 'artist', 'name')
+            self.albumartist = safe_get(resp, "artist", "name")
             self.label = resp.get("label")
             # either 0 or 1
             self.explicit = bool(resp.get("parental_warning"))
@@ -156,23 +154,23 @@ class TrackMetadata:
             self._mod_title(track.get("version"), track.get("work"))
             self.composer = track.get("composer", {}).get("name")
 
-            self.tracknumber = track.get('track_number', 1)
+            self.tracknumber = track.get("track_number", 1)
             self.discnumber = track.get("media_number", 1)
-            self.artist = safe_get(track, 'performer', 'name')
+            self.artist = safe_get(track, "performer", "name")
             if self.artist is None:
-                self.artist = self.get('albumartist')
+                self.artist = self.get("albumartist")
 
         elif self.__source == "tidal":
             self.title = track.get("title").strip()
             self._mod_title(track.get("version"), None)
-            self.tracknumber = track.get('trackNumber', 1)
+            self.tracknumber = track.get("trackNumber", 1)
             self.discnumber = track.get("volumeNumber")
             self.artist = track.get("artist", {}).get("name")
 
         elif self.__source == "deezer":
             self.title = track.get("title").strip()
             self._mod_title(track.get("version"), None)
-            self.tracknumber = track.get('track_position', 1)
+            self.tracknumber = track.get("track_position", 1)
             self.discnumber = track.get("disk_number")
             self.artist = track.get("artist", {}).get("name")
 
@@ -377,8 +375,8 @@ class TrackMetadata:
         for k, v in MP4_KEY.items():
             if k == "tracknumber":
                 text = [(self.tracknumber, self.tracktotal)]
-            elif k == 'discnumber':
-                text = [(self.discnumber, self.get('disctotal', 1))]
+            elif k == "discnumber":
+                text = [(self.discnumber, self.get("disctotal", 1))]
             else:
                 text = getattr(self, k)
 

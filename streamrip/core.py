@@ -276,7 +276,7 @@ class MusicDL(list):
                 pl.append(track)
                 pl.loaded = True
 
-            click.secho(f"{tracks_not_found} tracks not found.", fg='yellow')
+            click.secho(f"{tracks_not_found} tracks not found.", fg="yellow")
             self.append(pl)
 
     def handle_txt(self, filepath: Union[str, os.PathLike]):
