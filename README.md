@@ -142,6 +142,10 @@ rip discover --help
 rip config --help
 ```
 
+```bash
+rip lastfm --help
+```
+
 Second, try resetting the config file with `rip config —reset`. Config errors often arise after an update where a new feature was added.
 
 
