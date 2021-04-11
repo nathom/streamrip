@@ -1,4 +1,4 @@
-'''Manages the information that will be embeded in the audio file. '''
+"""Manages the information that will be embeded in the audio file. """
 
 import json
 import logging

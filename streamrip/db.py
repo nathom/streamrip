@@ -1,6 +1,6 @@
-'''A simple wrapper over an sqlite database that stores
+"""A simple wrapper over an sqlite database that stores
 the downloaded media IDs.
-'''
+"""
 
 import logging
 import os

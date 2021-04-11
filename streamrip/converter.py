@@ -87,7 +87,6 @@ class Converter:
 
             shutil.move(self.tempfile, self.final_fn)
             logger.debug("Moved: %s -> %s", self.tempfile, self.final_fn)
-            logger.debug("Converted: %s -> %s", self.filename, self.final_fn)
         else:
             raise ConversionError("No file was returned from conversion")
 

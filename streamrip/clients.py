@@ -489,7 +489,11 @@ class TidalClient(ClientInterface):
             "assetpresentation": "FULL",
         }
         resp = self._api_request(f"tracks/{track_id}/playbackinfopostpaywall", params)
-        manifest = json.loads(base64.b64decode(resp["manifest"]).decode("utf-8"))
+        try:
+            manifest = json.loads(base64.b64decode(resp["manifest"]).decode("utf-8"))
+        except KeyError:
+            raise Exception("You must have a TIDAL Hi-Fi account to download tracks.")
+
         logger.debug(manifest)
         return {
             "url": manifest["urls"][0],

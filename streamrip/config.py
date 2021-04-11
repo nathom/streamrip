@@ -1,4 +1,4 @@
-'''A config class that manages arguments between the config file and CLI.'''
+"""A config class that manages arguments between the config file and CLI."""
 
 import copy
 import logging
@@ -77,10 +77,8 @@ class Config:
         "downloads": {"folder": DOWNLOADS_DIR, "source_subdirectories": False},
         "artwork": {
             "embed": True,
-            "embed_size": "large",
-            "download_size": "original",
-            "keep_embedded_cover": False,
-            "keep_downloaded_cover": True,
+            "size": "large",
+            "keep_hires_cover": True,
         },
         "metadata": {
             "set_playlist_to_album": False,

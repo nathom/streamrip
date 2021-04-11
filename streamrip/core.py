@@ -153,18 +153,15 @@ class MusicDL(list):
             "parent_folder": self.config.session["downloads"]["folder"],
             "folder_format": self.config.session["path_format"]["folder"],
             "track_format": self.config.session["path_format"]["track"],
-            "keep_downloaded_cover": self.config.session["artwork"][
-                "keep_downloaded_cover"
-            ],
-            "keep_embedded_cover": self.config.session["artwork"][
-                "keep_embedded_cover"
-            ],
+
             "embed_cover": self.config.session["artwork"]["embed"],
-            "embed_cover_size": self.config.session["artwork"]["embed_size"],
-            "download_cover_size": self.config.session["artwork"]["download_size"],
+            "embed_cover_size": self.config.session["artwork"]["size"],
+            "keep_hires_cover": self.config.session['artwork']['keep_hires_cover'],
+
             "set_playlist_to_album": self.config.session["metadata"][
                 "set_playlist_to_album"
             ],
+            "stay_temp": self.config.session["conversion"]["enabled"],
         }
         logger.debug("Arguments from config: %s", arguments)
         for item in self:
