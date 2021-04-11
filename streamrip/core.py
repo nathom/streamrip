@@ -23,7 +23,7 @@ from .constants import (
 )
 from .db import MusicDB
 from .downloader import Album, Artist, Label, Playlist, Track, Tracklist
-from .exceptions import AuthenticationError, NoResultsFound, ParsingError
+from .exceptions import AuthenticationError, NoResultsFound, ParsingError, NonStreamable
 from .utils import capitalize
 
 logger = logging.getLogger(__name__)
@@ -179,7 +179,11 @@ class MusicDL(list):
                 logger.debug("Added filter argument for artist/label: %s", filters_)
 
             if not (isinstance(item, Tracklist) and item.loaded):
-                item.load_meta()
+                try:
+                    item.load_meta()
+                except NonStreamable:
+                    click.secho(f"{item!s} is not available, skipping.", fg='red')
+                    continue
 
             if isinstance(item, Track):
                 # track.download doesn't automatically tag
