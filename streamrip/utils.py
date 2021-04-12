@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 session = requests.Session()
 adapter = requests.adapters.HTTPAdapter(pool_connections=100, pool_maxsize=100)
-session.mount('https://', adapter)
+session.mount("https://", adapter)
 
 
 def safe_get(d: dict, *keys: Hashable, default=None):
@@ -117,6 +117,7 @@ def tqdm_download(url: str, filepath: str, params: dict = None):
     total = int(r.headers.get("content-length", 0))
     logger.debug(f"File size = {total}")
     if total < 1000 and not url.endswith("jpg") and not url.endswith("png"):
+        print(url)
         raise NonStreamable(url)
 
     try:

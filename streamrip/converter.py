@@ -5,12 +5,11 @@ import subprocess
 from tempfile import gettempdir
 from typing import Optional
 
-from mutagen.flac import FLAC as FLAC_META
-from mutagen.mp4 import MP4 as M4A_META
-
 from .exceptions import ConversionError
 
 logger = logging.getLogger(__name__)
+
+SAMPLING_RATES = (44100, 48000, 88200, 96000, 176400, 192000)
 
 
 class Converter:
@@ -112,13 +111,10 @@ class Converter:
 
         if self.lossless:
             if isinstance(self.sampling_rate, int):
-                meta_objects = {
-                    "flac": FLAC_META,
-                    "alac": M4A_META,
-                }
-                audio = meta_objects[self.container](self.filename)
-                old_sr = audio.info.sample_rate
-                command.extend(["-ar", str(min(old_sr, self.sampling_rate))])
+                sampling_rates = "|".join(
+                    str(rate) for rate in SAMPLING_RATES if rate <= self.sampling_rate
+                )
+                command.extend(['-af', f"aformat=sample_rates={sampling_rates}"])
 
             elif self.sampling_rate is not None:
                 raise TypeError(
@@ -135,6 +131,7 @@ class Converter:
             elif self.bit_depth is not None:
                 raise TypeError(f"Bit depth must be int, not {type(self.bit_depth)}")
 
+        # automatically overwrite
         command.extend(["-y", self.tempfile])
 
         return command

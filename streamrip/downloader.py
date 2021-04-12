@@ -609,8 +609,9 @@ class Tracklist(list):
         if kwargs.get("concurrent_downloads", True):
             processes = []
             for item in self:
-                proc = threading.Thread(target=target, args=(item,), kwargs=kwargs)
-                proc.daemon = True
+                proc = threading.Thread(
+                    target=target, args=(item,), kwargs=kwargs, daemon=True
+                )
                 proc.start()
                 processes.append(proc)
 
@@ -844,7 +845,11 @@ class Album(Tracklist):
             embed_cover_size in self.cover_urls
         ), f"Invalid cover size. Must be in {self.cover_urls.keys()}"
 
-        tqdm_download(self.cover_urls[embed_cover_size], cover_path)
+        embed_cover_url = self.cover_urls[embed_cover_size]
+        if embed_cover_url is not None:
+            tqdm_download(embed_cover_url, cover_path)
+        else:  # sometimes happens with Deezer
+            tqdm_download(self.cover_urls["small"], cover_path)
 
         if kwargs.get("keep_hires_cover", True):
             tqdm_download(
@@ -880,17 +885,15 @@ class Album(Tracklist):
             disc_folder = os.path.join(self.folder, f"Disc {track.meta.discnumber}")
             kwargs["parent_folder"] = disc_folder
         else:
-            kwargs['parent_folder'] = self.folder
+            kwargs["parent_folder"] = self.folder
 
-        track.download(
-            quality=quality, database=database, **kwargs
-        )
+        track.download(quality=quality, database=database, **kwargs)
 
         # deezer tracks come tagged
         if kwargs.get("tag_tracks", True) and self.client.source != "deezer":
             track.tag(cover=self.cover_obj, embed_cover=kwargs.get("embed_cover", True))
 
-        if safe_get(kwargs, 'conversion', 'enabled', default=False):
+        if safe_get(kwargs, "conversion", "enabled", default=False):
             track.convert(**kwargs["conversion"])
 
     @staticmethod

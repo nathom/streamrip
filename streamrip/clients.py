@@ -152,7 +152,7 @@ class QobuzClient(ClientInterface):
         self.session = requests.Session()
         # for multithreading
         adapter = requests.adapters.HTTPAdapter(pool_connections=100, pool_maxsize=100)
-        self.session.mount('https://', adapter)
+        self.session.mount("https://", adapter)
         self.session.headers.update(
             {
                 "User-Agent": AGENT,
@@ -377,6 +377,11 @@ class DeezerClient(ClientInterface):
 
     def __init__(self):
         self.session = requests.Session()
+        # for multithreading
+        adapter = requests.adapters.HTTPAdapter(pool_connections=300, pool_maxsize=300)
+        self.session.mount("https://", adapter)
+
+        # no login required
         self.logged_in = True
 
     def search(self, query: str, media_type: str = "album", limit: int = 200) -> dict:
@@ -391,9 +396,6 @@ class DeezerClient(ClientInterface):
         """
         # TODO: more robust url sanitize
         query = query.replace(" ", "+")
-
-        if media_type.endswith("s"):
-            media_type = media_type[:-1]
 
         # TODO: use limit parameter
         response = self.session.get(f"{DEEZER_BASE}/search/{media_type}?q={query}")
@@ -453,7 +455,7 @@ class TidalClient(ClientInterface):
         self.session = requests.Session()
         # for multithreading
         adapter = requests.adapters.HTTPAdapter(pool_connections=200, pool_maxsize=200)
-        self.session.mount('https://', adapter)
+        self.session.mount("https://", adapter)
 
     def login(
         self,
@@ -675,7 +677,7 @@ class TidalClient(ClientInterface):
         return r
 
     def _update_authorization(self):
-        self.session.headers.update({'authorization': f"Bearer {self.access_token}"})
+        self.session.headers.update({"authorization": f"Bearer {self.access_token}"})
 
 
 class SoundCloudClient(ClientInterface):
