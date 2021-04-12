@@ -4,8 +4,8 @@ A scriptable stream downloader for Qobuz, Tidal, Deezer and SoundCloud.
 
 ## Features
 
+- Super fast, as it utilizes concurrent downloads and conversion
 - Downloads tracks, albums, playlists, discographies, and labels from Qobuz, Tidal, Deezer, and SoundCloud
-
 - Automatically converts files to a preferred format
 - Has a database that stores the downloaded tracks' IDs so that repeats are avoided
 - Easy to customize with the config file
