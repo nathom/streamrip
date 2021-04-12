@@ -10,7 +10,7 @@ import subprocess
 import threading
 from pprint import pformat
 from tempfile import gettempdir
-from typing import Any, Callable, Optional, Tuple, Union
+from typing import Any, Generator, Iterable, Union
 
 import click
 from mutagen.flac import FLAC, Picture
@@ -148,7 +148,7 @@ class Track:
             self.cover_url = None
 
     @staticmethod
-    def _get_tracklist(resp, source):
+    def _get_tracklist(resp, source) -> list:
         if source == "qobuz":
             return resp["tracks"]["items"]
         if source in ("tidal", "deezer"):
@@ -164,7 +164,7 @@ class Track:
         database: MusicDB = None,
         tag: bool = False,
         **kwargs,
-    ):
+    ) -> bool:
         """
         Download the track.
 
@@ -529,7 +529,7 @@ class Track:
             self.move(self.final_path)
 
     @property
-    def title(self):
+    def title(self) -> str:
         if hasattr(self, "meta"):
             _title = self.meta.title
             if self.meta.explicit:
@@ -538,7 +538,7 @@ class Track:
         else:
             raise Exception("Track must be loaded before accessing title")
 
-    def get(self, *keys, default=None):
+    def get(self, *keys, default=None) -> Any:
         """Safe get method that allows for layered access.
 
         :param keys:
@@ -555,14 +555,14 @@ class Track:
         """
         self.__setitem__(key, val)
 
-    def __getitem__(self, key):
+    def __getitem__(self, key: str) -> Any:
         """Dict-like interface for Track metadata.
 
         :param key:
         """
         return getattr(self.meta, key)
 
-    def __setitem__(self, key, val):
+    def __setitem__(self, key: str, val: Any):
         """Dict-like interface for Track metadata.
 
         :param key:
@@ -599,7 +599,11 @@ class Tracklist(list):
 
     def download(self, **kwargs):
         self._prepare_download(**kwargs)
-        has_conversion = "conversion" in kwargs.get("conversion", {})
+        if kwargs.get("conversion", False):
+            has_conversion = kwargs["conversion"]["enabled"]
+        else:
+            has_conversion = False
+            kwargs["stay_temp"] = False
 
         if has_conversion:
             target = self._download_and_convert_item
@@ -624,13 +628,14 @@ class Tracklist(list):
 
         else:
             for item in self:
+                click.secho(f'\nDownloading "{item!s}"', fg="blue")
                 target(item, **kwargs)
 
         self.downloaded = True
 
     def _download_and_convert_item(self, item, **kwargs):
-        self._download_item(item, **kwargs)
-        item.convert(**kwargs["conversion"])
+        if self._download_item(item, **kwargs):
+            item.convert(**kwargs["conversion"])
 
     def _download_item(item, **kwargs):
         raise NotImplementedError
@@ -819,7 +824,7 @@ class Album(Tracklist):
         self.loaded = True
 
     @classmethod
-    def from_api(cls, resp, client):
+    def from_api(cls, resp: dict, client: ClientInterface):
         if client.source == "soundcloud":
             return Playlist.from_api(resp, client)
 
@@ -875,11 +880,11 @@ class Album(Tracklist):
 
     def _download_item(
         self,
-        track,
+        track: Track,
         quality: int = 3,
         database: MusicDB = None,
         **kwargs,
-    ):
+    ) -> bool:
         logger.debug("Downloading track to %s", self.folder)
         if self.disctotal > 1:
             disc_folder = os.path.join(self.folder, f"Disc {track.meta.discnumber}")
@@ -887,14 +892,14 @@ class Album(Tracklist):
         else:
             kwargs["parent_folder"] = self.folder
 
-        track.download(quality=quality, database=database, **kwargs)
+        if not track.download(quality=quality, database=database, **kwargs):
+            return False
 
         # deezer tracks come tagged
         if kwargs.get("tag_tracks", True) and self.client.source != "deezer":
             track.tag(cover=self.cover_obj, embed_cover=kwargs.get("embed_cover", True))
 
-        if safe_get(kwargs, "conversion", "enabled", default=False):
-            track.convert(**kwargs["conversion"])
+        return True
 
     @staticmethod
     def _parse_get_resp(resp: dict, client: ClientInterface) -> dict:
@@ -1064,7 +1069,6 @@ class Album(Tracklist):
 
     def __repr__(self) -> str:
         """Return a string representation of this Album object.
-        Useful for pprint and json.dumps.
 
         :rtype: str
         """
@@ -1237,7 +1241,7 @@ class Playlist(Tracklist):
         self.__download_index = 1
         self.download_message()
 
-    def _download_item(self, item, **kwargs):
+    def _download_item(self, item: Track, **kwargs):
         if self.client.source == "soundcloud":
             item.load_meta()
 
@@ -1249,19 +1253,20 @@ class Playlist(Tracklist):
             item.meta["tracknumber"] = str(self.__download_index)
             self.__download_index += 1
 
-        if (
-            item.download(
-                parent_folder=kwargs["parent_folder"],
-                quality=kwargs.get("quality", 3),
-                database=kwargs.get("database"),
-                **kwargs,
-            )
-            and self.client.source != "deezer"
-        ):
+        self.downloaded = item.download(
+            parent_folder=kwargs["parent_folder"],
+            quality=kwargs.get("quality", 3),
+            database=kwargs.get("database"),
+            **kwargs,
+        )
+
+        if self.downloaded and self.client.source != "deezer":
             item.tag(embed_cover=kwargs.get("embed_cover", True))
 
+        return self.downloaded
+
     @staticmethod
-    def _parse_get_resp(item: dict, client: ClientInterface):
+    def _parse_get_resp(item: dict, client: ClientInterface) -> dict:
         """Parses information from a search result returned
         by a client.search call.
 
@@ -1297,12 +1302,11 @@ class Playlist(Tracklist):
         raise InvalidSourceError(client.source)
 
     @property
-    def title(self):
+    def title(self) -> str:
         return self.name
 
     def __repr__(self) -> str:
         """Return a string representation of this Playlist object.
-        Useful for pprint and json.dumps.
 
         :rtype: str
         """
@@ -1383,7 +1387,7 @@ class Artist(Tracklist):
 
     def _prepare_download(
         self, parent_folder: str = "StreamripDownloads", filters: tuple = (), **kwargs
-    ):
+    ) -> Iterable:
         folder = sanitize_filename(self.name)
         folder = os.path.join(parent_folder, folder)
 
@@ -1412,7 +1416,7 @@ class Artist(Tracklist):
         quality: int = 3,
         database: MusicDB = None,
         **kwargs,
-    ):
+    ) -> bool:
         try:
             item.load_meta()
         except NonStreamable:
@@ -1420,15 +1424,16 @@ class Artist(Tracklist):
             return
 
         # always an Album
-        item.download(
+        status = item.download(
             parent_folder=parent_folder,
             quality=quality,
             database=database,
             **kwargs,
         )
+        return status
 
     @property
-    def title(self):
+    def title(self) -> str:
         return self.name
 
     @classmethod
@@ -1448,7 +1453,7 @@ class Artist(Tracklist):
         return cls(client=client, **info)
 
     @staticmethod
-    def _parse_get_resp(item: dict, client: ClientInterface):
+    def _parse_get_resp(item: dict, client: ClientInterface) -> dict:
         """Parse a result from a client.search call.
 
         :param item: the item to parse
@@ -1473,7 +1478,7 @@ class Artist(Tracklist):
 
     # ----------- Filters --------------
 
-    def _remove_repeats(self, bit_depth=max, sampling_rate=max):
+    def _remove_repeats(self, bit_depth=max, sampling_rate=max) -> Generator:
         """Remove the repeated albums from self. May remove different
         versions of the same album.
 
@@ -1510,7 +1515,7 @@ class Artist(Tracklist):
             and TYPE_REGEXES["extra"].search(album.title) is None
         )
 
-    def _features(self, album):
+    def _features(self, album: Album) -> bool:
         """Passed as a parameter by the user.
 
         This will download only albums where the requested
@@ -1523,7 +1528,7 @@ class Artist(Tracklist):
         """
         return self["name"] == album["albumartist"]
 
-    def _extras(self, album):
+    def _extras(self, album: Album) -> bool:
         """Passed as a parameter by the user.
 
         This will skip any extras.
@@ -1535,7 +1540,7 @@ class Artist(Tracklist):
         """
         return TYPE_REGEXES["extra"].search(album.title) is None
 
-    def _non_remasters(self, album):
+    def _non_remasters(self, album: Album) -> bool:
         """Passed as a parameter by the user.
 
         This will download only remasterd albums.
@@ -1547,7 +1552,7 @@ class Artist(Tracklist):
         """
         return TYPE_REGEXES["remaster"].search(album.title) is not None
 
-    def _non_albums(self, album):
+    def _non_albums(self, album: Album) -> bool:
         """This will ignore non-album releases.
 
         :param artist: usually self
@@ -1562,7 +1567,6 @@ class Artist(Tracklist):
 
     def __repr__(self) -> str:
         """Return a string representation of this Artist object.
-        Useful for pprint and json.dumps.
 
         :rtype: str
         """

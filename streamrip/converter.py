@@ -114,7 +114,7 @@ class Converter:
                 sampling_rates = "|".join(
                     str(rate) for rate in SAMPLING_RATES if rate <= self.sampling_rate
                 )
-                command.extend(['-af', f"aformat=sample_rates={sampling_rates}"])
+                command.extend(["-af", f"aformat=sample_rates={sampling_rates}"])
 
             elif self.sampling_rate is not None:
                 raise TypeError(
