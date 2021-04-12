@@ -8,11 +8,13 @@ import requests
 from Crypto.Cipher import AES
 from Crypto.Util import Counter
 from pathvalidate import sanitize_filename
+from requests.packages import urllib3
 from tqdm import tqdm
 
 from .constants import LOG_DIR, TIDAL_COVER_URL
 from .exceptions import InvalidSourceError, NonStreamable
 
+urllib3.disable_warnings()
 logger = logging.getLogger(__name__)
 
 
@@ -95,7 +97,7 @@ def get_quality_id(bit_depth: Optional[int], sampling_rate: Optional[int]):
         return 4
 
 
-def tqdm_download(url: str, filepath: str, params: dict = None):
+def tqdm_download(url: str, filepath: str, params: dict = None, desc: str = None):
     """Downloads a file with a progress bar.
 
     :param url: url to direct download
@@ -107,7 +109,8 @@ def tqdm_download(url: str, filepath: str, params: dict = None):
     if params is None:
         params = {}
 
-    r = requests.get(url, allow_redirects=True, stream=True, params=params)
+    session = gen_threadsafe_session()
+    r = session.get(url, allow_redirects=True, stream=True, params=params)
     total = int(r.headers.get("content-length", 0))
     logger.debug(f"File size = {total}")
     if total < 1000 and not url.endswith("jpg") and not url.endswith("png"):
@@ -115,7 +118,7 @@ def tqdm_download(url: str, filepath: str, params: dict = None):
 
     try:
         with open(filepath, "wb") as file, tqdm(
-            total=total, unit="iB", unit_scale=True, unit_divisor=1024
+            total=total, unit="iB", unit_scale=True, unit_divisor=1024, desc=desc
         ) as bar:
             for data in r.iter_content(chunk_size=1024):
                 size = file.write(data)
@@ -141,8 +144,10 @@ def clean_format(formatter: str, format_info):
 
     clean_dict = dict()
     for key in fmt_keys:
-        if isinstance(format_info.get(key), (str, int, float)):  # int for track numbers
+        if isinstance(format_info.get(key), (str, float)):
             clean_dict[key] = sanitize_filename(str(format_info[key]))
+        elif isinstance(format_info.get(key), int):  # track/discnumber
+            clean_dict[key] = f"{format_info[key]:02}"
         else:
             clean_dict[key] = "Unknown"
 
@@ -214,3 +219,16 @@ def ext(quality: int, source: str):
             return ".mp3"
     else:
         return ".flac"
+
+
+def gen_threadsafe_session(
+    headers: dict = None, pool_connections: int = 100, pool_maxsize: int = 100
+) -> requests.Session:
+    if headers is None:
+        headers = {}
+
+    session = requests.Session()
+    adapter = requests.adapters.HTTPAdapter(pool_connections=100, pool_maxsize=100)
+    session.mount("https://", adapter)
+    session.headers.update(headers)
+    return session

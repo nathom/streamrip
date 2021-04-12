@@ -7,15 +7,17 @@ import os
 import re
 import shutil
 import subprocess
+import threading
 from pprint import pformat
 from tempfile import gettempdir
-from typing import Any, Callable, Optional, Tuple, Union
+from typing import Any, Generator, Iterable, Union
 
 import click
 from mutagen.flac import FLAC, Picture
 from mutagen.id3 import APIC, ID3, ID3NoHeaderError
 from mutagen.mp4 import MP4, MP4Cover
 from pathvalidate import sanitize_filename, sanitize_filepath
+from requests.packages import urllib3
 
 from . import converter
 from .clients import ClientInterface
@@ -44,6 +46,7 @@ from .utils import (
 )
 
 logger = logging.getLogger(__name__)
+urllib3.disable_warnings()
 
 TIDAL_Q_MAP = {
     "LOW": 0,
@@ -145,7 +148,7 @@ class Track:
             self.cover_url = None
 
     @staticmethod
-    def _get_tracklist(resp, source):
+    def _get_tracklist(resp, source) -> list:
         if source == "qobuz":
             return resp["tracks"]["items"]
         if source in ("tidal", "deezer"):
@@ -161,7 +164,7 @@ class Track:
         database: MusicDB = None,
         tag: bool = False,
         **kwargs,
-    ):
+    ) -> bool:
         """
         Download the track.
 
@@ -211,7 +214,11 @@ class Track:
         else:
             url_id = self.id
 
-        dl_info = self.client.get_file_url(url_id, self.quality)
+        try:
+            dl_info = self.client.get_file_url(url_id, self.quality)
+        except Exception as e:
+            click.secho(f"Unable to download track. {e}", fg='red')
+            return False
 
         self.path = os.path.join(gettempdir(), f"{hash(self.id)}_{self.quality}.tmp")
         logger.debug("Temporary file path: %s", self.path)
@@ -227,15 +234,13 @@ class Track:
             self.sampling_rate = dl_info.get("sampling_rate")
             self.bit_depth = dl_info.get("bit_depth")
 
-        click.secho(f"\nDownloading {self!s}", fg="blue")
-
         # --------- Download Track ----------
         if self.client.source in ("qobuz", "tidal"):
             logger.debug("Downloadable URL found: %s", dl_info.get("url"))
-            tqdm_download(dl_info["url"], self.path)  # downloads file
+            tqdm_download(dl_info["url"], self.path, desc=self._progress_desc)  # downloads file
 
         elif self.client.source == "deezer":  # Deezer
-            logger.debug("Downloadable URL found: %s", dl_info)
+            logger.debug("Downloadable URL found: %s", dl_info, desc=self._progress_desc)
             try:
                 tqdm_download(dl_info, self.path)  # downloads file
             except NonStreamable:
@@ -300,7 +305,7 @@ class Track:
                 ]
             )
         elif dl_info["type"] == "original":
-            tqdm_download(dl_info["url"], self.path)
+            tqdm_download(dl_info["url"], self.path, desc=self._progress_desc)
 
             # if a wav is returned, convert to flac
             engine = converter.FLAC(self.path)
@@ -310,6 +315,10 @@ class Track:
             self.final_path = self.final_path.replace(".mp3", ".flac")
             self.quality = 2
 
+    @property
+    def _progress_desc(self):
+        return click.style(f"Track {int(self.meta.tracknumber):02}", fg='blue')
+
     def download_cover(self):
         """Downloads the cover art, if cover_url is given."""
 
@@ -317,10 +326,10 @@ class Track:
 
         self.cover_path = os.path.join(self.folder, f"cover{hash(self.cover_url)}.jpg")
         logger.debug(f"Downloading cover from {self.cover_url}")
-        click.secho(f"\nDownloading cover art for {self!s}", fg="blue")
+        # click.secho(f"\nDownloading cover art for {self!s}", fg="blue")
 
         if not os.path.exists(self.cover_path):
-            tqdm_download(self.cover_url, self.cover_path)
+            tqdm_download(self.cover_url, self.cover_path, desc=click.style('Cover', fg='cyan'))
         else:
             logger.debug("Cover already exists, skipping download")
 
@@ -515,16 +524,18 @@ class Track:
             sampling_rate=kwargs.get("sampling_rate"),
             remove_source=kwargs.get("remove_source", True),
         )
-        click.secho(f"Converting {self!s}", fg="blue")
+        # click.secho(f"Converting {self!s}", fg="blue")
         engine.convert()
         self.path = engine.final_fn
-        self.final_path = self.final_path.replace(ext(self.quality, self.client.source), f".{engine.container}")
+        self.final_path = self.final_path.replace(
+            ext(self.quality, self.client.source), f".{engine.container}"
+        )
 
         if not kwargs.get("stay_temp", False):
             self.move(self.final_path)
 
     @property
-    def title(self):
+    def title(self) -> str:
         if hasattr(self, "meta"):
             _title = self.meta.title
             if self.meta.explicit:
@@ -533,7 +544,7 @@ class Track:
         else:
             raise Exception("Track must be loaded before accessing title")
 
-    def get(self, *keys, default=None):
+    def get(self, *keys, default=None) -> Any:
         """Safe get method that allows for layered access.
 
         :param keys:
@@ -550,14 +561,14 @@ class Track:
         """
         self.__setitem__(key, val)
 
-    def __getitem__(self, key):
+    def __getitem__(self, key: str) -> Any:
         """Dict-like interface for Track metadata.
 
         :param key:
         """
         return getattr(self.meta, key)
 
-    def __setitem__(self, key, val):
+    def __setitem__(self, key: str, val: Any):
         """Dict-like interface for Track metadata.
 
         :param key:
@@ -588,19 +599,55 @@ class Tracklist(list):
     subclass is subscripted with [s: str], it will return an attribute s.
     If it is subscripted with [i: int] it will return the i'th track in
     the tracklist.
-
-    >>> tlist = Tracklist()
-    >>> tlist.tracklistname = 'my tracklist'
-    >>> tlist.append('first track')
-    >>> tlist[0]
-    'first track'
-    >>> tlist['tracklistname']
-    'my tracklist'
-    >>> tlist[2]
-    IndexError
     """
 
     essence_regex = re.compile(r"([^\(]+)(?:\s*[\(\[][^\)][\)\]])*")
+
+    def download(self, **kwargs):
+        self._prepare_download(**kwargs)
+        if kwargs.get("conversion", False):
+            has_conversion = kwargs["conversion"]["enabled"]
+        else:
+            has_conversion = False
+            kwargs["stay_temp"] = False
+
+        if has_conversion:
+            target = self._download_and_convert_item
+        else:
+            target = self._download_item
+
+        if kwargs.get("concurrent_downloads", True):
+            processes = []
+            for item in self:
+                proc = threading.Thread(
+                    target=target, args=(item,), kwargs=kwargs, daemon=True
+                )
+                proc.start()
+                processes.append(proc)
+
+            try:
+                for proc in processes:
+                    proc.join()
+            except (KeyboardInterrupt, SystemExit):
+                click.echo("Aborted!")
+                exit()
+
+        else:
+            for item in self:
+                click.secho(f'\nDownloading "{item!s}"', fg="blue")
+                target(item, **kwargs)
+
+        self.downloaded = True
+
+    def _download_and_convert_item(self, item, **kwargs):
+        if self._download_item(item, **kwargs):
+            item.convert(**kwargs["conversion"])
+
+    def _download_item(item, **kwargs):
+        raise NotImplementedError
+
+    def _prepare_download(**kwargs):
+        raise NotImplementedError
 
     def get(self, key: Union[str, int], default=None):
         if isinstance(key, str):
@@ -696,16 +743,13 @@ class Tracklist(list):
 
     def download_message(self):
         click.secho(
-            f"\nDownloading {self.title} ({self.__class__.__name__})\n",
+            f"\n\nDownloading {self.title} ({self.__class__.__name__})\n",
             fg="blue",
         )
 
     @staticmethod
     def _parse_get_resp(item, client):
-        pass
-
-    def download(self, **kwargs):
-        pass
+        raise NotImplementedError
 
     @staticmethod
     def essence(album: str) -> str:
@@ -763,13 +807,15 @@ class Album(Tracklist):
             setattr(self, k, v)
 
         # to improve from_api method speed
-        if kwargs.get("load_on_init"):
+        if kwargs.get("load_on_init", False):
             self.load_meta()
 
         self.loaded = False
         self.downloaded = False
 
     def load_meta(self):
+        """Load detailed metadata from API using the id."""
+
         assert hasattr(self, "id"), "id must be set to load metadata"
         self.meta = self.client.get(self.id, media_type="album")
 
@@ -784,12 +830,82 @@ class Album(Tracklist):
         self.loaded = True
 
     @classmethod
-    def from_api(cls, resp, client):
+    def from_api(cls, resp: dict, client: ClientInterface):
         if client.source == "soundcloud":
             return Playlist.from_api(resp, client)
 
         info = cls._parse_get_resp(resp, client)
         return cls(client, **info)
+
+    def _prepare_download(self, **kwargs):
+        self.folder_format = kwargs.get("folder_format", FOLDER_FORMAT)
+        self.quality = min(kwargs.get("quality", 3), self.client.max_quality)
+        self.folder = self._get_formatted_folder(
+            kwargs.get("parent_folder", "StreamripDownloads"), self.quality
+        )
+        os.makedirs(self.folder, exist_ok=True)
+
+        self.download_message()
+
+        # choose optimal cover size and download it
+        click.secho("Downloading cover art", fg="magenta")
+        cover_path = os.path.join(gettempdir(), f"cover_{hash(self)}.jpg")
+        embed_cover_size = kwargs.get("embed_cover_size", "large")
+
+        assert (
+            embed_cover_size in self.cover_urls
+        ), f"Invalid cover size. Must be in {self.cover_urls.keys()}"
+
+        embed_cover_url = self.cover_urls[embed_cover_size]
+        if embed_cover_url is not None:
+            tqdm_download(embed_cover_url, cover_path)
+        else:  # sometimes happens with Deezer
+            tqdm_download(self.cover_urls["small"], cover_path)
+
+        if kwargs.get("keep_hires_cover", True):
+            tqdm_download(
+                self.cover_urls["original"], os.path.join(self.folder, "cover.jpg")
+            )
+
+        cover_size = os.path.getsize(cover_path)
+        if cover_size > FLAC_MAX_BLOCKSIZE:  # 16.77 MB
+            click.secho(
+                "Downgrading embedded cover size, too large ({cover_size}).",
+                fg="bright_yellow",
+            )
+            # large is about 600x600px which is guaranteed < 16.7 MB
+            tqdm_download(self.cover_urls["large"], cover_path)
+
+        embed_cover = kwargs.get("embed_cover", True)  # embed by default
+        if self.client.source != "deezer" and embed_cover:
+            self.cover_obj = self.get_cover_obj(
+                cover_path, self.quality, self.client.source
+            )
+        else:
+            self.cover_obj = None
+
+    def _download_item(
+        self,
+        track: Track,
+        quality: int = 3,
+        database: MusicDB = None,
+        **kwargs,
+    ) -> bool:
+        logger.debug("Downloading track to %s", self.folder)
+        if self.disctotal > 1:
+            disc_folder = os.path.join(self.folder, f"Disc {track.meta.discnumber}")
+            kwargs["parent_folder"] = disc_folder
+        else:
+            kwargs["parent_folder"] = self.folder
+
+        if not track.download(quality=quality, database=database, **kwargs):
+            return False
+
+        # deezer tracks come tagged
+        if kwargs.get("tag_tracks", True) and self.client.source != "deezer":
+            track.tag(cover=self.cover_obj, embed_cover=kwargs.get("embed_cover", True))
+
+        return True
 
     @staticmethod
     def _parse_get_resp(resp: dict, client: ClientInterface) -> dict:
@@ -903,110 +1019,6 @@ class Album(Tracklist):
                 Track.from_album_meta(album=self.meta, pos=i, client=self.client)
             )
 
-    @property
-    def title(self) -> str:
-        """Return the title of the album.
-
-        It is formatted so that "version" keys are included.
-
-        :rtype: str
-        """
-        album_title = self._title
-        if hasattr(self, "version") and isinstance(self.version, str):
-            if self.version.lower() not in album_title.lower():
-                album_title = f"{album_title} ({self.version})"
-
-        if self.get("explicit", False):
-            album_title = f"{album_title} (Explicit)"
-
-        return album_title
-
-    @title.setter
-    def title(self, val):
-        """Sets the internal _title attribute to the given value.
-
-        :param val: title to set
-        """
-        self._title = val
-
-    def download(
-        self,
-        quality: int = 3,
-        parent_folder: Union[str, os.PathLike] = "StreamripDownloads",
-        database: MusicDB = None,
-        **kwargs,
-    ):
-        """Download all of the tracks in the album.
-
-        :param quality: (0, 1, 2, 3, 4)
-        :type quality: int
-        :param parent_folder: the folder to download the album to
-        :type parent_folder: Union[str, os.PathLike]
-        :param progress_bar: turn on/off a tqdm progress bar
-        :type progress_bar: bool
-        :param large_cover: Download the large cover. This may fail when
-        embedding covers.
-        :param tag_tracks: Tag the tracks after downloading, True by default
-        :param keep_cover: Keep the cover art image after downloading.
-        True by default.
-        """
-        self.folder_format = kwargs.get("folder_format", FOLDER_FORMAT)
-        quality = min(quality, self.client.max_quality)
-        folder = self._get_formatted_folder(parent_folder, quality)
-
-        # choose optimal cover size and download it
-        self.download_message()
-
-        click.secho("Downloading cover art", fg="magenta")
-        cover_path = os.path.join(gettempdir(), f"cover_{hash(self)}.jpg")
-        embed_cover_size = kwargs.get("embed_cover_size", "large")
-
-        assert (
-            embed_cover_size in self.cover_urls
-        ), f"Invalid cover size. Must be in {self.cover_urls.keys()}"
-
-        tqdm_download(self.cover_urls[embed_cover_size], cover_path)
-
-        if kwargs.get("keep_hires_cover", True):
-            tqdm_download(self.cover_urls['original'], os.path.join(folder, 'cover.jpg'))
-
-        cover_size = os.path.getsize(cover_path)
-        if cover_size > FLAC_MAX_BLOCKSIZE:  # 16.77 MB
-            click.secho(
-                "Downgrading embedded cover size, too large ({cover_size}).",
-                fg="bright_yellow",
-            )
-            # large is about 600x600px which is guaranteed < 16.7 MB
-            tqdm_download(self.cover_urls["large"], cover_path)
-
-        embed_cover = kwargs.get("embed_cover", True)  # embed by default
-        if self.client.source != "deezer" and embed_cover:
-            cover = self.get_cover_obj(cover_path, quality, self.client.source)
-
-        download_args = {
-            "quality": quality,
-            "parent_folder": folder,
-            "progress_bar": kwargs.get("progress_bar", True),
-            "database": database,
-            "track_format": kwargs.get("track_format", TRACK_FORMAT),
-            "stay_temp": kwargs.get("stay_temp")
-        }
-        for track in self:
-            logger.debug("Downloading track to %s", folder)
-            if self.disctotal > 1:
-                disc_folder = os.path.join(folder, f"Disc {track.meta.discnumber}")
-                download_args["parent_folder"] = disc_folder
-
-            track.download(quality=quality, parent_folder=folder, database=database, **kwargs)
-
-            # deezer tracks come tagged
-            if kwargs.get("tag_tracks", True) and self.client.source != "deezer":
-                track.tag(cover=cover, embed_cover=embed_cover)
-
-        os.remove(cover_path)
-
-        self.downloaded = True
-
     def _get_formatter(self) -> dict:
         fmt = dict()
         for key in ALBUM_KEYS:
@@ -1035,9 +1047,34 @@ class Album(Tracklist):
 
         return os.path.join(parent_folder, formatted_folder)
 
+    @property
+    def title(self) -> str:
+        """Return the title of the album.
+
+        It is formatted so that "version" keys are included.
+
+        :rtype: str
+        """
+        album_title = self._title
+        if hasattr(self, "version") and isinstance(self.version, str):
+            if self.version.lower() not in album_title.lower():
+                album_title = f"{album_title} ({self.version})"
+
+        if self.get("explicit", False):
+            album_title = f"{album_title} (Explicit)"
+
+        return album_title
+
+    @title.setter
+    def title(self, val):
+        """Sets the internal _title attribute to the given value.
+
+        :param val: title to set
+        """
+        self._title = val
+
     def __repr__(self) -> str:
         """Return a string representation of this Album object.
-        Useful for pprint and json.dumps.
 
         :rtype: str
         """
@@ -1122,6 +1159,7 @@ class Playlist(Tracklist):
         :param new_tracknumbers: replace tracknumber tag with playlist position
         :type new_tracknumbers: bool
         """
+        # TODO: redundant parsing with _parse_get_pres
         if self.client.source == "qobuz":
             self.name = self.meta["name"]
             self.image = self.meta["images"]
@@ -1198,50 +1236,36 @@ class Playlist(Tracklist):
 
         logger.debug(f"Loaded {len(self)} tracks from playlist {self.name}")
 
-    def download(
-        self,
-        parent_folder: str = "StreamripDownloads",
-        quality: int = 3,
-        filters: Callable = None,
-        database: MusicDB = None,
-        **kwargs,
-    ):
-        """Download and tag all of the tracks.
+    def _prepare_download(self, parent_folder: str = "StreamripDownloads", **kwargs):
+        fname = sanitize_filename(self.name)
+        self.folder = os.path.join(parent_folder, fname)
 
-        :param parent_folder:
-        :type parent_folder: str
-        :param quality:
-        :type quality: int
-        :param filters:
-        :type filters: Callable
-        """
-        folder = sanitize_filename(self.name)
-        folder = os.path.join(parent_folder, folder)
-        logger.debug(f"Parent folder {folder}")
-
+        self.__download_index = 1
         self.download_message()
-        set_playlist_to_album = kwargs.get("set_playlist_to_album", False)
-        for i, track in enumerate(self):
 
-            if self.client.source == "soundcloud":
-                track.load_meta()
+    def _download_item(self, item: Track, **kwargs):
+        if self.client.source == "soundcloud":
+            item.load_meta()
 
-            if set_playlist_to_album and hasattr(self, "image"):
-                track["album"] = self.name
-                track["albumartist"] = self.creator
+        if kwargs.get("set_playlist_to_album", False):
+            item["album"] = self.name
+            item["albumartist"] = self.creator
 
-            if kwargs.get("new_tracknumbers", True):
-                track.meta["tracknumber"] = str(i + 1)
+        if kwargs.get("new_tracknumbers", True):
+            item["tracknumber"] = self.__download_index
+            item['discnumber'] = 1
 
-            if (
-                track.download(parent_folder=folder, quality=quality, database=database, **kwargs)
-                and self.client.source != "deezer"
-            ):
+            self.__download_index += 1
 
-                track.tag(embed_cover=kwargs.get("embed_cover", True))
+        self.downloaded = item.download(**kwargs)
+
+        if self.downloaded and self.client.source != "deezer":
+            item.tag(embed_cover=kwargs.get("embed_cover", True))
+
+        return self.downloaded
 
     @staticmethod
-    def _parse_get_resp(item: dict, client: ClientInterface):
+    def _parse_get_resp(item: dict, client: ClientInterface) -> dict:
         """Parses information from a search result returned
         by a client.search call.
 
@@ -1277,12 +1301,11 @@ class Playlist(Tracklist):
         raise InvalidSourceError(client.source)
 
     @property
-    def title(self):
+    def title(self) -> str:
         return self.name
 
     def __repr__(self) -> str:
         """Return a string representation of this Playlist object.
-        Useful for pprint and json.dumps.
 
         :rtype: str
         """
@@ -1332,6 +1355,12 @@ class Artist(Tracklist):
         self._load_albums()
         self.loaded = True
 
+    # override
+    def download(self, **kwargs):
+        iterator = self._prepare_download(**kwargs)
+        for item in iterator:
+            self._download_item(item, **kwargs)
+
     def _load_albums(self):
         """From the discography returned by client.get(query, 'artist'),
         generate album objects and append them to self.
@@ -1355,25 +1384,9 @@ class Artist(Tracklist):
             logger.debug("Appending album: %s", album.get("title"))
             self.append(Album.from_api(album, self.client))
 
-    def download(
-        self,
-        parent_folder: str = "StreamripDownloads",
-        filters: Optional[Tuple] = None,
-        no_repeats: bool = False,
-        quality: int = 6,
-        database: MusicDB = None,
-        **kwargs,
-    ):
-        """Download all albums in the discography.
-
-        :param filters: Filters to apply to discography, see options below.
-        These only work for Qobuz.
-        :type filters: Optional[Tuple]
-        :param no_repeats: Remove repeats
-        :type no_repeats: bool
-        :param quality: in (0, 1, 2, 3, 4)
-        :type quality: int
-        """
+    def _prepare_download(
+        self, parent_folder: str = "StreamripDownloads", filters: tuple = (), **kwargs
+    ) -> Iterable:
         folder = sanitize_filename(self.name)
         folder = os.path.join(parent_folder, folder)
 
@@ -1393,21 +1406,33 @@ class Artist(Tracklist):
                 final = filter(func, final)
 
         self.download_message()
-        for album in final:
-            try:
-                album.load_meta()
-            except NonStreamable:
-                logger.info("Skipping album, not available to stream.")
-                continue
-            album.download(
-                parent_folder=folder,
-                quality=quality,
-                database=database,
-                **kwargs,
-            )
+        return final
+
+    def _download_item(
+        self,
+        item,
+        parent_folder: str = "StreamripDownloads",
+        quality: int = 3,
+        database: MusicDB = None,
+        **kwargs,
+    ) -> bool:
+        try:
+            item.load_meta()
+        except NonStreamable:
+            logger.info("Skipping album, not available to stream.")
+            return
+
+        # always an Album
+        status = item.download(
+            parent_folder=parent_folder,
+            quality=quality,
+            database=database,
+            **kwargs,
+        )
+        return status
 
     @property
-    def title(self):
+    def title(self) -> str:
         return self.name
 
     @classmethod
@@ -1427,7 +1452,7 @@ class Artist(Tracklist):
         return cls(client=client, **info)
 
     @staticmethod
-    def _parse_get_resp(item: dict, client: ClientInterface):
+    def _parse_get_resp(item: dict, client: ClientInterface) -> dict:
         """Parse a result from a client.search call.
 
         :param item: the item to parse
@@ -1452,7 +1477,7 @@ class Artist(Tracklist):
 
     # ----------- Filters --------------
 
-    def _remove_repeats(self, bit_depth=max, sampling_rate=max):
+    def _remove_repeats(self, bit_depth=max, sampling_rate=max) -> Generator:
         """Remove the repeated albums from self. May remove different
         versions of the same album.
 
@@ -1489,7 +1514,7 @@ class Artist(Tracklist):
             and TYPE_REGEXES["extra"].search(album.title) is None
         )
 
-    def _features(self, album):
+    def _features(self, album: Album) -> bool:
         """Passed as a parameter by the user.
 
         This will download only albums where the requested
@@ -1502,7 +1527,7 @@ class Artist(Tracklist):
         """
         return self["name"] == album["albumartist"]
 
-    def _extras(self, album):
+    def _extras(self, album: Album) -> bool:
         """Passed as a parameter by the user.
 
         This will skip any extras.
@@ -1514,7 +1539,7 @@ class Artist(Tracklist):
         """
         return TYPE_REGEXES["extra"].search(album.title) is None
 
-    def _non_remasters(self, album):
+    def _non_remasters(self, album: Album) -> bool:
         """Passed as a parameter by the user.
 
         This will download only remasterd albums.
@@ -1526,7 +1551,7 @@ class Artist(Tracklist):
         """
         return TYPE_REGEXES["remaster"].search(album.title) is not None
 
-    def _non_albums(self, album):
+    def _non_albums(self, album: Album) -> bool:
         """This will ignore non-album releases.
 
         :param artist: usually self
@@ -1541,7 +1566,6 @@ class Artist(Tracklist):
 
     def __repr__(self) -> str:
         """Return a string representation of this Artist object.
-        Useful for pprint and json.dumps.
 
         :rtype: str
         """

@@ -2,6 +2,7 @@ import logging
 import os
 import re
 import sys
+import threading
 from getpass import getpass
 from hashlib import md5
 from string import Formatter
@@ -23,7 +24,12 @@ from .constants import (
 )
 from .db import MusicDB
 from .downloader import Album, Artist, Label, Playlist, Track, Tracklist
-from .exceptions import AuthenticationError, NoResultsFound, ParsingError, NonStreamable
+from .exceptions import (
+    AuthenticationError,
+    NonStreamable,
+    NoResultsFound,
+    ParsingError,
+)
 from .utils import capitalize
 
 logger = logging.getLogger(__name__)
@@ -153,21 +159,25 @@ class MusicDL(list):
             "parent_folder": self.config.session["downloads"]["folder"],
             "folder_format": self.config.session["path_format"]["folder"],
             "track_format": self.config.session["path_format"]["track"],
-
             "embed_cover": self.config.session["artwork"]["embed"],
             "embed_cover_size": self.config.session["artwork"]["size"],
-            "keep_hires_cover": self.config.session['artwork']['keep_hires_cover'],
-
+            "keep_hires_cover": self.config.session["artwork"]["keep_hires_cover"],
             "set_playlist_to_album": self.config.session["metadata"][
                 "set_playlist_to_album"
             ],
             "stay_temp": self.config.session["conversion"]["enabled"],
+            "conversion": self.config.session["conversion"],
+            "concurrent_downloads": self.config.session["concurrent_downloads"],
+            "new_tracknumbers": self.config.session['metadata']['new_playlist_tracknumbers']
         }
         logger.debug("Arguments from config: %s", arguments)
+
+        source_subdirs = self.config.session["downloads"]["source_subdirectories"]
         for item in self:
-            if self.config.session["downloads"]["source_subdirectories"]:
-                arguments["parent_folder"] = os.path.join(
-                    arguments["parent_folder"], capitalize(item.client.source)
+
+            if source_subdirs:
+                arguments["parent_folder"] = self.__get_source_subdir(
+                    item.client.source
                 )
 
             arguments["quality"] = self.config.session[item.client.source]["quality"]
@@ -182,7 +192,7 @@ class MusicDL(list):
                 try:
                     item.load_meta()
                 except NonStreamable:
-                    click.secho(f"{item!s} is not available, skipping.", fg='red')
+                    click.secho(f"{item!s} is not available, skipping.", fg="red")
                     continue
 
             if isinstance(item, Track):
@@ -194,8 +204,8 @@ class MusicDL(list):
             if self.db != [] and hasattr(item, "id"):
                 self.db.add(item.id)
 
-            if self.config.session["conversion"]["enabled"]:
-                item.convert(**self.config.session["conversion"])
+            # if self.config.session["conversion"]["enabled"]:
+            # item.convert(**self.config.session["conversion"])
 
     def get_client(self, source: str):
         client = self.clients[source]
@@ -261,24 +271,36 @@ class MusicDL(list):
     def handle_lastfm_urls(self, urls):
         lastfm_urls = self.lastfm_url_parse.findall(urls)
         lastfm_source = self.config.session["lastfm"]["source"]
+        tracks_not_found = 0
+
+        def search_query(query: str, playlist: Playlist):
+            global tracks_not_found
+            try:
+                track = next(self.search(lastfm_source, query, media_type="track"))
+                playlist.append(track)
+            except NoResultsFound:
+                tracks_not_found += 1
+                return
+
         for purl in lastfm_urls:
             click.secho(f"Fetching playlist at {purl}", fg="blue")
             title, queries = self.get_lastfm_playlist(purl)
 
-            pl = Playlist(client=self.clients[lastfm_source], name=title)
-            tracks_not_found = 0
-            for title, artist in tqdm(queries, unit="tracks", desc="Searching"):
+            pl = Playlist(client=self.get_client(lastfm_source), name=title)
+            processes = []
+
+            for title, artist in queries:
                 query = f"{title} {artist}"
+                proc = threading.Thread(
+                    target=search_query, args=(query, pl), daemon=True
+                )
+                proc.start()
+                processes.append(proc)
 
-                try:
-                    track = next(self.search(lastfm_source, query, media_type="track"))
-                except NoResultsFound:
-                    tracks_not_found += 1
-                    continue
+            for proc in tqdm(processes, unit="tracks", desc="Searching"):
+                proc.join()
 
-                pl.append(track)
-                pl.loaded = True
-
+            pl.loaded = True
             click.secho(f"{tracks_not_found} tracks not found.", fg="yellow")
             self.append(pl)
 
@@ -463,3 +485,7 @@ class MusicDL(list):
             remaining_tracks -= 50
 
         return playlist_title, info
+
+    def __get_source_subdir(self, source: str) -> str:
+        path = self.config.session["downloads"]["folder"]
+        return os.path.join(path, capitalize(source))
