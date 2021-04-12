@@ -1230,11 +1230,7 @@ class Playlist(Tracklist):
 
         logger.debug(f"Loaded {len(self)} tracks from playlist {self.name}")
 
-    def _prepare_download(
-        self,
-        parent_folder: str = "StreamripDownloads",
-        **kwargs,
-    ):
+    def _prepare_download(self, parent_folder: str = "StreamripDownloads", **kwargs):
         fname = sanitize_filename(self.name)
         self.folder = os.path.join(parent_folder, fname)
 
@@ -1245,7 +1241,7 @@ class Playlist(Tracklist):
         if self.client.source == "soundcloud":
             item.load_meta()
 
-        if kwargs.get("set_playlist_to_album", False) and hasattr(self, "image"):
+        if kwargs.get("set_playlist_to_album", False):
             item["album"] = self.name
             item["albumartist"] = self.creator
 
@@ -1253,12 +1249,7 @@ class Playlist(Tracklist):
             item.meta["tracknumber"] = str(self.__download_index)
             self.__download_index += 1
 
-        self.downloaded = item.download(
-            parent_folder=kwargs["parent_folder"],
-            quality=kwargs.get("quality", 3),
-            database=kwargs.get("database"),
-            **kwargs,
-        )
+        self.downloaded = item.download(**kwargs)
 
         if self.downloaded and self.client.source != "deezer":
             item.tag(embed_cover=kwargs.get("embed_cover", True))
