@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import os
 import re
@@ -23,7 +24,12 @@ from .constants import (
 )
 from .db import MusicDB
 from .downloader import Album, Artist, Label, Playlist, Track, Tracklist
-from .exceptions import AuthenticationError, NoResultsFound, ParsingError, NonStreamable
+from .exceptions import (
+    AuthenticationError,
+    NonStreamable,
+    NoResultsFound,
+    ParsingError,
+)
 from .utils import capitalize
 
 logger = logging.getLogger(__name__)
@@ -153,15 +159,14 @@ class MusicDL(list):
             "parent_folder": self.config.session["downloads"]["folder"],
             "folder_format": self.config.session["path_format"]["folder"],
             "track_format": self.config.session["path_format"]["track"],
-
             "embed_cover": self.config.session["artwork"]["embed"],
             "embed_cover_size": self.config.session["artwork"]["size"],
-            "keep_hires_cover": self.config.session['artwork']['keep_hires_cover'],
-
+            "keep_hires_cover": self.config.session["artwork"]["keep_hires_cover"],
             "set_playlist_to_album": self.config.session["metadata"][
                 "set_playlist_to_album"
             ],
             "stay_temp": self.config.session["conversion"]["enabled"],
+            "conversion": self.config.session["conversion"],
         }
         logger.debug("Arguments from config: %s", arguments)
         for item in self:
@@ -182,7 +187,7 @@ class MusicDL(list):
                 try:
                     item.load_meta()
                 except NonStreamable:
-                    click.secho(f"{item!s} is not available, skipping.", fg='red')
+                    click.secho(f"{item!s} is not available, skipping.", fg="red")
                     continue
 
             if isinstance(item, Track):
@@ -194,8 +199,8 @@ class MusicDL(list):
             if self.db != [] and hasattr(item, "id"):
                 self.db.add(item.id)
 
-            if self.config.session["conversion"]["enabled"]:
-                item.convert(**self.config.session["conversion"])
+            # if self.config.session["conversion"]["enabled"]:
+            # item.convert(**self.config.session["conversion"])
 
     def get_client(self, source: str):
         client = self.clients[source]

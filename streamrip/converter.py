@@ -6,6 +6,7 @@ from tempfile import gettempdir
 from typing import Optional
 
 from mutagen.flac import FLAC as FLAC_META
+from mutagen.mp4 import MP4 as M4A_META
 
 from .exceptions import ConversionError
 
@@ -111,9 +112,14 @@ class Converter:
 
         if self.lossless:
             if isinstance(self.sampling_rate, int):
-                audio = FLAC_META(self.filename)
+                meta_objects = {
+                    'flac': FLAC_META,
+                    'alac': M4A_META,
+                }
+                audio = meta_objects[self.container](self.filename)
                 old_sr = audio.info.sample_rate
                 command.extend(["-ar", str(min(old_sr, self.sampling_rate))])
+
             elif self.sampling_rate is not None:
                 raise TypeError(
                     f"Sampling rate must be int, not {type(self.sampling_rate)}"

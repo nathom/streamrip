@@ -8,11 +8,13 @@ import requests
 from Crypto.Cipher import AES
 from Crypto.Util import Counter
 from pathvalidate import sanitize_filename
+from requests.packages import urllib3
 from tqdm import tqdm
 
 from .constants import LOG_DIR, TIDAL_COVER_URL
 from .exceptions import InvalidSourceError, NonStreamable
 
+urllib3.disable_warnings()
 logger = logging.getLogger(__name__)
 
 
