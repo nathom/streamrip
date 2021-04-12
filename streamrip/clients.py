@@ -26,7 +26,7 @@ from .exceptions import (
     InvalidQuality,
 )
 from .spoofbuz import Spoofer
-from .utils import get_quality
+from .utils import gen_threadsafe_session, get_quality
 
 urllib3.disable_warnings()
 requests.adapters.DEFAULT_RETRIES = 5
@@ -149,15 +149,8 @@ class QobuzClient(ClientInterface):
         self.app_id = str(kwargs["app_id"])  # Ensure it is a string
         self.secrets = kwargs["secrets"]
 
-        self.session = requests.Session()
-        # for multithreading
-        adapter = requests.adapters.HTTPAdapter(pool_connections=100, pool_maxsize=100)
-        self.session.mount("https://", adapter)
-        self.session.headers.update(
-            {
-                "User-Agent": AGENT,
-                "X-App-Id": self.app_id,
-            }
+        self.session = gen_threadsafe_session(
+            headers={"User-Agent": AGENT, "X-App-Id": self.app_id}
         )
 
         self._api_login(email, pwd)
@@ -376,10 +369,7 @@ class DeezerClient(ClientInterface):
     max_quality = 2
 
     def __init__(self):
-        self.session = requests.Session()
-        # for multithreading
-        adapter = requests.adapters.HTTPAdapter(pool_connections=300, pool_maxsize=300)
-        self.session.mount("https://", adapter)
+        self.session = gen_threadsafe_session()
 
         # no login required
         self.logged_in = True
@@ -452,10 +442,7 @@ class TidalClient(ClientInterface):
         self.refresh_token = None
         self.expiry = None
 
-        self.session = requests.Session()
-        # for multithreading
-        adapter = requests.adapters.HTTPAdapter(pool_connections=200, pool_maxsize=200)
-        self.session.mount("https://", adapter)
+        self.session = gen_threadsafe_session()
 
     def login(
         self,
@@ -598,7 +585,9 @@ class TidalClient(ClientInterface):
         headers = {
             "authorization": f"Bearer {token}",
         }
-        r = requests.get("https://api.tidal.com/v1/sessions", headers=headers).json()
+        r = self.session.get(
+            "https://api.tidal.com/v1/sessions", headers=headers
+        ).json()
         if r.status != 200:
             raise Exception("Login failed")
 
@@ -627,8 +616,10 @@ class TidalClient(ClientInterface):
         self._update_authorization()
 
     def _login_by_access_token(self, token, user_id=None):
-        headers = {"authorization": f"Bearer {token}"}
-        resp = requests.get("https://api.tidal.com/v1/sessions", headers=headers).json()
+        headers = {"authorization": f"Bearer {token}"}  # temporary
+        resp = self.session.get(
+            "https://api.tidal.com/v1/sessions", headers=headers
+        ).json()
         if resp.get("status", 200) != 200:
             raise Exception(f"Login failed {resp}")
 
@@ -666,14 +657,13 @@ class TidalClient(ClientInterface):
         if params is None:
             params = {}
 
-        headers = {"authorization": f"Bearer {self.access_token}"}
         params["countryCode"] = self.country_code
         params["limit"] = 100
-        r = requests.get(f"{TIDAL_BASE}/{path}", headers=headers, params=params).json()
+        r = self.session.get(f"{TIDAL_BASE}/{path}", params=params).json()
         return r
 
     def _api_post(self, url, data, auth=None):
-        r = requests.post(url, data=data, auth=auth, verify=False).json()
+        r = self.session.post(url, data=data, auth=auth, verify=False).json()
         return r
 
     def _update_authorization(self):
@@ -684,6 +674,9 @@ class SoundCloudClient(ClientInterface):
     source = "soundcloud"
     max_quality = 0
     logged_in = True
+
+    def __init__(self):
+        self.session = gen_threadsafe_session(headers={"User-Agent": AGENT})
 
     def login(self):
         raise NotImplementedError
@@ -736,7 +729,7 @@ class SoundCloudClient(ClientInterface):
             url = f"{SOUNDCLOUD_BASE}/{path}"
 
         logger.debug(f"Fetching url {url}")
-        r = requests.get(url, params=params)
+        r = self.session.get(url, params=params)
         if resp_obj:
             return r
 

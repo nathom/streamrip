@@ -173,11 +173,13 @@ class MusicDL(list):
         }
         logger.debug("Arguments from config: %s", arguments)
 
-        source_subdirs = self.config.session['downloads']['source_subdirectories']
+        source_subdirs = self.config.session["downloads"]["source_subdirectories"]
         for item in self:
 
             if source_subdirs:
-                arguments['parent_folder'] = self.__get_source_subdir(item.client.source)
+                arguments["parent_folder"] = self.__get_source_subdir(
+                    item.client.source
+                )
 
             arguments["quality"] = self.config.session[item.client.source]["quality"]
             if isinstance(item, Artist):
@@ -486,5 +488,5 @@ class MusicDL(list):
         return playlist_title, info
 
     def __get_source_subdir(self, source: str) -> str:
-        path = self.config.session['downloads']['folder']
+        path = self.config.session["downloads"]["folder"]
         return os.path.join(path, capitalize(source))

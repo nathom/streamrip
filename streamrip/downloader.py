@@ -230,8 +230,6 @@ class Track:
             self.sampling_rate = dl_info.get("sampling_rate")
             self.bit_depth = dl_info.get("bit_depth")
 
-        # click.secho(f"\nDownloading {self!s}", fg="blue")
-
         # --------- Download Track ----------
         if self.client.source in ("qobuz", "tidal"):
             logger.debug("Downloadable URL found: %s", dl_info.get("url"))
@@ -737,7 +735,7 @@ class Tracklist(list):
 
     def download_message(self):
         click.secho(
-            f"\nDownloading {self.title} ({self.__class__.__name__})\n",
+            f"\n\nDownloading {self.title} ({self.__class__.__name__})\n",
             fg="blue",
         )
 
