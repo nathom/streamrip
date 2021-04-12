@@ -610,11 +610,17 @@ class Tracklist(list):
             processes = []
             for item in self:
                 proc = threading.Thread(target=target, args=(item,), kwargs=kwargs)
+                proc.daemon = True
                 proc.start()
                 processes.append(proc)
 
-            for proc in processes:
-                proc.join()
+            try:
+                for proc in processes:
+                    proc.join()
+            except (KeyboardInterrupt, SystemExit):
+                click.echo("Aborted!")
+                exit()
+
         else:
             for item in self:
                 target(item, **kwargs)
@@ -859,6 +865,8 @@ class Album(Tracklist):
             self.cover_obj = self.get_cover_obj(
                 cover_path, self.quality, self.client.source
             )
+        else:
+            self.cover_obj = None
 
     def _download_item(
         self,
@@ -871,6 +879,8 @@ class Album(Tracklist):
         if self.disctotal > 1:
             disc_folder = os.path.join(self.folder, f"Disc {track.meta.discnumber}")
             kwargs["parent_folder"] = disc_folder
+        else:
+            kwargs['parent_folder'] = self.folder
 
         track.download(
             quality=quality, database=database, **kwargs

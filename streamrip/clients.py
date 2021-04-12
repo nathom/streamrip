@@ -450,6 +450,11 @@ class TidalClient(ClientInterface):
         self.refresh_token = None
         self.expiry = None
 
+        self.session = requests.Session()
+        # for multithreading
+        adapter = requests.adapters.HTTPAdapter(pool_connections=200, pool_maxsize=200)
+        self.session.mount('https://', adapter)
+
     def login(
         self,
         user_id=None,
@@ -617,6 +622,7 @@ class TidalClient(ClientInterface):
         self.country_code = resp["user"]["countryCode"]
         self.access_token = resp["access_token"]
         self.token_expiry = resp["expires_in"] + time.time()
+        self._update_authorization()
 
     def _login_by_access_token(self, token, user_id=None):
         headers = {"authorization": f"Bearer {token}"}
@@ -630,6 +636,7 @@ class TidalClient(ClientInterface):
         self.user_id = resp["userId"]
         self.country_code = resp["countryCode"]
         self.access_token = token
+        self._update_authorization()
 
     def _api_get(self, item_id: str, media_type: str) -> dict:
         url = f"{media_type}s/{item_id}"
@@ -666,6 +673,9 @@ class TidalClient(ClientInterface):
     def _api_post(self, url, data, auth=None):
         r = requests.post(url, data=data, auth=auth, verify=False).json()
         return r
+
+    def _update_authorization(self):
+        self.session.headers.update({'authorization': f"Bearer {self.access_token}"})
 
 
 class SoundCloudClient(ClientInterface):
