@@ -608,7 +608,6 @@ class Tracklist(list):
 
         if kwargs.get("concurrent_downloads", True):
             processes = []
-            print(kwargs)
             for item in self:
                 proc = threading.Thread(target=target, args=(item,), kwargs=kwargs)
                 proc.start()

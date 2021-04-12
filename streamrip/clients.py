@@ -150,6 +150,9 @@ class QobuzClient(ClientInterface):
         self.secrets = kwargs["secrets"]
 
         self.session = requests.Session()
+        # for multithreading
+        adapter = requests.adapters.HTTPAdapter(pool_connections=100, pool_maxsize=100)
+        self.session.mount('https://', adapter)
         self.session.headers.update(
             {
                 "User-Agent": AGENT,
