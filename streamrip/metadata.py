@@ -361,7 +361,7 @@ class TrackMetadata:
         for k, v in FLAC_KEY.items():
             tag = getattr(self, k)
             if tag:
-                if k in ('tracknumber', 'discnumber', 'tracktotal', 'disctotal'):
+                if k in ("tracknumber", "discnumber", "tracktotal", "disctotal"):
                     tag = f"{int(tag):02}"
 
                 logger.debug("Adding tag %s: %s", v, tag)

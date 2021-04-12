@@ -489,7 +489,7 @@ class TidalClient(ClientInterface):
         try:
             manifest = json.loads(base64.b64decode(resp["manifest"]).decode("utf-8"))
         except KeyError:
-            raise Exception(resp['userMessage'])
+            raise Exception(resp["userMessage"])
 
         logger.debug(manifest)
         return {

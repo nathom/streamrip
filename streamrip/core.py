@@ -154,22 +154,37 @@ class MusicDL(list):
         self.append(item)
 
     def download(self):
-        arguments = {
-            "database": self.db,
-            "parent_folder": self.config.session["downloads"]["folder"],
-            "folder_format": self.config.session["path_format"]["folder"],
-            "track_format": self.config.session["path_format"]["track"],
-            "embed_cover": self.config.session["artwork"]["embed"],
-            "embed_cover_size": self.config.session["artwork"]["size"],
-            "keep_hires_cover": self.config.session["artwork"]["keep_hires_cover"],
-            "set_playlist_to_album": self.config.session["metadata"][
-                "set_playlist_to_album"
-            ],
-            "stay_temp": self.config.session["conversion"]["enabled"],
-            "conversion": self.config.session["conversion"],
-            "concurrent_downloads": self.config.session["concurrent_downloads"],
-            "new_tracknumbers": self.config.session['metadata']['new_playlist_tracknumbers']
-        }
+        try:
+            arguments = {
+                "database": self.db,
+                "parent_folder": self.config.session["downloads"]["folder"],
+                "folder_format": self.config.session["path_format"]["folder"],
+                "track_format": self.config.session["path_format"]["track"],
+                "embed_cover": self.config.session["artwork"]["embed"],
+                "embed_cover_size": self.config.session["artwork"]["size"],
+                "keep_hires_cover": self.config.session["artwork"]["keep_hires_cover"],
+                "set_playlist_to_album": self.config.session["metadata"][
+                    "set_playlist_to_album"
+                ],
+                "stay_temp": self.config.session["conversion"]["enabled"],
+                "conversion": self.config.session["conversion"],
+                "concurrent_downloads": self.config.session["concurrent_downloads"],
+                "new_tracknumbers": self.config.session["metadata"][
+                    "new_playlist_tracknumbers"
+                ],
+            }
+        except KeyError as err:
+            click.secho(
+                "There was a problem with your config file. This happens "
+                "sometimes after updates. Run ",
+                nl=False,
+                fg="red",
+            )
+            click.secho("rip config --reset ", fg="yellow", nl=False)
+            click.secho("to reset it. You will need to log in again.", fg="red")
+            logger.debug(err)
+            exit()
+
         logger.debug("Arguments from config: %s", arguments)
 
         source_subdirs = self.config.session["downloads"]["source_subdirectories"]

@@ -50,7 +50,7 @@ def cli(ctx, **kwargs):
     global config
     global core
 
-    if ctx.invoked_subcommand == 'config':
+    if ctx.invoked_subcommand == "config":
         return
 
     if kwargs["debug"]:

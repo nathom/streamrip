@@ -217,7 +217,7 @@ class Track:
         try:
             dl_info = self.client.get_file_url(url_id, self.quality)
         except Exception as e:
-            click.secho(f"Unable to download track. {e}", fg='red')
+            click.secho(f"Unable to download track. {e}", fg="red")
             return False
 
         self.path = os.path.join(gettempdir(), f"{hash(self.id)}_{self.quality}.tmp")
@@ -237,10 +237,14 @@ class Track:
         # --------- Download Track ----------
         if self.client.source in ("qobuz", "tidal"):
             logger.debug("Downloadable URL found: %s", dl_info.get("url"))
-            tqdm_download(dl_info["url"], self.path, desc=self._progress_desc)  # downloads file
+            tqdm_download(
+                dl_info["url"], self.path, desc=self._progress_desc
+            )  # downloads file
 
         elif self.client.source == "deezer":  # Deezer
-            logger.debug("Downloadable URL found: %s", dl_info, desc=self._progress_desc)
+            logger.debug(
+                "Downloadable URL found: %s", dl_info, desc=self._progress_desc
+            )
             try:
                 tqdm_download(dl_info, self.path)  # downloads file
             except NonStreamable:
@@ -317,7 +321,7 @@ class Track:
 
     @property
     def _progress_desc(self):
-        return click.style(f"Track {int(self.meta.tracknumber):02}", fg='blue')
+        return click.style(f"Track {int(self.meta.tracknumber):02}", fg="blue")
 
     def download_cover(self):
         """Downloads the cover art, if cover_url is given."""
@@ -329,7 +333,9 @@ class Track:
         # click.secho(f"\nDownloading cover art for {self!s}", fg="blue")
 
         if not os.path.exists(self.cover_path):
-            tqdm_download(self.cover_url, self.cover_path, desc=click.style('Cover', fg='cyan'))
+            tqdm_download(
+                self.cover_url, self.cover_path, desc=click.style("Cover", fg="cyan")
+            )
         else:
             logger.debug("Cover already exists, skipping download")
 
@@ -1253,7 +1259,7 @@ class Playlist(Tracklist):
 
         if kwargs.get("new_tracknumbers", True):
             item["tracknumber"] = self.__download_index
-            item['discnumber'] = 1
+            item["discnumber"] = 1
 
             self.__download_index += 1
 
