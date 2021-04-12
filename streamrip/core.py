@@ -486,5 +486,5 @@ class MusicDL(list):
         return playlist_title, info
 
     def __get_source_subdir(self, source: str) -> str:
-        path = self.config.session['parent_folder']
+        path = self.config.session['downloads']['folder']
         return os.path.join(path, capitalize(source))
