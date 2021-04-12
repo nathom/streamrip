@@ -170,6 +170,7 @@ class MusicDL(list):
             "concurrent_downloads": self.config.session["concurrent_downloads"][
                 "enabled"
             ],
+            "new_tracknumbers": self.config.session['metadata']['new_playlist_tracknumbers']
         }
         logger.debug("Arguments from config: %s", arguments)
 

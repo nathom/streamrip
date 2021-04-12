@@ -27,14 +27,12 @@ class Config:
 
     Usage:
     >>> config = Config('test_config.yaml')
+    >>> config.defaults['qobuz']['quality']
+    3
 
     If test_config was already initialized with values, this will load them
     into `config`. Otherwise, a new config file is created with the default
     values.
-
-    >>> config.update_from_cli(**args)
-
-    This will update the config values based on command line args.
     """
 
     defaults = {
@@ -42,7 +40,7 @@ class Config:
             "quality": 3,
             "email": None,
             "password": None,
-            "app_id": "",  # Avoid NoneType error
+            "app_id": "",
             "secrets": [],
         },
         "tidal": {
@@ -82,6 +80,7 @@ class Config:
         },
         "metadata": {
             "set_playlist_to_album": False,
+            "new_playlist_tracknumbers": True,
         },
         "path_format": {"folder": FOLDER_FORMAT, "track": TRACK_FORMAT},
         "check_for_updates": True,

@@ -489,7 +489,7 @@ class TidalClient(ClientInterface):
         try:
             manifest = json.loads(base64.b64decode(resp["manifest"]).decode("utf-8"))
         except KeyError:
-            raise Exception("You must have a TIDAL Hi-Fi account to download tracks.")
+            raise Exception(resp['userMessage'])
 
         logger.debug(manifest)
         return {

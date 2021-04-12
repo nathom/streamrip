@@ -214,7 +214,11 @@ class Track:
         else:
             url_id = self.id
 
-        dl_info = self.client.get_file_url(url_id, self.quality)
+        try:
+            dl_info = self.client.get_file_url(url_id, self.quality)
+        except Exception as e:
+            click.secho(f"Unable to download track. {e}", fg='red')
+            return False
 
         self.path = os.path.join(gettempdir(), f"{hash(self.id)}_{self.quality}.tmp")
         logger.debug("Temporary file path: %s", self.path)
@@ -233,10 +237,10 @@ class Track:
         # --------- Download Track ----------
         if self.client.source in ("qobuz", "tidal"):
             logger.debug("Downloadable URL found: %s", dl_info.get("url"))
-            tqdm_download(dl_info["url"], self.path)  # downloads file
+            tqdm_download(dl_info["url"], self.path, desc=self._progress_desc)  # downloads file
 
         elif self.client.source == "deezer":  # Deezer
-            logger.debug("Downloadable URL found: %s", dl_info)
+            logger.debug("Downloadable URL found: %s", dl_info, desc=self._progress_desc)
             try:
                 tqdm_download(dl_info, self.path)  # downloads file
             except NonStreamable:
@@ -301,7 +305,7 @@ class Track:
                 ]
             )
         elif dl_info["type"] == "original":
-            tqdm_download(dl_info["url"], self.path)
+            tqdm_download(dl_info["url"], self.path, desc=self._progress_desc)
 
             # if a wav is returned, convert to flac
             engine = converter.FLAC(self.path)
@@ -311,6 +315,10 @@ class Track:
             self.final_path = self.final_path.replace(".mp3", ".flac")
             self.quality = 2
 
+    @property
+    def _progress_desc(self):
+        return click.style(f"Track {int(self.meta.tracknumber):02}", fg='blue')
+
     def download_cover(self):
         """Downloads the cover art, if cover_url is given."""
 
@@ -318,10 +326,10 @@ class Track:
 
         self.cover_path = os.path.join(self.folder, f"cover{hash(self.cover_url)}.jpg")
         logger.debug(f"Downloading cover from {self.cover_url}")
-        click.secho(f"\nDownloading cover art for {self!s}", fg="blue")
+        # click.secho(f"\nDownloading cover art for {self!s}", fg="blue")
 
         if not os.path.exists(self.cover_path):
-            tqdm_download(self.cover_url, self.cover_path)
+            tqdm_download(self.cover_url, self.cover_path, desc=click.style('Cover', fg='cyan'))
         else:
             logger.debug("Cover already exists, skipping download")
 
@@ -1244,7 +1252,9 @@ class Playlist(Tracklist):
             item["albumartist"] = self.creator
 
         if kwargs.get("new_tracknumbers", True):
-            item.meta["tracknumber"] = str(self.__download_index)
+            item["tracknumber"] = self.__download_index
+            item['discnumber'] = 1
+
             self.__download_index += 1
 
         self.downloaded = item.download(**kwargs)

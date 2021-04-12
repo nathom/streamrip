@@ -97,7 +97,7 @@ def get_quality_id(bit_depth: Optional[int], sampling_rate: Optional[int]):
         return 4
 
 
-def tqdm_download(url: str, filepath: str, params: dict = None):
+def tqdm_download(url: str, filepath: str, params: dict = None, desc: str = None):
     """Downloads a file with a progress bar.
 
     :param url: url to direct download
@@ -114,12 +114,11 @@ def tqdm_download(url: str, filepath: str, params: dict = None):
     total = int(r.headers.get("content-length", 0))
     logger.debug(f"File size = {total}")
     if total < 1000 and not url.endswith("jpg") and not url.endswith("png"):
-        print(url)
         raise NonStreamable(url)
 
     try:
         with open(filepath, "wb") as file, tqdm(
-            total=total, unit="iB", unit_scale=True, unit_divisor=1024
+            total=total, unit="iB", unit_scale=True, unit_divisor=1024, desc=desc
         ) as bar:
             for data in r.iter_content(chunk_size=1024):
                 size = file.write(data)
@@ -145,8 +144,10 @@ def clean_format(formatter: str, format_info):
 
     clean_dict = dict()
     for key in fmt_keys:
-        if isinstance(format_info.get(key), (str, int, float)):  # int for track numbers
+        if isinstance(format_info.get(key), (str, float)):
             clean_dict[key] = sanitize_filename(str(format_info[key]))
+        elif isinstance(format_info.get(key), int):  # track/discnumber
+            clean_dict[key] = f"{format_info[key]:02}"
         else:
             clean_dict[key] = "Unknown"
 
