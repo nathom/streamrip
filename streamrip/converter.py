@@ -113,8 +113,8 @@ class Converter:
         if self.lossless:
             if isinstance(self.sampling_rate, int):
                 meta_objects = {
-                    'flac': FLAC_META,
-                    'alac': M4A_META,
+                    "flac": FLAC_META,
+                    "alac": M4A_META,
                 }
                 audio = meta_objects[self.container](self.filename)
                 old_sr = audio.info.sample_rate

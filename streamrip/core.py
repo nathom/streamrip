@@ -167,6 +167,7 @@ class MusicDL(list):
             ],
             "stay_temp": self.config.session["conversion"]["enabled"],
             "conversion": self.config.session["conversion"],
+            "concurrent_downloads": self.config.session['concurrent_downloads']['enabled'],
         }
         logger.debug("Arguments from config: %s", arguments)
         for item in self:

@@ -17,6 +17,10 @@ from .exceptions import InvalidSourceError, NonStreamable
 urllib3.disable_warnings()
 logger = logging.getLogger(__name__)
 
+session = requests.Session()
+adapter = requests.adapters.HTTPAdapter(pool_connections=100, pool_maxsize=100)
+session.mount('https://', adapter)
+
 
 def safe_get(d: dict, *keys: Hashable, default=None):
     """A replacement for chained `get()` statements on dicts:
@@ -109,7 +113,7 @@ def tqdm_download(url: str, filepath: str, params: dict = None):
     if params is None:
         params = {}
 
-    r = requests.get(url, allow_redirects=True, stream=True, params=params)
+    r = session.get(url, allow_redirects=True, stream=True, params=params)
     total = int(r.headers.get("content-length", 0))
     logger.debug(f"File size = {total}")
     if total < 1000 and not url.endswith("jpg") and not url.endswith("png"):
