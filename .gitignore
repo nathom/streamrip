@@ -11,3 +11,4 @@ test.py
 *.mp3
 StreamripDownloads
 *.wav
+*.log
