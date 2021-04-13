@@ -1,4 +1,4 @@
 """streamrip: the all in one music downloader.
 """
 
-__version__ = "0.4.1"
+__version__ = "0.4.2"
