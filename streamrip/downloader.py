@@ -185,17 +185,16 @@ class Track:
 
         os.makedirs(self.folder, exist_ok=True)
 
-        if isinstance(database, MusicDB):
-            if self.id in database:
-                self.downloaded = True
-                self.tagged = True
-                self.path = self.final_path
+        if isinstance(database, MusicDB) and self.id in database:
+            self.downloaded = True
+            self.tagged = True
+            self.path = self.final_path
 
-                click.secho(
-                    f"{self['title']} already logged in database, skipping.",
-                    fg="magenta",
-                )
-                return False  # because the track was not downloaded
+            click.secho(
+                f"{self['title']} already logged in database, skipping.",
+                fg="magenta",
+            )
+            return False  # because the track was not downloaded
 
         if os.path.isfile(self.final_path):  # track already exists
             self.downloaded = True
@@ -328,7 +327,7 @@ class Track:
 
         assert hasattr(self, "cover_url"), "must set cover_url attribute"
 
-        self.cover_path = os.path.join(self.folder, f"cover{hash(self.cover_url)}.jpg")
+        self.cover_path = os.path.join(gettempdir(), f"cover{hash(self.cover_url)}.jpg")
         logger.debug(f"Downloading cover from {self.cover_url}")
         # click.secho(f"\nDownloading cover art for {self!s}", fg="blue")
 
