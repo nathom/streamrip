@@ -929,6 +929,7 @@ class Album(Tracklist):
 
             resp["image"]["original"] = resp["image"]["large"].replace("600", "org")
 
+            # TODO: combine these with TrackMetadata objects
             return {
                 "id": resp.get("id"),
                 "title": resp.get("title"),
@@ -940,6 +941,7 @@ class Album(Tracklist):
                 "release_type": resp.get("release_type", "album"),
                 "cover_urls": resp.get("image"),
                 "streamable": resp.get("streamable"),
+                "genre": safe_get(resp, 'genre', 'name'),
                 "quality": get_quality_id(
                     resp.get("maximum_bit_depth"), resp.get("maximum_sampling_rate")
                 ),

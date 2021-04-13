@@ -371,7 +371,8 @@ class MusicDL(list):
                 "{albumartist} - {title}\n"
                 "Released on {year}\n{tracktotal} tracks\n"
                 "{bit_depth} bit / {sampling_rate} Hz\n"
-                "Version: {version}"
+                "Version: {version}\n"
+                "Genre: {genre}"
             )
         elif isinstance(media, Artist):
             fmt = "{name}"
