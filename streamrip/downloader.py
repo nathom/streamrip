@@ -7,7 +7,7 @@ import os
 import re
 import shutil
 import subprocess
-import threading
+import concurrent.futures
 from pprint import pformat
 from tempfile import gettempdir
 from typing import Any, Generator, Iterable, Union
@@ -622,20 +622,15 @@ class Tracklist(list):
             target = self._download_item
 
         if kwargs.get("concurrent_downloads", True):
-            processes = []
-            for item in self:
-                proc = threading.Thread(
-                    target=target, args=(item,), kwargs=kwargs, daemon=True
-                )
-                proc.start()
-                processes.append(proc)
-
-            try:
-                for proc in processes:
-                    proc.join()
-            except (KeyboardInterrupt, SystemExit):
-                click.echo("Aborted!")
-                exit()
+            # Tidal errors out with unlimited concurrency
+            max_workers = 15 if self.client.source == 'tidal' else None
+            with concurrent.futures.ThreadPoolExecutor(max_workers) as executor:
+                futures = [executor.submit(target, item, **kwargs) for item in self]
+                try:
+                    concurrent.futures.wait(futures)
+                except (KeyboardInterrupt, SystemExit):
+                    executor.shutdown()
+                    exit("Aborted!")
 
         else:
             for item in self:
