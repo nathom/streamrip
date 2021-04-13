@@ -50,13 +50,13 @@ def cli(ctx, **kwargs):
     global config
     global core
 
-    if ctx.invoked_subcommand == "config":
-        return
-
     if kwargs["debug"]:
         init_log()
 
     config = Config()
+
+    if ctx.invoked_subcommand == "config":
+        return
 
     if config.session["check_for_updates"]:
         from importlib import metadata
