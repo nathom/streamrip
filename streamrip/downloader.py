@@ -2,13 +2,13 @@
 downloadable form.
 """
 
+import concurrent.futures
 import logging
 import os
 import re
 import shutil
 import subprocess
-import concurrent.futures
-from pprint import pformat
+from pprint import pformat, pprint
 from tempfile import gettempdir
 from typing import Any, Generator, Iterable, Union
 
@@ -23,6 +23,7 @@ from . import converter
 from .clients import ClientInterface
 from .constants import (
     ALBUM_KEYS,
+    COVER_SIZES,
     FLAC_MAX_BLOCKSIZE,
     FOLDER_FORMAT,
     TRACK_FORMAT,
@@ -48,15 +49,6 @@ from .utils import (
 logger = logging.getLogger(__name__)
 urllib3.disable_warnings()
 
-TIDAL_Q_MAP = {
-    "LOW": 0,
-    "HIGH": 1,
-    "LOSSLESS": 2,
-    "HI_RES": 3,
-}
-
-# used to homogenize cover size keys
-COVER_SIZES = ("thumbnail", "small", "large", "original")
 
 TYPE_REGEXES = {
     "remaster": re.compile(r"(?i)(re)?master(ed)?"),
@@ -606,6 +598,7 @@ class Tracklist(list):
     the tracklist.
     """
 
+    # anything not in parentheses or brackets
     essence_regex = re.compile(r"([^\(]+)(?:\s*[\(\[][^\)][\)\]])*")
 
     def download(self, **kwargs):
@@ -623,7 +616,7 @@ class Tracklist(list):
 
         if kwargs.get("concurrent_downloads", True):
             # Tidal errors out with unlimited concurrency
-            max_workers = 15 if self.client.source == 'tidal' else None
+            max_workers = 15 if self.client.source == "tidal" else None
             with concurrent.futures.ThreadPoolExecutor(max_workers) as executor:
                 futures = [executor.submit(target, item, **kwargs) for item in self]
                 try:
@@ -658,7 +651,7 @@ class Tracklist(list):
 
         if isinstance(key, int):
             if 0 <= key < len(self):
-                return super().__getitem__(key)
+                return self[key]
 
             return default
 
@@ -915,97 +908,7 @@ class Album(Tracklist):
         :type resp: dict
         :rtype: dict
         """
-        if client.source == "qobuz":
-            if resp.get("maximum_sampling_rate", False):
-                sampling_rate = resp["maximum_sampling_rate"] * 1000
-            else:
-                sampling_rate = None
-
-            resp["image"]["original"] = resp["image"]["large"].replace("600", "org")
-
-            # TODO: combine these with TrackMetadata objects
-            return {
-                "id": resp.get("id"),
-                "title": resp.get("title"),
-                "_artist": resp.get("artist") or resp.get("performer"),
-                "albumartist": safe_get(resp, "artist", "name"),
-                "year": str(resp.get("release_date_original"))[:4],
-                "version": resp.get("version"),
-                "composer": safe_get(resp, "composer", "name"),
-                "release_type": resp.get("release_type", "album"),
-                "cover_urls": resp.get("image"),
-                "streamable": resp.get("streamable"),
-                "genre": safe_get(resp, 'genre', 'name'),
-                "quality": get_quality_id(
-                    resp.get("maximum_bit_depth"), resp.get("maximum_sampling_rate")
-                ),
-                "bit_depth": resp.get("maximum_bit_depth"),
-                "sampling_rate": sampling_rate,
-                "tracktotal": resp.get("tracks_count"),
-                "description": resp.get("description"),
-                "disctotal": max(
-                    track.get("media_number", 1)
-                    for track in safe_get(resp, "tracks", "items", default=[{}])
-                )
-                or 1,
-                "explicit": resp.get("parental_warning", False),
-            }
-        elif client.source == "tidal":
-            return {
-                "id": resp.get("id"),
-                "title": resp.get("title"),
-                "_artist": safe_get(resp, "artist", "name"),
-                "albumartist": safe_get(resp, "artist", "name"),
-                "year": resp.get("releaseDate")[:4],
-                "version": resp.get("version"),
-                "cover_urls": {
-                    size: tidal_cover_url(resp.get("cover"), x)
-                    for size, x in zip(COVER_SIZES, (160, 320, 640, 1280))
-                },
-                "streamable": resp.get("allowStreaming"),
-                "quality": TIDAL_Q_MAP[resp.get("audioQuality")],
-                "bit_depth": 24 if resp.get("audioQuality") == "HI_RES" else 16,
-                "sampling_rate": 48000
-                if resp.get("audioQuality") == "HI_RES"
-                else 41000,
-                "tracktotal": resp.get("numberOfTracks"),
-                "disctotal": resp.get("numberOfVolumes"),
-                "explicit": resp.get("explicit", False),
-            }
-        elif client.source == "deezer":
-            if resp.get("release_date", False):
-                year = resp["release_date"][:4]
-            else:
-                year = None
-
-            return {
-                "id": resp.get("id"),
-                "title": resp.get("title"),
-                "_artist": safe_get(resp, "artist", "name"),
-                "albumartist": safe_get(resp, "artist", "name"),
-                "year": year,
-                # version not given by API
-                "cover_urls": {
-                    sk: resp.get(rk)  # size key, resp key
-                    for sk, rk in zip(
-                        COVER_SIZES,
-                        ("cover", "cover_medium", "cover_large", "cover_xl"),
-                    )
-                },
-                "url": resp.get("link"),
-                "streamable": True,  # api only returns streamables
-                "quality": 2,  # all tracks are 16/44.1 streamable
-                "bit_depth": 16,
-                "sampling_rate": 44100,
-                "tracktotal": resp.get("track_total") or resp.get("nb_tracks"),
-                "disctotal": max(
-                    track.get("disk_number") for track in resp.get("tracks", [{}])
-                )
-                or 1,
-                "explicit": bool(resp.get("explicit_content_lyrics")),
-            }
-
-        raise InvalidSourceError(client.source)
+        return TrackMetadata(album=resp, source=client.source).asdict()
 
     def _load_tracks(self):
         """Given an album metadata dict returned by the API, append all of its
