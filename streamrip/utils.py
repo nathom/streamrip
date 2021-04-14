@@ -1,4 +1,6 @@
 import base64
+import contextlib
+import sys
 import logging
 import os
 from string import Formatter
@@ -11,6 +13,7 @@ from Crypto.Util import Counter
 from pathvalidate import sanitize_filename
 from requests.packages import urllib3
 from tqdm import tqdm
+from tqdm.contrib import DummyTqdmFile
 
 from .constants import LOG_DIR, TIDAL_COVER_URL
 from .exceptions import InvalidSourceError, NonStreamable
@@ -98,6 +101,20 @@ def get_quality_id(bit_depth: Optional[int], sampling_rate: Optional[int]):
         return 4
 
 
+@contextlib.contextmanager
+def std_out_err_redirect_tqdm():
+    orig_out_err = sys.stdout, sys.stderr
+    try:
+        sys.stdout, sys.stderr = map(DummyTqdmFile, orig_out_err)
+        yield orig_out_err[0]
+    # Relay exceptions
+    except Exception as exc:
+        raise exc
+    # Always restore sys.stdout/err if necessary
+    finally:
+        sys.stdout, sys.stderr = orig_out_err
+
+
 def tqdm_download(url: str, filepath: str, params: dict = None, desc: str = None):
     """Downloads a file with a progress bar.
 
@@ -118,12 +135,19 @@ def tqdm_download(url: str, filepath: str, params: dict = None, desc: str = None
         raise NonStreamable(url)
 
     try:
-        with open(filepath, "wb") as file, tqdm(
-            total=total, unit="iB", unit_scale=True, unit_divisor=1024, desc=desc
-        ) as bar:
-            for data in r.iter_content(chunk_size=1024):
-                size = file.write(data)
-                bar.update(size)
+        with std_out_err_redirect_tqdm() as orig_stdout:
+            with open(filepath, "wb") as file, tqdm(
+                file=orig_stdout,
+                total=total,
+                unit="iB",
+                unit_scale=True,
+                unit_divisor=1024,
+                desc=desc,
+                dynamic_ncols=True,
+            ) as bar:
+                for data in r.iter_content(chunk_size=1024):
+                    size = file.write(data)
+                    bar.update(size)
     except Exception:
         try:
             os.remove(filepath)

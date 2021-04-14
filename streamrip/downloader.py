@@ -177,6 +177,7 @@ class Track:
 
         self.download_cover()  # only downloads for playlists and singles
         self.path = os.path.join(gettempdir(), f"{hash(self.id)}_{self.quality}.tmp")
+        return True
 
     def download(
         self,
@@ -250,9 +251,10 @@ class Track:
             self.move(self.final_path)
 
         try:
+            database = kwargs.get("database")
             database.add(self.id)
             logger.debug(f"{self.id} added to database")
-        except AttributeError:
+        except AttributeError:  # assume database=None was passed
             pass
 
         logger.debug("Downloaded: %s -> %s", self.path, self.final_path)
@@ -264,8 +266,8 @@ class Track:
 
         return True
 
-    def __validate_qobuz_dl_info(info: dict) -> bool:
-        return not all(
+    def __validate_qobuz_dl_info(self, info: dict) -> bool:
+        return all(
             (info.get("sampling_rate"), info.get("bit_depth"), not info.get("sample"))
         )
 
@@ -884,9 +886,11 @@ class Album(Tracklist):
         else:
             kwargs["parent_folder"] = self.folder
 
+        logger.debug("Downloading 2")
         if not track.download(quality=quality, database=database, **kwargs):
             return False
 
+        logger.debug("tagging tracks")
         # deezer tracks come tagged
         if kwargs.get("tag_tracks", True) and self.client.source != "deezer":
             track.tag(cover=self.cover_obj, embed_cover=kwargs.get("embed_cover", True))
