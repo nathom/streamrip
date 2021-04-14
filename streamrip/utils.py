@@ -135,19 +135,18 @@ def tqdm_download(url: str, filepath: str, params: dict = None, desc: str = None
         raise NonStreamable(url)
 
     try:
-        with std_out_err_redirect_tqdm() as orig_stdout:
-            with open(filepath, "wb") as file, tqdm(
-                file=orig_stdout,
-                total=total,
-                unit="iB",
-                unit_scale=True,
-                unit_divisor=1024,
-                desc=desc,
-                dynamic_ncols=True,
-            ) as bar:
-                for data in r.iter_content(chunk_size=1024):
-                    size = file.write(data)
-                    bar.update(size)
+        with open(filepath, "wb") as file, tqdm(
+            total=total,
+            unit="iB",
+            unit_scale=True,
+            unit_divisor=1024,
+            desc=desc,
+            dynamic_ncols=True,
+            # leave=False,
+        ) as bar:
+            for data in r.iter_content(chunk_size=1024):
+                size = file.write(data)
+                bar.update(size)
     except Exception:
         try:
             os.remove(filepath)
