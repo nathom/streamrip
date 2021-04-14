@@ -15,7 +15,7 @@ from .constants import (
     TRACK_KEYS,
 )
 from .exceptions import InvalidContainerError, InvalidSourceError
-from .utils import get_quality_id, safe_get
+from .utils import get_quality_id, safe_get, tidal_cover_url
 
 logger = logging.getLogger(__name__)
 
@@ -90,14 +90,20 @@ class TrackMetadata:
 
         if isinstance(track, TrackMetadata):
             self.update(track)
-        if isinstance(album, TrackMetadata):
-            self.update(album)
-
-        if track is not None:
+        elif track is not None:
             self.add_track_meta(track)
 
-        if album is not None:
+        if isinstance(album, TrackMetadata):
+            self.update(album)
+        elif album is not None:
             self.add_album_meta(album)
+
+    def update(self, meta):
+        assert isinstance(meta, TrackMetadata)
+
+        for k, v in meta.asdict().items():
+            if v is not None:
+                setattr(self, k, v)
 
     def add_album_meta(self, resp: dict):
         """Parse the metadata from an resp dict returned by the
@@ -154,12 +160,11 @@ class TrackMetadata:
 
             # non-embedded
             self.explicit = resp.get("explicit", False)
+            # 80, 160, 320, 640, 1280
+            uuid = resp.get("cover")
             self.cover_urls = {
-                sk: resp.get(rk)  # size key, resp key
-                for sk, rk in zip(
-                    COVER_SIZES,
-                    ("cover", "cover_medium", "cover_large", "cover_xl"),
-                )
+                sk: tidal_cover_url(uuid, size)
+                for sk, size in zip(COVER_SIZES, (160, 320, 640, 1280))
             }
             self.streamable = resp.get("allowStreaming", False)
             self.quality = TIDAL_Q_MAP[resp["audioQuality"]]
@@ -225,6 +230,8 @@ class TrackMetadata:
             self.tracknumber = track.get("track_position", 1)
             self.discnumber = track.get("disk_number")
             self.artist = track.get("artist", {}).get("name")
+            if track.get("album"):
+                self.add_album_meta(track["album"])
 
         elif self.__source == "soundcloud":
             self.title = track["title"].strip()
@@ -239,9 +246,6 @@ class TrackMetadata:
 
         else:
             raise ValueError(self.__source)
-
-        if track.get("album"):
-            self.add_album_meta(track["album"])
 
     def _mod_title(self, version, work):
         if version is not None:

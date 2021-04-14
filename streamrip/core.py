@@ -518,4 +518,3 @@ class MusicDL(list):
             or self.config.file[source]["password"] is None
         ):
             self.prompt_creds(source)
-

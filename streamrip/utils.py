@@ -16,7 +16,7 @@ from requests.packages import urllib3
 from tqdm import tqdm
 from tqdm.contrib import DummyTqdmFile
 
-from .constants import LOG_DIR, TIDAL_COVER_URL, AGENT
+from .constants import AGENT, LOG_DIR, TIDAL_COVER_URL
 from .exceptions import InvalidSourceError, NonStreamable
 
 urllib3.disable_warnings()
@@ -277,7 +277,7 @@ def extract_interpreter_url(url: str) -> str:
     :type url: str
     :rtype: str
     """
-    session = gen_threadsafe_session({'User-Agent': AGENT})
+    session = gen_threadsafe_session({"User-Agent": AGENT})
     r = session.get(url)
     artist_id = re.search(r"getSimilarArtist\(\s*'(\w+)'", r.text).group(1)
     return artist_id

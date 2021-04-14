@@ -3,6 +3,7 @@ downloadable form.
 """
 
 import concurrent.futures
+import functools
 import logging
 import os
 import re
@@ -131,15 +132,6 @@ class Track:
         except KeyError:
             logger.debug("No cover found")
             self.cover_url = None
-
-    @staticmethod
-    def _get_tracklist(resp, source) -> list:
-        if source == "qobuz":
-            return resp["tracks"]["items"]
-        if source in ("tidal", "deezer"):
-            return resp["tracks"]
-
-        raise NotImplementedError(source)
 
     def _prepare_download(self, **kwargs):
         # args override attributes
@@ -343,7 +335,7 @@ class Track:
         return self.final_path
 
     @classmethod
-    def from_album_meta(cls, album: dict, pos: int, client: Client):
+    def from_album_meta(cls, album: TrackMetadata, track: dict, client: Client):
         """Return a new Track object initialized with info from the album dicts
         returned by client.get calls.
 
@@ -354,9 +346,6 @@ class Track:
         :raises IndexError
         """
 
-        tracklist = cls._get_tracklist(album, client.source)
-        logger.debug(len(tracklist))
-        track = tracklist[pos]
         meta = TrackMetadata(album=album, track=track, source=client.source)
         return cls(client=client, meta=meta, id=track["id"])
 
@@ -805,16 +794,16 @@ class Album(Tracklist):
         """Load detailed metadata from API using the id."""
 
         assert hasattr(self, "id"), "id must be set to load metadata"
-        self.meta = self.client.get(self.id, media_type="album")
+        resp = self.client.get(self.id, media_type="album")
 
         # update attributes based on response
-        info = self._parse_get_resp(self.meta, self.client).items()
-        self.__dict__.update(info)
+        self.meta = self._parse_get_resp(resp, self.client)
+        self.__dict__.update(self.meta.asdict())  # used for identification
 
         if not self.get("streamable", False):
             raise NonStreamable(f"This album is not streamable ({self.id} ID)")
 
-        self._load_tracks()
+        self._load_tracks(resp)
         self.loaded = True
 
     @classmethod
@@ -848,7 +837,10 @@ class Album(Tracklist):
         if embed_cover_url is not None:
             tqdm_download(embed_cover_url, cover_path)
         else:  # sometimes happens with Deezer
-            tqdm_download(self.cover_urls["small"], cover_path)
+            cover_url = functools.reduce(
+                lambda c1, c2: c1 or c2, self.cover_urls.values()
+            )
+            tqdm_download(cover_url, cover_path)
 
         if kwargs.get("keep_hires_cover", True):
             tqdm_download(
@@ -904,11 +896,11 @@ class Album(Tracklist):
         :type resp: dict
         :rtype: dict
         """
-        meta = TrackMetadata(album=resp, source=client.source).asdict()
-        meta["id"] = resp["id"]
+        meta = TrackMetadata(album=resp, source=client.source)
+        meta.id = resp["id"]
         return meta
 
-    def _load_tracks(self):
+    def _load_tracks(self, resp):
         """Given an album metadata dict returned by the API, append all of its
         tracks to `self`.
 
@@ -916,10 +908,14 @@ class Album(Tracklist):
         stores the metadata inside a TrackMetadata object.
         """
         logging.debug(f"Loading {self.tracktotal} tracks to album")
-        for i in range(self.tracktotal):
+        for track in _get_tracklist(resp, self.client.source):
             # append method inherited from superclass list
             self.append(
-                Track.from_album_meta(album=self.meta, pos=i, client=self.client)
+                Track.from_album_meta(
+                    album=self.meta,
+                    track=track,
+                    client=self.client,
+                )
             )
 
     def _get_formatter(self) -> dict:
@@ -1489,3 +1485,12 @@ class Label(Artist):
         :rtype: str
         """
         return self.name
+
+
+def _get_tracklist(resp, source) -> list:
+    if source == "qobuz":
+        return resp["tracks"]["items"]
+    if source in ("tidal", "deezer"):
+        return resp["tracks"]
+
+    raise NotImplementedError(source)
