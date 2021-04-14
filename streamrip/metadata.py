@@ -2,7 +2,6 @@
 
 import logging
 import re
-from functools import cache
 from typing import Generator, Hashable, Optional, Tuple, Union
 
 from .constants import (
@@ -108,9 +107,12 @@ class TrackMetadata:
         """
         if self.__source == "qobuz":
             # Tags
+            print(resp.keys())
             self.album = resp.get("title")
             self.tracktotal = resp.get("tracks_count", 1)
-            self.genre = resp.get("genres_list", [])
+            self.genre = resp.get("genres_list") or resp.get("genre")
+            print("in meta:")
+            print(self.genre)
             self.date = resp.get("release_date_original") or resp.get("release_date")
             self.copyright = resp.get("copyright")
             self.albumartist = safe_get(resp, "artist", "name")
@@ -252,6 +254,23 @@ class TrackMetadata:
             self.title = f"{work}: {self.title}"
 
     @property
+    def album(self) -> str:
+        assert hasattr(self, "_album"), "Must set album before accessing"
+
+        album = self._album
+        if self.get("version") and self["version"] not in album:
+            album = f"{self._album} ({self.version})"
+
+        if self.get("work") and self["work"] not in album:
+            album = f"{self.work}: {album}"
+
+        return album
+
+    @album.setter
+    def album(self, val) -> str:
+        self._album = val
+
+    @property
     def artist(self) -> Optional[str]:
         """Returns the value to set for the artist tag. Defaults to
         `self.albumartist` if there is no track artist.
@@ -276,7 +295,7 @@ class TrackMetadata:
         self._artist = val
 
     @property
-    def genre(self) -> Union[str, None]:
+    def genre(self) -> Optional[str]:
         """Formats the genre list returned by the Qobuz API.
         >>> meta.genre = ['Pop/Rock', 'Pop/Rock→Rock', 'Pop/Rock→Rock→Alternatif et Indé']
         >>> meta.genre
@@ -286,6 +305,9 @@ class TrackMetadata:
         """
         if not self.get("_genres"):
             return None
+
+        if isinstance(self._genres, dict):
+            self._genres = self._genres["name"]
 
         if isinstance(self._genres, list):
             if self.__source == "qobuz":
@@ -446,7 +468,12 @@ class TrackMetadata:
                 yield (v, text)
 
     def asdict(self) -> dict:
-        return {k: getattr(self, k) for k in dir(self) if not k.startswith("_")}
+        ret = {}
+        for attr in dir(self):
+            if not attr.startswith("_") and not callable(getattr(self, attr)):
+                ret[attr] = getattr(self, attr)
+
+        return ret
 
     def __setitem__(self, key, val):
         """Dict-like access for tags.

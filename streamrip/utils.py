@@ -4,6 +4,7 @@ import os
 from string import Formatter
 from typing import Hashable, Optional, Union
 
+import click
 import requests
 from Crypto.Cipher import AES
 from Crypto.Util import Counter
@@ -232,3 +233,14 @@ def gen_threadsafe_session(
     session.mount("https://", adapter)
     session.headers.update(headers)
     return session
+
+
+def decho(message, fg=None):
+    """Debug echo the message.
+
+    :param message:
+    :param fg: ANSI color with which to display the message on the
+    screen
+    """
+    click.secho(message, fg=fg)
+    logger.debug(message)

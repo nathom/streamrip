@@ -158,3 +158,8 @@ MEDIA_TYPES = ("track", "album", "artist", "label", "playlist")
 
 # used to homogenize cover size keys
 COVER_SIZES = ("thumbnail", "small", "large", "original")
+
+TIDAL_CLIENT_INFO = {
+    "id": "aR7gUaTK1ihpXOEP",
+    "secret": "eVWBEkuL2FCjxgjOkR3yK0RYZEbcrMXRc2l8fU3ZCdE=",
+}

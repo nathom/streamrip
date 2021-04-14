@@ -7,8 +7,6 @@ from abc import ABC, abstractmethod
 from typing import Generator, Sequence, Tuple, Union
 
 import click
-import requests
-from requests.packages import urllib3
 
 from .constants import (
     AGENT,
@@ -16,6 +14,7 @@ from .constants import (
     DEEZER_MAX_Q,
     QOBUZ_FEATURED_KEYS,
     SOUNDCLOUD_CLIENT_ID,
+    TIDAL_CLIENT_INFO,
     TIDAL_MAX_Q,
 )
 from .exceptions import (
@@ -28,36 +27,20 @@ from .exceptions import (
 from .spoofbuz import Spoofer
 from .utils import gen_threadsafe_session, get_quality
 
-urllib3.disable_warnings()
-requests.adapters.DEFAULT_RETRIES = 5
-
+QOBUZ_BASE = "https://www.qobuz.com/api.json/0.2"
 
 TIDAL_BASE = "https://api.tidalhifi.com/v1"
 TIDAL_AUTH_URL = "https://auth.tidal.com/v1/oauth2"
-TIDAL_CLIENT_INFO = {
-    "id": "aR7gUaTK1ihpXOEP",
-    "secret": "eVWBEkuL2FCjxgjOkR3yK0RYZEbcrMXRc2l8fU3ZCdE=",
-}
+
+DEEZER_BASE = "https://api.deezer.com"
+DEEZER_DL = "http://dz.loaderapp.info/deezer"
+
+SOUNDCLOUD_BASE = "https://api-v2.soundcloud.com"
 
 logger = logging.getLogger(__name__)
 
 
-# Qobuz
-QOBUZ_BASE = "https://www.qobuz.com/api.json/0.2"
-
-
-# Deezer
-DEEZER_BASE = "https://api.deezer.com"
-DEEZER_DL = "http://dz.loaderapp.info/deezer"
-
-# SoundCloud
-SOUNDCLOUD_BASE = "https://api-v2.soundcloud.com"
-
-
-# ----------- Abstract Classes -----------------
-
-
-class ClientInterface(ABC):
+class Client(ABC):
     """Common API for clients of all platforms.
 
     This is an Abstract Base Class. It cannot be instantiated;
@@ -102,18 +85,17 @@ class ClientInterface(ABC):
     @property
     @abstractmethod
     def source(self):
+        """Source from which the Client retrieves data."""
         pass
 
     @property
     @abstractmethod
     def max_quality(self):
+        """The maximum quality that the Client supports."""
         pass
 
 
-# ------------- Clients -----------------
-
-
-class QobuzClient(ClientInterface):
+class QobuzClient(Client):
     source = "qobuz"
     max_quality = 4
 
@@ -364,7 +346,7 @@ class QobuzClient(ClientInterface):
             return False
 
 
-class DeezerClient(ClientInterface):
+class DeezerClient(Client):
     source = "deezer"
     max_quality = 2
 
@@ -421,10 +403,10 @@ class DeezerClient(ClientInterface):
         quality = min(DEEZER_MAX_Q, quality)
         url = f"{DEEZER_DL}/{get_quality(quality, 'deezer')}/{DEEZER_BASE}/track/{meta_id}"
         logger.debug(f"Download url {url}")
-        return url
+        return {"url": url}
 
 
-class TidalClient(ClientInterface):
+class TidalClient(Client):
     source = "tidal"
     max_quality = 3
 
@@ -670,7 +652,7 @@ class TidalClient(ClientInterface):
         self.session.headers.update({"authorization": f"Bearer {self.access_token}"})
 
 
-class SoundCloudClient(ClientInterface):
+class SoundCloudClient(Client):
     source = "soundcloud"
     max_quality = 0
     logged_in = True
