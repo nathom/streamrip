@@ -161,7 +161,6 @@ class Track:
             self.downloaded = True
             self.tagged = True
             self.path = self.final_path
-
             decho(
                 f"{self['title']} already logged in database, skipping.",
                 fg="magenta",
@@ -196,7 +195,7 @@ class Track:
         :param progress_bar: turn on/off progress bar
         :type progress_bar: bool
         """
-        if not self._prepare_download(quality, parent_folder, progress_bar, **kwargs):
+        if not self._prepare_download(quality=quality, parent_folder=parent_folder, progress_bar=progress_bar, **kwargs):
             return False
 
         if self.client.source == "soundcloud":
@@ -886,7 +885,6 @@ class Album(Tracklist):
         else:
             kwargs["parent_folder"] = self.folder
 
-        logger.debug("Downloading 2")
         if not track.download(quality=quality, database=database, **kwargs):
             return False
 
