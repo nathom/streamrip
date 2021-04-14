@@ -210,11 +210,9 @@ class MusicDL(list):
                     click.secho(f"{item!s} is not available, skipping.", fg="red")
                     continue
 
+            item.download(**arguments)
             if isinstance(item, Track):
-                # track.download doesn't automatically tag
-                item.download(**arguments, tag=True)
-            else:
-                item.download(**arguments)
+                item.tag()
 
             if self.db != [] and hasattr(item, "id"):
                 self.db.add(item.id)
@@ -368,7 +366,7 @@ class MusicDL(list):
     def preview_media(self, media):
         if isinstance(media, Album):
             fmt = (
-                "{albumartist} - {title}\n"
+                "{albumartist} - {album}\n"
                 "Released on {year}\n{tracktotal} tracks\n"
                 "{bit_depth} bit / {sampling_rate} Hz\n"
                 "Version: {version}\n"
@@ -398,7 +396,7 @@ class MusicDL(list):
         results = tuple(self.search(source, query, media_type, limit=50))
 
         def title(res):
-            return f"{res[0]+1}. {res[1].title}"
+            return f"{res[0]+1}. {res[1].album}"
 
         def from_title(s):
             num = []

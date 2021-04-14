@@ -2,13 +2,12 @@
 downloadable form.
 """
 
+import concurrent.futures
 import logging
 import os
 import re
 import shutil
 import subprocess
-import threading
-from pprint import pformat
 from tempfile import gettempdir
 from typing import Any, Generator, Iterable, Union
 
@@ -20,7 +19,7 @@ from pathvalidate import sanitize_filename, sanitize_filepath
 from requests.packages import urllib3
 
 from . import converter
-from .clients import ClientInterface
+from .clients import Client
 from .constants import (
     ALBUM_KEYS,
     FLAC_MAX_BLOCKSIZE,
@@ -37,9 +36,9 @@ from .exceptions import (
 from .metadata import TrackMetadata
 from .utils import (
     clean_format,
+    decho,
     decrypt_mqa_file,
     ext,
-    get_quality_id,
     safe_get,
     tidal_cover_url,
     tqdm_download,
@@ -48,15 +47,6 @@ from .utils import (
 logger = logging.getLogger(__name__)
 urllib3.disable_warnings()
 
-TIDAL_Q_MAP = {
-    "LOW": 0,
-    "HIGH": 1,
-    "LOSSLESS": 2,
-    "HI_RES": 3,
-}
-
-# used to homogenize cover size keys
-COVER_SIZES = ("thumbnail", "small", "large", "original")
 
 TYPE_REGEXES = {
     "remaster": re.compile(r"(?i)(re)?master(ed)?"),
@@ -81,7 +71,7 @@ class Track:
     >>> t.tag()
     """
 
-    def __init__(self, client: ClientInterface, **kwargs):
+    def __init__(self, client: Client, **kwargs):
         """Create a track object.
 
         The only required parameter is client, but passing at an id is
@@ -91,7 +81,7 @@ class Track:
         :param track_id: track id returned by Qobuz API
         :type track_id: Optional[Union[str, int]]
         :param client: qopy client
-        :type client: ClientInterface
+        :type client: Client
         :param meta: TrackMetadata object
         :type meta: Optional[TrackMetadata]
         :param kwargs: id, filepath_format, meta, quality, folder
@@ -156,13 +146,43 @@ class Track:
 
         raise NotImplementedError(source)
 
+    def _prepare_download(self, **kwargs):
+        # args override attributes
+        self.quality = min(kwargs["quality"], self.client.max_quality)
+        self.folder = kwargs["parent_folder"] or self.folder
+
+        self.file_format = kwargs.get("track_format", TRACK_FORMAT)
+        self.folder = sanitize_filepath(self.folder, platform="auto")
+        self.format_final_path()
+
+        os.makedirs(self.folder, exist_ok=True)
+
+        if self.id in kwargs.get("database", []):
+            self.downloaded = True
+            self.tagged = True
+            self.path = self.final_path
+
+            decho(
+                f"{self['title']} already logged in database, skipping.",
+                fg="magenta",
+            )
+            return False  # because the track was not downloaded
+
+        if os.path.isfile(self.final_path):  # track already exists
+            self.downloaded = True
+            self.tagged = True
+            self.path = self.final_path
+            decho(f"Track already exists: {self.final_path}", fg="magenta")
+            return False
+
+        self.download_cover()  # only downloads for playlists and singles
+        self.path = os.path.join(gettempdir(), f"{hash(self.id)}_{self.quality}.tmp")
+
     def download(
         self,
         quality: int = 3,
         parent_folder: str = "StreamripDownloads",
         progress_bar: bool = True,
-        database: MusicDB = None,
-        tag: bool = False,
         **kwargs,
     ) -> bool:
         """
@@ -175,37 +195,8 @@ class Track:
         :param progress_bar: turn on/off progress bar
         :type progress_bar: bool
         """
-        # args override attributes
-        self.quality = min(quality, self.client.max_quality)
-        self.folder = parent_folder or self.folder
-
-        self.file_format = kwargs.get("track_format", TRACK_FORMAT)
-        self.folder = sanitize_filepath(self.folder, platform="auto")
-        self.format_final_path()
-
-        os.makedirs(self.folder, exist_ok=True)
-
-        if isinstance(database, MusicDB) and self.id in database:
-            self.downloaded = True
-            self.tagged = True
-            self.path = self.final_path
-
-            click.secho(
-                f"{self['title']} already logged in database, skipping.",
-                fg="magenta",
-            )
-            return False  # because the track was not downloaded
-
-        if os.path.isfile(self.final_path):  # track already exists
-            self.downloaded = True
-            self.tagged = True
-            self.path = self.final_path
-            click.secho(f"Track already downloaded: {self.final_path}", fg="magenta")
+        if not self._prepare_download(quality, parent_folder, progress_bar, **kwargs):
             return False
-
-        if hasattr(self, "cover_url"):  # only for playlists and singles
-            logger.debug("Downloading cover")
-            self.download_cover()
 
         if self.client.source == "soundcloud":
             # soundcloud client needs whole dict to get file url
@@ -219,14 +210,8 @@ class Track:
             click.secho(f"Unable to download track. {e}", fg="red")
             return False
 
-        self.path = os.path.join(gettempdir(), f"{hash(self.id)}_{self.quality}.tmp")
-        logger.debug("Temporary file path: %s", self.path)
-
         if self.client.source == "qobuz":
-            if not (dl_info.get("sampling_rate") and dl_info.get("url")) or dl_info.get(
-                "sample"
-            ):
-                logger.debug("Track is not downloadable: %s", dl_info)
+            if not self.__validate_qobuz_dl_info(dl_info):
                 click.secho("Track is not available for download", fg="red")
                 return False
 
@@ -234,21 +219,16 @@ class Track:
             self.bit_depth = dl_info.get("bit_depth")
 
         # --------- Download Track ----------
-        if self.client.source in ("qobuz", "tidal"):
+        if self.client.source in ("qobuz", "tidal", "deezer"):
             logger.debug("Downloadable URL found: %s", dl_info.get("url"))
-            tqdm_download(
-                dl_info["url"], self.path, desc=self._progress_desc
-            )  # downloads file
-
-        elif self.client.source == "deezer":  # Deezer
-            logger.debug(
-                "Downloadable URL found: %s", dl_info, desc=self._progress_desc
-            )
             try:
-                tqdm_download(dl_info, self.path)  # downloads file
+                tqdm_download(
+                    dl_info["url"], self.path, desc=self._progress_desc
+                )  # downloads file
             except NonStreamable:
-                logger.debug("Track is not downloadable %s", dl_info)
-                click.secho("Track is not available for download", fg="red")
+                click.secho(
+                    "Track {self!s} is not available for download, skipping.", fg="red"
+                )
                 return False
 
         elif self.client.source == "soundcloud":
@@ -269,21 +249,25 @@ class Track:
         if not kwargs.get("stay_temp", False):
             self.move(self.final_path)
 
-        if isinstance(database, MusicDB):
+        try:
             database.add(self.id)
             logger.debug(f"{self.id} added to database")
+        except AttributeError:
+            pass
 
         logger.debug("Downloaded: %s -> %s", self.path, self.final_path)
 
         self.downloaded = True
 
-        if tag:
-            self.tag()
-
         if not kwargs.get("keep_cover", True) and hasattr(self, "cover_path"):
             os.remove(self.cover_path)
 
         return True
+
+    def __validate_qobuz_dl_info(info: dict) -> bool:
+        return not all(
+            (info.get("sampling_rate"), info.get("bit_depth"), not info.get("sample"))
+        )
 
     def move(self, path: str):
         os.makedirs(os.path.dirname(path), exist_ok=True)
@@ -325,7 +309,8 @@ class Track:
     def download_cover(self):
         """Downloads the cover art, if cover_url is given."""
 
-        assert hasattr(self, "cover_url"), "must set cover_url attribute"
+        if not hasattr(self, "cover_url"):
+            return False
 
         self.cover_path = os.path.join(gettempdir(), f"cover{hash(self.cover_url)}.jpg")
         logger.debug(f"Downloading cover from {self.cover_url}")
@@ -346,7 +331,7 @@ class Track:
         the TrackMetadata object.
         """
         formatter = self.meta.get_formatter()
-        logger.debug("Track meta formatter %s", pformat(formatter))
+        logger.debug("Track meta formatter %s", formatter)
         filename = clean_format(self.file_format, formatter)
         self.final_path = os.path.join(self.folder, filename)[:250].strip() + ext(
             self.quality, self.client.source
@@ -357,14 +342,14 @@ class Track:
         return self.final_path
 
     @classmethod
-    def from_album_meta(cls, album: dict, pos: int, client: ClientInterface):
+    def from_album_meta(cls, album: dict, pos: int, client: Client):
         """Return a new Track object initialized with info from the album dicts
         returned by client.get calls.
 
         :param album: album metadata returned by API
         :param pos: index of the track
         :param client: qopy client object
-        :type client: ClientInterface
+        :type client: Client
         :raises IndexError
         """
 
@@ -375,7 +360,7 @@ class Track:
         return cls(client=client, meta=meta, id=track["id"])
 
     @classmethod
-    def from_api(cls, item: dict, client: ClientInterface):
+    def from_api(cls, item: dict, client: Client):
         meta = TrackMetadata(track=item, source=client.source)
         try:
             if client.source == "qobuz":
@@ -606,6 +591,7 @@ class Tracklist(list):
     the tracklist.
     """
 
+    # anything not in parentheses or brackets
     essence_regex = re.compile(r"([^\(]+)(?:\s*[\(\[][^\)][\)\]])*")
 
     def download(self, **kwargs):
@@ -622,20 +608,15 @@ class Tracklist(list):
             target = self._download_item
 
         if kwargs.get("concurrent_downloads", True):
-            processes = []
-            for item in self:
-                proc = threading.Thread(
-                    target=target, args=(item,), kwargs=kwargs, daemon=True
-                )
-                proc.start()
-                processes.append(proc)
-
-            try:
-                for proc in processes:
-                    proc.join()
-            except (KeyboardInterrupt, SystemExit):
-                click.echo("Aborted!")
-                exit()
+            # Tidal errors out with unlimited concurrency
+            max_workers = 15 if self.client.source == "tidal" else None
+            with concurrent.futures.ThreadPoolExecutor(max_workers) as executor:
+                futures = [executor.submit(target, item, **kwargs) for item in self]
+                try:
+                    concurrent.futures.wait(futures)
+                except (KeyboardInterrupt, SystemExit):
+                    executor.shutdown()
+                    exit("Aborted!")
 
         else:
             for item in self:
@@ -663,7 +644,7 @@ class Tracklist(list):
 
         if isinstance(key, int):
             if 0 <= key < len(self):
-                return super().__getitem__(key)
+                return self[key]
 
             return default
 
@@ -685,7 +666,7 @@ class Tracklist(list):
             track.convert(codec, **kwargs)
 
     @classmethod
-    def from_api(cls, item: dict, client: ClientInterface):
+    def from_api(cls, item: dict, client: Client):
         """Create an Album object from the api response of Qobuz, Tidal,
         or Deezer.
 
@@ -794,7 +775,7 @@ class Album(Tracklist):
     >>> album.download()
     """
 
-    def __init__(self, client: ClientInterface, **kwargs):
+    def __init__(self, client: Client, **kwargs):
         """Create a new Album object.
 
         :param client: a qopy client instance
@@ -808,8 +789,8 @@ class Album(Tracklist):
         self.bit_depth = None
         self.container = None
 
-        for k, v in kwargs.items():
-            setattr(self, k, v)
+        # usually an unpacked TrackMetadata obj
+        self.__dict__.update(kwargs)
 
         # to improve from_api method speed
         if kwargs.get("load_on_init", False):
@@ -835,7 +816,7 @@ class Album(Tracklist):
         self.loaded = True
 
     @classmethod
-    def from_api(cls, resp: dict, client: ClientInterface):
+    def from_api(cls, resp: dict, client: Client):
         if client.source == "soundcloud":
             return Playlist.from_api(resp, client)
 
@@ -913,104 +894,16 @@ class Album(Tracklist):
         return True
 
     @staticmethod
-    def _parse_get_resp(resp: dict, client: ClientInterface) -> dict:
+    def _parse_get_resp(resp: dict, client: Client) -> dict:
         """Parse information from a client.get(query, 'album') call.
 
         :param resp:
         :type resp: dict
         :rtype: dict
         """
-        if client.source == "qobuz":
-            if resp.get("maximum_sampling_rate", False):
-                sampling_rate = resp["maximum_sampling_rate"] * 1000
-            else:
-                sampling_rate = None
-
-            resp["image"]["original"] = resp["image"]["large"].replace("600", "org")
-
-            # TODO: combine these with TrackMetadata objects
-            return {
-                "id": resp.get("id"),
-                "title": resp.get("title"),
-                "_artist": resp.get("artist") or resp.get("performer"),
-                "albumartist": safe_get(resp, "artist", "name"),
-                "year": str(resp.get("release_date_original"))[:4],
-                "version": resp.get("version"),
-                "composer": safe_get(resp, "composer", "name"),
-                "release_type": resp.get("release_type", "album"),
-                "cover_urls": resp.get("image"),
-                "streamable": resp.get("streamable"),
-                "genre": safe_get(resp, 'genre', 'name'),
-                "quality": get_quality_id(
-                    resp.get("maximum_bit_depth"), resp.get("maximum_sampling_rate")
-                ),
-                "bit_depth": resp.get("maximum_bit_depth"),
-                "sampling_rate": sampling_rate,
-                "tracktotal": resp.get("tracks_count"),
-                "description": resp.get("description"),
-                "disctotal": max(
-                    track.get("media_number", 1)
-                    for track in safe_get(resp, "tracks", "items", default=[{}])
-                )
-                or 1,
-                "explicit": resp.get("parental_warning", False),
-            }
-        elif client.source == "tidal":
-            return {
-                "id": resp.get("id"),
-                "title": resp.get("title"),
-                "_artist": safe_get(resp, "artist", "name"),
-                "albumartist": safe_get(resp, "artist", "name"),
-                "year": resp.get("releaseDate")[:4],
-                "version": resp.get("version"),
-                "cover_urls": {
-                    size: tidal_cover_url(resp.get("cover"), x)
-                    for size, x in zip(COVER_SIZES, (160, 320, 640, 1280))
-                },
-                "streamable": resp.get("allowStreaming"),
-                "quality": TIDAL_Q_MAP[resp.get("audioQuality")],
-                "bit_depth": 24 if resp.get("audioQuality") == "HI_RES" else 16,
-                "sampling_rate": 48000
-                if resp.get("audioQuality") == "HI_RES"
-                else 41000,
-                "tracktotal": resp.get("numberOfTracks"),
-                "disctotal": resp.get("numberOfVolumes"),
-                "explicit": resp.get("explicit", False),
-            }
-        elif client.source == "deezer":
-            if resp.get("release_date", False):
-                year = resp["release_date"][:4]
-            else:
-                year = None
-
-            return {
-                "id": resp.get("id"),
-                "title": resp.get("title"),
-                "_artist": safe_get(resp, "artist", "name"),
-                "albumartist": safe_get(resp, "artist", "name"),
-                "year": year,
-                # version not given by API
-                "cover_urls": {
-                    sk: resp.get(rk)  # size key, resp key
-                    for sk, rk in zip(
-                        COVER_SIZES,
-                        ("cover", "cover_medium", "cover_large", "cover_xl"),
-                    )
-                },
-                "url": resp.get("link"),
-                "streamable": True,  # api only returns streamables
-                "quality": 2,  # all tracks are 16/44.1 streamable
-                "bit_depth": 16,
-                "sampling_rate": 44100,
-                "tracktotal": resp.get("track_total") or resp.get("nb_tracks"),
-                "disctotal": max(
-                    track.get("disk_number") for track in resp.get("tracks", [{}])
-                )
-                or 1,
-                "explicit": bool(resp.get("explicit_content_lyrics")),
-            }
-
-        raise InvalidSourceError(client.source)
+        meta = TrackMetadata(album=resp, source=client.source).asdict()
+        meta["id"] = resp["id"]
+        return meta
 
     def _load_tracks(self):
         """Given an album metadata dict returned by the API, append all of its
@@ -1056,29 +949,11 @@ class Album(Tracklist):
 
     @property
     def title(self) -> str:
-        """Return the title of the album.
-
-        It is formatted so that "version" keys are included.
-
-        :rtype: str
-        """
-        album_title = self._title
-        if hasattr(self, "version") and isinstance(self.version, str):
-            if self.version.lower() not in album_title.lower():
-                album_title = f"{album_title} ({self.version})"
-
-        if self.get("explicit", False):
-            album_title = f"{album_title} (Explicit)"
-
-        return album_title
+        return self.album
 
     @title.setter
-    def title(self, val):
-        """Sets the internal _title attribute to the given value.
-
-        :param val: title to set
-        """
-        self._title = val
+    def title(self, val: str):
+        self.album = val
 
     def __repr__(self) -> str:
         """Return a string representation of this Album object.
@@ -1116,7 +991,7 @@ class Playlist(Tracklist):
     >>> pl.download()
     """
 
-    def __init__(self, client: ClientInterface, **kwargs):
+    def __init__(self, client: Client, **kwargs):
         """Create a new Playlist object.
 
         :param client: a qopy client instance
@@ -1136,14 +1011,14 @@ class Playlist(Tracklist):
         self.loaded = False
 
     @classmethod
-    def from_api(cls, resp: dict, client: ClientInterface):
+    def from_api(cls, resp: dict, client: Client):
         """Return a Playlist object initialized with information from
         a search result returned by the API.
 
         :param resp: a single search result entry of a playlist
         :type resp: dict
         :param client:
-        :type client: ClientInterface
+        :type client: Client
         """
         info = cls._parse_get_resp(resp, client)
         return cls(client, **info)
@@ -1156,7 +1031,7 @@ class Playlist(Tracklist):
         :param kwargs:
         """
         self.meta = self.client.get(self.id, media_type="playlist")
-        logger.debug(pformat(self.meta))
+        logger.debug(self.meta)
         self._load_tracks(**kwargs)
         self.loaded = True
 
@@ -1272,14 +1147,14 @@ class Playlist(Tracklist):
         return self.downloaded
 
     @staticmethod
-    def _parse_get_resp(item: dict, client: ClientInterface) -> dict:
+    def _parse_get_resp(item: dict, client: Client) -> dict:
         """Parses information from a search result returned
         by a client.search call.
 
         :param item:
         :type item: dict
         :param client:
-        :type client: ClientInterface
+        :type client: Client
         """
         if client.source == "qobuz":
             return {
@@ -1337,7 +1212,7 @@ class Artist(Tracklist):
     >>> artist.download()
     """
 
-    def __init__(self, client: ClientInterface, **kwargs):
+    def __init__(self, client: Client, **kwargs):
         """Create a new Artist object.
 
         :param client: a qopy client instance
@@ -1443,7 +1318,7 @@ class Artist(Tracklist):
         return self.name
 
     @classmethod
-    def from_api(cls, item: dict, client: ClientInterface, source: str = "qobuz"):
+    def from_api(cls, item: dict, client: Client, source: str = "qobuz"):
         """Create an Artist object from the api response of Qobuz, Tidal,
         or Deezer.
 
@@ -1459,13 +1334,13 @@ class Artist(Tracklist):
         return cls(client=client, **info)
 
     @staticmethod
-    def _parse_get_resp(item: dict, client: ClientInterface) -> dict:
+    def _parse_get_resp(item: dict, client: Client) -> dict:
         """Parse a result from a client.search call.
 
         :param item: the item to parse
         :type item: dict
         :param client:
-        :type client: ClientInterface
+        :type client: Client
         """
         if client.source in ("qobuz", "deezer"):
             info = {

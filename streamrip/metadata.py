@@ -1,20 +1,21 @@
 """Manages the information that will be embeded in the audio file. """
 
-import json
 import logging
 import re
-from typing import Generator, Optional, Tuple, Union
+from typing import Generator, Hashable, Optional, Tuple, Union
 
 from .constants import (
     COPYRIGHT,
+    COVER_SIZES,
     FLAC_KEY,
     MP3_KEY,
     MP4_KEY,
     PHON_COPYRIGHT,
+    TIDAL_Q_MAP,
     TRACK_KEYS,
 )
-from .exceptions import InvalidContainerError
-from .utils import safe_get
+from .exceptions import InvalidContainerError, InvalidSourceError
+from .utils import get_quality_id, safe_get
 
 logger = logging.getLogger(__name__)
 
@@ -57,6 +58,7 @@ class TrackMetadata:
         :param album: album dict from API
         :type album: Optional[dict]
         """
+        # embedded information
         self.title = None
         self.album = None
         self.albumartist = None
@@ -75,12 +77,21 @@ class TrackMetadata:
 
         # not included in tags
         self.explicit = False
+        self.quality = None
+        self.sampling_rate = None
+        self.bit_depth = None
+
+        # Internals
+        self._artist = None
+        self._copyright = None
+        self._genres = None
 
         self.__source = source
 
-        if track is None and album is None:
-            logger.debug("No params passed, returning")
-            return
+        if isinstance(track, TrackMetadata):
+            self.update(track)
+        if isinstance(album, TrackMetadata):
+            self.update(album)
 
         if track is not None:
             self.add_track_meta(track)
@@ -90,20 +101,22 @@ class TrackMetadata:
 
     def add_album_meta(self, resp: dict):
         """Parse the metadata from an resp dict returned by the
-        Qobuz API.
+        API.
 
         :param dict resp: from API
         """
         if self.__source == "qobuz":
+            # Tags
+            print(resp.keys())
             self.album = resp.get("title")
             self.tracktotal = resp.get("tracks_count", 1)
-            self.genre = resp.get("genres_list", [])
+            self.genre = resp.get("genres_list") or resp.get("genre")
+            print("in meta:")
+            print(self.genre)
             self.date = resp.get("release_date_original") or resp.get("release_date")
-            if self.date:
-                self.year = self.date[:4]
-
             self.copyright = resp.get("copyright")
             self.albumartist = safe_get(resp, "artist", "name")
+            self.composer = safe_get(resp, "composer", "name")
             self.label = resp.get("label")
             self.description = resp.get("description")
             self.disctotal = (
@@ -118,35 +131,72 @@ class TrackMetadata:
             if isinstance(self.label, dict):
                 self.label = self.label.get("name")
 
+            # Non-embedded information
+            self.version = resp.get("version")
+            self.cover_urls = resp.get("image")
+            self.cover_urls["original"] = self.cover_urls["large"].replace("600", "org")
+            self.streamable = resp.get("streamable", False)
+            self.bit_depth = resp.get("maximum_bit_depth")
+            self.sampling_rate = resp.get("maximum_sampling_rate")
+            self.quality = get_quality_id(self.bit_depth, self.sampling_rate)
+
+            if self.sampling_rate is not None:
+                self.sampling_rate *= 1000
+
         elif self.__source == "tidal":
             self.album = resp.get("title")
             self.tracktotal = resp.get("numberOfTracks")
             # genre not returned by API
             self.date = resp.get("releaseDate")
-            if self.date:
-                self.year = self.date[:4]
 
             self.copyright = resp.get("copyright")
             self.albumartist = safe_get(resp, "artist", "name")
             self.disctotal = resp.get("numberOfVolumes")
             self.isrc = resp.get("isrc")
-            self.explicit = resp.get("explicit", False)
             # label not returned by API
+
+            # non-embedded
+            self.explicit = resp.get("explicit", False)
+            self.cover_urls = {
+                sk: resp.get(rk)  # size key, resp key
+                for sk, rk in zip(
+                    COVER_SIZES,
+                    ("cover", "cover_medium", "cover_large", "cover_xl"),
+                )
+            }
+            self.streamable = resp.get("allowStreaming", False)
+            self.quality = TIDAL_Q_MAP[resp["audioQuality"]]
 
         elif self.__source == "deezer":
             self.album = resp.get("title")
-            self.tracktotal = resp.get("track_total")
+            self.tracktotal = resp.get("track_total") or resp.get("nb_tracks")
+            self.disctotal = (
+                max(track.get("disk_number") for track in resp.get("tracks", [{}])) or 1
+            )
             self.genre = safe_get(resp, "genres", "data")
             self.date = resp.get("release_date")
             self.albumartist = safe_get(resp, "artist", "name")
             self.label = resp.get("label")
-            # either 0 or 1
+            self.url = resp.get("link")
+
+            # not embedded
             self.explicit = bool(resp.get("parental_warning"))
+            self.quality = 2
+            self.bit_depth = 16
+            self.cover_urls = {
+                sk: resp.get(rk)  # size key, resp key
+                for sk, rk in zip(
+                    COVER_SIZES,
+                    ("cover", "cover_medium", "cover_large", "cover_xl"),
+                )
+            }
+            self.sampling_rate = 44100
+            self.streamable = True
 
         elif self.__source == "soundcloud":
             raise NotImplementedError
         else:
-            raise ValueError(self.__source)
+            raise InvalidSourceError(self.__source)
 
     def add_track_meta(self, track: dict):
         """Parse the metadata from a track dict returned by an
@@ -204,6 +254,23 @@ class TrackMetadata:
             self.title = f"{work}: {self.title}"
 
     @property
+    def album(self) -> str:
+        assert hasattr(self, "_album"), "Must set album before accessing"
+
+        album = self._album
+        if self.get("version") and self["version"] not in album:
+            album = f"{self._album} ({self.version})"
+
+        if self.get("work") and self["work"] not in album:
+            album = f"{self.work}: {album}"
+
+        return album
+
+    @album.setter
+    def album(self, val) -> str:
+        self._album = val
+
+    @property
     def artist(self) -> Optional[str]:
         """Returns the value to set for the artist tag. Defaults to
         `self.albumartist` if there is no track artist.
@@ -228,10 +295,10 @@ class TrackMetadata:
         self._artist = val
 
     @property
-    def genre(self) -> Union[str, None]:
+    def genre(self) -> Optional[str]:
         """Formats the genre list returned by the Qobuz API.
-        >>> g = ['Pop/Rock', 'Pop/Rock→Rock', 'Pop/Rock→Rock→Alternatif et Indé']
-        >>> _format_genres(g)
+        >>> meta.genre = ['Pop/Rock', 'Pop/Rock→Rock', 'Pop/Rock→Rock→Alternatif et Indé']
+        >>> meta.genre
         'Pop, Rock, Alternatif et Indé'
 
         :rtype: str
@@ -239,15 +306,15 @@ class TrackMetadata:
         if not self.get("_genres"):
             return None
 
+        if isinstance(self._genres, dict):
+            self._genres = self._genres["name"]
+
         if isinstance(self._genres, list):
-            genres = re.findall(r"([^\u2192\/]+)", "/".join(self._genres))
-            no_repeats = []
+            if self.__source == "qobuz":
+                genres = re.findall(r"([^\u2192\/]+)", "/".join(self._genres))
+                genres = set(genres)
 
-            for genre in genres:
-                if genre not in no_repeats:
-                    no_repeats.append(genre)
-
-            return ", ".join(no_repeats)
+            return ", ".join(genres)
 
         elif isinstance(self._genres, str):
             return self._genres
@@ -400,6 +467,14 @@ class TrackMetadata:
             if v is not None and text is not None:
                 yield (v, text)
 
+    def asdict(self) -> dict:
+        ret = {}
+        for attr in dir(self):
+            if not attr.startswith("_") and not callable(getattr(self, attr)):
+                ret[attr] = getattr(self, attr)
+
+        return ret
+
     def __setitem__(self, key, val):
         """Dict-like access for tags.
 
@@ -441,10 +516,13 @@ class TrackMetadata:
         """
         return self.__setitem__(key, val)
 
+    def __hash__(self) -> int:
+        return sum(hash(v) for v in self.asdict().values() if isinstance(v, Hashable))
+
     def __repr__(self) -> str:
         """Returns the string representation of the metadata object.
 
         :rtype: str
         """
         # TODO: make a more readable repr
-        return json.dumps(self.__dict__, indent=2)
+        return f"<TrackMetadata object {hex(hash(self))}>"

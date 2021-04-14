@@ -144,6 +144,22 @@ LASTFM_URL_REGEX = r"https://www.last.fm/user/\w+/playlists/\w+"
 
 
 TIDAL_MAX_Q = 7
+
+TIDAL_Q_MAP = {
+    "LOW": 0,
+    "HIGH": 1,
+    "LOSSLESS": 2,
+    "HI_RES": 3,
+}
+
 DEEZER_MAX_Q = 6
 AVAILABLE_QUALITY_IDS = (0, 1, 2, 3, 4)
 MEDIA_TYPES = ("track", "album", "artist", "label", "playlist")
+
+# used to homogenize cover size keys
+COVER_SIZES = ("thumbnail", "small", "large", "original")
+
+TIDAL_CLIENT_INFO = {
+    "id": "aR7gUaTK1ihpXOEP",
+    "secret": "eVWBEkuL2FCjxgjOkR3yK0RYZEbcrMXRc2l8fU3ZCdE=",
+}
