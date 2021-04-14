@@ -125,31 +125,27 @@ rip discover --list 'best-sellers'
 
 ## Troubleshooting
 
-First, consult the help pages and their example commands.
+If you're having issues with the tool, try the following:
 
-```bash
-rip --help
-```
+- Consult the help pages and their example commands.
+    ```bash
+    rip --help
 
-```bash
-rip filter --help
-```
+    rip filter --help
 
-```bash
-rip search --help
-```
+    rip search --help
 
-```bash
-rip discover --help
-```
+    rip discover --help
 
-```bash
-rip config --help
-```
+    rip config --help
 
-```bash
-rip lastfm --help
-```
+    rip lastfm --help
+    ```
+- Update `streamrip` with by running `pip3 install streamrip --upgrade`
+- Reset the config file with `rip config --reset`
+
+If none of the above work, open an [issue](###guidelines-for-opening-issues)
+
 
 Second, try resetting the config file with `rip config —reset`. Config errors often arise after an update where a new feature was added.
 
@@ -161,7 +157,19 @@ If that doesn't work, open an issue on GitHub. Please include the traceback and 
 
 ## Contributions
 
-All contributions are appreciated! If you're new to Git, follow these steps to open your first Pull Request (PR):
+All contributions are appreciated! You can help out the project by opening an issue
+or by submitting code.
+
+### Guidelines for opening issues
+
+- Include a general description of the feature request or bug in the title
+- Limit each Issue to a single subject
+- For bug reports, include the command (including the url) you used and version of `streamrip`
+- 
+
+### Contributing code
+
+If you're new to Git, follow these steps to open your first Pull Request (PR):
 
 - Fork this repository
 - Clone the new repository
@@ -169,7 +177,6 @@ All contributions are appreciated! If you're new to Git, follow these steps to o
 - Open a pull request to the `dev` branch
 
 Please document any functions or obscure lines of code.
-
 
 
 ## Acknowledgements
