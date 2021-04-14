@@ -133,14 +133,18 @@ FOLDER_FORMAT = (
 )
 TRACK_FORMAT = "{tracknumber}. {artist} - {title}"
 
+
+# ------------------ Regexes ------------------- #
 URL_REGEX = (
     r"https?://(?:www|open|play|listen)?\.?(qobuz|tidal|deezer)\.com(?:(?:/"
     r"(track|playlist|album|artist|label))|(?:\/[-\w]+?))+\/([-\w]+)"
 )
-
 SOUNDCLOUD_URL_REGEX = r"https://soundcloud.com/[-\w:/]+"
 SOUNDCLOUD_CLIENT_ID = "a3e059563d7fd3372b49b37f00a00bcf"
 LASTFM_URL_REGEX = r"https://www.last.fm/user/\w+/playlists/\w+"
+QOBUZ_INTERPRETER_URL_REGEX = (
+    r"https?://www\.qobuz\.com/\w\w-\w\w/interpreter/[-\w]+/[-\w]+"
+)
 
 
 TIDAL_MAX_Q = 7

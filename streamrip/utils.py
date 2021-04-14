@@ -1,8 +1,9 @@
 import base64
 import contextlib
-import sys
 import logging
 import os
+import re
+import sys
 from string import Formatter
 from typing import Hashable, Optional, Union
 
@@ -15,7 +16,7 @@ from requests.packages import urllib3
 from tqdm import tqdm
 from tqdm.contrib import DummyTqdmFile
 
-from .constants import LOG_DIR, TIDAL_COVER_URL
+from .constants import LOG_DIR, TIDAL_COVER_URL, AGENT
 from .exceptions import InvalidSourceError, NonStreamable
 
 urllib3.disable_warnings()
@@ -267,3 +268,16 @@ def decho(message, fg=None):
     """
     click.secho(message, fg=fg)
     logger.debug(message)
+
+
+def extract_interpreter_url(url: str) -> str:
+    """Extract artist ID from a Qobuz interpreter url.
+
+    :param url: Urls of the form "https://www.qobuz.com/us-en/interpreter/{artist}/download-streaming-albums"
+    :type url: str
+    :rtype: str
+    """
+    session = gen_threadsafe_session({'User-Agent': AGENT})
+    r = session.get(url)
+    artist_id = re.search(r"getSimilarArtist\(\s*'(\w+)'", r.text).group(1)
+    return artist_id

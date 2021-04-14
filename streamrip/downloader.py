@@ -16,7 +16,7 @@ from mutagen.flac import FLAC, Picture
 from mutagen.id3 import APIC, ID3, ID3NoHeaderError
 from mutagen.mp4 import MP4, MP4Cover
 from pathvalidate import sanitize_filename, sanitize_filepath
-from requests.packages import urllib3
+from tqdm import tqdm
 
 from . import converter
 from .clients import Client
@@ -45,8 +45,6 @@ from .utils import (
 )
 
 logger = logging.getLogger(__name__)
-urllib3.disable_warnings()
-
 
 TYPE_REGEXES = {
     "remaster": re.compile(r"(?i)(re)?master(ed)?"),
@@ -90,22 +88,19 @@ class Track:
         self.id = None
         self.__dict__.update(kwargs)
 
-        # adjustments after blind attribute sets
+        # TODO: remove these
         self.container = "FLAC"
         self.sampling_rate = 44100
         self.bit_depth = 16
 
         self.downloaded = False
         self.tagged = False
+        # TODO: find better solution
         for attr in ("quality", "folder", "meta"):
             setattr(self, attr, None)
 
         if isinstance(kwargs.get("meta"), TrackMetadata):
             self.meta = kwargs["meta"]
-        else:
-            self.meta = None
-            # `load_meta` must be called at some point
-            logger.debug("Track: meta not provided")
 
         if (u := kwargs.get("cover_url")) is not None:
             logger.debug(f"Cover url: {u}")
@@ -195,7 +190,12 @@ class Track:
         :param progress_bar: turn on/off progress bar
         :type progress_bar: bool
         """
-        if not self._prepare_download(quality=quality, parent_folder=parent_folder, progress_bar=progress_bar, **kwargs):
+        if not self._prepare_download(
+            quality=quality,
+            parent_folder=parent_folder,
+            progress_bar=progress_bar,
+            **kwargs,
+        ):
             return False
 
         if self.client.source == "soundcloud":
@@ -617,6 +617,7 @@ class Tracklist(list):
                     concurrent.futures.wait(futures)
                 except (KeyboardInterrupt, SystemExit):
                     executor.shutdown()
+                    tqdm.write("Aborted! May take some time to shutdown.")
                     exit("Aborted!")
 
         else:
@@ -807,8 +808,8 @@ class Album(Tracklist):
         self.meta = self.client.get(self.id, media_type="album")
 
         # update attributes based on response
-        for k, v in self._parse_get_resp(self.meta, self.client).items():
-            setattr(self, k, v)  # prefer to __dict__.update for properties
+        info = self._parse_get_resp(self.meta, self.client).items()
+        self.__dict__.update(info)
 
         if not self.get("streamable", False):
             raise NonStreamable(f"This album is not streamable ({self.id} ID)")

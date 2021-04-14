@@ -19,6 +19,7 @@ from .constants import (
     DB_PATH,
     LASTFM_URL_REGEX,
     MEDIA_TYPES,
+    QOBUZ_INTERPRETER_URL_REGEX,
     SOUNDCLOUD_URL_REGEX,
     URL_REGEX,
 )
@@ -30,7 +31,7 @@ from .exceptions import (
     NoResultsFound,
     ParsingError,
 )
-from .utils import capitalize
+from .utils import capitalize, extract_interpreter_url
 
 logger = logging.getLogger(__name__)
 
@@ -54,6 +55,7 @@ class MusicDL(list):
         self.url_parse = re.compile(URL_REGEX)
         self.soundcloud_url_parse = re.compile(SOUNDCLOUD_URL_REGEX)
         self.lastfm_url_parse = re.compile(LASTFM_URL_REGEX)
+        self.interpreter_url_parse = re.compile(QOBUZ_INTERPRETER_URL_REGEX)
 
         self.config = config
         if self.config is None:
@@ -75,48 +77,6 @@ class MusicDL(list):
                 config.save()
         else:
             self.db = []
-
-    def prompt_creds(self, source: str):
-        """Prompt the user for credentials.
-
-        :param source:
-        :type source: str
-        """
-        if source == "qobuz":
-            click.secho(f"Enter {capitalize(source)} email:", fg="green")
-            self.config.file[source]["email"] = input()
-            click.secho(
-                f"Enter {capitalize(source)} password (will not show on screen):",
-                fg="green",
-            )
-            self.config.file[source]["password"] = md5(
-                getpass(prompt="").encode("utf-8")
-            ).hexdigest()
-
-            self.config.save()
-            click.secho(f'Credentials saved to config file at "{self.config._path}"')
-        else:
-            raise Exception
-
-    def assert_creds(self, source: str):
-        assert source in (
-            "qobuz",
-            "tidal",
-            "deezer",
-            "soundcloud",
-        ), f"Invalid source {source}"
-        if source == "deezer":
-            # no login for deezer
-            return
-
-        if source == "soundcloud":
-            return
-
-        if source == "qobuz" and (
-            self.config.file[source]["email"] is None
-            or self.config.file[source]["password"] is None
-        ):
-            self.prompt_creds(source)
 
     def handle_urls(self, url: str):
         """Download a url
@@ -217,9 +177,6 @@ class MusicDL(list):
             if self.db != [] and hasattr(item, "id"):
                 self.db.add(item.id)
 
-            # if self.config.session["conversion"]["enabled"]:
-            # item.convert(**self.config.session["conversion"])
-
     def get_client(self, source: str):
         client = self.clients[source]
         if not client.logged_in:
@@ -265,7 +222,23 @@ class MusicDL(list):
 
         :raises exceptions.ParsingError
         """
-        parsed = self.url_parse.findall(url)  # Qobuz, Tidal, Dezer
+
+        parsed = []
+
+        interpreter_urls = self.interpreter_url_parse.findall(url)
+        if interpreter_urls:
+            click.secho(
+                "Extracting IDs from Qobuz interpreter urls. Use urls "
+                "that include the artist ID for faster preprocessing.",
+                fg="yellow",
+            )
+            parsed.extend(
+                ("qobuz", "artist", extract_interpreter_url(u))
+                for u in interpreter_urls
+            )
+            url = self.interpreter_url_parse.sub("", url)
+
+        parsed.extend(self.url_parse.findall(url))  # Qobuz, Tidal, Dezer
         soundcloud_urls = self.soundcloud_url_parse.findall(url)
         soundcloud_items = [self.clients["soundcloud"].get(u) for u in soundcloud_urls]
 
@@ -503,3 +476,46 @@ class MusicDL(list):
     def __get_source_subdir(self, source: str) -> str:
         path = self.config.session["downloads"]["folder"]
         return os.path.join(path, capitalize(source))
+
+    def prompt_creds(self, source: str):
+        """Prompt the user for credentials.
+
+        :param source:
+        :type source: str
+        """
+        if source == "qobuz":
+            click.secho(f"Enter {capitalize(source)} email:", fg="green")
+            self.config.file[source]["email"] = input()
+            click.secho(
+                f"Enter {capitalize(source)} password (will not show on screen):",
+                fg="green",
+            )
+            self.config.file[source]["password"] = md5(
+                getpass(prompt="").encode("utf-8")
+            ).hexdigest()
+
+            self.config.save()
+            click.secho(f'Credentials saved to config file at "{self.config._path}"')
+        else:
+            raise Exception
+
+    def assert_creds(self, source: str):
+        assert source in (
+            "qobuz",
+            "tidal",
+            "deezer",
+            "soundcloud",
+        ), f"Invalid source {source}"
+        if source == "deezer":
+            # no login for deezer
+            return
+
+        if source == "soundcloud":
+            return
+
+        if source == "qobuz" and (
+            self.config.file[source]["email"] is None
+            or self.config.file[source]["password"] is None
+        ):
+            self.prompt_creds(source)
+
