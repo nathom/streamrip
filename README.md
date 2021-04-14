@@ -144,7 +144,7 @@ If you're having issues with the tool, try the following:
 - Update `streamrip` with by running `pip3 install streamrip --upgrade`
 - Reset the config file with `rip config --reset`
 
-If none of the above work, open an [issue](###guidelines-for-opening-issues)
+If none of the above work, open an [issue](##contributions)
 
 
 Second, try resetting the config file with `rip config —reset`. Config errors often arise after an update where a new feature was added.
