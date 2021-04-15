@@ -174,16 +174,11 @@ If you're having issues with the tool, try the following:
 - Consult the help pages and their example commands.
     ```bash
     rip --help
-
-    rip filter --help
-
+rip filter --help
     rip search --help
-
-    rip discover --help
-
+rip discover --help
     rip config --help
-
-    rip lastfm --help
+rip lastfm --help
     ```
 - Update `streamrip` with by running `pip3 install streamrip --upgrade`
 - Reset the config file with `rip config --reset`
