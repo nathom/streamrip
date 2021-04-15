@@ -213,8 +213,8 @@ class ConfigDocumentation:
     soundcloud:
         quality: Only 0 is available
     database: This stores a list of item IDs so that repeats are not downloaded.
-    filters: Filter a Qobuz artist's discography. Values set here will be applied every use, unless overrided by command line arguments.
-        extras: Collectors Editions, Live Recordings, etc.
+    filters: Filter a Qobuz artist's discography. Set to 'true' to turn on a filter.
+        extras: Remove Collectors Editions, live recordings, etc.
         repeats: Picks the highest quality out of albums with identical titles.
         non_albums: Remove EPs and Singles
         features: Remove albums whose artist is not the one requested
@@ -238,6 +238,7 @@ class ConfigDocumentation:
     """
 
     def __init__(self):
+        # not using ruamel because its super slow
         self.docs = []
         doctext = self.__doc__
         # get indent level, key, and documentation
