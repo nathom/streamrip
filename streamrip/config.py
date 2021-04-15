@@ -4,7 +4,7 @@ import logging
 import os
 import re
 from functools import cache
-from pprint import pformat, pprint
+from pprint import pformat
 
 from ruamel.yaml import YAML
 
@@ -16,7 +16,6 @@ from .constants import (
     TRACK_FORMAT,
 )
 from .exceptions import InvalidSourceError
-from .utils import safe_get
 
 yaml = YAML()
 
