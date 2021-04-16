@@ -114,6 +114,13 @@ class Config:
         else:
             self.load()
 
+    def update(self):
+        self.reset()
+        temp = copy.deepcopy(self.defaults)
+        temp['qobuz'] = self.file['qobuz']
+        temp['tidal'] = self.file['tidal']
+        self.dump(temp)
+
     def save(self):
         """Save the config state to file."""
 
@@ -181,7 +188,7 @@ class Config:
             return self.qobuz_creds
         if source == "tidal":
             return self.tidal_creds
-        if source == "deezer":
+        if source == "deezer" or source == 'soundcloud':
             return dict()
 
         raise InvalidSourceError(source)

@@ -114,27 +114,34 @@ class MusicDL(list):
         item = MEDIA_CLASS[media_type](client=client, id=item_id)
         self.append(item)
 
+    def _get_download_args(self) -> dict:
+        return {
+            "database": self.db,
+            "parent_folder": self.config.session["downloads"]["folder"],
+            "folder_format": self.config.session["path_format"]["folder"],
+            "track_format": self.config.session["path_format"]["track"],
+            "embed_cover": self.config.session["artwork"]["embed"],
+            "embed_cover_size": self.config.session["artwork"]["size"],
+            "keep_hires_cover": self.config.session["artwork"]["keep_hires_cover"],
+            "set_playlist_to_album": self.config.session["metadata"][
+                "set_playlist_to_album"
+            ],
+            "stay_temp": self.config.session["conversion"]["enabled"],
+            "conversion": self.config.session["conversion"],
+            "concurrent_downloads": self.config.session["concurrent_downloads"],
+            "new_tracknumbers": self.config.session["metadata"][
+                "new_playlist_tracknumbers"
+            ],
+        }
+
     def download(self):
         try:
-            arguments = {
-                "database": self.db,
-                "parent_folder": self.config.session["downloads"]["folder"],
-                "folder_format": self.config.session["path_format"]["folder"],
-                "track_format": self.config.session["path_format"]["track"],
-                "embed_cover": self.config.session["artwork"]["embed"],
-                "embed_cover_size": self.config.session["artwork"]["size"],
-                "keep_hires_cover": self.config.session["artwork"]["keep_hires_cover"],
-                "set_playlist_to_album": self.config.session["metadata"][
-                    "set_playlist_to_album"
-                ],
-                "stay_temp": self.config.session["conversion"]["enabled"],
-                "conversion": self.config.session["conversion"],
-                "concurrent_downloads": self.config.session["concurrent_downloads"],
-                "new_tracknumbers": self.config.session["metadata"][
-                    "new_playlist_tracknumbers"
-                ],
-            }
-        except KeyError as err:
+            arguments = self._get_download_args()
+        except KeyError:
+            click.secho("Updating config file... Please run the command again.", fg='magenta')
+            self.config.update()
+            exit()
+        except Exception as err:
             click.secho(
                 "There was a problem with your config file. This happens "
                 "sometimes after updates. Run ",
