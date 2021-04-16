@@ -117,8 +117,8 @@ class Config:
     def update(self):
         self.reset()
         temp = copy.deepcopy(self.defaults)
-        temp['qobuz'] = self.file['qobuz']
-        temp['tidal'] = self.file['tidal']
+        temp["qobuz"] = self.file["qobuz"]
+        temp["tidal"] = self.file["tidal"]
         self.dump(temp)
 
     def save(self):
@@ -188,7 +188,7 @@ class Config:
             return self.qobuz_creds
         if source == "tidal":
             return self.tidal_creds
-        if source == "deezer" or source == 'soundcloud':
+        if source == "deezer" or source == "soundcloud":
             return dict()
 
         raise InvalidSourceError(source)

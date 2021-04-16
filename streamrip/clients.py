@@ -12,16 +12,16 @@ import click
 from .constants import (
     AGENT,
     AVAILABLE_QUALITY_IDS,
+    DEEZER_BASE,
     DEEZER_MAX_Q,
+    QOBUZ_BASE,
     QOBUZ_FEATURED_KEYS,
+    SOUNDCLOUD_BASE,
     SOUNDCLOUD_CLIENT_ID,
+    TIDAL_AUTH_URL,
+    TIDAL_BASE,
     TIDAL_CLIENT_INFO,
     TIDAL_MAX_Q,
-    QOBUZ_BASE,
-    TIDAL_BASE,
-    TIDAL_AUTH_URL,
-    DEEZER_BASE,
-    SOUNDCLOUD_BASE,
 )
 from .exceptions import (
     AuthenticationError,
