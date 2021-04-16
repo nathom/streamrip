@@ -158,7 +158,8 @@ TIDAL_Q_MAP = {
 
 DEEZER_MAX_Q = 6
 AVAILABLE_QUALITY_IDS = (0, 1, 2, 3, 4)
-MEDIA_TYPES = ("track", "album", "artist", "label", "playlist")
+# video only for tidal
+MEDIA_TYPES = {"track", "album", "artist", "label", "playlist", "video"}
 
 # used to homogenize cover size keys
 COVER_SIZES = ("thumbnail", "small", "large", "original")

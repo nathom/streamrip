@@ -10,6 +10,7 @@ import re
 import shutil
 import subprocess
 from tempfile import gettempdir
+from dataclasses import dataclass
 from typing import Any, Generator, Iterable, Union
 
 import click
@@ -812,7 +813,7 @@ class Album(Tracklist):
             return Playlist.from_api(resp, client)
 
         info = cls._parse_get_resp(resp, client)
-        return cls(client, **info)
+        return cls(client, **info.asdict())
 
     def _prepare_download(self, **kwargs):
         self.folder_format = kwargs.get("folder_format", FOLDER_FORMAT)

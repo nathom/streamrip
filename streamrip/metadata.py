@@ -3,6 +3,7 @@
 import logging
 import re
 from typing import Generator, Hashable, Optional, Tuple, Union
+from collections import OrderedDict
 
 from .constants import (
     COPYRIGHT,
@@ -136,7 +137,7 @@ class TrackMetadata:
 
             # Non-embedded information
             self.version = resp.get("version")
-            self.cover_urls = resp.get("image")
+            self.cover_urls = OrderedDict(resp.get("image"))
             self.cover_urls["original"] = self.cover_urls["large"].replace("600", "org")
             self.streamable = resp.get("streamable", False)
             self.bit_depth = resp.get("maximum_bit_depth")
@@ -162,10 +163,10 @@ class TrackMetadata:
             self.explicit = resp.get("explicit", False)
             # 80, 160, 320, 640, 1280
             uuid = resp.get("cover")
-            self.cover_urls = {
+            self.cover_urls = OrderedDict({
                 sk: tidal_cover_url(uuid, size)
                 for sk, size in zip(COVER_SIZES, (160, 320, 640, 1280))
-            }
+            })
             self.streamable = resp.get("allowStreaming", False)
             self.quality = TIDAL_Q_MAP[resp["audioQuality"]]
 
@@ -185,13 +186,13 @@ class TrackMetadata:
             self.explicit = bool(resp.get("parental_warning"))
             self.quality = 2
             self.bit_depth = 16
-            self.cover_urls = {
+            self.cover_urls = OrderedDict({
                 sk: resp.get(rk)  # size key, resp key
                 for sk, rk in zip(
                     COVER_SIZES,
                     ("cover", "cover_medium", "cover_large", "cover_xl"),
                 )
-            }
+            })
             self.sampling_rate = 44100
             self.streamable = True
 

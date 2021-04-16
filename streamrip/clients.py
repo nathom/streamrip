@@ -241,6 +241,9 @@ class QobuzClient(Client):
         epoint = f"{media_type}/get"
 
         response, status_code = self._api_request(epoint, params)
+        if status_code != 200:
+            raise Exception(f'Error fetching metadata. "{response["message"]}"')
+
         return response
 
     def _api_search(self, query, media_type, limit=500) -> Generator:
@@ -410,6 +413,8 @@ class TidalClient(Client):
     source = "tidal"
     max_quality = 3
 
+    # ----------- Public Methods --------------
+
     def __init__(self):
         self.logged_in = False
 
@@ -461,7 +466,10 @@ class TidalClient(Client):
         }
         return self._api_request(f"search/{media_type}s", params=params)
 
-    def get_file_url(self, track_id, quality: int = 3):
+    def get_file_url(self, track_id, quality: int = 3, video=False):
+        if video:
+            return self._get_video_stream_url(track_id)
+
         params = {
             "audioquality": get_quality(min(quality, TIDAL_MAX_Q), self.source),
             "playbackmode": "STREAM",
@@ -491,6 +499,8 @@ class TidalClient(Client):
                 "token_expiry",
             )
         }
+
+    # ------------ Utilities to login -------------
 
     def _login_new_user(self, launch=True):
         login_link = f"https://{self._get_device_code()}"
@@ -613,6 +623,15 @@ class TidalClient(Client):
         self.access_token = token
         self._update_authorization()
 
+    def _update_authorization(self):
+        self.session.headers.update(self.authorization)
+
+    @property
+    def authorization(self):
+        return {"authorization": f"Bearer {self.access_token}"}
+
+    # ------------- Fetch data ------------------
+
     def _api_get(self, item_id: str, media_type: str) -> dict:
         url = f"{media_type}s/{item_id}"
         item = self._api_request(url)
@@ -644,12 +663,21 @@ class TidalClient(Client):
         r = self.session.get(f"{TIDAL_BASE}/{path}", params=params).json()
         return r
 
+    def _get_video_stream_url(self, video_id) -> str:
+        params = {
+            "videoquality": "HIGH",
+            "playbackmode": "STREAM",
+            "assetpresentation": "FULL",
+        }
+        resp = self._api_request(
+            f"videos/{video_id}/playbackinfopostpaywall", params=params
+        )
+        manifest = json.loads(base64.b64decode(resp['manifest']).decode("utf-8"))
+        return manifest['urls'][0]
+
     def _api_post(self, url, data, auth=None):
         r = self.session.post(url, data=data, auth=auth, verify=False).json()
         return r
-
-    def _update_authorization(self):
-        self.session.headers.update({"authorization": f"Bearer {self.access_token}"})
 
 
 class SoundCloudClient(Client):
