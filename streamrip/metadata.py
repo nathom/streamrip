@@ -171,6 +171,8 @@ class TrackMetadata:
             )
             self.streamable = resp.get("allowStreaming", False)
             self.quality = TIDAL_Q_MAP[resp["audioQuality"]]
+            self.bit_depth = 24 if self.quality == 3 else 16
+            self.sampling_rate = 44100
 
         elif self.__source == "deezer":
             self.album = resp.get("title")
