@@ -9,7 +9,6 @@ import os
 import re
 import shutil
 import subprocess
-from dataclasses import dataclass
 from tempfile import gettempdir
 from typing import Any, Generator, Iterable, Union
 
@@ -910,14 +909,21 @@ class Album(Tracklist):
         """
         logging.debug(f"Loading {self.tracktotal} tracks to album")
         for track in _get_tracklist(resp, self.client.source):
-            # append method inherited from superclass list
-            self.append(
-                Track.from_album_meta(
-                    album=self.meta,
-                    track=track,
-                    client=self.client,
+            if track.get("type") == "Music Video":
+                self.append(
+                    Video.from_album_meta(
+                        track,
+                        self.client,
+                    )
                 )
-            )
+            else:
+                self.append(
+                    Track.from_album_meta(
+                        album=self.meta,
+                        track=track,
+                        client=self.client,
+                    )
+                )
 
     def _get_formatter(self) -> dict:
         fmt = dict()
@@ -1491,26 +1497,40 @@ class Label(Artist):
 class Video:
     """Only for Tidal."""
 
-    path = "/users/nathan/streamrip/videos/test.mp4"
-
-    def __init__(self, client, id, **kwargs):
+    def __init__(self, client: Client, id: str, **kwargs):
         self.id = id
         self.client = client
+        self.title = kwargs.get("title", "MusicVideo")
+        self.explicit = kwargs.get("explicit", False)
+        self.tracknumber = kwargs.get("tracknumber", None)
 
     def load_meta(self):
         resp = self.client.get(self.id, "video")
-        self.title = resp['title']
-        self.explicit = resp['explicit']
+        self.title = resp["title"]
+        self.explicit = resp["explicit"]
         print(resp)
 
     def download(self, **kwargs):
-        click.secho(f"Downloading {self.title} (Video)", fg='blue')
-        self.parent_folder = kwargs.get('parent_folder', 'StreamripDownloads')
+        click.secho(
+            f"Downloading {self.title} (Video). This may take a while.", fg="blue"
+        )
+
+        self.parent_folder = kwargs.get("parent_folder", "StreamripDownloads")
         url = self.client.get_file_url(self.id, video=True)
         # it's more convenient to have ffmpeg download the hls
         command = ["ffmpeg", "-i", url, "-c", "copy", "-loglevel", "panic", self.path]
         p = subprocess.Popen(command)
-        p.wait()
+        p.wait()  # remove this?
+
+    @classmethod
+    def from_album_meta(cls, track: dict, client: Client):
+        return cls(
+            client,
+            id=track["id"],
+            title=track["title"],
+            explicit=track["explicit"],
+            tracknumber=track["trackNumber"],
+        )
 
     @property
     def path(self) -> str:
@@ -1518,13 +1538,30 @@ class Video:
         fname = self.title
         if self.explicit:
             fname = f"{fname} (Explicit)"
+        if self.tracknumber is not None:
+            fname = f"{self.tracknumber:02}. {fname}"
+
         return os.path.join(self.parent_folder, f"{fname}.mp4")
+
+    def __str__(self) -> str:
+        return self.title
+
+    def __repr__(self) -> str:
+        return f"<Video - {self.title}>"
 
 
 # ---------- misc utility functions -----------
 
 
-def _get_tracklist(resp, source) -> list:
+def _get_tracklist(resp: dict, source: str) -> list:
+    """Returns the tracklist from an API response.
+
+    :param resp:
+    :type resp: dict
+    :param source:
+    :type source: str
+    :rtype: list
+    """
     if source == "qobuz":
         return resp["tracks"]["items"]
     if source in ("tidal", "deezer"):
