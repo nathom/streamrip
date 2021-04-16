@@ -168,3 +168,14 @@ TIDAL_CLIENT_INFO = {
     "id": "aR7gUaTK1ihpXOEP",
     "secret": "eVWBEkuL2FCjxgjOkR3yK0RYZEbcrMXRc2l8fU3ZCdE=",
 }
+
+QOBUZ_BASE = "https://www.qobuz.com/api.json/0.2"
+
+TIDAL_BASE = "https://api.tidalhifi.com/v1"
+TIDAL_AUTH_URL = "https://auth.tidal.com/v1/oauth2"
+
+DEEZER_BASE = "https://api.deezer.com"
+DEEZER_DL = "http://dz.loaderapp.info/deezer"
+
+SOUNDCLOUD_BASE = "https://api-v2.soundcloud.com"
+

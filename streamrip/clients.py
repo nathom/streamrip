@@ -2,6 +2,7 @@ import base64
 import hashlib
 import json
 import logging
+import re
 import time
 from abc import ABC, abstractmethod
 from typing import Generator, Sequence, Tuple, Union
@@ -16,6 +17,11 @@ from .constants import (
     SOUNDCLOUD_CLIENT_ID,
     TIDAL_CLIENT_INFO,
     TIDAL_MAX_Q,
+    QOBUZ_BASE,
+    TIDAL_BASE,
+    TIDAL_AUTH_URL,
+    DEEZER_BASE,
+    SOUNDCLOUD_BASE,
 )
 from .exceptions import (
     AuthenticationError,
@@ -26,16 +32,6 @@ from .exceptions import (
 )
 from .spoofbuz import Spoofer
 from .utils import gen_threadsafe_session, get_quality
-
-QOBUZ_BASE = "https://www.qobuz.com/api.json/0.2"
-
-TIDAL_BASE = "https://api.tidalhifi.com/v1"
-TIDAL_AUTH_URL = "https://auth.tidal.com/v1/oauth2"
-
-DEEZER_BASE = "https://api.deezer.com"
-DEEZER_DL = "http://dz.loaderapp.info/deezer"
-
-SOUNDCLOUD_BASE = "https://api-v2.soundcloud.com"
 
 logger = logging.getLogger(__name__)
 
@@ -672,8 +668,16 @@ class TidalClient(Client):
         resp = self._api_request(
             f"videos/{video_id}/playbackinfopostpaywall", params=params
         )
-        manifest = json.loads(base64.b64decode(resp['manifest']).decode("utf-8"))
-        return manifest['urls'][0]
+        stream_url_regex = (
+            r'#EXT-X-STREAM-INF:BANDWIDTH=\d+,AVERAGE-BANDWIDTH=\d+,CODECS="[^"]+"'
+            r",RESOLUTION=\d+x\d+\n(.+)"
+        )
+        manifest = json.loads(base64.b64decode(resp["manifest"]).decode("utf-8"))
+        available_urls = self.session.get(manifest["urls"][0])
+        url_info = re.findall(stream_url_regex, available_urls.text)
+
+        # highest resolution is last
+        return url_info[-1]
 
     def _api_post(self, url, data, auth=None):
         r = self.session.post(url, data=data, auth=auth, verify=False).json()
