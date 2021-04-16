@@ -1496,15 +1496,16 @@ class Video:
     def __init__(self, client, id, **kwargs):
         self.id = id
         self.client = client
-        self.parent_folder = kwargs.get('parent_folder', 'StreamripDownloads')
-        os.makedirs(self.parent_folder, exist_ok=True)
 
     def load_meta(self):
         resp = self.client.get(self.id, "video")
         self.title = resp['title']
         self.explicit = resp['explicit']
+        print(resp)
 
-    def download(self):
+    def download(self, **kwargs):
+        click.secho(f"Downloading {self.title} (Video)", fg='blue')
+        self.parent_folder = kwargs.get('parent_folder', 'StreamripDownloads')
         url = self.client.get_file_url(self.id, video=True)
         # it's more convenient to have ffmpeg download the hls
         command = ["ffmpeg", "-i", url, "-c", "copy", "-loglevel", "panic", self.path]
@@ -1513,6 +1514,7 @@ class Video:
 
     @property
     def path(self) -> str:
+        os.makedirs(self.parent_folder, exist_ok=True)
         fname = self.title
         if self.explicit:
             fname = f"{fname} (Explicit)"

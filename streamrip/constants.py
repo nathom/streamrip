@@ -137,7 +137,7 @@ TRACK_FORMAT = "{tracknumber}. {artist} - {title}"
 # ------------------ Regexes ------------------- #
 URL_REGEX = (
     r"https?://(?:www|open|play|listen)?\.?(qobuz|tidal|deezer)\.com(?:(?:/"
-    r"(track|playlist|album|artist|label))|(?:\/[-\w]+?))+\/([-\w]+)"
+    r"(album|artist|track|playlist|video|label))|(?:\/[-\w]+?))+\/([-\w]+)"
 )
 SOUNDCLOUD_URL_REGEX = r"https://soundcloud.com/[-\w:/]+"
 SOUNDCLOUD_CLIENT_ID = "a3e059563d7fd3372b49b37f00a00bcf"

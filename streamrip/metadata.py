@@ -100,6 +100,12 @@ class TrackMetadata:
             self.add_album_meta(album)
 
     def update(self, meta):
+        """Given a TrackMetadata object (usually from an album), the fields
+        of the current object are updated.
+
+        :param meta:
+        :type meta: TrackMetadata
+        """
         assert isinstance(meta, TrackMetadata)
 
         for k, v in meta.asdict().items():

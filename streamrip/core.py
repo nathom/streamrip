@@ -24,7 +24,7 @@ from .constants import (
     URL_REGEX,
 )
 from .db import MusicDB
-from .downloader import Album, Artist, Label, Playlist, Track, Tracklist
+from .downloader import Album, Artist, Label, Playlist, Track, Tracklist, Video
 from .exceptions import (
     AuthenticationError,
     NonStreamable,
@@ -42,6 +42,7 @@ MEDIA_CLASS = {
     "artist": Artist,
     "track": Track,
     "label": Label,
+    "video": Video,
 }
 Media = Union[Album, Playlist, Artist, Track]
 
