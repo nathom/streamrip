@@ -9,8 +9,8 @@ import os
 import re
 import shutil
 import subprocess
-from tempfile import gettempdir
 from dataclasses import dataclass
+from tempfile import gettempdir
 from typing import Any, Generator, Iterable, Union
 
 import click
@@ -1486,6 +1486,40 @@ class Label(Artist):
         :rtype: str
         """
         return self.name
+
+
+class Video:
+    """Only for Tidal."""
+
+    path = "/users/nathan/streamrip/videos/test.mp4"
+
+    def __init__(self, client, id, **kwargs):
+        self.id = id
+        self.client = client
+        self.parent_folder = kwargs.get('parent_folder', 'StreamripDownloads')
+        os.makedirs(self.parent_folder, exist_ok=True)
+
+    def load_meta(self):
+        resp = self.client.get(self.id, "video")
+        self.title = resp['title']
+        self.explicit = resp['explicit']
+
+    def download(self):
+        url = self.client.get_file_url(self.id, video=True)
+        # it's more convenient to have ffmpeg download the hls
+        command = ["ffmpeg", "-i", url, "-c", "copy", "-loglevel", "panic", self.path]
+        p = subprocess.Popen(command)
+        p.wait()
+
+    @property
+    def path(self) -> str:
+        fname = self.title
+        if self.explicit:
+            fname = f"{fname} (Explicit)"
+        return os.path.join(self.parent_folder, f"{fname}.mp4")
+
+
+# ---------- misc utility functions -----------
 
 
 def _get_tracklist(resp, source) -> list:
