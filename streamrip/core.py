@@ -31,7 +31,7 @@ from .exceptions import (
     NoResultsFound,
     ParsingError,
 )
-from .utils import capitalize, extract_interpreter_url
+from .utils import extract_interpreter_url
 
 logger = logging.getLogger(__name__)
 
@@ -393,7 +393,7 @@ class MusicDL(list):
             choice = pick(
                 tuple(enumerate(results)),
                 title=(
-                    f"{capitalize(source)} {media_type} search.\n"
+                    f"{source.capitalize()} {media_type} search.\n"
                     "Press SPACE to select, RETURN to download, ctrl-C to exit."
                 ),
                 options_map_func=title,
@@ -422,7 +422,7 @@ class MusicDL(list):
                 preview_command=from_title,
                 preview_size=0.5,
                 title=(
-                    f"{capitalize(source)} {media_type} search.\n"
+                    f"{source.capitalize()} {media_type} search.\n"
                     "SPACE - multiselection, ENTER - download, ESC - exit"
                 ),
                 cycle_cursor=True,
@@ -475,7 +475,7 @@ class MusicDL(list):
 
     def __get_source_subdir(self, source: str) -> str:
         path = self.config.session["downloads"]["folder"]
-        return os.path.join(path, capitalize(source))
+        return os.path.join(path, source.capitalize())
 
     def prompt_creds(self, source: str):
         """Prompt the user for credentials.
@@ -484,10 +484,10 @@ class MusicDL(list):
         :type source: str
         """
         if source == "qobuz":
-            click.secho(f"Enter {capitalize(source)} email:", fg="green")
+            click.secho(f"Enter {source.capitalize()} email:", fg="green")
             self.config.file[source]["email"] = input()
             click.secho(
-                f"Enter {capitalize(source)} password (will not show on screen):",
+                f"Enter {source.capitalize()} password (will not show on screen):",
                 fg="green",
             )
             self.config.file[source]["password"] = md5(

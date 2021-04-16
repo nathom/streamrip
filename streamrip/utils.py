@@ -201,10 +201,6 @@ def init_log(path: Optional[str] = None, level: str = "DEBUG"):
     logging.basicConfig(filename=path, filemode="a", level=level)
 
 
-def capitalize(s: str) -> str:
-    return s[0].upper() + s[1:]
-
-
 def decrypt_mqa_file(in_path, out_path, encryption_key):
     # Do not change this
     master_key = "UIlTTEMmmLfGowo/UC60x2H45W6MdGgTRfo/umg4754="
