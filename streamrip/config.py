@@ -209,6 +209,7 @@ class ConfigDocumentation:
     """Documentation is stored in this docstring.
     qobuz:
         quality: 1: 320kbps MP3, 2: 16/44.1, 3: 24/<=96, 4: 24/>=96
+        password: This is an md5 hash of the plaintext password
         app_id: Do not change
         secrets: Do not change
     tidal:
