@@ -141,7 +141,8 @@ class MusicDL(list):
             arguments = self._get_download_args()
         except KeyError:
             click.secho(
-                "Updating config file... Please run the command again.", fg="magenta"
+                "Updating config file... Some settings may be lost. Please run the "
+                "command again.", fg="magenta"
             )
             self.config.update()
             exit()
