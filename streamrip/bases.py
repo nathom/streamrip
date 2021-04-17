@@ -128,6 +128,12 @@ class Track:
             self.cover_url = None
 
     def _prepare_download(self, **kwargs):
+        """This function does preprocessing to prepare for downloading tracks.
+        It creates the directories, downloads cover art, and (optionally)
+        downloads booklets.
+
+        :param kwargs:
+        """
         # args override attributes
         self.quality = min(kwargs["quality"], self.client.max_quality)
         self.folder = kwargs["parent_folder"] or self.folder
@@ -166,8 +172,7 @@ class Track:
         progress_bar: bool = True,
         **kwargs,
     ) -> bool:
-        """
-        Download the track.
+        """Download the track.
 
         :param quality: (0, 1, 2, 3, 4)
         :type quality: int
@@ -252,16 +257,38 @@ class Track:
         return True
 
     def __validate_qobuz_dl_info(self, info: dict) -> bool:
+        """Check if the download info dict returned by Qobuz is downloadable.
+
+        :param info:
+        :type info: dict
+        :rtype: bool
+        """
         return all(
             (info.get("sampling_rate"), info.get("bit_depth"), not info.get("sample"))
         )
 
     def move(self, path: str):
+        """Moves the Track and sets self.path to the new path.
+
+        :param path:
+        :type path: str
+        """
         os.makedirs(os.path.dirname(path), exist_ok=True)
         shutil.move(self.path, path)
         self.path = path
 
     def _soundcloud_download(self, dl_info: dict) -> str:
+        """Downloads a soundcloud track. This requires a seperate function
+        because there are three methods that can be used to download a track:
+            * original file downloads
+            * direct mp3 downloads
+            * hls stream ripping
+        All three of these need special processing.
+
+        :param dl_info:
+        :type dl_info: dict
+        :rtype: str
+        """
         if dl_info["type"] == "mp3":
             self.path += ".mp3"
             # convert hls stream to mp3
@@ -290,7 +317,11 @@ class Track:
             self.quality = 2
 
     @property
-    def _progress_desc(self):
+    def _progress_desc(self) -> str:
+        """The description that is used on the progress bar.
+
+        :rtype: str
+        """
         return click.style(f"Track {int(self.meta.tracknumber):02}", fg="blue")
 
     def download_cover(self):
@@ -345,6 +376,14 @@ class Track:
 
     @classmethod
     def from_api(cls, item: dict, client: Client):
+        """Given a track dict from an API, return a new Track object
+        initialized with the proper values.
+
+        :param item:
+        :type item: dict
+        :param client:
+        :type client: Client
+        """
         meta = TrackMetadata(track=item, source=client.source)
         try:
             if client.source == "qobuz":
@@ -510,6 +549,10 @@ class Track:
 
     @property
     def title(self) -> str:
+        """The title of the track.
+
+        :rtype: str
+        """
         if hasattr(self, "meta"):
             _title = self.meta.title
             if self.meta.explicit:
@@ -577,12 +620,16 @@ class Video:
         self.tracknumber = kwargs.get("tracknumber", None)
 
     def load_meta(self):
+        """Given an id at contruction, get the metadata of the video."""
         resp = self.client.get(self.id, "video")
         self.title = resp["title"]
         self.explicit = resp["explicit"]
-        print(resp)
 
     def download(self, **kwargs):
+        """Download the Video.
+
+        :param kwargs:
+        """
         click.secho(
             f"Downloading {self.title} (Video). This may take a while.", fg="blue"
         )
@@ -598,6 +645,14 @@ class Video:
 
     @classmethod
     def from_album_meta(cls, track: dict, client: Client):
+        """Given an video response dict from an album, return a new
+        Video object from the information.
+
+        :param track:
+        :type track: dict
+        :param client:
+        :type client: Client
+        """
         return cls(
             client,
             id=track["id"],
@@ -608,6 +663,10 @@ class Video:
 
     @property
     def path(self) -> str:
+        """The path to download the mp4 file.
+
+        :rtype: str
+        """
         os.makedirs(self.parent_folder, exist_ok=True)
         fname = self.title
         if self.explicit:
@@ -640,7 +699,13 @@ class Booklet:
         """
         self.__dict__.update(resp)
 
-    def download(self, parent_folder, **kwargs):
+    def download(self, parent_folder: str, **kwargs):
+        """Download the Booklet.
+
+        :param parent_folder:
+        :type parent_folder: str
+        :param kwargs:
+        """
         filepath = os.path.join(parent_folder, f"{self.description}.pdf")
         tqdm_download(self.url, filepath)
 
@@ -658,6 +723,11 @@ class Tracklist(list):
     essence_regex = re.compile(r"([^\(]+)(?:\s*[\(\[][^\)][\)\]])*")
 
     def download(self, **kwargs):
+        """Uses the _prepare_download and _download_item methods to download
+        all of the tracks contained in the Tracklist.
+
+        :param kwargs:
+        """
         self._prepare_download(**kwargs)
         if kwargs.get("conversion", False):
             has_conversion = kwargs["conversion"]["enabled"]
@@ -690,16 +760,37 @@ class Tracklist(list):
         self.downloaded = True
 
     def _download_and_convert_item(self, item, **kwargs):
+        """Downloads and converts an item.
+
+        :param item:
+        :param kwargs: should contain a `conversion` dict.
+        """
         if self._download_item(item, **kwargs):
             item.convert(**kwargs["conversion"])
 
     def _download_item(item, **kwargs):
+        """Abstract method.
+
+        :param item:
+        :param kwargs:
+        """
         raise NotImplementedError
 
     def _prepare_download(**kwargs):
+        """Abstract method.
+
+        :param kwargs:
+        """
         raise NotImplementedError
 
     def get(self, key: Union[str, int], default=None):
+        """A safe `get` method similar to `dict.get`.
+
+        :param key: If it is a str, get an attribute. If an int, get the item
+        at the index.
+        :type key: Union[str, int]
+        :param default:
+        """
         if isinstance(key, str):
             if hasattr(self, key):
                 return getattr(self, key)
@@ -713,9 +804,20 @@ class Tracklist(list):
             return default
 
     def set(self, key, val):
+        """For consistency with `Tracklist.get`.
+
+        :param key:
+        :param val:
+        """
         self.__setitem__(key, val)
 
     def convert(self, codec="ALAC", **kwargs):
+        """Converts every item in `self`.
+        Deprecated. Use _download_and_convert_item instead.
+
+        :param codec:
+        :param kwargs:
+        """
         if (sr := kwargs.get("sampling_rate")) :
             if sr < 44100:
                 logger.warning(
@@ -791,7 +893,11 @@ class Tracklist(list):
 
         raise InvalidQuality(f"Quality {quality} not allowed")
 
-    def download_message(self):
+    def download_message(self) -> str:
+        """The message to display after calling `Tracklist.download`.
+
+        :rtype: str
+        """
         click.secho(
             f"\n\nDownloading {self.title} ({self.__class__.__name__})\n",
             fg="blue",
@@ -799,6 +905,11 @@ class Tracklist(list):
 
     @staticmethod
     def _parse_get_resp(item, client):
+        """Abstract.
+
+        :param item:
+        :param client:
+        """
         raise NotImplementedError
 
     @staticmethod
