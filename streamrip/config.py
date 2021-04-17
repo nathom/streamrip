@@ -169,6 +169,7 @@ class Config:
         creds = dict(self.file["tidal"])
         logger.debug(creds)
         del creds["quality"]  # should not be included in creds
+        del creds['download_videos']
         return creds
 
     @property

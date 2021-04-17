@@ -71,6 +71,7 @@ class TrackMetadata:
         self.encoder = None
         self.compilation = None
         self.cover = None
+        self.tracktotal = None
         self.tracknumber = None
         self.discnumber = None
         self.disctotal = None
@@ -156,7 +157,7 @@ class TrackMetadata:
 
         elif self.__source == "tidal":
             self.album = resp.get("title")
-            self.tracktotal = resp.get("numberOfTracks")
+            self.tracktotal = resp.get("numberOfTracks", 1)
             # genre not returned by API
             self.date = resp.get("releaseDate")
 
@@ -177,8 +178,10 @@ class TrackMetadata:
                 }
             )
             self.streamable = resp.get("allowStreaming", False)
-            self.quality = TIDAL_Q_MAP[resp["audioQuality"]]
-            self.bit_depth = 24 if self.quality == 3 else 16
+            if resp.get("audioQuality"):  # for album entries in single tracks
+                self.quality = TIDAL_Q_MAP[resp["audioQuality"]]
+
+            self.bit_depth = 24 if self.get('quality', False) == 3 else 16
             self.sampling_rate = 44100
 
         elif self.__source == "deezer":
@@ -244,8 +247,6 @@ class TrackMetadata:
             self.tracknumber = track.get("track_position", 1)
             self.discnumber = track.get("disk_number")
             self.artist = track.get("artist", {}).get("name")
-            if track.get("album"):
-                self.add_album_meta(track["album"])
 
         elif self.__source == "soundcloud":
             self.title = track["title"].strip()
@@ -260,6 +261,9 @@ class TrackMetadata:
 
         else:
             raise ValueError(self.__source)
+
+        if track.get("album"):
+            self.add_album_meta(track["album"])
 
     def _mod_title(self, version, work):
         if version is not None:
