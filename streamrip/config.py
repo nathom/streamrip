@@ -48,6 +48,7 @@ class Config:
     defaults = {
         "qobuz": {
             "quality": 3,
+            "download_booklets": True,
             "email": None,
             "password": None,
             "app_id": "",
@@ -55,6 +56,7 @@ class Config:
         },
         "tidal": {
             "quality": 3,
+            "download_videos": True,
             "user_id": None,
             "country_code": None,
             "access_token": None,
@@ -115,10 +117,11 @@ class Config:
             self.load()
 
     def update(self):
+        """Resets the config file except for credentials."""
         self.reset()
         temp = copy.deepcopy(self.defaults)
-        temp["qobuz"] = self.file["qobuz"]
-        temp["tidal"] = self.file["tidal"]
+        temp["qobuz"].update(self.file["qobuz"])
+        temp['tidal'].update(self.file['tidal'])
         self.dump(temp)
 
     def save(self):
@@ -209,11 +212,13 @@ class ConfigDocumentation:
     """Documentation is stored in this docstring.
     qobuz:
         quality: 1: 320kbps MP3, 2: 16/44.1, 3: 24/<=96, 4: 24/>=96
+        download_booklets: This will download booklet pdfs that are included with some albums
         password: This is an md5 hash of the plaintext password
         app_id: Do not change
         secrets: Do not change
     tidal:
         quality: 0, 1, 2, or 3
+        download_videos: This will download videos included in Video Albums.
         user_id: Do not change any of the fields below
         token_expiry: Tokens last 1 week after refresh. This is the Unix timestamp of the expiration time.
     deezer: Deezer doesn't require login

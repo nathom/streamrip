@@ -594,6 +594,8 @@ class Video:
         p = subprocess.Popen(command)
         p.wait()  # remove this?
 
+        return False  # so that it is not tagged
+
     @classmethod
     def from_album_meta(cls, track: dict, client: Client):
         return cls(

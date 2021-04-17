@@ -7,7 +7,7 @@ import logging
 import os
 import re
 from tempfile import gettempdir
-from typing import Generator, Iterable
+from typing import Generator, Iterable, Union
 
 import click
 from pathvalidate import sanitize_filename
@@ -139,20 +139,20 @@ class Album(Tracklist):
             self.cover_obj = None
 
         # Download the booklet if applicable
-        if self.get("booklets"):
+        if self.get("booklets") and kwargs.get('download_booklets', True):
             click.secho("\nDownloading booklets", fg='blue')
             for item in self.booklets:
                 Booklet(item).download(parent_folder=self.folder)
 
     def _download_item(
         self,
-        track: Track,
+        track: Union[Track, Video],
         quality: int = 3,
         database: MusicDB = None,
         **kwargs,
     ) -> bool:
         logger.debug("Downloading track to %s", self.folder)
-        if self.disctotal > 1:
+        if self.disctotal > 1 and isinstance(track, Track):
             disc_folder = os.path.join(self.folder, f"Disc {track.meta.discnumber}")
             kwargs["parent_folder"] = disc_folder
         else:

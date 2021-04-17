@@ -132,6 +132,8 @@ class MusicDL(list):
             "new_tracknumbers": self.config.session["metadata"][
                 "new_playlist_tracknumbers"
             ],
+            "download_videos": self.config.session['tidal']['download_videos'],
+            'download_booklets': self.config.session['qobuz']['download_booklets'],
         }
 
     def download(self):
