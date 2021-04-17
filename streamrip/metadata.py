@@ -1,5 +1,4 @@
 """Manages the information that will be embeded in the audio file. """
-
 import logging
 import re
 from collections import OrderedDict
@@ -23,7 +22,7 @@ logger = logging.getLogger(__name__)
 
 class TrackMetadata:
     """Contains all of the metadata needed to tag the file.
-    Available attributes:
+    Tags contained:
 
         * title
         * artist
@@ -81,6 +80,7 @@ class TrackMetadata:
         self.quality = None
         self.sampling_rate = None
         self.bit_depth = None
+        self.booklets = None
 
         # Internals
         self._artist = None
@@ -149,6 +149,7 @@ class TrackMetadata:
             self.bit_depth = resp.get("maximum_bit_depth")
             self.sampling_rate = resp.get("maximum_sampling_rate")
             self.quality = get_quality_id(self.bit_depth, self.sampling_rate)
+            self.booklets = resp.get("goodies")
 
             if self.sampling_rate is not None:
                 self.sampling_rate *= 1000
