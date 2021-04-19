@@ -282,7 +282,10 @@ class MusicDL(list):
             try:
                 track = next(self.search(lastfm_source, query, media_type="track"))
                 if self.config.session["metadata"]["set_playlist_to_album"]:
-                    track.version = track.work = None
+                    # so that the playlist name (actually the album) isn't
+                    # amended to include version and work tags from individual tracks
+                    track.meta.version = track.meta.work = None
+
                 playlist.append(track)
             except NoResultsFound:
                 tracks_not_found += 1
@@ -302,7 +305,7 @@ class MusicDL(list):
                 ]
                 # only for the progress bar
                 for f in tqdm(
-                    concurrent.futures.as_completed(futures), total=len(futures)
+                    concurrent.futures.as_completed(futures), total=len(futures), desc='Searching'
                 ):
                     pass
 
