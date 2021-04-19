@@ -186,6 +186,8 @@ class MusicDL(list):
             item.download(**arguments)
             if isinstance(item, Track):
                 item.tag()
+                if arguments['conversion']['enabled']:
+                    item.convert(**arguments['conversion'])
 
             if self.db != [] and hasattr(item, "id"):
                 self.db.add(item.id)

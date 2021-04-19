@@ -83,13 +83,9 @@ class Track:
         self.id = None
         self.__dict__.update(kwargs)
 
-        # TODO: remove these
-        self.container = "FLAC"
-        self.sampling_rate = 44100
-        self.bit_depth = 16
-
         self.downloaded = False
         self.tagged = False
+        self.converted = False
         # TODO: find better solution
         for attr in ("quality", "folder", "meta"):
             setattr(self, attr, None)
@@ -440,24 +436,37 @@ class Track:
         if album_meta is not None:
             self.meta.add_album_meta(album_meta)  # extend meta with album info
 
-        if self.quality in (2, 3, 4):
-            self.container = "FLAC"
-            logger.debug("Tagging file with %s container", self.container)
-            audio = FLAC(self.path)
-        elif self.quality <= 1:
-            if self.client.source == "tidal":
-                self.container = "AAC"
+        # TODO: make this cleaner
+        if self.converted:
+            if self.container == 'FLAC':
+                audio = FLAC(self.path)
+            elif self.container in ("AAC", "ALAC", "MP4"):
                 audio = MP4(self.path)
-            else:
-                self.container = "MP3"
+            elif self.container == 'MP3':
+                audio = ID3()
                 try:
                     audio = ID3(self.path)
                 except ID3NoHeaderError:
                     audio = ID3()
-
-            logger.debug("Tagging file with %s container", self.container)
         else:
-            raise InvalidQuality(f'Invalid quality: "{self.quality}"')
+            if self.quality in (2, 3, 4):
+                self.container = "FLAC"
+                logger.debug("Tagging file with %s container", self.container)
+                audio = FLAC(self.path)
+            elif self.quality <= 1:
+                if self.client.source == "tidal":
+                    self.container = "AAC"
+                    audio = MP4(self.path)
+                else:
+                    self.container = "MP3"
+                    try:
+                        audio = ID3(self.path)
+                    except ID3NoHeaderError:
+                        audio = ID3()
+
+                logger.debug("Tagging file with %s container", self.container)
+            else:
+                raise InvalidQuality(f'Invalid quality: "{self.quality}"')
 
         # automatically generate key, value pairs based on container
         tags = self.meta.tags(self.container)
@@ -467,7 +476,7 @@ class Track:
         if embed_cover and cover is None:
             assert hasattr(self, "cover_path")
             cover = Tracklist.get_cover_obj(
-                self.cover_path, self.quality, self.client.source
+                self.cover_path, self.container, self.client.source
             )
 
         if isinstance(audio, FLAC):
@@ -546,6 +555,8 @@ class Track:
 
         if not kwargs.get("stay_temp", False):
             self.move(self.final_path)
+
+        self.converted = True
 
     @property
     def title(self) -> str:
@@ -848,7 +859,7 @@ class Tracklist(list):
 
     @staticmethod
     def get_cover_obj(
-        cover_path: str, quality: int, source: str
+        cover_path: str, container: str, source: str
     ) -> Union[Picture, APIC]:
         """Given the path to an image and a quality id, return an initialized
         cover object that can be used for every track in the album.
@@ -869,12 +880,14 @@ class Tracklist(list):
 
             return cover_obj
 
-        if quality > 1:
+        if container == 'FLAC':
             cover = Picture
-        elif source == "tidal":
+        elif container == 'MP3':
+            cover = APIC
+        elif container in ('AAC', 'ALAC', 'MP4'):
             cover = MP4Cover
         else:
-            cover = APIC
+            raise Exception(container)
 
         if cover is Picture:
             size_ = os.path.getsize(cover_path)
@@ -890,8 +903,6 @@ class Tracklist(list):
         elif cover is MP4Cover:
             with open(cover_path, "rb") as img:
                 return cover(img.read(), imageformat=MP4Cover.FORMAT_JPEG)
-
-        raise InvalidQuality(f"Quality {quality} not allowed")
 
     def download_message(self) -> str:
         """The message to display after calling `Tracklist.download`.

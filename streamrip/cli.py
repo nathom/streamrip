@@ -143,6 +143,9 @@ def filter_discography(ctx, **kwargs):
 def search(ctx, **kwargs):
     """Search and download media in interactive mode.
 
+    The QUERY must be surrounded in quotes if it contains spaces. If your query
+    contains single quotes, use double quotes, and vice versa.
+
     Example usage:
 
         $ rip search 'fleetwood mac rumours'

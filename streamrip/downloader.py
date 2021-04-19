@@ -18,7 +18,7 @@ from .constants import ALBUM_KEYS, FLAC_MAX_BLOCKSIZE, FOLDER_FORMAT
 from .db import MusicDB
 from .exceptions import InvalidSourceError, NonStreamable
 from .metadata import TrackMetadata
-from .utils import clean_format, safe_get, tidal_cover_url, tqdm_download
+from .utils import clean_format, safe_get, tidal_cover_url, tqdm_download, get_container
 
 logger = logging.getLogger(__name__)
 
@@ -132,8 +132,9 @@ class Album(Tracklist):
 
         embed_cover = kwargs.get("embed_cover", True)  # embed by default
         if self.client.source != "deezer" and embed_cover:
+            # container generated when formatting folder name
             self.cover_obj = self.get_cover_obj(
-                cover_path, self.quality, self.client.source
+                cover_path, self.container, self.client.source
             )
         else:
             self.cover_obj = None
@@ -220,14 +221,11 @@ class Album(Tracklist):
         return fmt
 
     def _get_formatted_folder(self, parent_folder: str, quality: int) -> str:
-        if quality >= 2:
-            self.container = "FLAC"
-        else:
+        # necessary to format the folder
+        self.container = get_container(quality, self.client.source)
+        if self.container in ('AAC', 'MP3'):
+            # lossy codecs don't have these metrics
             self.bit_depth = self.sampling_rate = None
-            if self.client.source == "tidal":
-                self.container = "AAC"
-            else:
-                self.container = "MP3"
 
         formatted_folder = clean_format(self.folder_format, self._get_formatter())
 

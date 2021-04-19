@@ -277,3 +277,24 @@ def extract_interpreter_url(url: str) -> str:
     r = session.get(url)
     artist_id = re.search(r"getSimilarArtist\(\s*'(\w+)'", r.text).group(1)
     return artist_id
+
+
+def get_container(quality: int, source: str) -> str:
+    """Get the "container" given the quality. `container` can also be the
+    the codec; both work.
+
+    :param quality: quality id
+    :type quality: int
+    :param source:
+    :type source: str
+    :rtype: str
+    """
+    if quality >= 2:
+        container = "FLAC"
+    else:
+        if source == "tidal":
+            container = "AAC"
+        else:
+            container = "MP3"
+
+    return container
