@@ -277,6 +277,7 @@ class TrackMetadata:
         assert hasattr(self, "_album"), "Must set album before accessing"
 
         album = self._album
+
         if self.get("version") and self["version"] not in album:
             album = f"{self._album} ({self.version})"
 

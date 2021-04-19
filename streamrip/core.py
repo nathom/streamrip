@@ -268,6 +268,8 @@ class MusicDL(list):
         raise ParsingError(f"Error parsing URL: `{url}`")
 
     def handle_lastfm_urls(self, urls):
+        # https://www.last.fm/user/nathan3895/playlists/12058911
+        user_regex = re.compile(r"https://www\.last\.fm/user/([^/]+)/playlists/\d+")
         lastfm_urls = self.lastfm_url_parse.findall(urls)
         lastfm_source = self.config.session["lastfm"]["source"]
         tracks_not_found = 0
@@ -276,6 +278,8 @@ class MusicDL(list):
             global tracks_not_found
             try:
                 track = next(self.search(lastfm_source, query, media_type="track"))
+                if self.config.session['metadata']['set_playlist_to_album']:
+                    track.version = track.work = None
                 playlist.append(track)
             except NoResultsFound:
                 tracks_not_found += 1
@@ -286,6 +290,8 @@ class MusicDL(list):
             title, queries = self.get_lastfm_playlist(purl)
 
             pl = Playlist(client=self.get_client(lastfm_source), name=title)
+            pl.creator = user_regex.search(purl).group(1)
+
             processes = []
 
             for title, artist in queries:
@@ -382,7 +388,12 @@ class MusicDL(list):
         results = tuple(self.search(source, query, media_type, limit=50))
 
         def title(res):
-            return f"{res[0]+1}. {res[1].album}"
+            if isinstance(res[1], Album):
+                return f"{res[0]+1}. {res[1].meta.album}"
+            elif isinstance(res[1], Track):
+                return f"{res[0]+1}. {res[1].meta.title}"
+            else:
+                raise NotImplementedError(type(res[1]).__name__)
 
         def from_title(s):
             num = []

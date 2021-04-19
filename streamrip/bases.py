@@ -387,11 +387,11 @@ class Track:
         meta = TrackMetadata(track=item, source=client.source)
         try:
             if client.source == "qobuz":
-                cover_url = item["album"]["image"]["small"]
+                cover_url = item["album"]["image"]["large"]
             elif client.source == "tidal":
-                cover_url = tidal_cover_url(item["album"]["cover"], 320)
+                cover_url = tidal_cover_url(item["album"]["cover"], 640)
             elif client.source == "deezer":
-                cover_url = item["album"]["cover_medium"]
+                cover_url = item["album"]["cover_large"]
             else:
                 raise InvalidSourceError(client.source)
         except KeyError:

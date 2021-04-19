@@ -327,7 +327,6 @@ class Playlist(Tracklist):
         :param new_tracknumbers: replace tracknumber tag with playlist position
         :type new_tracknumbers: bool
         """
-        # TODO: redundant parsing with _parse_get_pres
         if self.client.source == "qobuz":
             self.name = self.meta["name"]
             self.image = self.meta["images"]
@@ -408,7 +407,7 @@ class Playlist(Tracklist):
         fname = sanitize_filename(self.name)
         self.folder = os.path.join(parent_folder, fname)
 
-        self.__download_index = 1
+        self.__download_index = 1  # used for tracknumbers
         self.download_message()
 
     def _download_item(self, item: Track, **kwargs):
@@ -422,7 +421,6 @@ class Playlist(Tracklist):
         if kwargs.get("new_tracknumbers", True):
             item["tracknumber"] = self.__download_index
             item["discnumber"] = 1
-
             self.__download_index += 1
 
         self.downloaded = item.download(**kwargs)

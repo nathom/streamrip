@@ -248,6 +248,7 @@ def lastfm(ctx, source, url):
 
 @cli.command()
 @click.option("-o", "--open", is_flag=True, help="Open the config file")
+@click.option("-d", "--directory", is_flag=True, help="Open the config directory")
 @click.option("-q", "--qobuz", is_flag=True, help="Set Qobuz credentials")
 @click.option("-t", "--tidal", is_flag=True, help="Re-login into Tidal")
 @click.option("--reset", is_flag=True, help="RESET the config file")
@@ -260,6 +261,11 @@ def config(ctx, **kwargs):
     if kwargs["open"]:
         click.secho(f"Opening {CONFIG_PATH}", fg="green")
         click.launch(CONFIG_PATH)
+
+    if kwargs['directory']:
+        config_dir = os.path.dirname(CONFIG_PATH)
+        click.secho(f"Opening {config_dir}", fg="green")
+        click.launch(config_dir)
 
     if kwargs["qobuz"]:
         config.file["qobuz"]["email"] = input(click.style("Qobuz email: ", fg="blue"))
