@@ -18,7 +18,13 @@ from .constants import ALBUM_KEYS, FLAC_MAX_BLOCKSIZE, FOLDER_FORMAT
 from .db import MusicDB
 from .exceptions import InvalidSourceError, NonStreamable
 from .metadata import TrackMetadata
-from .utils import clean_format, safe_get, tidal_cover_url, tqdm_download, get_container
+from .utils import (
+    clean_format,
+    get_container,
+    safe_get,
+    tidal_cover_url,
+    tqdm_download,
+)
 
 logger = logging.getLogger(__name__)
 

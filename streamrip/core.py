@@ -1,8 +1,8 @@
+import concurrent.futures
 import logging
 import os
 import re
 import sys
-import concurrent.futures
 from getpass import getpass
 from hashlib import md5
 from string import Formatter
@@ -12,6 +12,7 @@ import click
 import requests
 from tqdm import tqdm
 
+from .bases import Track, Video
 from .clients import DeezerClient, QobuzClient, SoundCloudClient, TidalClient
 from .config import Config
 from .constants import (
@@ -24,14 +25,13 @@ from .constants import (
     URL_REGEX,
 )
 from .db import MusicDB
-from .bases import Track, Video
-from .tracklists import Album, Artist, Label, Playlist, Tracklist
 from .exceptions import (
     AuthenticationError,
     NonStreamable,
     NoResultsFound,
     ParsingError,
 )
+from .tracklists import Album, Artist, Label, Playlist, Tracklist
 from .utils import extract_interpreter_url
 
 logger = logging.getLogger(__name__)
@@ -306,7 +306,9 @@ class MusicDL(list):
                 ]
                 # only for the progress bar
                 for f in tqdm(
-                    concurrent.futures.as_completed(futures), total=len(futures), desc='Searching'
+                    concurrent.futures.as_completed(futures),
+                    total=len(futures),
+                    desc="Searching",
                 ):
                     pass
 
