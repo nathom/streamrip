@@ -2,7 +2,7 @@ import logging
 import os
 import re
 import sys
-import threading
+import concurrent.futures
 from getpass import getpass
 from hashlib import md5
 from string import Formatter
@@ -132,8 +132,8 @@ class MusicDL(list):
             "new_tracknumbers": self.config.session["metadata"][
                 "new_playlist_tracknumbers"
             ],
-            "download_videos": self.config.session['tidal']['download_videos'],
-            'download_booklets': self.config.session['qobuz']['download_booklets'],
+            "download_videos": self.config.session["tidal"]["download_videos"],
+            "download_booklets": self.config.session["qobuz"]["download_booklets"],
         }
 
     def download(self):
@@ -142,7 +142,8 @@ class MusicDL(list):
         except KeyError:
             click.secho(
                 "Updating config file... Some settings may be lost. Please run the "
-                "command again.", fg="magenta"
+                "command again.",
+                fg="magenta",
             )
             self.config.update()
             exit()
@@ -186,8 +187,8 @@ class MusicDL(list):
             item.download(**arguments)
             if isinstance(item, Track):
                 item.tag()
-                if arguments['conversion']['enabled']:
-                    item.convert(**arguments['conversion'])
+                if arguments["conversion"]["enabled"]:
+                    item.convert(**arguments["conversion"])
 
             if self.db != [] and hasattr(item, "id"):
                 self.db.add(item.id)
@@ -280,7 +281,7 @@ class MusicDL(list):
             global tracks_not_found
             try:
                 track = next(self.search(lastfm_source, query, media_type="track"))
-                if self.config.session['metadata']['set_playlist_to_album']:
+                if self.config.session["metadata"]["set_playlist_to_album"]:
                     track.version = track.work = None
                 playlist.append(track)
             except NoResultsFound:
@@ -294,18 +295,16 @@ class MusicDL(list):
             pl = Playlist(client=self.get_client(lastfm_source), name=title)
             pl.creator = user_regex.search(purl).group(1)
 
-            processes = []
-
-            for title, artist in queries:
-                query = f"{title} {artist}"
-                proc = threading.Thread(
-                    target=search_query, args=(query, pl), daemon=True
-                )
-                proc.start()
-                processes.append(proc)
-
-            for proc in tqdm(processes, unit="tracks", desc="Searching"):
-                proc.join()
+            with concurrent.futures.ThreadPoolExecutor(max_workers=15) as executor:
+                futures = [
+                    executor.submit(search_query, f"{title} {artist}", pl)
+                    for title, artist in queries
+                ]
+                # only for the progress bar
+                for f in tqdm(
+                    concurrent.futures.as_completed(futures), total=len(futures)
+                ):
+                    pass
 
             pl.loaded = True
             click.secho(f"{tracks_not_found} tracks not found.", fg="yellow")
