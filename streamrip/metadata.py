@@ -181,7 +181,7 @@ class TrackMetadata:
             if resp.get("audioQuality"):  # for album entries in single tracks
                 self.quality = TIDAL_Q_MAP[resp["audioQuality"]]
 
-            self.bit_depth = 24 if self.get('quality', False) == 3 else 16
+            self.bit_depth = 24 if self.get("quality", False) == 3 else 16
             self.sampling_rate = 44100
 
         elif self.__source == "deezer":

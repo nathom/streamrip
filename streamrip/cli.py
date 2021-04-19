@@ -265,7 +265,7 @@ def config(ctx, **kwargs):
         click.secho(f"Opening {CONFIG_PATH}", fg="green")
         click.launch(CONFIG_PATH)
 
-    if kwargs['directory']:
+    if kwargs["directory"]:
         config_dir = os.path.dirname(CONFIG_PATH)
         click.secho(f"Opening {config_dir}", fg="green")
         click.launch(config_dir)

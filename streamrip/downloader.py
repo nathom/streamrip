@@ -140,8 +140,8 @@ class Album(Tracklist):
             self.cover_obj = None
 
         # Download the booklet if applicable
-        if self.get("booklets") and kwargs.get('download_booklets', True):
-            click.secho("\nDownloading booklets", fg='blue')
+        if self.get("booklets") and kwargs.get("download_booklets", True):
+            click.secho("\nDownloading booklets", fg="blue")
             for item in self.booklets:
                 Booklet(item).download(parent_folder=self.folder)
 
@@ -223,7 +223,7 @@ class Album(Tracklist):
     def _get_formatted_folder(self, parent_folder: str, quality: int) -> str:
         # necessary to format the folder
         self.container = get_container(quality, self.client.source)
-        if self.container in ('AAC', 'MP3'):
+        if self.container in ("AAC", "MP3"):
             # lossy codecs don't have these metrics
             self.bit_depth = self.sampling_rate = None
 

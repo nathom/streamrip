@@ -438,11 +438,11 @@ class Track:
 
         # TODO: make this cleaner
         if self.converted:
-            if self.container == 'FLAC':
+            if self.container == "FLAC":
                 audio = FLAC(self.path)
             elif self.container in ("AAC", "ALAC", "MP4"):
                 audio = MP4(self.path)
-            elif self.container == 'MP3':
+            elif self.container == "MP3":
                 audio = ID3()
                 try:
                     audio = ID3(self.path)
@@ -880,11 +880,11 @@ class Tracklist(list):
 
             return cover_obj
 
-        if container == 'FLAC':
+        if container == "FLAC":
             cover = Picture
-        elif container == 'MP3':
+        elif container == "MP3":
             cover = APIC
-        elif container in ('AAC', 'ALAC', 'MP4'):
+        elif container in ("AAC", "ALAC", "MP4"):
             cover = MP4Cover
         else:
             raise Exception(container)
