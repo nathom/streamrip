@@ -24,7 +24,8 @@ from .constants import (
     URL_REGEX,
 )
 from .db import MusicDB
-from .downloader import Album, Artist, Label, Playlist, Track, Tracklist, Video
+from .bases import Track, Video
+from .tracklists import Album, Artist, Label, Playlist, Tracklist
 from .exceptions import (
     AuthenticationError,
     NonStreamable,
