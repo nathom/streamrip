@@ -333,6 +333,8 @@ class TrackMetadata:
             if self.__source == "qobuz":
                 genres = re.findall(r"([^\u2192\/]+)", "/".join(self._genres))
                 genres = set(genres)
+            elif self.__source == 'deezer':
+                genres = ', '.join(g['name'] for g in self._genres)
 
             return ", ".join(genres)
 

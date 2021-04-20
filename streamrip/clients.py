@@ -13,6 +13,7 @@ from .constants import (
     AGENT,
     AVAILABLE_QUALITY_IDS,
     DEEZER_BASE,
+    DEEZER_DL,
     DEEZER_MAX_Q,
     QOBUZ_BASE,
     QOBUZ_FEATURED_KEYS,

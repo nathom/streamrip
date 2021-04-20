@@ -3,7 +3,6 @@ import copy
 import logging
 import os
 import re
-from functools import cache
 from pprint import pformat
 
 from ruamel.yaml import YAML
@@ -310,7 +309,6 @@ class ConfigDocumentation:
                     # key, doc pairs are unique
                     self.docs.remove(to_remove)
 
-    @cache
     def _get_key_regex(self, spaces, key):
         regex = rf"{spaces}{key}:(?:$|\s+?(.+))"
         return re.compile(regex)

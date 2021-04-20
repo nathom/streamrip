@@ -128,12 +128,15 @@ the descriptions of the fields. They can also be found inside the file, which
 can be accessed with `rip config --open`.
 
 ```yaml
-qobuz:
+    qobuz:
         quality: '1: 320kbps MP3, 2: 16/44.1, 3: 24/<=96, 4: 24/>=96'
+        download_booklets: 'This will download booklet pdfs that are included with some albums'
+        password: 'This is an md5 hash of the plaintext password'
         app_id: 'Do not change'
         secrets: 'Do not change'
     tidal:
-        quality: '0, 1, 2, or 3'
+        quality: '0: 256kbps AAC, 1: 320kbps AAC, 2: 16/44.1 "HiFi" FLAC, 3: 24/44.1 "MQA" FLAC'
+        download_videos: 'This will download videos included in Video Albums.'
         user_id: 'Do not change any of the fields below'
         token_expiry: 'Tokens last 1 week after refresh. This is the Unix timestamp of the expiration time.'
     deezer: "Deezer doesn't require login"
@@ -163,6 +166,7 @@ qobuz:
     lastfm: 'Last.fm playlists are downloaded by searching for the titles of the tracks'
         source: 'The source on which to search for the tracks.'
     concurrent_downloads: 'Download (and convert) tracks all at once, instead of sequentially. If you are converting the tracks, and/or have fast internet, this will substantially improve processing speed.'
+
 ```
 
 
