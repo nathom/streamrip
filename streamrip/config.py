@@ -218,7 +218,7 @@ class ConfigDocumentation:
         app_id: Do not change
         secrets: Do not change
     tidal:
-        quality: 0, 1, 2, or 3
+        quality: 0: 256kbps AAC, 1: 320kbps AAC, 2: 16/44.1 "HiFi" FLAC, 3: 24/44.1 "MQA" FLAC
         download_videos: This will download videos included in Video Albums.
         user_id: Do not change any of the fields below
         token_expiry: Tokens last 1 week after refresh. This is the Unix timestamp of the expiration time.

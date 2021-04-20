@@ -396,7 +396,7 @@ class MusicDL(list):
 
         def title(res):
             if isinstance(res[1], Album):
-                return f"{res[0]+1}. {res[1].meta.album}"
+                return f"{res[0]+1}. {res[1].album}"
             elif isinstance(res[1], Track):
                 return f"{res[0]+1}. {res[1].meta.title}"
             else:
