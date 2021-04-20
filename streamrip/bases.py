@@ -219,7 +219,7 @@ class Track:
                 return False
 
         elif self.client.source == "soundcloud":
-            self._soundcloud_download(dl_info, self.path)
+            self._soundcloud_download(dl_info)
 
         else:
             raise InvalidSourceError(self.client.source)
@@ -765,7 +765,10 @@ class Tracklist(list):
 
         else:
             for item in self:
-                click.secho(f'\nDownloading "{item!s}"', fg="blue")
+                if self.client.source != 'soundcloud':
+                    # soundcloud only gets metadata after `target` is called
+                    # message will be printed in `target`
+                    click.secho(f'\nDownloading "{item!s}"', fg="blue")
                 target(item, **kwargs)
 
         self.downloaded = True

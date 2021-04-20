@@ -373,7 +373,7 @@ class Playlist(Tracklist):
 
         elif self.client.source == "soundcloud":
             self.name = self.meta["title"]
-            self.image = self.meta.get("artwork_url").replace("large", "t500x500")
+            # self.image = self.meta.get("artwork_url").replace("large", "t500x500")
             self.creator = self.meta["user"]["username"]
             tracklist = self.meta["tracks"]
 
@@ -415,8 +415,10 @@ class Playlist(Tracklist):
         self.download_message()
 
     def _download_item(self, item: Track, **kwargs):
+        kwargs['parent_folder'] = self.folder
         if self.client.source == "soundcloud":
             item.load_meta()
+            click.secho(f"Downloading {item!s}", fg='blue')
 
         if kwargs.get("set_playlist_to_album", False):
             item["album"] = self.name
