@@ -2,11 +2,6 @@
 
 A scriptable stream downloader for Qobuz, Tidal, Deezer and SoundCloud.
 
-## Attention
-
-The Deezloader server is currently down. This means Deezer downloads are currently not working.
-Stay posted for updates.
-
 ## Features
 
 - Super fast, as it utilizes concurrent downloads and conversion
