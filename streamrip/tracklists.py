@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
 
 TYPE_REGEXES = {
     "remaster": re.compile(r"(?i)(re)?master(ed)?"),
-    "extra": re.compile(r"(?i)(anniversary|deluxe|live|collector|demo|expanded)"),
+    "extra": re.compile(r"(?i)(anniversary|deluxe|live|collector|demo|expanded|remix)"),
 }
 
 
@@ -59,7 +59,7 @@ class Album(Tracklist):
         self.bit_depth = None
         self.container = None
 
-        # usually an unpacked TrackMetadata obj
+        # usually an unpacked TrackMetadata.asdict()
         self.__dict__.update(kwargs)
 
         # to improve from_api method speed
