@@ -31,7 +31,7 @@ pip3 install streamrip windows-curses --upgrade
 
 
 
-If you would like to use `streamrip`'s conversion capabilities, or download music from SoundCloud, install [ffmpeg](https://ffmpeg.org/download.html).
+If you would like to use `streamrip`'s conversion capabilities, or download music from SoundCloud, install [ffmpeg](https://ffmpeg.org/download.html). 
 
 ## Example Usage
 
@@ -169,7 +169,9 @@ can be accessed with `rip config --open`.
 
 ## Troubleshooting
 
-If you're having issues with the tool, try the following:
+If you're getting an error that looks something like `command not found: rip`, make sure the location of the `rip` executable is on the `$PATH` (`PATH` for Windows) environment variable.
+
+If you're having other issues with the tool, try the following:
 
 - Consult the help pages and their example commands.
     ```bash
