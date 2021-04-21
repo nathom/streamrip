@@ -178,7 +178,9 @@ class QobuzClient(Client):
         return self._api_search(query, media_type, limit)
 
     def get(self, item_id: Union[str, int], media_type: str = "album") -> dict:
-        return self._api_get(media_type, item_id=item_id)
+        resp = self._api_get(media_type, item_id=item_id)
+        logger.debug(resp)
+        return resp
 
     def get_file_url(self, item_id, quality=3) -> dict:
         return self._api_get_file_url(item_id, quality=quality)
@@ -454,6 +456,7 @@ class DeezerClient(Client):
             albums = self.session.get(f"{url}/albums").json()
             item["albums"] = albums["data"]
 
+        logger.debug(item)
         return item
 
     @staticmethod
@@ -528,7 +531,9 @@ class TidalClient(Client):
         :param item_id:
         :param media_type:
         """
-        return self._api_get(item_id, media_type)
+        resp = self._api_get(item_id, media_type)
+        logger.debug(resp)
+        return resp
 
     def search(self, query: str, media_type: str = "album", limit: int = 100) -> dict:
         """Search for a query.
@@ -856,6 +861,7 @@ class SoundCloudClient(Client):
         else:
             raise Exception(id)
 
+        logger.debug(resp)
         return resp
 
     def get_file_url(self, track: dict, quality) -> dict:
