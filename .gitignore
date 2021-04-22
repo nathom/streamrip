@@ -13,3 +13,7 @@ StreamripDownloads
 *.wav
 *.log
 *.mp4
+*.opus
+*.mkv
+*.aac
+*.pyc
