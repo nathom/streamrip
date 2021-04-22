@@ -165,6 +165,14 @@ qobuz:
     concurrent_downloads: 'Download (and convert) tracks all at once, instead of sequentially. If you are converting the tracks, and/or have fast internet, this will substantially improve processing speed.'
 ```
 
+## Integration with macOS Music app
+
+`streamrip` was designed to be used seamlessly with the macOS Music app. To set it up, you need to find the `Automatically Add to Music.localized` folder inside the file given at `Music.app -> Preferences -> Files -> Music Media folder location`. Set the downloads folder to the path in the config file. 
+
+Next, enable `conversion` and set the `codec` to `alac`. If you want to save space, set `sampling_rate` to `48000`. Finally, set `keep_hires_cover` to `false`.
+
+Now, you can download anything and it will appear in your Library!
+
 
 
 ## Troubleshooting
