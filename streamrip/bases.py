@@ -970,13 +970,15 @@ class YoutubeVideo:
         youtube_video_downloads_folder="StreamripDownloads",
         **kwargs,
     ):
+        click.secho(f"Downloading url {self.url}", fg="blue")
         filename_formatter = "%(track_number)s.%(track)s.%(container)s"
         filename = os.path.join(parent_folder, filename_formatter)
 
         p = subprocess.Popen(
             [
                 "youtube-dl",
-                "-x",
+                "-x",  # audio only
+                "-q",  # quiet mode
                 "--add-metadata",
                 "--audio-format",
                 "mp3",
@@ -987,11 +989,12 @@ class YoutubeVideo:
             ]
         )
 
-        print(f"{download_youtube_videos=}")
         if download_youtube_videos:
+            click.secho("Downloading video stream", fg='blue')
             pv = subprocess.Popen(
                 [
                     "youtube-dl",
+                    "-q",
                     "-o",
                     os.path.join(
                         youtube_video_downloads_folder, "%(title)s.%(container)s"
