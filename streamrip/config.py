@@ -71,6 +71,8 @@ class Config:
         },
         "youtube": {
             "quality": 0,
+            "download_videos": False,
+            "video_downloads_folder": DOWNLOADS_DIR,
         },
         "database": {"enabled": True, "path": None},
         "conversion": {

@@ -957,13 +957,19 @@ class YoutubeVideo:
     """Dummy class implemented for consistency with the Media API."""
 
     class DummyClient:
-        source = 'youtube'
+        source = "youtube"
 
     def __init__(self, url: str):
         self.url = url
         self.client = self.DummyClient()
 
-    def download(self, parent_folder='StreamripDownloads', **kwargs):
+    def download(
+        self,
+        parent_folder="StreamripDownloads",
+        download_youtube_videos=False,
+        youtube_video_downloads_folder="StreamripDownloads",
+        **kwargs,
+    ):
         filename_formatter = "%(track_number)s.%(track)s.%(container)s"
         filename = os.path.join(parent_folder, filename_formatter)
 
@@ -980,6 +986,20 @@ class YoutubeVideo:
                 self.url,
             ]
         )
+
+        print(f"{download_youtube_videos=}")
+        if download_youtube_videos:
+            pv = subprocess.Popen(
+                [
+                    "youtube-dl",
+                    "-o",
+                    os.path.join(
+                        youtube_video_downloads_folder, "%(title)s.%(container)s"
+                    ),
+                    self.url,
+                ]
+            )
+            pv.wait()
         p.wait()
 
     def load_meta(self, *args, **kwargs):

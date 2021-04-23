@@ -147,6 +147,12 @@ class MusicDL(list):
             ],
             "download_videos": self.config.session["tidal"]["download_videos"],
             "download_booklets": self.config.session["qobuz"]["download_booklets"],
+            "download_youtube_videos": self.config.session["youtube"][
+                "download_videos"
+            ],
+            "youtube_video_downloads_folder": self.config.session["youtube"][
+                "video_downloads_folder"
+            ],
         }
 
     def download(self):
@@ -169,7 +175,7 @@ class MusicDL(list):
             )
             click.secho("rip config --reset ", fg="yellow", nl=False)
             click.secho("to reset it. You will need to log in again.", fg="red")
-            logger.debug(err)
+            click.secho(err, fg='red')
             exit()
 
         logger.debug("Arguments from config: %s", arguments)
