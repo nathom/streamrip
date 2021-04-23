@@ -69,6 +69,9 @@ class Config:
         "soundcloud": {
             "quality": 0,
         },
+        "youtube": {
+            "quality": 0,
+        },
         "database": {"enabled": True, "path": None},
         "conversion": {
             "enabled": False,

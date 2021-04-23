@@ -415,10 +415,10 @@ class Playlist(Tracklist):
         self.download_message()
 
     def _download_item(self, item: Track, **kwargs):
-        kwargs['parent_folder'] = self.folder
+        kwargs["parent_folder"] = self.folder
         if self.client.source == "soundcloud":
             item.load_meta()
-            click.secho(f"Downloading {item!s}", fg='blue')
+            click.secho(f"Downloading {item!s}", fg="blue")
 
         if kwargs.get("set_playlist_to_album", False):
             item["album"] = self.name

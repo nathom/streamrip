@@ -765,7 +765,7 @@ class Tracklist(list):
 
         else:
             for item in self:
-                if self.client.source != 'soundcloud':
+                if self.client.source != "soundcloud":
                     # soundcloud only gets metadata after `target` is called
                     # message will be printed in `target`
                     click.secho(f'\nDownloading "{item!s}"', fg="blue")
@@ -951,3 +951,39 @@ class Tracklist(list):
 
         if isinstance(key, int):
             super().__setitem__(key, val)
+
+
+class YoutubeVideo:
+    """Dummy class implemented for consistency with the Media API."""
+
+    class DummyClient:
+        source = 'youtube'
+
+    def __init__(self, url: str):
+        self.url = url
+        self.client = self.DummyClient()
+
+    def download(self, parent_folder='StreamripDownloads', **kwargs):
+        filename_formatter = "%(track_number)s.%(track)s.%(container)s"
+        filename = os.path.join(parent_folder, filename_formatter)
+
+        p = subprocess.Popen(
+            [
+                "youtube-dl",
+                "-x",
+                "--add-metadata",
+                "--audio-format",
+                "mp3",
+                "--embed-thumbnail",
+                "-o",
+                filename,
+                self.url,
+            ]
+        )
+        p.wait()
+
+    def load_meta(self, *args, **kwargs):
+        pass
+
+    def tag(self, *args, **kwargs):
+        pass
