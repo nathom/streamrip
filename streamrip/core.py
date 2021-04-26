@@ -175,7 +175,7 @@ class MusicDL(list):
             )
             click.secho("rip config --reset ", fg="yellow", nl=False)
             click.secho("to reset it. You will need to log in again.", fg="red")
-            click.secho(err, fg='red')
+            click.secho(err, fg="red")
             exit()
 
         logger.debug("Arguments from config: %s", arguments)

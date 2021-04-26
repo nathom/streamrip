@@ -990,7 +990,7 @@ class YoutubeVideo:
         )
 
         if download_youtube_videos:
-            click.secho("Downloading video stream", fg='blue')
+            click.secho("Downloading video stream", fg="blue")
             pv = subprocess.Popen(
                 [
                     "youtube-dl",
