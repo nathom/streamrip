@@ -19,11 +19,11 @@ from .constants import (
     CONFIG_PATH,
     DB_PATH,
     LASTFM_URL_REGEX,
-    YOUTUBE_URL_REGEX,
     MEDIA_TYPES,
     QOBUZ_INTERPRETER_URL_REGEX,
     SOUNDCLOUD_URL_REGEX,
     URL_REGEX,
+    YOUTUBE_URL_REGEX,
 )
 from .db import MusicDB
 from .exceptions import (
