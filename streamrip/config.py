@@ -68,6 +68,11 @@ class Config:
         "soundcloud": {
             "quality": 0,
         },
+        "youtube": {
+            "quality": 0,
+            "download_videos": False,
+            "video_downloads_folder": DOWNLOADS_DIR,
+        },
         "database": {"enabled": True, "path": None},
         "conversion": {
             "enabled": False,
@@ -225,6 +230,10 @@ class ConfigDocumentation:
         quality: 0, 1, or 2
     soundcloud:
         quality: Only 0 is available
+    youtube:
+        quality: Only 0 is available for now
+        download_videos: Download the video along with the audio
+        video_downloads_folder: The path to download the videos to
     database: This stores a list of item IDs so that repeats are not downloaded.
     filters: Filter a Qobuz artist's discography. Set to 'true' to turn on a filter.
         extras: Remove Collectors Editions, live recordings, etc.

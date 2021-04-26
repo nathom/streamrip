@@ -12,7 +12,8 @@ CONFIG_PATH = os.path.join(CONFIG_DIR, "config.yaml")
 LOG_DIR = click.get_app_dir(APPNAME)
 DB_PATH = os.path.join(LOG_DIR, "downloads.db")
 
-DOWNLOADS_DIR = os.path.join(Path.home(), "StreamripDownloads")
+HOME = Path.home()
+DOWNLOADS_DIR = os.path.join(HOME, "StreamripDownloads")
 
 AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:83.0) Gecko/20100101 Firefox/83.0"
 
@@ -145,7 +146,7 @@ LASTFM_URL_REGEX = r"https://www.last.fm/user/\w+/playlists/\w+"
 QOBUZ_INTERPRETER_URL_REGEX = (
     r"https?://www\.qobuz\.com/\w\w-\w\w/interpreter/[-\w]+/[-\w]+"
 )
-
+YOUTUBE_URL_REGEX = r"https://www\.youtube\.com/watch\?v=[-\w]+"
 
 TIDAL_MAX_Q = 7
 

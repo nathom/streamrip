@@ -12,13 +12,14 @@ import click
 import requests
 from tqdm import tqdm
 
-from .bases import Track, Video
+from .bases import Track, Video, YoutubeVideo
 from .clients import DeezerClient, QobuzClient, SoundCloudClient, TidalClient
 from .config import Config
 from .constants import (
     CONFIG_PATH,
     DB_PATH,
     LASTFM_URL_REGEX,
+    YOUTUBE_URL_REGEX,
     MEDIA_TYPES,
     QOBUZ_INTERPRETER_URL_REGEX,
     SOUNDCLOUD_URL_REGEX,
@@ -58,6 +59,7 @@ class MusicDL(list):
         self.soundcloud_url_parse = re.compile(SOUNDCLOUD_URL_REGEX)
         self.lastfm_url_parse = re.compile(LASTFM_URL_REGEX)
         self.interpreter_url_parse = re.compile(QOBUZ_INTERPRETER_URL_REGEX)
+        self.youtube_url_parse = re.compile(YOUTUBE_URL_REGEX)
 
         self.config = config
         if self.config is None:
@@ -89,7 +91,17 @@ class MusicDL(list):
         :raises ParsingError
         """
 
-        for source, url_type, item_id in self.parse_urls(url):
+        # youtube is handled by youtube-dl, so much of the
+        # processing is not necessary
+        youtube_urls = self.youtube_url_parse.findall(url)
+        if youtube_urls != []:
+            self.extend(YoutubeVideo(u) for u in youtube_urls)
+
+        parsed = self.parse_urls(url)
+        if not parsed and len(self) == 0:
+            raise ParsingError(url)
+
+        for source, url_type, item_id in parsed:
             if item_id in self.db:
                 logger.info(
                     f"ID {item_id} already downloaded, use --no-db to override."
@@ -135,6 +147,12 @@ class MusicDL(list):
             ],
             "download_videos": self.config.session["tidal"]["download_videos"],
             "download_booklets": self.config.session["qobuz"]["download_booklets"],
+            "download_youtube_videos": self.config.session["youtube"][
+                "download_videos"
+            ],
+            "youtube_video_downloads_folder": self.config.session["youtube"][
+                "video_downloads_folder"
+            ],
         }
 
     def download(self):
@@ -157,7 +175,7 @@ class MusicDL(list):
             )
             click.secho("rip config --reset ", fg="yellow", nl=False)
             click.secho("to reset it. You will need to log in again.", fg="red")
-            logger.debug(err)
+            click.secho(err, fg='red')
             exit()
 
         logger.debug("Arguments from config: %s", arguments)
@@ -169,6 +187,10 @@ class MusicDL(list):
                 arguments["parent_folder"] = self.__get_source_subdir(
                     item.client.source
                 )
+
+            if item is YoutubeVideo:
+                item.download(**arguments)
+                continue
 
             arguments["quality"] = self.config.session[item.client.source]["quality"]
             if isinstance(item, Artist):
@@ -266,10 +288,7 @@ class MusicDL(list):
 
         logger.debug(f"Parsed urls: {parsed}")
 
-        if parsed != []:
-            return parsed
-
-        raise ParsingError(f"Error parsing URL: `{url}`")
+        return parsed
 
     def handle_lastfm_urls(self, urls):
         # https://www.last.fm/user/nathan3895/playlists/12058911

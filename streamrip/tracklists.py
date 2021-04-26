@@ -7,7 +7,7 @@ import logging
 import os
 import re
 from tempfile import gettempdir
-from typing import Generator, Iterable, Union
+from typing import Dict, Generator, Iterable, Union
 
 import click
 from pathvalidate import sanitize_filename
@@ -27,11 +27,6 @@ from .utils import (
 )
 
 logger = logging.getLogger(__name__)
-
-TYPE_REGEXES = {
-    "remaster": re.compile(r"(?i)(re)?master(ed)?"),
-    "extra": re.compile(r"(?i)(anniversary|deluxe|live|collector|demo|expanded|remix)"),
-}
 
 
 class Album(Tracklist):
@@ -415,10 +410,10 @@ class Playlist(Tracklist):
         self.download_message()
 
     def _download_item(self, item: Track, **kwargs):
-        kwargs['parent_folder'] = self.folder
+        kwargs["parent_folder"] = self.folder
         if self.client.source == "soundcloud":
             item.load_meta()
-            click.secho(f"Downloading {item!s}", fg='blue')
+            click.secho(f"Downloading {item!s}", fg="blue")
 
         if kwargs.get("set_playlist_to_album", False):
             item["album"] = self.name
@@ -649,6 +644,13 @@ class Artist(Tracklist):
 
     # ----------- Filters --------------
 
+    TYPE_REGEXES = {
+        "remaster": re.compile(r"(?i)(re)?master(ed)?"),
+        "extra": re.compile(
+            r"(?i)(anniversary|deluxe|live|collector|demo|expanded|remix)"
+        ),
+    }
+
     def _remove_repeats(self, bit_depth=max, sampling_rate=max) -> Generator:
         """Remove the repeated albums from self. May remove different
         versions of the same album.
@@ -656,7 +658,7 @@ class Artist(Tracklist):
         :param bit_depth: either max or min functions
         :param sampling_rate: either max or min functions
         """
-        groups = dict()
+        groups: Dict[str, list] = {}
         for album in self:
             if (t := self.essence(album.title)) not in groups:
                 groups[t] = []
@@ -683,7 +685,7 @@ class Artist(Tracklist):
         """
         return (
             album["albumartist"] != "Various Artists"
-            and TYPE_REGEXES["extra"].search(album.title) is None
+            and self.TYPE_REGEXES["extra"].search(album.title) is None
         )
 
     def _features(self, album: Album) -> bool:
@@ -709,7 +711,7 @@ class Artist(Tracklist):
         :type album: Album
         :rtype: bool
         """
-        return TYPE_REGEXES["extra"].search(album.title) is None
+        return self.TYPE_REGEXES["extra"].search(album.title) is None
 
     def _non_remasters(self, album: Album) -> bool:
         """Passed as a parameter by the user.
@@ -721,7 +723,7 @@ class Artist(Tracklist):
         :type album: Album
         :rtype: bool
         """
-        return TYPE_REGEXES["remaster"].search(album.title) is not None
+        return self.TYPE_REGEXES["remaster"].search(album.title) is not None
 
     def _non_albums(self, album: Album) -> bool:
         """This will ignore non-album releases.
@@ -731,8 +733,7 @@ class Artist(Tracklist):
         :type album: Album
         :rtype: bool
         """
-        # Doesn't work yet
-        return album["release_type"] == "album"
+        return len(album) > 1
 
     # --------- Magic Methods --------
 
@@ -751,7 +752,7 @@ class Artist(Tracklist):
         """
         return self.name
 
-    def __hash__(self) -> int:
+    def __hash__(self):
         return hash(self.id)
 
 
