@@ -86,6 +86,10 @@ class Track:
         self.downloaded = False
         self.tagged = False
         self.converted = False
+
+        self.final_path: str
+        self.container: str
+
         # TODO: find better solution
         for attr in ("quality", "folder", "meta"):
             setattr(self, attr, None)
@@ -236,12 +240,10 @@ class Track:
         if not kwargs.get("stay_temp", False):
             self.move(self.final_path)
 
-        try:
-            database = kwargs.get("database")
+        database = kwargs.get("database")
+        if database is not None:
             database.add(self.id)
             logger.debug(f"{self.id} added to database")
-        except AttributeError:  # assume database=None was passed
-            pass
 
         logger.debug("Downloaded: %s -> %s", self.path, self.final_path)
 
@@ -273,7 +275,7 @@ class Track:
         shutil.move(self.path, path)
         self.path = path
 
-    def _soundcloud_download(self, dl_info: dict) -> str:
+    def _soundcloud_download(self, dl_info: dict):
         """Downloads a soundcloud track. This requires a seperate function
         because there are three methods that can be used to download a track:
             * original file downloads
@@ -708,6 +710,9 @@ class Booklet:
         :param resp:
         :type resp: dict
         """
+        self.url: str
+        self.description: str
+
         self.__dict__.update(resp)
 
     def download(self, parent_folder: str, **kwargs):
@@ -861,9 +866,7 @@ class Tracklist(list):
         return cls(client=client, **info)
 
     @staticmethod
-    def get_cover_obj(
-        cover_path: str, container: str, source: str
-    ) -> Union[Picture, APIC]:
+    def get_cover_obj(cover_path: str, container: str, source: str):
         """Given the path to an image and a quality id, return an initialized
         cover object that can be used for every track in the album.
 
@@ -907,7 +910,7 @@ class Tracklist(list):
             with open(cover_path, "rb") as img:
                 return cover(img.read(), imageformat=MP4Cover.FORMAT_JPEG)
 
-    def download_message(self) -> str:
+    def download_message(self):
         """The message to display after calling `Tracklist.download`.
 
         :rtype: str
@@ -938,14 +941,14 @@ class Tracklist(list):
 
         return album
 
-    def __getitem__(self, key: Union[str, int]):
+    def __getitem__(self, key):
         if isinstance(key, str):
             return getattr(self, key)
 
         if isinstance(key, int):
             return super().__getitem__(key)
 
-    def __setitem__(self, key: Union[str, int], val: Any):
+    def __setitem__(self, key, val):
         if isinstance(key, str):
             setattr(self, key, val)
 
@@ -990,7 +993,7 @@ class YoutubeVideo:
         )
 
         if download_youtube_videos:
-            click.secho("Downloading video stream", fg='blue')
+            click.secho("Downloading video stream", fg="blue")
             pv = subprocess.Popen(
                 [
                     "youtube-dl",

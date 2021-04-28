@@ -5,6 +5,7 @@ import os
 import re
 from functools import cache
 from pprint import pformat
+from typing import Any, Dict
 
 from ruamel.yaml import YAML
 
@@ -45,7 +46,7 @@ class Config:
     values.
     """
 
-    defaults = {
+    defaults: Dict[str, Any] = {
         "qobuz": {
             "quality": 3,
             "download_booklets": True,
@@ -107,8 +108,8 @@ class Config:
 
     def __init__(self, path: str = None):
         # to access settings loaded from yaml file
-        self.file = copy.deepcopy(self.defaults)
-        self.session = copy.deepcopy(self.defaults)
+        self.file: Dict[str, Any] = copy.deepcopy(self.defaults)
+        self.session: Dict[str, Any] = copy.deepcopy(self.defaults)
 
         if path is None:
             self._path = CONFIG_PATH

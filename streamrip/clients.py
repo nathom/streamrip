@@ -13,6 +13,7 @@ from .constants import (
     AGENT,
     AVAILABLE_QUALITY_IDS,
     DEEZER_BASE,
+    DEEZER_DL,
     DEEZER_MAX_Q,
     QOBUZ_BASE,
     QOBUZ_FEATURED_KEYS,
@@ -43,6 +44,10 @@ class Client(ABC):
     it is merely a template.
     """
 
+    source: str
+    max_quality: int
+    logged_in: bool
+
     @abstractmethod
     def login(self, **kwargs):
         """Authenticate the client.
@@ -71,23 +76,11 @@ class Client(ABC):
         pass
 
     @abstractmethod
-    def get_file_url(self, track_id, quality=3) -> Union[dict]:
+    def get_file_url(self, track_id, quality=3) -> Union[dict, str]:
         """Get the direct download url dict for a file.
 
         :param track_id: id of the track
         """
-        pass
-
-    @property
-    @abstractmethod
-    def source(self):
-        """Source from which the Client retrieves data."""
-        pass
-
-    @property
-    @abstractmethod
-    def max_quality(self):
-        """The maximum quality that the Client supports."""
         pass
 
 
@@ -99,7 +92,7 @@ class QobuzClient(Client):
     def __init__(self):
         self.logged_in = False
 
-    def login(self, email: str, pwd: str, **kwargs):
+    def login(self, **kwargs):
         """Authenticate the QobuzClient. Must have a paid membership.
 
         If `app_id` and `secrets` are not provided, this will run the
@@ -113,6 +106,8 @@ class QobuzClient(Client):
         :param kwargs: app_id: str, secrets: list, return_secrets: bool
         """
         click.secho(f"Logging into {self.source}", fg="green")
+        email: str = kwargs["email"]
+        pwd: str = kwargs["pwd"]
         if self.logged_in:
             logger.debug("Already logged in")
             return
@@ -184,7 +179,7 @@ class QobuzClient(Client):
 
     # ---------- Private Methods ---------------
 
-    def _gen_pages(self, epoint: str, params: dict) -> dict:
+    def _gen_pages(self, epoint: str, params: dict) -> Generator:
         """When there are multiple pages of results, this lazily
         yields them.
 
@@ -352,7 +347,7 @@ class QobuzClient(Client):
         else:
             raise InvalidAppSecretError("Cannot find app secret")
 
-        quality = get_quality(quality, self.source)
+        quality = int(get_quality(quality, self.source))
         r_sig = f"trackgetFileUrlformat_id{quality}intentstreamtrack_id{track_id}{unix_ts}{secret}"
         logger.debug("Raw request signature: %s", r_sig)
         r_sig_hashed = hashlib.md5(r_sig.encode("utf-8")).hexdigest()
@@ -857,7 +852,7 @@ class SoundCloudClient(Client):
 
         return resp
 
-    def get_file_url(self, track: dict, quality) -> dict:
+    def get_file_url(self, track, quality):
         """Get the streamable file url from soundcloud.
 
         It will most likely be an hls stream, which will have to be manually
@@ -868,6 +863,9 @@ class SoundCloudClient(Client):
         :param quality:
         :rtype: dict
         """
+        # TODO: find better solution for typing
+        assert isinstance(track, dict)
+
         if not track["streamable"] or track["policy"] == "BLOCK":
             raise Exception
 

@@ -6,7 +6,7 @@ import sys
 from getpass import getpass
 from hashlib import md5
 from string import Formatter
-from typing import Generator, Optional, Tuple, Union
+from typing import Dict, Generator, List, Optional, Tuple, Type, Union
 
 import click
 import requests
@@ -19,11 +19,11 @@ from .constants import (
     CONFIG_PATH,
     DB_PATH,
     LASTFM_URL_REGEX,
-    YOUTUBE_URL_REGEX,
     MEDIA_TYPES,
     QOBUZ_INTERPRETER_URL_REGEX,
     SOUNDCLOUD_URL_REGEX,
     URL_REGEX,
+    YOUTUBE_URL_REGEX,
 )
 from .db import MusicDB
 from .exceptions import (
@@ -38,7 +38,10 @@ from .utils import extract_interpreter_url
 logger = logging.getLogger(__name__)
 
 
-MEDIA_CLASS = {
+Media = Union[
+    Type[Album], Type[Playlist], Type[Artist], Type[Track], Type[Label], Type[Video]
+]
+MEDIA_CLASS: Dict[str, Media] = {
     "album": Album,
     "playlist": Playlist,
     "artist": Artist,
@@ -46,7 +49,6 @@ MEDIA_CLASS = {
     "label": Label,
     "video": Video,
 }
-Media = Union[Album, Playlist, Artist, Track]
 
 
 class MusicDL(list):
@@ -61,9 +63,11 @@ class MusicDL(list):
         self.interpreter_url_parse = re.compile(QOBUZ_INTERPRETER_URL_REGEX)
         self.youtube_url_parse = re.compile(YOUTUBE_URL_REGEX)
 
-        self.config = config
-        if self.config is None:
+        self.config: Config
+        if config is None:
             self.config = Config(CONFIG_PATH)
+        else:
+            self.config = config
 
         self.clients = {
             "qobuz": QobuzClient(),
@@ -72,13 +76,14 @@ class MusicDL(list):
             "soundcloud": SoundCloudClient(),
         }
 
-        if config.session["database"]["enabled"]:
-            if config.session["database"]["path"] is not None:
-                self.db = MusicDB(config.session["database"]["path"])
+        self.db: Union[MusicDB, list]
+        if self.config.session["database"]["enabled"]:
+            if self.config.session["database"]["path"] is not None:
+                self.db = MusicDB(self.config.session["database"]["path"])
             else:
                 self.db = MusicDB(DB_PATH)
-                config.file["database"]["path"] = DB_PATH
-                config.save()
+                self.config.file["database"]["path"] = DB_PATH
+                self.config.save()
         else:
             self.db = []
 
@@ -175,7 +180,7 @@ class MusicDL(list):
             )
             click.secho("rip config --reset ", fg="yellow", nl=False)
             click.secho("to reset it. You will need to log in again.", fg="red")
-            click.secho(err, fg='red')
+            click.secho(err, fg="red")
             exit()
 
         logger.debug("Arguments from config: %s", arguments)
@@ -247,7 +252,7 @@ class MusicDL(list):
                 self.config.file["tidal"].update(client.get_tokens())
                 self.config.save()
 
-    def parse_urls(self, url: str) -> Tuple[str, str]:
+    def parse_urls(self, url: str) -> List[Tuple[str, str, str]]:
         """Returns the type of the url and the id.
 
         Compatible with urls of the form:
@@ -262,7 +267,7 @@ class MusicDL(list):
         :raises exceptions.ParsingError
         """
 
-        parsed = []
+        parsed: List[Tuple[str, str, str]] = []
 
         interpreter_urls = self.interpreter_url_parse.findall(url)
         if interpreter_urls:
@@ -291,14 +296,15 @@ class MusicDL(list):
         return parsed
 
     def handle_lastfm_urls(self, urls):
+        # For testing:
         # https://www.last.fm/user/nathan3895/playlists/12058911
         user_regex = re.compile(r"https://www\.last\.fm/user/([^/]+)/playlists/\d+")
         lastfm_urls = self.lastfm_url_parse.findall(urls)
         lastfm_source = self.config.session["lastfm"]["source"]
-        tracks_not_found = 0
 
-        def search_query(query: str, playlist: Playlist):
-            global tracks_not_found
+        def search_query(query: str, playlist: Playlist) -> bool:
+            """Search for a query and add the first result to the given
+            Playlist object."""
             try:
                 track = next(self.search(lastfm_source, query, media_type="track"))
                 if self.config.session["metadata"]["set_playlist_to_album"]:
@@ -307,29 +313,33 @@ class MusicDL(list):
                     track.meta.version = track.meta.work = None
 
                 playlist.append(track)
+                return True
             except NoResultsFound:
-                tracks_not_found += 1
-                return
+                return False
 
         for purl in lastfm_urls:
             click.secho(f"Fetching playlist at {purl}", fg="blue")
             title, queries = self.get_lastfm_playlist(purl)
 
             pl = Playlist(client=self.get_client(lastfm_source), name=title)
-            pl.creator = user_regex.search(purl).group(1)
+            creator_match = user_regex.search(purl)
+            if creator_match is not None:
+                pl.creator = creator_match.group(1)
 
+            tracks_not_found: int = 0
             with concurrent.futures.ThreadPoolExecutor(max_workers=15) as executor:
                 futures = [
                     executor.submit(search_query, f"{title} {artist}", pl)
                     for title, artist in queries
                 ]
                 # only for the progress bar
-                for f in tqdm(
+                for search_attempt in tqdm(
                     concurrent.futures.as_completed(futures),
                     total=len(futures),
                     desc="Searching",
                 ):
-                    pass
+                    if not search_attempt.result():
+                        tracks_not_found += 1
 
             pl.loaded = True
             click.secho(f"{tracks_not_found} tracks not found.", fg="yellow")
@@ -362,7 +372,7 @@ class MusicDL(list):
                     else page["albums"]["items"]
                 )
                 for item in tracklist:
-                    yield MEDIA_CLASS[
+                    yield MEDIA_CLASS[  # type: ignore
                         media_type if media_type != "featured" else "album"
                     ].from_api(item, client)
                     i += 1
@@ -376,7 +386,7 @@ class MusicDL(list):
                 raise NoResultsFound(query)
 
             for item in items:
-                yield MEDIA_CLASS[media_type].from_api(item, client)
+                yield MEDIA_CLASS[media_type].from_api(item, client)  # type: ignore
                 i += 1
                 if i > limit:
                     return
@@ -408,7 +418,7 @@ class MusicDL(list):
         ret = fmt.format(**{k: media.get(k, default="Unknown") for k in fields})
         return ret
 
-    def interactive_search(
+    def interactive_search(  # noqa
         self, query: str, source: str = "qobuz", media_type: str = "album"
     ):
         results = tuple(self.search(source, query, media_type, limit=50))
@@ -506,13 +516,21 @@ class MusicDL(list):
 
         r = requests.get(url)
         get_titles(r.text)
-        remaining_tracks = (
-            int(re.search(r'data-playlisting-entry-count="(\d+)"', r.text).group(1))
-            - 50
+        remaining_tracks_match = re.search(
+            r'data-playlisting-entry-count="(\d+)"', r.text
         )
-        playlist_title = re.search(
+        if remaining_tracks_match is not None:
+            remaining_tracks = int(remaining_tracks_match.group(1)) - 50
+        else:
+            raise Exception("Error parsing lastfm page")
+
+        playlist_title_match = re.search(
             r'<h1 class="playlisting-playlist-header-title">([^<]+)</h1>', r.text
-        ).group(1)
+        )
+        if playlist_title_match is not None:
+            playlist_title = playlist_title_match.group(1)
+        else:
+            raise Exception("Error finding title from response")
 
         page = 1
         while remaining_tracks > 0:

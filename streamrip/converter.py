@@ -15,11 +15,11 @@ SAMPLING_RATES = (44100, 48000, 88200, 96000, 176400, 192000)
 class Converter:
     """Base class for audio codecs."""
 
-    codec_name = None
-    codec_lib = None
-    container = None
-    lossless = False
-    default_ffmpeg_arg = ""
+    codec_name: str
+    codec_lib: str
+    container: str
+    lossless: bool = False
+    default_ffmpeg_arg: str = ""
 
     def __init__(
         self,

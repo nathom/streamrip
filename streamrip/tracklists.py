@@ -171,7 +171,7 @@ class Album(Tracklist):
         return True
 
     @staticmethod
-    def _parse_get_resp(resp: dict, client: Client) -> dict:
+    def _parse_get_resp(resp: dict, client: Client) -> TrackMetadata:
         """Parse information from a client.get(query, 'album') call.
 
         :param resp:
