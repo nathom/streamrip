@@ -241,7 +241,7 @@ class Track:
             self.move(self.final_path)
 
         database = kwargs.get("database")
-        if database is not None:
+        if database:
             database.add(self.id)
             logger.debug(f"{self.id} added to database")
 

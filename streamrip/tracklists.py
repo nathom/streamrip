@@ -2,6 +2,8 @@
 downloadable form.
 """
 
+from __future__ import annotations
+
 import functools
 import logging
 import os
@@ -561,6 +563,7 @@ class Artist(Tracklist):
         logger.debug(f"Length of tracklist {len(self)}")
         logger.debug(f"Filters: {filters}")
 
+        final: Iterable
         if "repeats" in filters:
             final = self._remove_repeats(bit_depth=max, sampling_rate=min)
             filters = tuple(f for f in filters if f != "repeats")

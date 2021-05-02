@@ -63,14 +63,14 @@ class TrackMetadata:
         self.album: str
         self.albumartist: str
         self.composer: str
-        self.comment: Optional[str]
-        self.description: Optional[str]
-        self.purchase_date: Optional[str]
-        self.grouping: Optional[str]
-        self.lyrics: Optional[str]
-        self.encoder: Optional[str]
-        self.compilation: Optional[str]
-        self.cover: str
+        self.comment: Optional[str] = None
+        self.description: Optional[str] = None
+        self.purchase_date: Optional[str] = None
+        self.grouping: Optional[str] = None
+        self.lyrics: Optional[str] = None
+        self.encoder: Optional[str] = None
+        self.compilation: Optional[str] = None
+        self.cover: Optional[str] = None
         self.tracktotal: int
         self.tracknumber: int
         self.discnumber: int
