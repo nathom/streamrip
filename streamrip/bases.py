@@ -656,6 +656,14 @@ class Video:
 
         return False  # so that it is not tagged
 
+    def tag(self, *args, **kwargs):
+        """Dummy method.
+
+        :param args:
+        :param kwargs:
+        """
+        return False
+
     @classmethod
     def from_album_meta(cls, track: dict, client: Client):
         """Given an video response dict from an album, return a new
@@ -787,7 +795,7 @@ class Tracklist(list):
         if self._download_item(item, **kwargs):
             item.convert(**kwargs["conversion"])
 
-    def _download_item(item, **kwargs):
+    def _download_item(item, *args: Any, **kwargs: Any) -> bool:
         """Abstract method.
 
         :param item:

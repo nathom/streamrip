@@ -9,7 +9,7 @@ import logging
 import os
 import re
 from tempfile import gettempdir
-from typing import Dict, Generator, Iterable, Union
+from typing import Dict, Generator, Iterable, Union, Optional
 
 import click
 from pathvalidate import sanitize_filename
@@ -54,8 +54,11 @@ class Album(Tracklist):
 
         self.sampling_rate = None
         self.bit_depth = None
-        self.container = None
+        self.container: Optional[str] = None
 
+        self.disctotal: int
+        self.tracktotal: int
+        self.albumartist: str
         # usually an unpacked TrackMetadata.asdict()
         self.__dict__.update(kwargs)
 
@@ -148,7 +151,7 @@ class Album(Tracklist):
             for item in self.booklets:
                 Booklet(item).download(parent_folder=self.folder)
 
-    def _download_item(
+    def _download_item(  # type: ignore
         self,
         track: Union[Track, Video],
         quality: int = 3,
@@ -411,7 +414,7 @@ class Playlist(Tracklist):
         self.__download_index = 1  # used for tracknumbers
         self.download_message()
 
-    def _download_item(self, item: Track, **kwargs):
+    def _download_item(self, item: Track, **kwargs) -> bool:  # type: ignore
         kwargs["parent_folder"] = self.folder
         if self.client.source == "soundcloud":
             item.load_meta()
@@ -578,7 +581,7 @@ class Artist(Tracklist):
         self.download_message()
         return final
 
-    def _download_item(
+    def _download_item(  # type: ignore
         self,
         item,
         parent_folder: str = "StreamripDownloads",
