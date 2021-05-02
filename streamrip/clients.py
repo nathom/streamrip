@@ -1,5 +1,4 @@
 import base64
-from pprint import pprint
 import hashlib
 import json
 import logging

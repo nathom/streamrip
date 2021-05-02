@@ -202,6 +202,7 @@ class Track:
             return False
 
         if self.client.source == "qobuz":
+            assert isinstance(dl_info, dict)  # for typing
             if not self.__validate_qobuz_dl_info(dl_info):
                 click.secho("Track is not available for download", fg="red")
                 return False
@@ -211,6 +212,7 @@ class Track:
 
         # --------- Download Track ----------
         if self.client.source in ("qobuz", "tidal", "deezer"):
+            assert isinstance(dl_info, dict)
             logger.debug("Downloadable URL found: %s", dl_info.get("url"))
             try:
                 tqdm_download(
@@ -223,6 +225,7 @@ class Track:
                 return False
 
         elif self.client.source == "soundcloud":
+            assert isinstance(dl_info, dict)
             self._soundcloud_download(dl_info)
 
         else:
@@ -403,7 +406,7 @@ class Track:
             cover_url=cover_url,
         )
 
-    def tag(
+    def tag(  # noqa
         self,
         album_meta: dict = None,
         cover: Union[Picture, APIC, MP4Cover] = None,
@@ -871,7 +874,7 @@ class Tracklist(list):
         info = cls._parse_get_resp(item, client=client)
 
         # equivalent to Album(client=client, **info)
-        return cls(client=client, **info)
+        return cls(client=client, **info)  # type: ignore
 
     @staticmethod
     def get_cover_obj(cover_path: str, container: str, source: str):

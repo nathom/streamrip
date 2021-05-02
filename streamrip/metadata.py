@@ -1,4 +1,6 @@
 """Manages the information that will be embeded in the audio file. """
+from __future__ import annotations
+
 import logging
 import re
 from collections import OrderedDict
@@ -48,7 +50,10 @@ class TrackMetadata:
     """
 
     def __init__(
-        self, track: Optional[dict] = None, album: Optional[dict] = None, source="qobuz"
+        self,
+        track: Optional[Union[TrackMetadata, dict]] = None,
+        album: Optional[Union[TrackMetadata, dict]] = None,
+        source="qobuz",
     ):
         """Creates a TrackMetadata object optionally initialized with
         dicts returned by the Qobuz API.

@@ -9,7 +9,7 @@ import logging
 import os
 import re
 from tempfile import gettempdir
-from typing import Dict, Generator, Iterable, Union, Optional
+from typing import Dict, Generator, Iterable, Optional, Union
 
 import click
 from pathvalidate import sanitize_filename
@@ -59,6 +59,7 @@ class Album(Tracklist):
         self.disctotal: int
         self.tracktotal: int
         self.albumartist: str
+
         # usually an unpacked TrackMetadata.asdict()
         self.__dict__.update(kwargs)
 

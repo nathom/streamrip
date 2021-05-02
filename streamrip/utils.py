@@ -5,7 +5,7 @@ import os
 import re
 import sys
 from string import Formatter
-from typing import Hashable, Optional, Union
+from typing import Dict, Hashable, Optional, Union
 
 import click
 import requests
@@ -52,6 +52,7 @@ def get_quality(quality_id: int, source: str) -> Union[str, int]:
     :type source: str
     :rtype: Union[str, int]
     """
+    q_map: Dict[int, Union[int, str]]
     if source == "qobuz":
         q_map = {
             1: 5,
@@ -89,7 +90,8 @@ def get_quality_id(bit_depth: Optional[int], sampling_rate: Optional[int]):
     :param sampling_rate:
     :type sampling_rate: Optional[int]
     """
-    if not (bit_depth or sampling_rate):  # is lossy
+    # XXX: Should `0` quality be supported?
+    if bit_depth is None or sampling_rate is None:  # is lossy
         return 1
 
     if bit_depth == 16:
@@ -266,6 +268,9 @@ def decho(message, fg=None):
     logger.debug(message)
 
 
+interpreter_artist_regex = re.compile(r"getSimilarArtist\(\s*'(\w+)'")
+
+
 def extract_interpreter_url(url: str) -> str:
     """Extract artist ID from a Qobuz interpreter url.
 
@@ -275,8 +280,14 @@ def extract_interpreter_url(url: str) -> str:
     """
     session = gen_threadsafe_session({"User-Agent": AGENT})
     r = session.get(url)
-    artist_id = re.search(r"getSimilarArtist\(\s*'(\w+)'", r.text).group(1)
-    return artist_id
+    match = interpreter_artist_regex.search(r.text)
+    if match:
+        return match.group(1)
+
+    raise Exception(
+        "Unable to extract artist id from interpreter url. Use a "
+        "url that contains an artist id."
+    )
 
 
 def get_container(quality: int, source: str) -> str:
