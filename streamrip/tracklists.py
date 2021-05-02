@@ -557,7 +557,7 @@ class Artist(Tracklist):
         self, parent_folder: str = "StreamripDownloads", filters: tuple = (), **kwargs
     ) -> Iterable:
         folder = sanitize_filename(self.name)
-        folder = os.path.join(parent_folder, folder)
+        self.folder = os.path.join(parent_folder, folder)
 
         logger.debug("Artist folder: %s", folder)
         logger.debug(f"Length of tracklist {len(self)}")
@@ -590,11 +590,11 @@ class Artist(Tracklist):
             item.load_meta()
         except NonStreamable:
             logger.info("Skipping album, not available to stream.")
-            return
+            return False
 
         # always an Album
         status = item.download(
-            parent_folder=parent_folder,
+            parent_folder=self.folder,
             quality=quality,
             database=database,
             **kwargs,
