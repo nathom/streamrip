@@ -1,4 +1,5 @@
 import base64
+from pprint import pprint
 import hashlib
 import json
 import logging
@@ -418,11 +419,11 @@ class DeezerClient(Client):
         :param limit:
         :type limit: int
         """
-        # TODO: more robust url sanitize
-        query = query.replace(" ", "+")
 
         # TODO: use limit parameter
-        response = self.session.get(f"{DEEZER_BASE}/search/{media_type}?q={query}")
+        response = self.session.get(
+            f"{DEEZER_BASE}/search/{media_type}", params={"q": query}
+        )
         response.raise_for_status()
 
         return response.json()
@@ -441,7 +442,7 @@ class DeezerClient(Client):
         url = f"{DEEZER_BASE}/{media_type}/{meta_id}"
         item = self.session.get(url).json()
         if media_type in ("album", "playlist"):
-            tracks = self.session.get(f"{url}/tracks").json()
+            tracks = self.session.get(f"{url}/tracks", params={"limit": 1000}).json()
             item["tracks"] = tracks["data"]
             item["track_total"] = len(tracks["data"])
         elif media_type == "artist":
@@ -452,6 +453,13 @@ class DeezerClient(Client):
 
     @staticmethod
     def get_file_url(meta_id: Union[str, int], quality: int = 6):
+        """Get downloadable url for a track.
+
+        :param meta_id: The track ID.
+        :type meta_id: Union[str, int]
+        :param quality:
+        :type quality: int
+        """
         quality = min(DEEZER_MAX_Q, quality)
         url = f"{DEEZER_DL}/{get_quality(quality, 'deezer')}/{DEEZER_BASE}/track/{meta_id}"
         logger.debug(f"Download url {url}")
