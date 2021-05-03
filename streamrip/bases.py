@@ -220,7 +220,7 @@ class Track:
                 )  # downloads file
             except NonStreamable:
                 click.secho(
-                    "Track {self!s} is not available for download, skipping.", fg="red"
+                    f"Track {self!s} is not available for download, skipping.", fg="red"
                 )
                 return False
 
