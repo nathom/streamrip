@@ -10,6 +10,7 @@ A scriptable stream downloader for Qobuz, Tidal, Deezer and SoundCloud.
 - Automatically converts files to a preferred format
 - Has a database that stores the downloaded tracks' IDs so that repeats are avoided
 - Easy to customize with the config file
+- Integration with `youtube-dl`
 
 ## Installation
 
