@@ -1,11 +1,12 @@
 """A config class that manages arguments between the config file and CLI."""
 import copy
+from collections import OrderedDict
 import logging
 import os
 import re
 from functools import cache
 from pprint import pformat
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 from ruamel.yaml import YAML
 
@@ -331,3 +332,93 @@ class ConfigDocumentation:
 
         with open(path, "w") as f:
             f.write("".join(lines))
+
+
+# ------------- ~~ Experimental ~~ ----------------- #
+
+def load_yaml(path: str):
+    """A custom YAML parser optimized for use with streamrip.
+
+    Warning: this is not fully compliant with YAML.
+
+    :param path:
+    :type path: str
+    """
+    with open(path) as f:
+        lines = f.readlines()
+
+    settings = OrderedDict()
+    type_dict = {t.__name__: t for t in (list, dict, str)}
+    for line in lines:
+        key_l: List[str] = []
+        val_l: List[str] = []
+
+        chars = StringWalker(line)
+        level = 0
+
+        # get indent level of line
+        while next(chars).isspace():
+            level += 1
+
+        chars.prev()
+        if (c := next(chars)) == '#':
+            # is a comment
+            continue
+
+        elif c == '-':
+            # is an item in a list
+            next(chars)
+            val_l = list(chars)
+            level += 2  # it is a child of the previous key
+            item_type = 'list'
+        else:
+            # undo char read
+            chars.prev()
+
+        if not val_l:
+            while (c := next(chars)) != ':':
+                key_l.append(c)
+            val_l = list(''.join(chars).strip())
+
+        if val_l:
+            val = ''.join(val_l)
+        else:
+            # start of a section
+            item_type = 'dict'
+            val = type_dict[item_type]()
+
+        key = ''.join(key_l)
+        if level == 0:
+            settings[key] = val
+        elif level == 2:
+            parent = settings[tuple(settings.keys())[-1]]
+            if isinstance(parent, dict):
+                parent[key] = val
+            elif isinstance(parent, list):
+                parent.append(val)
+        else:
+            raise Exception(f"level too high: {level}")
+
+    return settings
+
+
+class StringWalker:
+    """A fancier str iterator."""
+
+    def __init__(self, s: str):
+        self.__val = s.replace('\n', '')
+        self.__pos = 0
+
+    def __next__(self) -> str:
+        try:
+            c = self.__val[self.__pos]
+            self.__pos += 1
+            return c
+        except IndexError:
+            raise StopIteration
+
+    def __iter__(self):
+        return self
+
+    def prev(self, step: int = 1):
+        self.__pos -= step
