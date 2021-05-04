@@ -1,3 +1,5 @@
+"""The stuff that ties everything together for the CLI to use."""
+
 import concurrent.futures
 import html
 import logging
@@ -14,7 +16,7 @@ import requests
 from tqdm import tqdm
 
 from .bases import Track, Video, YoutubeVideo
-from .clients import DeezerClient, QobuzClient, SoundCloudClient, TidalClient
+from .clients import DeezerClient, QobuzClient, SoundCloudClient, TidalClient, Client
 from .config import Config
 from .constants import (
     CONFIG_PATH,
@@ -53,11 +55,17 @@ MEDIA_CLASS: Dict[str, Media] = {
 
 
 class MusicDL(list):
+    """MusicDL."""
+
     def __init__(
         self,
         config: Optional[Config] = None,
     ):
+        """Create a MusicDL object.
 
+        :param config:
+        :type config: Optional[Config]
+        """
         self.url_parse = re.compile(URL_REGEX)
         self.soundcloud_url_parse = re.compile(SOUNDCLOUD_URL_REGEX)
         self.lastfm_url_parse = re.compile(LASTFM_URL_REGEX)
@@ -89,14 +97,13 @@ class MusicDL(list):
             self.db = []
 
     def handle_urls(self, url: str):
-        """Download a url
+        """Download a url.
 
         :param url:
         :type url: str
         :raises InvalidSourceError
         :raises ParsingError
         """
-
         # youtube is handled by youtube-dl, so much of the
         # processing is not necessary
         youtube_urls = self.youtube_url_parse.findall(url)
@@ -121,6 +128,15 @@ class MusicDL(list):
             self.handle_item(source, url_type, item_id)
 
     def handle_item(self, source: str, media_type: str, item_id: str):
+        """Get info and parse into a Media object.
+
+        :param source:
+        :type source: str
+        :param media_type:
+        :type media_type: str
+        :param item_id:
+        :type item_id: str
+        """
         self.assert_creds(source)
 
         client = self.get_client(source)
@@ -134,6 +150,10 @@ class MusicDL(list):
         self.append(item)
 
     def _get_download_args(self) -> dict:
+        """Get the arguments to pass to Media.download.
+
+        :rtype: dict
+        """
         return {
             "database": self.db,
             "parent_folder": self.config.session["downloads"]["folder"],
@@ -162,6 +182,7 @@ class MusicDL(list):
         }
 
     def download(self):
+        """Download all the items in self."""
         try:
             arguments = self._get_download_args()
         except KeyError:
@@ -222,7 +243,13 @@ class MusicDL(list):
             if self.db != [] and hasattr(item, "id"):
                 self.db.add(item.id)
 
-    def get_client(self, source: str):
+    def get_client(self, source: str) -> Client:
+        """Get a client given the source and log in.
+
+        :param source:
+        :type source: str
+        :rtype: Client
+        """
         client = self.clients[source]
         if not client.logged_in:
             self.assert_creds(source)
@@ -230,6 +257,10 @@ class MusicDL(list):
         return client
 
     def login(self, client):
+        """Log into a client, if applicable.
+
+        :param client:
+        """
         creds = self.config.creds(client.source)
         if not client.logged_in:
             while True:
@@ -254,7 +285,7 @@ class MusicDL(list):
                 self.config.save()
 
     def parse_urls(self, url: str) -> List[Tuple[str, str, str]]:
-        """Returns the type of the url and the id.
+        """Return the type of the url and the id.
 
         Compatible with urls of the form:
             https://www.qobuz.com/us-en/{type}/{name}/{id}
@@ -267,7 +298,6 @@ class MusicDL(list):
 
         :raises exceptions.ParsingError
         """
-
         parsed: List[Tuple[str, str, str]] = []
 
         interpreter_urls = self.interpreter_url_parse.findall(url)
@@ -296,7 +326,16 @@ class MusicDL(list):
 
         return parsed
 
-    def handle_lastfm_urls(self, urls):
+    def handle_lastfm_urls(self, urls: str):
+        """Get info from lastfm url, and parse into Media objects.
+
+        This works by scraping the last.fm page and using a regex to
+        find the track titles and artists. The information is queried
+        in a Client.search(query, 'track') call and the first result is
+        used.
+
+        :param urls:
+        """
         # For testing:
         # https://www.last.fm/user/nathan3895/playlists/12058911
         user_regex = re.compile(r"https://www\.last\.fm/user/([^/]+)/playlists/\d+")
@@ -304,8 +343,14 @@ class MusicDL(list):
         lastfm_source = self.config.session["lastfm"]["source"]
 
         def search_query(query: str, playlist: Playlist) -> bool:
-            """Search for a query and add the first result to the given
-            Playlist object."""
+            """Search for a query and add the first result to playlist.
+
+            :param query:
+            :type query: str
+            :param playlist:
+            :type playlist: Playlist
+            :rtype: bool
+            """
             try:
                 track = next(self.search(lastfm_source, query, media_type="track"))
                 if self.config.session["metadata"]["set_playlist_to_album"]:
@@ -361,6 +406,18 @@ class MusicDL(list):
     def search(
         self, source: str, query: str, media_type: str = "album", limit: int = 200
     ) -> Generator:
+        """Universal search.
+
+        :param source:
+        :type source: str
+        :param query:
+        :type query: str
+        :param media_type:
+        :type media_type: str
+        :param limit:
+        :type limit: int
+        :rtype: Generator
+        """
         client = self.get_client(source)
         results = client.search(query, media_type)
 
@@ -392,7 +449,11 @@ class MusicDL(list):
                 if i > limit:
                     return
 
-    def preview_media(self, media):
+    def preview_media(self, media) -> str:
+        """Return a preview string of a Media object.
+
+        :param media:
+        """
         if isinstance(media, Album):
             fmt = (
                 "{albumartist} - {album}\n"
@@ -422,6 +483,15 @@ class MusicDL(list):
     def interactive_search(  # noqa
         self, query: str, source: str = "qobuz", media_type: str = "album"
     ):
+        """Show an interactive menu that contains search results.
+
+        :param query:
+        :type query: str
+        :param source:
+        :type source: str
+        :param media_type:
+        :type media_type: str
+        """
         results = tuple(self.search(source, query, media_type, limit=50))
 
         def title(res):
@@ -502,6 +572,15 @@ class MusicDL(list):
                 return True
 
     def get_lastfm_playlist(self, url: str) -> Tuple[str, list]:
+        """From a last.fm url, find the playlist title and tracks.
+
+        Each page contains 50 results, so `num_tracks // 50 + 1` requests
+        are sent per playlist.
+
+        :param url:
+        :type url: str
+        :rtype: Tuple[str, list]
+        """
         info = []
         words = re.compile(r"[\w\s]+")
         title_tags = re.compile('title="([^"]+)"')
@@ -569,6 +648,11 @@ class MusicDL(list):
             raise Exception
 
     def assert_creds(self, source: str):
+        """Ensure that the credentials for `source` are valid.
+
+        :param source:
+        :type source: str
+        """
         assert source in (
             "qobuz",
             "tidal",

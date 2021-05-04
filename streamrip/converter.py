@@ -1,3 +1,5 @@
+"""Wrapper classes over FFMPEG."""
+
 import logging
 import os
 import shutil
@@ -31,7 +33,8 @@ class Converter:
         remove_source: bool = False,
         show_progress: bool = False,
     ):
-        """
+        """Create a Converter object.
+
         :param filename:
         :type filename: str
         :param ffmpeg_arg: The codec ffmpeg argument (defaults to an "optimal value")
@@ -42,7 +45,7 @@ class Converter:
         :type bit_depth: Optional[int]
         :param copy_art: Embed the cover art (if found) into the encoded file
         :type copy_art: bool
-        :param remove_source:
+        :param remove_source: Remove the source file after conversion.
         :type remove_source: bool
         """
         logger.debug(locals())
@@ -148,7 +151,8 @@ class Converter:
 
 
 class FLAC(Converter):
-    " Class for FLAC converter. "
+    """Class for FLAC converter."""
+
     codec_name = "flac"
     codec_lib = "flac"
     container = "flac"
@@ -156,8 +160,9 @@ class FLAC(Converter):
 
 
 class LAME(Converter):
-    """
-    Class for libmp3lame converter. Defaul ffmpeg_arg: `-q:a 0`.
+    """Class for libmp3lame converter.
+
+    Default ffmpeg_arg: `-q:a 0`.
 
     See available options:
     https://trac.ffmpeg.org/wiki/Encode/MP3
@@ -170,7 +175,8 @@ class LAME(Converter):
 
 
 class ALAC(Converter):
-    " Class for ALAC converter. "
+    """Class for ALAC converter."""
+
     codec_name = "alac"
     codec_lib = "alac"
     container = "m4a"
@@ -178,8 +184,9 @@ class ALAC(Converter):
 
 
 class Vorbis(Converter):
-    """
-    Class for libvorbis converter. Default ffmpeg_arg: `-q:a 6`.
+    """Class for libvorbis converter.
+
+    Default ffmpeg_arg: `-q:a 6`.
 
     See available options:
     https://trac.ffmpeg.org/wiki/TheoraVorbisEncodingGuide
@@ -192,8 +199,9 @@ class Vorbis(Converter):
 
 
 class OPUS(Converter):
-    """
-    Class for libopus. Default ffmpeg_arg: `-b:a 128 -vbr on`.
+    """Class for libopus.
+
+    Default ffmpeg_arg: `-b:a 128 -vbr on`.
 
     See more:
     http://ffmpeg.org/ffmpeg-codecs.html#libopus-1
@@ -206,8 +214,9 @@ class OPUS(Converter):
 
 
 class AAC(Converter):
-    """
-    Class for libfdk_aac converter. Default ffmpeg_arg: `-b:a 256k`.
+    """Class for libfdk_aac converter.
+
+    Default ffmpeg_arg: `-b:a 256k`.
 
     See available options:
     https://trac.ffmpeg.org/wiki/Encode/AAC

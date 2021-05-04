@@ -1,4 +1,7 @@
-# Credits to Dash for this tool.
+"""Get app id and secrets for Qobuz.
+
+Credits to Dash for this tool.
+"""
 
 import base64
 import re
@@ -8,7 +11,10 @@ import requests
 
 
 class Spoofer:
+    """Spoofs the information required to stream tracks from Qobuz."""
+
     def __init__(self):
+        """Create a Spoofer."""
         self.seed_timezone_regex = (
             r'[a-z]\.initialSeed\("(?P<seed>[\w=]+)",window\.ut'
             r"imezone\.(?P<timezone>[a-z]+)\)"
@@ -33,11 +39,19 @@ class Spoofer:
         bundle_req = requests.get("https://play.qobuz.com" + bundle_url)
         self.bundle = bundle_req.text
 
-    def get_app_id(self):
-        match = re.search(self.app_id_regex, self.bundle).group("app_id")
-        return str(match)
+    def get_app_id(self) -> str:
+        """Get the app id.
+
+        :rtype: str
+        """
+        match = re.search(self.app_id_regex, self.bundle)
+        if match is not None:
+            return str(match.group("app_id"))
+
+        raise Exception("Could not find app id.")
 
     def get_secrets(self):
+        """Get secrets."""
         seed_matches = re.finditer(self.seed_timezone_regex, self.bundle)
         secrets = OrderedDict()
         for match in seed_matches:

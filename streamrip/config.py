@@ -108,6 +108,13 @@ class Config:
     }
 
     def __init__(self, path: str = None):
+        """Create a Config object with state.
+
+        A YAML file is created at `path` if there is none.
+
+        :param path:
+        :type path: str
+        """
         # to access settings loaded from yaml file
         self.file: Dict[str, Any] = copy.deepcopy(self.defaults)
         self.session: Dict[str, Any] = copy.deepcopy(self.defaults)
@@ -124,7 +131,7 @@ class Config:
             self.load()
 
     def update(self):
-        """Resets the config file except for credentials."""
+        """Reset the config file except for credentials."""
         self.reset()
         temp = copy.deepcopy(self.defaults)
         temp["qobuz"].update(self.file["qobuz"])
@@ -133,12 +140,10 @@ class Config:
 
     def save(self):
         """Save the config state to file."""
-
         self.dump(self.file)
 
     def reset(self):
         """Reset the config file."""
-
         if not os.path.isdir(CONFIG_DIR):
             os.makedirs(CONFIG_DIR, exist_ok=True)
 
@@ -146,7 +151,6 @@ class Config:
 
     def load(self):
         """Load infomation from the config files, making a deepcopy."""
-
         with open(self._path) as cfg:
             for k, v in yaml.load(cfg).items():
                 self.file[k] = v
@@ -204,20 +208,14 @@ class Config:
 
         raise InvalidSourceError(source)
 
-    def __getitem__(self, key):
-        assert key in ("file", "defaults", "session")
-        return getattr(self, key)
-
-    def __setitem__(self, key, val):
-        assert key in ("file", "session")
-        setattr(self, key, val)
-
     def __repr__(self):
+        """Return a string representation of the config."""
         return f"Config({pformat(self.session)})"
 
 
 class ConfigDocumentation:
     """Documentation is stored in this docstring.
+
     qobuz:
         quality: 1: 320kbps MP3, 2: 16/44.1, 3: 24/<=96, 4: 24/>=96
         download_booklets: This will download booklet pdfs that are included with some albums
@@ -263,12 +261,13 @@ class ConfigDocumentation:
     """
 
     def __init__(self):
+        """Create a new ConfigDocumentation object."""
         # not using ruamel because its super slow
         self.docs = []
         doctext = self.__doc__
         # get indent level, key, and documentation
         keyval = re.compile(r"( *)([\w_]+):\s*(.*)")
-        lines = (line[4:] for line in doctext.split("\n")[1:-1])
+        lines = (line[4:] for line in doctext.split("\n")[2:-1])
 
         for line in lines:
             info = list(keyval.match(line).groups())
@@ -322,11 +321,24 @@ class ConfigDocumentation:
                     self.docs.remove(to_remove)
 
     @cache
-    def _get_key_regex(self, spaces, key):
+    def _get_key_regex(self, spaces: str, key: str) -> re.Pattern:
+        """Get a regex that matches a key in YAML.
+
+        :param spaces: a string spaces that represent the indent level.
+        :type spaces: str
+        :param key: the key to match.
+        :type key: str
+        :rtype: re.Pattern
+        """
         regex = rf"{spaces}{key}:(?:$|\s+?(.+))"
         return re.compile(regex)
 
     def strip_comments(self, path: str):
+        """Remove single-line comments from a file.
+
+        :param path:
+        :type path: str
+        """
         with open(path, "r") as f:
             lines = [line for line in f.readlines() if not line.strip().startswith("#")]
 
@@ -337,9 +349,10 @@ class ConfigDocumentation:
 # ------------- ~~ Experimental ~~ ----------------- #
 
 def load_yaml(path: str):
-    """A custom YAML parser optimized for use with streamrip.
+    """Load a streamrip config YAML file.
 
-    Warning: this is not fully compliant with YAML.
+    Warning: this is not fully compliant with YAML. It was made for use
+    with streamrip.
 
     :param path:
     :type path: str
@@ -406,10 +419,19 @@ class StringWalker:
     """A fancier str iterator."""
 
     def __init__(self, s: str):
+        """Create a StringWalker object.
+
+        :param s:
+        :type s: str
+        """
         self.__val = s.replace('\n', '')
         self.__pos = 0
 
     def __next__(self) -> str:
+        """Get the next char.
+
+        :rtype: str
+        """
         try:
             c = self.__val[self.__pos]
             self.__pos += 1
@@ -418,7 +440,13 @@ class StringWalker:
             raise StopIteration
 
     def __iter__(self):
+        """Get an iterator."""
         return self
 
     def prev(self, step: int = 1):
+        """Un-read a character.
+
+        :param step: The number of steps backward to take.
+        :type step: int
+        """
         self.__pos -= step

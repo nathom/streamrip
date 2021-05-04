@@ -1,3 +1,5 @@
+"""The clients that interact with the service APIs."""
+
 import base64
 import hashlib
 import json
@@ -85,11 +87,14 @@ class Client(ABC):
 
 
 class QobuzClient(Client):
+    """QobuzClient."""
+
     source = "qobuz"
     max_quality = 4
 
     # ------- Public Methods -------------
     def __init__(self):
+        """Create a QobuzClient object."""
         self.logged_in = False
 
     def login(self, **kwargs):
@@ -134,6 +139,12 @@ class QobuzClient(Client):
         self.logged_in = True
 
     def get_tokens(self) -> Tuple[str, Sequence[str]]:
+        """Return app id and secrets.
+
+        These can be saved and reused.
+
+        :rtype: Tuple[str, Sequence[str]]
+        """
         return self.app_id, self.secrets
 
     def search(
@@ -172,16 +183,29 @@ class QobuzClient(Client):
         return self._api_search(query, media_type, limit)
 
     def get(self, item_id: Union[str, int], media_type: str = "album") -> dict:
+        """Get an item from the API.
+
+        :param item_id:
+        :type item_id: Union[str, int]
+        :param media_type:
+        :type media_type: str
+        :rtype: dict
+        """
         return self._api_get(media_type, item_id=item_id)
 
     def get_file_url(self, item_id, quality=3) -> dict:
+        """Get the downloadble file url for a track.
+
+        :param item_id:
+        :param quality:
+        :rtype: dict
+        """
         return self._api_get_file_url(item_id, quality=quality)
 
     # ---------- Private Methods ---------------
 
     def _gen_pages(self, epoint: str, params: dict) -> Generator:
-        """When there are multiple pages of results, this lazily
-        yields them.
+        """When there are multiple pages of results, this yields them.
 
         :param epoint:
         :type epoint: str
@@ -210,7 +234,7 @@ class QobuzClient(Client):
             yield page
 
     def _validate_secrets(self):
-        """Checks if the secrets are usable."""
+        """Check if the secrets are usable."""
         for secret in self.secrets:
             if self._test_secret(secret):
                 self.sec = secret
@@ -220,8 +244,7 @@ class QobuzClient(Client):
             raise InvalidAppSecretError(f"Invalid secrets: {self.secrets}")
 
     def _api_get(self, media_type: str, **kwargs) -> dict:
-        """Internal function that sends the request for metadata to the
-        Qobuz API.
+        """Request metadata from the Qobuz API.
 
         :param media_type:
         :type media_type: str
@@ -254,7 +277,7 @@ class QobuzClient(Client):
         return response
 
     def _api_search(self, query: str, media_type: str, limit: int = 500) -> Generator:
-        """Internal function that sends a search request to the API.
+        """Send a search request to the API.
 
         :param query:
         :type query: str
@@ -289,8 +312,7 @@ class QobuzClient(Client):
         return self._gen_pages(epoint, params)
 
     def _api_login(self, email: str, pwd: str):
-        """Internal function that logs into the api to get the user
-        authentication token.
+        """Log into the api to get the user authentication token.
 
         :param email:
         :type email: str
@@ -322,7 +344,7 @@ class QobuzClient(Client):
     def _api_get_file_url(
         self, track_id: Union[str, int], quality: int = 3, sec: str = None
     ) -> dict:
-        """Internal function that gets the file url given an id.
+        """Get the file url given a track id.
 
         :param track_id:
         :type track_id: Union[str, int]
@@ -367,7 +389,7 @@ class QobuzClient(Client):
         return response
 
     def _api_request(self, epoint: str, params: dict) -> Tuple[dict, int]:
-        """The function that handles all requests to the API.
+        """Send a request to the API.
 
         :param epoint:
         :type epoint: str
@@ -384,7 +406,7 @@ class QobuzClient(Client):
             raise
 
     def _test_secret(self, secret: str) -> bool:
-        """Tests a secret.
+        """Test the authenticity of a secret.
 
         :param secret:
         :type secret: str
@@ -399,10 +421,13 @@ class QobuzClient(Client):
 
 
 class DeezerClient(Client):
+    """DeezerClient."""
+
     source = "deezer"
     max_quality = 2
 
     def __init__(self):
+        """Create a DeezerClient."""
         self.session = gen_threadsafe_session()
 
         # no login required
@@ -418,7 +443,6 @@ class DeezerClient(Client):
         :param limit:
         :type limit: int
         """
-
         # TODO: use limit parameter
         response = self.session.get(
             f"{DEEZER_BASE}/search/{media_type}", params={"q": query}
@@ -428,6 +452,12 @@ class DeezerClient(Client):
         return response.json()
 
     def login(self, **kwargs):
+        """Return None.
+
+        Dummy method.
+
+        :param kwargs:
+        """
         logger.debug("Deezer does not require login call, returning")
 
     def get(self, meta_id: Union[str, int], media_type: str = "album"):
@@ -466,12 +496,15 @@ class DeezerClient(Client):
 
 
 class TidalClient(Client):
+    """TidalClient."""
+
     source = "tidal"
     max_quality = 3
 
     # ----------- Public Methods --------------
 
     def __init__(self):
+        """Create a TidalClient."""
         self.logged_in = False
 
         self.device_code = None
@@ -578,7 +611,7 @@ class TidalClient(Client):
         }
 
     def get_tokens(self) -> dict:
-        """Used for saving them for later use.
+        """Return tokens to save for later use.
 
         :rtype: dict
         """
@@ -595,10 +628,11 @@ class TidalClient(Client):
 
     # ------------ Utilities to login -------------
 
-    def _login_new_user(self, launch=True):
-        """This will launch the browser and ask the user to log into tidal.
+    def _login_new_user(self, launch: bool = True):
+        """Create app url where the user can log in.
 
-        :param launch:
+        :param launch: Launch the browser.
+        :type launch: bool
         """
         login_link = f"https://{self._get_device_code()}"
 
@@ -690,7 +724,9 @@ class TidalClient(Client):
         return True
 
     def _refresh_access_token(self):
-        """The access token expires in a week, so it must be refreshed.
+        """Refresh the access token given a refresh token.
+
+        The access token expires in a week, so it must be refreshed.
         Requires a refresh token.
         """
         data = {
@@ -715,7 +751,9 @@ class TidalClient(Client):
         self._update_authorization()
 
     def _login_by_access_token(self, token, user_id=None):
-        """This is the method used to login after the access token has been saved.
+        """Login using the access token.
+
+        Used after the initial authorization.
 
         :param token:
         :param user_id: Not necessary.
@@ -741,7 +779,7 @@ class TidalClient(Client):
 
     @property
     def authorization(self):
-        """The auth header."""
+        """Get the auth header."""
         return {"authorization": f"Bearer {self.access_token}"}
 
     # ------------- Fetch data ------------------
@@ -777,7 +815,7 @@ class TidalClient(Client):
         return item
 
     def _api_request(self, path: str, params=None) -> dict:
-        """The function that handles all tidal API requests.
+        """Handle Tidal API requests.
 
         :param path:
         :type path: str
@@ -793,8 +831,7 @@ class TidalClient(Client):
         return r
 
     def _get_video_stream_url(self, video_id: str) -> str:
-        """Videos have to be ripped from an hls stream, so they require
-        seperate processing.
+        """Get the HLS video stream url.
 
         :param video_id:
         :type video_id: str
@@ -820,7 +857,7 @@ class TidalClient(Client):
         return url_info[-1]
 
     def _api_post(self, url, data, auth=None):
-        """Function used for posting to tidal API.
+        """Post to the Tidal API.
 
         :param url:
         :param data:
@@ -831,11 +868,14 @@ class TidalClient(Client):
 
 
 class SoundCloudClient(Client):
+    """SoundCloudClient."""
+
     source = "soundcloud"
     max_quality = 0
     logged_in = True
 
     def __init__(self):
+        """Create a SoundCloudClient."""
         self.session = gen_threadsafe_session(headers={"User-Agent": AGENT})
 
     def login(self):
@@ -906,8 +946,7 @@ class SoundCloudClient(Client):
         return resp
 
     def _get(self, path, params=None, no_base=False, resp_obj=False):
-        """The lower level of `SoundCloudClient.get` that handles request
-        parameters and other options.
+        """Send a request to the SoundCloud API.
 
         :param path:
         :param params:

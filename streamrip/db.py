@@ -1,6 +1,4 @@
-"""A simple wrapper over an sqlite database that stores
-the downloaded media IDs.
-"""
+"""Wrapper over a database that stores item IDs."""
 
 import logging
 import os
@@ -14,7 +12,7 @@ class MusicDB:
     """Simple interface for the downloaded track database."""
 
     def __init__(self, db_path: Union[str, os.PathLike]):
-        """Create a MusicDB object
+        """Create a MusicDB object.
 
         :param db_path: filepath of the database
         :type db_path: Union[str, os.PathLike]
@@ -24,7 +22,7 @@ class MusicDB:
             self.create()
 
     def create(self):
-        """Create a database at `self.path`"""
+        """Create a database at `self.path`."""
         with sqlite3.connect(self.path) as conn:
             try:
                 conn.execute("CREATE TABLE downloads (id TEXT UNIQUE NOT NULL);")
@@ -35,7 +33,7 @@ class MusicDB:
             return self.path
 
     def __contains__(self, item_id: Union[str, int]) -> bool:
-        """Checks whether the database contains an id.
+        """Check whether the database contains an id.
 
         :param item_id: the id to check
         :type item_id: str
@@ -51,7 +49,7 @@ class MusicDB:
             )
 
     def add(self, item_id: str):
-        """Adds an id to the database.
+        """Add an id to the database.
 
         :param item_id:
         :type item_id: str

@@ -1,3 +1,5 @@
+"""Constants that are kept in one place."""
+
 import os
 from pathlib import Path
 
