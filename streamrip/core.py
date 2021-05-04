@@ -1,4 +1,5 @@
 import concurrent.futures
+import html
 import logging
 import os
 import re
@@ -528,7 +529,7 @@ class MusicDL(list):
             r'<h1 class="playlisting-playlist-header-title">([^<]+)</h1>', r.text
         )
         if playlist_title_match is not None:
-            playlist_title = playlist_title_match.group(1)
+            playlist_title = html.unescape(playlist_title_match.group(1))
         else:
             raise Exception("Error finding title from response")
 
