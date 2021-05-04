@@ -1,11 +1,9 @@
 # streamrip
 
+[![Downloads](https://static.pepy.tech/personalized-badge/streamrip?period=total&units=international_system&left_color=black&right_color=green&left_text=Downloads)](https://pepy.tech/project/streamrip)
+
 A scriptable stream downloader for Qobuz, Tidal, Deezer and SoundCloud.
 
-## Attention
-
-The Deezloader server is currently down. This means Deezer downloads are currently not working.
-Stay posted for updates.
 
 ## Features
 
