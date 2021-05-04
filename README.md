@@ -33,7 +33,7 @@ pip3 install streamrip windows-curses --upgrade
 
 
 
-If you would like to use `streamrip`'s conversion capabilities, or download music from SoundCloud, install [ffmpeg](https://ffmpeg.org/download.html).
+If you would like to use `streamrip`'s conversion capabilities, download TIDAL videos, or download music from SoundCloud, install [ffmpeg](https://ffmpeg.org/download.html).
 
 ## Example Usage
 
