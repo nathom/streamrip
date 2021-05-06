@@ -643,7 +643,7 @@ class TidalClient(Client):
             click.launch(login_link)
 
         start = time.time()
-        elapsed = 0
+        elapsed = 0.0
         while elapsed < 600:  # 5 mins to login
             elapsed = time.time() - start
             status = self._check_auth_status()

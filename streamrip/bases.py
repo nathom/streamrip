@@ -865,7 +865,7 @@ class Tracklist(list):
         :param codec:
         :param kwargs:
         """
-        if (sr := kwargs.get("sampling_rate")) :
+        if sr := kwargs.get("sampling_rate"):
             if sr < 44100:
                 logger.warning(
                     "Sampling rate %d is lower than 44.1kHz."

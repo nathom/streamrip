@@ -36,7 +36,7 @@ if not os.path.isdir(CACHE_DIR):
 @click.option("-t", "--text", metavar="PATH")
 @click.option("-nd", "--no-db", is_flag=True)
 @click.option("--debug", is_flag=True)
-@click.version_option(prog_name='streamrip')
+@click.version_option(prog_name="streamrip")
 @click.pass_context
 def cli(ctx, **kwargs):
     """Streamrip: The all-in-one Qobuz, Tidal, SoundCloud, and Deezer music downloader.

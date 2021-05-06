@@ -25,22 +25,14 @@ yaml = YAML()
 logger = logging.getLogger(__name__)
 
 
-# ---------- Utilities -------------
-def _set_to_none(d: dict):
-    for k, v in d.items():
-        if isinstance(v, dict):
-            _set_to_none(v)
-        else:
-            d[k] = None
-
-
 class Config:
     """Config class that handles command line args and config files.
 
     Usage:
-    >>> config = Config('test_config.yaml')
-    >>> config.defaults['qobuz']['quality']
-    3
+
+        >>> config = Config('test_config.yaml')
+        >>> config.defaults['qobuz']['quality']
+        3
 
     If test_config was already initialized with values, this will load them
     into `config`. Otherwise, a new config file is created with the default
@@ -204,7 +196,7 @@ class Config:
         if source == "tidal":
             return self.tidal_creds
         if source == "deezer" or source == "soundcloud":
-            return dict()
+            return {}
 
         raise InvalidSourceError(source)
 
@@ -348,6 +340,7 @@ class ConfigDocumentation:
 
 # ------------- ~~ Experimental ~~ ----------------- #
 
+
 def load_yaml(path: str):
     """Load a streamrip config YAML file.
 
@@ -374,33 +367,33 @@ def load_yaml(path: str):
             level += 1
 
         chars.prev()
-        if (c := next(chars)) == '#':
+        if (c := next(chars)) == "#":
             # is a comment
             continue
 
-        elif c == '-':
+        elif c == "-":
             # is an item in a list
             next(chars)
             val_l = list(chars)
             level += 2  # it is a child of the previous key
-            item_type = 'list'
+            item_type = "list"
         else:
             # undo char read
             chars.prev()
 
         if not val_l:
-            while (c := next(chars)) != ':':
+            while (c := next(chars)) != ":":
                 key_l.append(c)
-            val_l = list(''.join(chars).strip())
+            val_l = list("".join(chars).strip())
 
         if val_l:
-            val = ''.join(val_l)
+            val = "".join(val_l)
         else:
             # start of a section
-            item_type = 'dict'
+            item_type = "dict"
             val = type_dict[item_type]()
 
-        key = ''.join(key_l)
+        key = "".join(key_l)
         if level == 0:
             settings[key] = val
         elif level == 2:
@@ -424,7 +417,7 @@ class StringWalker:
         :param s:
         :type s: str
         """
-        self.__val = s.replace('\n', '')
+        self.__val = s.replace("\n", "")
         self.__pos = 0
 
     def __next__(self) -> str:

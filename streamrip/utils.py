@@ -324,11 +324,9 @@ def get_container(quality: int, source: str) -> str:
     :rtype: str
     """
     if quality >= 2:
-        container = "FLAC"
-    else:
-        if source == "tidal":
-            container = "AAC"
-        else:
-            container = "MP3"
+        return "FLAC"
 
-    return container
+    if source == "tidal":
+        return "AAC"
+
+    return "MP3"
