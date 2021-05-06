@@ -235,8 +235,6 @@ class TrackMetadata:
             self.tracknumber = track.get("track_number", 1)
             self.discnumber = track.get("media_number", 1)
             self.artist = safe_get(track, "performer", "name")
-            if self.artist is None:
-                self.artist = self.get("albumartist")
 
         elif self.__source == "tidal":
             self.title = track["title"].strip()
@@ -268,7 +266,7 @@ class TrackMetadata:
         if track.get("album"):
             self.add_album_meta(track["album"])
 
-    def _mod_title(self, version: str, work: str):
+    def _mod_title(self, version: Optional[str], work: Optional[str]):
         """Modify title using the version and work.
 
         :param version:
@@ -316,9 +314,6 @@ class TrackMetadata:
 
         :rtype: str
         """
-        if self._artist is None and self.albumartist is not None:
-            return self.albumartist
-
         if self._artist is not None:
             return self._artist
 
