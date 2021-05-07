@@ -14,7 +14,7 @@ requirements = read_file("requirements.txt").strip().split()
 # https://github.com/pypa/sampleproject/blob/main/setup.py
 setup(
     name=pkg_name,
-    version="0.5",
+    version="0.5.1",
     author="Nathan",
     author_email="nathanthomas707@gmail.com",
     keywords="lossless, hi-res, qobuz, tidal, deezer, audio, convert, soundcloud, mp3",
@@ -41,7 +41,3 @@ setup(
         "Bug Reports": "https://github.com/nathom/streamrip/issues",
     },
 )
-
-# rm -f dist/*
-# python3 setup.py sdist bdist_wheel
-# twine upload dist/*
