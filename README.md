@@ -1,6 +1,10 @@
 # streamrip
 
+[![Downloads](https://static.pepy.tech/personalized-badge/streamrip?period=total&units=international_system&left_color=black&right_color=green&left_text=Downloads)](https://pepy.tech/project/streamrip)
+
+
 A scriptable stream downloader for Qobuz, Tidal, Deezer and SoundCloud.
+
 
 ## Features
 
@@ -31,8 +35,8 @@ pip3 install streamrip windows-curses --upgrade
 ```
 
 
+If you would like to use `streamrip`'s conversion capabilities, download TIDAL videos, or download music from SoundCloud, install [ffmpeg](https://ffmpeg.org/download.html).
 
-If you would like to use `streamrip`'s conversion capabilities, or download music from SoundCloud, install [ffmpeg](https://ffmpeg.org/download.html). To download streams from YouTube, install `youtube-dl`.
 
 ## Example Usage
 

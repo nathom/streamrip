@@ -1,3 +1,5 @@
+"""The streamrip command line interface."""
+
 import logging
 import os
 from getpass import getpass
@@ -34,6 +36,7 @@ if not os.path.isdir(CACHE_DIR):
 @click.option("-t", "--text", metavar="PATH")
 @click.option("-nd", "--no-db", is_flag=True)
 @click.option("--debug", is_flag=True)
+@click.version_option(prog_name="streamrip")
 @click.pass_context
 def cli(ctx, **kwargs):
     """Streamrip: The all-in-one Qobuz, Tidal, SoundCloud, and Deezer music downloader.
@@ -124,7 +127,6 @@ def filter_discography(ctx, **kwargs):
 
     For basic filtering, use the `--repeats` and `--features` filters.
     """
-
     filters = kwargs.copy()
     filters.pop("urls")
     config.session["filters"] = filters
@@ -178,7 +180,7 @@ def search(ctx, **kwargs):
 @click.option("-l", "--list", default="ideal-discography")
 @click.pass_context
 def discover(ctx, **kwargs):
-    """Searches for albums in Qobuz's featured lists.
+    """Search for albums in Qobuz's featured lists.
 
     Avaiable options for `--list`:
 
@@ -229,7 +231,7 @@ def discover(ctx, **kwargs):
 @click.argument("URL")
 @click.pass_context
 def lastfm(ctx, source, url):
-    """Searches for tracks from a last.fm playlist on a given source.
+    """Search for tracks from a last.fm playlist on a given source.
 
     Examples:
 
@@ -241,7 +243,6 @@ def lastfm(ctx, source, url):
 
         Download a playlist using Tidal as the source
     """
-
     if source is not None:
         config.session["lastfm"]["source"] = source
 
@@ -290,8 +291,10 @@ def config(ctx, **kwargs):
 
 
 def none_chosen():
+    """Print message if nothing was chosen."""
     click.secho("No items chosen, exiting.", fg="bright_red")
 
 
 def main():
+    """Run the main program."""
     cli(obj={})

@@ -1,8 +1,11 @@
-"""Manages the information that will be embeded in the audio file. """
+"""Manages the information that will be embeded in the audio file."""
+
+from __future__ import annotations
+
 import logging
 import re
 from collections import OrderedDict
-from typing import Generator, Hashable, Optional, Tuple, Union
+from typing import Generator, Hashable, Iterable, Optional, Union
 
 from .constants import (
     COPYRIGHT,
@@ -22,8 +25,8 @@ logger = logging.getLogger(__name__)
 
 class TrackMetadata:
     """Contains all of the metadata needed to tag the file.
-    Tags contained:
 
+    Tags contained:
         * title
         * artist
         * album
@@ -44,14 +47,15 @@ class TrackMetadata:
         * discnumber
         * tracktotal
         * disctotal
-
     """
 
     def __init__(
-        self, track: Optional[dict] = None, album: Optional[dict] = None, source="qobuz"
+        self,
+        track: Optional[Union[TrackMetadata, dict]] = None,
+        album: Optional[Union[TrackMetadata, dict]] = None,
+        source="qobuz",
     ):
-        """Creates a TrackMetadata object optionally initialized with
-        dicts returned by the Qobuz API.
+        """Create a TrackMetadata object.
 
         :param track: track dict from API
         :type track: Optional[dict]
@@ -59,34 +63,37 @@ class TrackMetadata:
         :type album: Optional[dict]
         """
         # embedded information
-        self.title = None
-        self.album = None
-        self.albumartist = None
-        self.composer = None
-        self.comment = None
-        self.description = None
-        self.purchase_date = None
-        self.grouping = None
-        self.lyrics = None
-        self.encoder = None
-        self.compilation = None
-        self.cover = None
-        self.tracktotal = None
-        self.tracknumber = None
-        self.discnumber = None
-        self.disctotal = None
+        self.title: str
+        self.album: str
+        self.albumartist: str
+        self.composer: Optional[str] = None
+        self.comment: Optional[str] = None
+        self.description: Optional[str] = None
+        self.purchase_date: Optional[str] = None
+        self.grouping: Optional[str] = None
+        self.lyrics: Optional[str] = None
+        self.encoder: Optional[str] = None
+        self.compilation: Optional[str] = None
+        self.cover: Optional[str] = None
+        self.tracktotal: int
+        self.tracknumber: int
+        self.discnumber: int
+        self.disctotal: int
 
         # not included in tags
-        self.explicit = False
-        self.quality = None
-        self.sampling_rate = None
-        self.bit_depth = None
+        self.explicit: Optional[bool] = False
+        self.quality: Optional[int] = None
+        self.sampling_rate: Optional[int] = None
+        self.bit_depth: Optional[int] = None
         self.booklets = None
+        self.cover_urls = Optional[OrderedDict]
+        self.work: Optional[str]
+        self.id: Optional[str]
 
         # Internals
-        self._artist = None
-        self._copyright = None
-        self._genres = None
+        self._artist: Optional[str] = None
+        self._copyright: Optional[str] = None
+        self._genres: Optional[Iterable] = None
 
         self.__source = source
 
@@ -100,9 +107,8 @@ class TrackMetadata:
         elif album is not None:
             self.add_album_meta(album)
 
-    def update(self, meta):
-        """Given a TrackMetadata object (usually from an album), the fields
-        of the current object are updated.
+    def update(self, meta: TrackMetadata):
+        """Update the attributes from another TrackMetadata object.
 
         :param meta:
         :type meta: TrackMetadata
@@ -114,14 +120,13 @@ class TrackMetadata:
                 setattr(self, k, v)
 
     def add_album_meta(self, resp: dict):
-        """Parse the metadata from an resp dict returned by the
-        API.
+        """Parse the metadata from an resp dict returned by the API.
 
         :param dict resp: from API
         """
         if self.__source == "qobuz":
             # Tags
-            self.album = resp.get("title")
+            self.album = resp.get("title", "Unknown Album")
             self.tracktotal = resp.get("tracks_count", 1)
             self.genre = resp.get("genres_list") or resp.get("genre")
             self.date = resp.get("release_date_original") or resp.get("release_date")
@@ -144,7 +149,7 @@ class TrackMetadata:
 
             # Non-embedded information
             self.version = resp.get("version")
-            self.cover_urls = OrderedDict(resp.get("image"))
+            self.cover_urls = OrderedDict(resp["image"])
             self.cover_urls["original"] = self.cover_urls["large"].replace("600", "org")
             self.streamable = resp.get("streamable", False)
             self.bit_depth = resp.get("maximum_bit_depth")
@@ -156,14 +161,14 @@ class TrackMetadata:
                 self.sampling_rate *= 1000
 
         elif self.__source == "tidal":
-            self.album = resp.get("title")
+            self.album = resp.get("title", "Unknown Album")
             self.tracktotal = resp.get("numberOfTracks", 1)
             # genre not returned by API
             self.date = resp.get("releaseDate")
 
             self.copyright = resp.get("copyright")
             self.albumartist = safe_get(resp, "artist", "name")
-            self.disctotal = resp.get("numberOfVolumes")
+            self.disctotal = resp.get("numberOfVolumes", 1)
             self.isrc = resp.get("isrc")
             # label not returned by API
 
@@ -185,8 +190,8 @@ class TrackMetadata:
             self.sampling_rate = 44100
 
         elif self.__source == "deezer":
-            self.album = resp.get("title")
-            self.tracktotal = resp.get("track_total") or resp.get("nb_tracks")
+            self.album = resp.get("title", "Unknown Album")
+            self.tracktotal = resp.get("track_total", 0) or resp.get("nb_tracks", 0)
             self.disctotal = (
                 max(track.get("disk_number") for track in resp.get("tracks", [{}])) or 1
             )
@@ -218,41 +223,37 @@ class TrackMetadata:
             raise InvalidSourceError(self.__source)
 
     def add_track_meta(self, track: dict):
-        """Parse the metadata from a track dict returned by an
-        API.
+        """Parse the metadata from a track dict returned by an API.
 
         :param track:
         """
         if self.__source == "qobuz":
-            self.title = track.get("title").strip()
+            self.title = track["title"].strip()
             self._mod_title(track.get("version"), track.get("work"))
             self.composer = track.get("composer", {}).get("name")
 
             self.tracknumber = track.get("track_number", 1)
             self.discnumber = track.get("media_number", 1)
             self.artist = safe_get(track, "performer", "name")
-            if self.artist is None:
-                self.artist = self.get("albumartist")
 
         elif self.__source == "tidal":
-            self.title = track.get("title").strip()
+            self.title = track["title"].strip()
             self._mod_title(track.get("version"), None)
             self.tracknumber = track.get("trackNumber", 1)
-            self.discnumber = track.get("volumeNumber")
+            self.discnumber = track.get("volumeNumber", 1)
             self.artist = track.get("artist", {}).get("name")
 
         elif self.__source == "deezer":
-            self.title = track.get("title").strip()
+            self.title = track["title"].strip()
             self._mod_title(track.get("version"), None)
             self.tracknumber = track.get("track_position", 1)
-            self.discnumber = track.get("disk_number")
+            self.discnumber = track.get("disk_number", 1)
             self.artist = track.get("artist", {}).get("name")
 
         elif self.__source == "soundcloud":
             self.title = track["title"].strip()
             self.genre = track["genre"]
-            self.artist = track["user"]["username"]
-            self.albumartist = self.artist
+            self.artist = self.albumartist = track["user"]["username"]
             self.year = track["created_at"][:4]
             self.label = track["label_name"]
             self.description = track["description"]
@@ -265,7 +266,14 @@ class TrackMetadata:
         if track.get("album"):
             self.add_album_meta(track["album"])
 
-    def _mod_title(self, version, work):
+    def _mod_title(self, version: Optional[str], work: Optional[str]):
+        """Modify title using the version and work.
+
+        :param version:
+        :type version: str
+        :param work:
+        :type work: str
+        """
         if version is not None:
             self.title = f"{self.title} ({version})"
         if work is not None:
@@ -274,6 +282,10 @@ class TrackMetadata:
 
     @property
     def album(self) -> str:
+        """Return the album of the track.
+
+        :rtype: str
+        """
         assert hasattr(self, "_album"), "Must set album before accessing"
 
         album = self._album
@@ -287,19 +299,21 @@ class TrackMetadata:
         return album
 
     @album.setter
-    def album(self, val) -> str:
+    def album(self, val):
+        """Set the value of the album.
+
+        :param val:
+        """
         self._album = val
 
     @property
     def artist(self) -> Optional[str]:
-        """Returns the value to set for the artist tag. Defaults to
-        `self.albumartist` if there is no track artist.
+        """Return the value to set for the artist tag.
+
+        Defaults to `self.albumartist` if there is no track artist.
 
         :rtype: str
         """
-        if self._artist is None and self.albumartist is not None:
-            return self.albumartist
-
         if self._artist is not None:
             return self._artist
 
@@ -307,7 +321,7 @@ class TrackMetadata:
 
     @artist.setter
     def artist(self, val: str):
-        """Sets the internal artist variable to val.
+        """Set the internal artist variable to val.
 
         :param val:
         :type val: str
@@ -316,10 +330,12 @@ class TrackMetadata:
 
     @property
     def genre(self) -> Optional[str]:
-        """Formats the genre list returned by the Qobuz API.
-        >>> meta.genre = ['Pop/Rock', 'Pop/Rock→Rock', 'Pop/Rock→Rock→Alternatif et Indé']
-        >>> meta.genre
-        'Pop, Rock, Alternatif et Indé'
+        """Format the genre list returned by an API.
+
+        It cleans up the Qobuz Response:
+            >>> meta.genre = ['Pop/Rock', 'Pop/Rock→Rock', 'Pop/Rock→Rock→Alternatif et Indé']
+            >>> meta.genre
+            'Pop, Rock, Alternatif et Indé'
 
         :rtype: str
         """
@@ -331,7 +347,7 @@ class TrackMetadata:
 
         if isinstance(self._genres, list):
             if self.__source == "qobuz":
-                genres = re.findall(r"([^\u2192\/]+)", "/".join(self._genres))
+                genres: Iterable = re.findall(r"([^\u2192\/]+)", "/".join(self._genres))
                 genres = set(genres)
             elif self.__source == "deezer":
                 genres = ", ".join(g["name"] for g in self._genres)
@@ -344,8 +360,9 @@ class TrackMetadata:
         raise TypeError(f"Genre must be list or str, not {type(self._genres)}")
 
     @genre.setter
-    def genre(self, val: Union[str, list]):
-        """Sets the internal `genre` field to the given list.
+    def genre(self, val: Union[Iterable, dict]):
+        """Set the internal `genre` field to the given list.
+
         It is not formatted until it is requested with `meta.genre`.
 
         :param val:
@@ -354,25 +371,25 @@ class TrackMetadata:
         self._genres = val
 
     @property
-    def copyright(self) -> Union[str, None]:
-        """Formats the copyright string to use nice-looking unicode
-        characters.
+    def copyright(self) -> Optional[str]:
+        """Format the copyright string to use unicode characters.
 
         :rtype: str, None
         """
         if hasattr(self, "_copyright"):
             if self._copyright is None:
                 return None
-            copyright = re.sub(r"(?i)\(P\)", PHON_COPYRIGHT, self._copyright)
+            copyright: str = re.sub(r"(?i)\(P\)", PHON_COPYRIGHT, self._copyright)
             copyright = re.sub(r"(?i)\(C\)", COPYRIGHT, copyright)
             return copyright
 
-        logger.debug("Accessed copyright tag before setting, return None")
+        logger.debug("Accessed copyright tag before setting, returning None")
         return None
 
     @copyright.setter
     def copyright(self, val: str):
-        """Sets the internal copyright variable to the given value.
+        """Set the internal copyright variable to the given value.
+
         Only formatted when requested.
 
         :param val:
@@ -382,7 +399,7 @@ class TrackMetadata:
 
     @property
     def year(self) -> Optional[str]:
-        """Returns the year published of the track.
+        """Return the year published of the track.
 
         :rtype: str
         """
@@ -397,14 +414,14 @@ class TrackMetadata:
 
     @year.setter
     def year(self, val):
-        """Sets the internal year variable to val.
+        """Set the internal year variable to val.
 
         :param val:
         """
         self._year = val
 
     def get_formatter(self) -> dict:
-        """Returns a dict that is used to apply values to file format strings.
+        """Return a dict that is used to apply values to file format strings.
 
         :rtype: dict
         """
@@ -412,21 +429,22 @@ class TrackMetadata:
         return {k: getattr(self, k) for k in TRACK_KEYS}
 
     def tags(self, container: str = "flac") -> Generator:
-        """Return a generator of (key, value) pairs to use for tagging
-        files with mutagen. The *_KEY dicts are organized in the format
+        """Create a generator of key, value pairs for use with mutagen.
 
-        >>> {attribute_name: key_to_use_for_metadata}
+        The *_KEY dicts are organized in the format:
+
+            >>> {attribute_name: key_to_use_for_metadata}
 
         They are then converted to the format
 
-        >>> {key_to_use_for_metadata: value_of_attribute}
+            >>> {key_to_use_for_metadata: value_of_attribute}
 
         so that they can be used like this:
 
-        >>> audio = MP4(path)
-        >>> for k, v in meta.tags(container='MP4'):
-        ...     audio[k] = v
-        >>> audio.save()
+            >>> audio = MP4(path)
+            >>> for k, v in meta.tags(container='MP4'):
+            ...     audio[k] = v
+            >>> audio.save()
 
         :param container: the container format
         :type container: str
@@ -442,7 +460,7 @@ class TrackMetadata:
 
         raise InvalidContainerError(f"Invalid container {container}")
 
-    def __gen_flac_tags(self) -> Tuple[str, str]:
+    def __gen_flac_tags(self) -> Generator:
         """Generate key, value pairs to tag FLAC files.
 
         :rtype: Tuple[str, str]
@@ -456,7 +474,7 @@ class TrackMetadata:
                 logger.debug("Adding tag %s: %s", v, tag)
                 yield (v, str(tag))
 
-    def __gen_mp3_tags(self) -> Tuple[str, str]:
+    def __gen_mp3_tags(self) -> Generator:
         """Generate key, value pairs to tag MP3 files.
 
         :rtype: Tuple[str, str]
@@ -472,9 +490,8 @@ class TrackMetadata:
             if text is not None and v is not None:
                 yield (v.__name__, v(encoding=3, text=text))
 
-    def __gen_mp4_tags(self) -> Tuple[str, Union[str, int, tuple]]:
-        """Generate key, value pairs to tag ALAC or AAC files in
-        an MP4 container.
+    def __gen_mp4_tags(self) -> Generator:
+        """Generate key, value pairs to tag ALAC or AAC files.
 
         :rtype: Tuple[str, str]
         """
@@ -490,6 +507,10 @@ class TrackMetadata:
                 yield (v, text)
 
     def asdict(self) -> dict:
+        """Return a dict representation of self.
+
+        :rtype: dict
+        """
         ret = {}
         for attr in dir(self):
             if not attr.startswith("_") and not callable(getattr(self, attr)):
@@ -512,9 +533,8 @@ class TrackMetadata:
         """
         return getattr(self, key)
 
-    def get(self, key, default=None) -> str:
-        """Returns the requested attribute of the object, with
-        a default value.
+    def get(self, key, default=None):
+        """Return the requested attribute of the object, with a default value.
 
         :param key:
         :param default:
@@ -529,8 +549,10 @@ class TrackMetadata:
         return default
 
     def set(self, key, val) -> str:
-        """Equivalent to
-        >>> meta[key] = val
+        """Set an attribute.
+
+        Equivalent to:
+            >>> meta[key] = val
 
         :param key:
         :param val:
@@ -539,10 +561,16 @@ class TrackMetadata:
         return self.__setitem__(key, val)
 
     def __hash__(self) -> int:
+        """Get a hash of this.
+
+        Warning: slow.
+
+        :rtype: int
+        """
         return sum(hash(v) for v in self.asdict().values() if isinstance(v, Hashable))
 
     def __repr__(self) -> str:
-        """Returns the string representation of the metadata object.
+        """Return the string representation of the metadata object.
 
         :rtype: str
         """

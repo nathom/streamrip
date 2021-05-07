@@ -1,4 +1,6 @@
-"""These are the lower level classes that are handled by Album, Playlist,
+"""Bases that handle parsing and downloading media.
+
+These are the lower level classes that are handled by Album, Playlist,
 and the other objects. They can also be downloaded individually, for example,
 as a single track.
 """
@@ -86,6 +88,10 @@ class Track:
         self.downloaded = False
         self.tagged = False
         self.converted = False
+
+        self.final_path: str
+        self.container: str
+
         # TODO: find better solution
         for attr in ("quality", "folder", "meta"):
             setattr(self, attr, None)
@@ -99,7 +105,6 @@ class Track:
 
     def load_meta(self):
         """Send a request to the client to get metadata for this Track."""
-
         assert self.id is not None, "id must be set before loading metadata"
 
         self.resp = self.client.get(self.id, media_type="track")
@@ -124,7 +129,8 @@ class Track:
             self.cover_url = None
 
     def _prepare_download(self, **kwargs):
-        """This function does preprocessing to prepare for downloading tracks.
+        """Do preprocessing before downloading items.
+
         It creates the directories, downloads cover art, and (optionally)
         downloads booklets.
 
@@ -198,6 +204,7 @@ class Track:
             return False
 
         if self.client.source == "qobuz":
+            assert isinstance(dl_info, dict)  # for typing
             if not self.__validate_qobuz_dl_info(dl_info):
                 click.secho("Track is not available for download", fg="red")
                 return False
@@ -207,6 +214,7 @@ class Track:
 
         # --------- Download Track ----------
         if self.client.source in ("qobuz", "tidal", "deezer"):
+            assert isinstance(dl_info, dict)
             logger.debug("Downloadable URL found: %s", dl_info.get("url"))
             try:
                 tqdm_download(
@@ -214,11 +222,12 @@ class Track:
                 )  # downloads file
             except NonStreamable:
                 click.secho(
-                    "Track {self!s} is not available for download, skipping.", fg="red"
+                    f"Track {self!s} is not available for download, skipping.", fg="red"
                 )
                 return False
 
         elif self.client.source == "soundcloud":
+            assert isinstance(dl_info, dict)
             self._soundcloud_download(dl_info)
 
         else:
@@ -236,12 +245,10 @@ class Track:
         if not kwargs.get("stay_temp", False):
             self.move(self.final_path)
 
-        try:
-            database = kwargs.get("database")
+        database = kwargs.get("database")
+        if database:
             database.add(self.id)
             logger.debug(f"{self.id} added to database")
-        except AttributeError:  # assume database=None was passed
-            pass
 
         logger.debug("Downloaded: %s -> %s", self.path, self.final_path)
 
@@ -264,7 +271,7 @@ class Track:
         )
 
     def move(self, path: str):
-        """Moves the Track and sets self.path to the new path.
+        """Move the Track and set self.path to the new path.
 
         :param path:
         :type path: str
@@ -273,9 +280,11 @@ class Track:
         shutil.move(self.path, path)
         self.path = path
 
-    def _soundcloud_download(self, dl_info: dict) -> str:
-        """Downloads a soundcloud track. This requires a seperate function
-        because there are three methods that can be used to download a track:
+    def _soundcloud_download(self, dl_info: dict):
+        """Download a soundcloud track.
+
+        This requires a seperate function because there are three methods that
+        can be used to download a track:
             * original file downloads
             * direct mp3 downloads
             * hls stream ripping
@@ -314,15 +323,14 @@ class Track:
 
     @property
     def _progress_desc(self) -> str:
-        """The description that is used on the progress bar.
+        """Get the description that is used on the progress bar.
 
         :rtype: str
         """
         return click.style(f"Track {int(self.meta.tracknumber):02}", fg="blue")
 
     def download_cover(self):
-        """Downloads the cover art, if cover_url is given."""
-
+        """Download the cover art, if cover_url is given."""
         if not hasattr(self, "cover_url"):
             return False
 
@@ -357,8 +365,7 @@ class Track:
 
     @classmethod
     def from_album_meta(cls, album: TrackMetadata, track: dict, client: Client):
-        """Return a new Track object initialized with info from the album dicts
-        returned by client.get calls.
+        """Return a new Track object initialized with info.
 
         :param album: album metadata returned by API
         :param pos: index of the track
@@ -366,14 +373,12 @@ class Track:
         :type client: Client
         :raises IndexError
         """
-
         meta = TrackMetadata(album=album, track=track, source=client.source)
         return cls(client=client, meta=meta, id=track["id"])
 
     @classmethod
     def from_api(cls, item: dict, client: Client):
-        """Given a track dict from an API, return a new Track object
-        initialized with the proper values.
+        """Return a new Track initialized from search result.
 
         :param item:
         :type item: dict
@@ -401,7 +406,7 @@ class Track:
             cover_url=cover_url,
         )
 
-    def tag(
+    def tag(  # noqa
         self,
         album_meta: dict = None,
         cover: Union[Picture, APIC, MP4Cover] = None,
@@ -496,7 +501,7 @@ class Track:
         self.tagged = True
 
     def convert(self, codec: str = "ALAC", **kwargs):
-        """Converts the track to another codec.
+        """Convert the track to another codec.
 
         Valid values for codec:
             * FLAC
@@ -560,7 +565,7 @@ class Track:
 
     @property
     def title(self) -> str:
-        """The title of the track.
+        """Get the title of the track.
 
         :rtype: str
         """
@@ -581,8 +586,9 @@ class Track:
         return safe_get(self.meta, *keys, default=default)
 
     def set(self, key, val):
-        """Equivalent to __setitem__. Implemented only for
-        consistency.
+        """Set attribute `key` to `val`.
+
+        Equivalent to __setitem__. Implemented only for consistency.
 
         :param key:
         :param val:
@@ -612,8 +618,7 @@ class Track:
         return f"<Track - {self['title']}>"
 
     def __str__(self) -> str:
-        """Return a readable string representation of
-        this track.
+        """Return a readable string representation of this track.
 
         :rtype: str
         """
@@ -624,6 +629,14 @@ class Video:
     """Only for Tidal."""
 
     def __init__(self, client: Client, id: str, **kwargs):
+        """Initialize a Video object.
+
+        :param client:
+        :type client: Client
+        :param id: The TIDAL Video ID
+        :type id: str
+        :param kwargs: title, explicit, and tracknumber
+        """
         self.id = id
         self.client = client
         self.title = kwargs.get("title", "MusicVideo")
@@ -654,12 +667,21 @@ class Video:
 
         return False  # so that it is not tagged
 
+    def tag(self, *args, **kwargs):
+        """Return False.
+
+        This is a dummy method.
+
+        :param args:
+        :param kwargs:
+        """
+        return False
+
     @classmethod
     def from_album_meta(cls, track: dict, client: Client):
-        """Given an video response dict from an album, return a new
-        Video object from the information.
+        """Return a new Video object given an album API response.
 
-        :param track:
+        :param track: track dict from album
         :type track: dict
         :param client:
         :type client: Client
@@ -674,7 +696,7 @@ class Video:
 
     @property
     def path(self) -> str:
-        """The path to download the mp4 file.
+        """Get path to download the mp4 file.
 
         :rtype: str
         """
@@ -688,9 +710,17 @@ class Video:
         return os.path.join(self.parent_folder, f"{fname}.mp4")
 
     def __str__(self) -> str:
+        """Return the title.
+
+        :rtype: str
+        """
         return self.title
 
     def __repr__(self) -> str:
+        """Return a string representation of self.
+
+        :rtype: str
+        """
         return f"<Video - {self.title}>"
 
 
@@ -698,9 +728,9 @@ class Booklet:
     """Only for Qobuz."""
 
     def __init__(self, resp: dict):
-        """Initialized from the `goodies` field of the Qobuz API
-        response.
+        """Initialize from the `goodies` field of the Qobuz API response.
 
+        Usage:
         >>> album_meta = client.get('v4m7e0qiorycb', 'album')
         >>> booklet = Booklet(album_meta['goodies'][0])
         >>> booklet.download()
@@ -708,6 +738,9 @@ class Booklet:
         :param resp:
         :type resp: dict
         """
+        self.url: str
+        self.description: str
+
         self.__dict__.update(resp)
 
     def download(self, parent_folder: str, **kwargs):
@@ -734,8 +767,7 @@ class Tracklist(list):
     essence_regex = re.compile(r"([^\(]+)(?:\s*[\(\[][^\)][\)\]])*")
 
     def download(self, **kwargs):
-        """Uses the _prepare_download and _download_item methods to download
-        all of the tracks contained in the Tracklist.
+        """Download all of the items in the tracklist.
 
         :param kwargs:
         """
@@ -774,7 +806,7 @@ class Tracklist(list):
         self.downloaded = True
 
     def _download_and_convert_item(self, item, **kwargs):
-        """Downloads and converts an item.
+        """Download and convert an item.
 
         :param item:
         :param kwargs: should contain a `conversion` dict.
@@ -782,7 +814,7 @@ class Tracklist(list):
         if self._download_item(item, **kwargs):
             item.convert(**kwargs["conversion"])
 
-    def _download_item(item, **kwargs):
+    def _download_item(item, *args: Any, **kwargs: Any) -> bool:
         """Abstract method.
 
         :param item:
@@ -798,7 +830,7 @@ class Tracklist(list):
         raise NotImplementedError
 
     def get(self, key: Union[str, int], default=None):
-        """A safe `get` method similar to `dict.get`.
+        """Get an item if key is int, otherwise get an attr.
 
         :param key: If it is a str, get an attribute. If an int, get the item
         at the index.
@@ -826,13 +858,14 @@ class Tracklist(list):
         self.__setitem__(key, val)
 
     def convert(self, codec="ALAC", **kwargs):
-        """Converts every item in `self`.
+        """Convert every item in `self`.
+
         Deprecated. Use _download_and_convert_item instead.
 
         :param codec:
         :param kwargs:
         """
-        if (sr := kwargs.get("sampling_rate")) :
+        if sr := kwargs.get("sampling_rate"):
             if sr < 44100:
                 logger.warning(
                     "Sampling rate %d is lower than 44.1kHz."
@@ -847,8 +880,7 @@ class Tracklist(list):
 
     @classmethod
     def from_api(cls, item: dict, client: Client):
-        """Create an Album object from the api response of Qobuz, Tidal,
-        or Deezer.
+        """Create an Album object from an API response.
 
         :param resp: response dict
         :type resp: dict
@@ -858,18 +890,15 @@ class Tracklist(list):
         info = cls._parse_get_resp(item, client=client)
 
         # equivalent to Album(client=client, **info)
-        return cls(client=client, **info)
+        return cls(client=client, **info)  # type: ignore
 
     @staticmethod
-    def get_cover_obj(
-        cover_path: str, container: str, source: str
-    ) -> Union[Picture, APIC]:
-        """Given the path to an image and a quality id, return an initialized
-        cover object that can be used for every track in the album.
+    def get_cover_obj(cover_path: str, container: str, source: str):
+        """Return an initialized cover object that is reused for every track.
 
-        :param cover_path:
+        :param cover_path: Path to the image, must be a JPEG.
         :type cover_path: str
-        :param quality:
+        :param quality: quality ID
         :type quality: int
         :rtype: Union[Picture, APIC]
         """
@@ -907,8 +936,8 @@ class Tracklist(list):
             with open(cover_path, "rb") as img:
                 return cover(img.read(), imageformat=MP4Cover.FORMAT_JPEG)
 
-    def download_message(self) -> str:
-        """The message to display after calling `Tracklist.download`.
+    def download_message(self):
+        """Get the message to display after calling `Tracklist.download`.
 
         :rtype: str
         """
@@ -929,6 +958,7 @@ class Tracklist(list):
     @staticmethod
     def essence(album: str) -> str:
         """Ignore text in parens/brackets, return all lowercase.
+
         Used to group two albums that may be named similarly, but not exactly
         the same.
         """
@@ -938,14 +968,23 @@ class Tracklist(list):
 
         return album
 
-    def __getitem__(self, key: Union[str, int]):
+    def __getitem__(self, key):
+        """Get an item if key is int, otherwise get an attr.
+
+        :param key:
+        """
         if isinstance(key, str):
             return getattr(self, key)
 
         if isinstance(key, int):
             return super().__getitem__(key)
 
-    def __setitem__(self, key: Union[str, int], val: Any):
+    def __setitem__(self, key, val):
+        """Set an item if key is int, otherwise set an attr.
+
+        :param key:
+        :param val:
+        """
         if isinstance(key, str):
             setattr(self, key, val)
 
@@ -957,19 +996,37 @@ class YoutubeVideo:
     """Dummy class implemented for consistency with the Media API."""
 
     class DummyClient:
+        """Used because YouTube downloads use youtube-dl, not a client."""
+
         source = "youtube"
 
     def __init__(self, url: str):
+        """Create a YoutubeVideo object.
+
+        :param url: URL to the youtube video.
+        :type url: str
+        """
         self.url = url
         self.client = self.DummyClient()
 
     def download(
         self,
-        parent_folder="StreamripDownloads",
-        download_youtube_videos=False,
-        youtube_video_downloads_folder="StreamripDownloads",
+        parent_folder: str = "StreamripDownloads",
+        download_youtube_videos: bool = False,
+        youtube_video_downloads_folder: str = "StreamripDownloads",
         **kwargs,
     ):
+        """Download the video using 'youtube-dl'.
+
+        :param parent_folder:
+        :type parent_folder: str
+        :param download_youtube_videos: True if the video should be downloaded.
+        :type download_youtube_videos: bool
+        :param youtube_video_downloads_folder: Folder to put videos if
+        downloaded.
+        :type youtube_video_downloads_folder: str
+        :param kwargs:
+        """
         click.secho(f"Downloading url {self.url}", fg="blue")
         filename_formatter = "%(track_number)s.%(track)s.%(container)s"
         filename = os.path.join(parent_folder, filename_formatter)
@@ -1006,7 +1063,21 @@ class YoutubeVideo:
         p.wait()
 
     def load_meta(self, *args, **kwargs):
+        """Return None.
+
+        Dummy method.
+
+        :param args:
+        :param kwargs:
+        """
         pass
 
     def tag(self, *args, **kwargs):
+        """Return None.
+
+        Dummy method.
+
+        :param args:
+        :param kwargs:
+        """
         pass

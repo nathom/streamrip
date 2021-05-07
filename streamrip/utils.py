@@ -1,3 +1,5 @@
+"""Miscellaneous utility functions."""
+
 import base64
 import contextlib
 import logging
@@ -5,7 +7,7 @@ import os
 import re
 import sys
 from string import Formatter
-from typing import Hashable, Optional, Union
+from typing import Dict, Hashable, Optional, Union
 
 import click
 import requests
@@ -24,12 +26,20 @@ logger = logging.getLogger(__name__)
 
 
 def safe_get(d: dict, *keys: Hashable, default=None):
-    """A replacement for chained `get()` statements on dicts:
-    >>> d = {'foo': {'bar': 'baz'}}
-    >>> _safe_get(d, 'baz')
-    None
-    >>> _safe_get(d, 'foo', 'bar')
-    'baz'
+    """Traverse dict layers safely.
+
+    Usage:
+        >>> d = {'foo': {'bar': 'baz'}}
+        >>> _safe_get(d, 'baz')
+        None
+        >>> _safe_get(d, 'foo', 'bar')
+        'baz'
+
+    :param d:
+    :type d: dict
+    :param keys:
+    :type keys: Hashable
+    :param default: the default value to use if a key isn't found
     """
     curr = d
     res = default
@@ -43,15 +53,15 @@ def safe_get(d: dict, *keys: Hashable, default=None):
 
 
 def get_quality(quality_id: int, source: str) -> Union[str, int]:
-    """Given the quality id in (0, 1, 2, 3, 4), return the streaming quality
-    value to send to the api for a given source.
+    """Get the source-specific quality id.
 
-    :param quality_id: the quality id
+    :param quality_id: the universal quality id (0, 1, 2, 4)
     :type quality_id: int
     :param source: qobuz, tidal, or deezer
     :type source: str
     :rtype: Union[str, int]
     """
+    q_map: Dict[int, Union[int, str]]
     if source == "qobuz":
         q_map = {
             1: 5,
@@ -81,15 +91,15 @@ def get_quality(quality_id: int, source: str) -> Union[str, int]:
 
 
 def get_quality_id(bit_depth: Optional[int], sampling_rate: Optional[int]):
-    """Return a quality id in (5, 6, 7, 27) from bit depth and
-    sampling rate. If None is provided, mp3/lossy is assumed.
+    """Get the universal quality id from bit depth and sampling rate.
 
     :param bit_depth:
     :type bit_depth: Optional[int]
     :param sampling_rate:
     :type sampling_rate: Optional[int]
     """
-    if not (bit_depth or sampling_rate):  # is lossy
+    # XXX: Should `0` quality be supported?
+    if bit_depth is None or sampling_rate is None:  # is lossy
         return 1
 
     if bit_depth == 16:
@@ -102,22 +112,8 @@ def get_quality_id(bit_depth: Optional[int], sampling_rate: Optional[int]):
         return 4
 
 
-@contextlib.contextmanager
-def std_out_err_redirect_tqdm():
-    orig_out_err = sys.stdout, sys.stderr
-    try:
-        sys.stdout, sys.stderr = map(DummyTqdmFile, orig_out_err)
-        yield orig_out_err[0]
-    # Relay exceptions
-    except Exception as exc:
-        raise exc
-    # Always restore sys.stdout/err if necessary
-    finally:
-        sys.stdout, sys.stderr = orig_out_err
-
-
 def tqdm_download(url: str, filepath: str, params: dict = None, desc: str = None):
-    """Downloads a file with a progress bar.
+    """Download a file with a progress bar.
 
     :param url: url to direct download
     :param filepath: file to write
@@ -157,7 +153,7 @@ def tqdm_download(url: str, filepath: str, params: dict = None, desc: str = None
 
 
 def clean_format(formatter: str, format_info):
-    """Formats track or folder names sanitizing every formatter key.
+    """Format track or folder names sanitizing every formatter key.
 
     :param formatter:
     :type formatter: str
@@ -180,6 +176,11 @@ def clean_format(formatter: str, format_info):
 
 
 def tidal_cover_url(uuid, size):
+    """Generate a tidal cover url.
+
+    :param uuid:
+    :param size:
+    """
     possibles = (80, 160, 320, 640, 1280)
     assert size in possibles, f"size must be in {possibles}"
 
@@ -202,6 +203,12 @@ def init_log(path: Optional[str] = None, level: str = "DEBUG"):
 
 
 def decrypt_mqa_file(in_path, out_path, encryption_key):
+    """Decrypt an MQA file.
+
+    :param in_path:
+    :param out_path:
+    :param encryption_key:
+    """
     # Do not change this
     master_key = "UIlTTEMmmLfGowo/UC60x2H45W6MdGgTRfo/umg4754="
 
@@ -233,6 +240,13 @@ def decrypt_mqa_file(in_path, out_path, encryption_key):
 
 
 def ext(quality: int, source: str):
+    """Get the extension of an audio file.
+
+    :param quality:
+    :type quality: int
+    :param source:
+    :type source: str
+    """
     if quality <= 1:
         if source == "tidal":
             return ".m4a"
@@ -245,6 +259,16 @@ def ext(quality: int, source: str):
 def gen_threadsafe_session(
     headers: dict = None, pool_connections: int = 100, pool_maxsize: int = 100
 ) -> requests.Session:
+    """Create a new Requests session with a large poolsize.
+
+    :param headers:
+    :type headers: dict
+    :param pool_connections:
+    :type pool_connections: int
+    :param pool_maxsize:
+    :type pool_maxsize: int
+    :rtype: requests.Session
+    """
     if headers is None:
         headers = {}
 
@@ -266,6 +290,9 @@ def decho(message, fg=None):
     logger.debug(message)
 
 
+interpreter_artist_regex = re.compile(r"getSimilarArtist\(\s*'(\w+)'")
+
+
 def extract_interpreter_url(url: str) -> str:
     """Extract artist ID from a Qobuz interpreter url.
 
@@ -275,13 +302,20 @@ def extract_interpreter_url(url: str) -> str:
     """
     session = gen_threadsafe_session({"User-Agent": AGENT})
     r = session.get(url)
-    artist_id = re.search(r"getSimilarArtist\(\s*'(\w+)'", r.text).group(1)
-    return artist_id
+    match = interpreter_artist_regex.search(r.text)
+    if match:
+        return match.group(1)
+
+    raise Exception(
+        "Unable to extract artist id from interpreter url. Use a "
+        "url that contains an artist id."
+    )
 
 
 def get_container(quality: int, source: str) -> str:
-    """Get the "container" given the quality. `container` can also be the
-    the codec; both work.
+    """Get the file container given the quality.
+
+    `container` can also be the the codec; both work.
 
     :param quality: quality id
     :type quality: int
@@ -290,11 +324,9 @@ def get_container(quality: int, source: str) -> str:
     :rtype: str
     """
     if quality >= 2:
-        container = "FLAC"
-    else:
-        if source == "tidal":
-            container = "AAC"
-        else:
-            container = "MP3"
+        return "FLAC"
 
-    return container
+    if source == "tidal":
+        return "AAC"
+
+    return "MP3"

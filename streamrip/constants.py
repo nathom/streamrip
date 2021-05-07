@@ -1,3 +1,5 @@
+"""Constants that are kept in one place."""
+
 import os
 from pathlib import Path
 
@@ -68,6 +70,7 @@ __MP4_KEYS = (
     "disk",
     None,
     None,
+    None,
 )
 
 __MP3_KEYS = (
@@ -89,6 +92,7 @@ __MP3_KEYS = (
     None,
     id3.TRCK,
     id3.TPOS,
+    None,
     None,
     None,
 )
@@ -114,6 +118,7 @@ __METADATA_TYPES = (
     "discnumber",
     "tracktotal",
     "disctotal",
+    "date",
 )
 
 

@@ -1,13 +1,13 @@
-"""These classes parse information from Clients into a universal,
-downloadable form.
-"""
+"""These classes parse information from Clients into a universal, downloadable form."""
+
+from __future__ import annotations
 
 import functools
 import logging
 import os
 import re
 from tempfile import gettempdir
-from typing import Dict, Generator, Iterable, Union
+from typing import Dict, Generator, Iterable, Optional, Union
 
 import click
 from pathvalidate import sanitize_filename
@@ -52,7 +52,11 @@ class Album(Tracklist):
 
         self.sampling_rate = None
         self.bit_depth = None
-        self.container = None
+        self.container: Optional[str] = None
+
+        self.disctotal: int
+        self.tracktotal: int
+        self.albumartist: str
 
         # usually an unpacked TrackMetadata.asdict()
         self.__dict__.update(kwargs)
@@ -66,7 +70,6 @@ class Album(Tracklist):
 
     def load_meta(self):
         """Load detailed metadata from API using the id."""
-
         assert hasattr(self, "id"), "id must be set to load metadata"
         resp = self.client.get(self.id, media_type="album")
 
@@ -82,6 +85,13 @@ class Album(Tracklist):
 
     @classmethod
     def from_api(cls, resp: dict, client: Client):
+        """Create an Album object from an API response.
+
+        :param resp:
+        :type resp: dict
+        :param client:
+        :type client: Client
+        """
         if client.source == "soundcloud":
             return Playlist.from_api(resp, client)
 
@@ -89,6 +99,10 @@ class Album(Tracklist):
         return cls(client, **info.asdict())
 
     def _prepare_download(self, **kwargs):
+        """Prepare the download of the album.
+
+        :param kwargs:
+        """
         # Generate the folder name
         self.folder_format = kwargs.get("folder_format", FOLDER_FORMAT)
         self.quality = min(kwargs.get("quality", 3), self.client.max_quality)
@@ -146,13 +160,24 @@ class Album(Tracklist):
             for item in self.booklets:
                 Booklet(item).download(parent_folder=self.folder)
 
-    def _download_item(
+    def _download_item(  # type: ignore
         self,
         track: Union[Track, Video],
         quality: int = 3,
         database: MusicDB = None,
         **kwargs,
     ) -> bool:
+        """Download an item.
+
+        :param track: The item.
+        :type track: Union[Track, Video]
+        :param quality:
+        :type quality: int
+        :param database:
+        :type database: MusicDB
+        :param kwargs:
+        :rtype: bool
+        """
         logger.debug("Downloading track to %s", self.folder)
         if self.disctotal > 1 and isinstance(track, Track):
             disc_folder = os.path.join(self.folder, f"Disc {track.meta.discnumber}")
@@ -171,7 +196,7 @@ class Album(Tracklist):
         return True
 
     @staticmethod
-    def _parse_get_resp(resp: dict, client: Client) -> dict:
+    def _parse_get_resp(resp: dict, client: Client) -> TrackMetadata:
         """Parse information from a client.get(query, 'album') call.
 
         :param resp:
@@ -183,8 +208,7 @@ class Album(Tracklist):
         return meta
 
     def _load_tracks(self, resp):
-        """Given an album metadata dict returned by the API, append all of its
-        tracks to `self`.
+        """Load the tracks into self from an API response.
 
         This uses a classmethod to convert an item into a Track object, which
         stores the metadata inside a TrackMetadata object.
@@ -208,6 +232,10 @@ class Album(Tracklist):
                 )
 
     def _get_formatter(self) -> dict:
+        """Get a formatter that is used for previews in core.py.
+
+        :rtype: dict
+        """
         fmt = dict()
         for key in ALBUM_KEYS:
             # default to None
@@ -222,6 +250,14 @@ class Album(Tracklist):
         return fmt
 
     def _get_formatted_folder(self, parent_folder: str, quality: int) -> str:
+        """Generate the folder name for this album.
+
+        :param parent_folder:
+        :type parent_folder: str
+        :param quality:
+        :type quality: int
+        :rtype: str
+        """
         # necessary to format the folder
         self.container = get_container(quality, self.client.source)
         if self.container in ("AAC", "MP3"):
@@ -234,10 +270,19 @@ class Album(Tracklist):
 
     @property
     def title(self) -> str:
+        """Get the title of the album.
+
+        :rtype: str
+        """
         return self.album
 
     @title.setter
     def title(self, val: str):
+        """Set the title of the Album.
+
+        :param val:
+        :type val: str
+        """
         self.album = val
 
     def __repr__(self) -> str:
@@ -252,17 +297,21 @@ class Album(Tracklist):
         return f"<Album: V/A - {self.title}>"
 
     def __str__(self) -> str:
-        """Return a readable string representation of
-        this album.
+        """Return a readable string representation of this album.
 
         :rtype: str
         """
         return f"{self['albumartist']} - {self['title']}"
 
     def __len__(self) -> int:
+        """Get the length of the album.
+
+        :rtype: int
+        """
         return self.tracktotal
 
     def __hash__(self):
+        """Hash the album."""
         return hash(self.id)
 
 
@@ -297,8 +346,7 @@ class Playlist(Tracklist):
 
     @classmethod
     def from_api(cls, resp: dict, client: Client):
-        """Return a Playlist object initialized with information from
-        a search result returned by the API.
+        """Return a Playlist object from an API response.
 
         :param resp: a single search result entry of a playlist
         :type resp: dict
@@ -321,7 +369,7 @@ class Playlist(Tracklist):
         self.loaded = True
 
     def _load_tracks(self, new_tracknumbers: bool = True):
-        """Parses the tracklist returned by the API.
+        """Parse the tracklist returned by the API.
 
         :param new_tracknumbers: replace tracknumber tag with playlist position
         :type new_tracknumbers: bool
@@ -409,7 +457,7 @@ class Playlist(Tracklist):
         self.__download_index = 1  # used for tracknumbers
         self.download_message()
 
-    def _download_item(self, item: Track, **kwargs):
+    def _download_item(self, item: Track, **kwargs) -> bool:  # type: ignore
         kwargs["parent_folder"] = self.folder
         if self.client.source == "soundcloud":
             item.load_meta()
@@ -433,8 +481,7 @@ class Playlist(Tracklist):
 
     @staticmethod
     def _parse_get_resp(item: dict, client: Client) -> dict:
-        """Parses information from a search result returned
-        by a client.search call.
+        """Parse information from a search result returned by a client.search call.
 
         :param item:
         :type item: dict
@@ -469,6 +516,10 @@ class Playlist(Tracklist):
 
     @property
     def title(self) -> str:
+        """Get the title.
+
+        :rtype: str
+        """
         return self.name
 
     def __repr__(self) -> str:
@@ -479,8 +530,7 @@ class Playlist(Tracklist):
         return f"<Playlist: {self.name}>"
 
     def __str__(self) -> str:
-        """Return a readable string representation of
-        this track.
+        """Return a readable string representation of this track.
 
         :rtype: str
         """
@@ -524,13 +574,18 @@ class Artist(Tracklist):
 
     # override
     def download(self, **kwargs):
+        """Download all items in self.
+
+        :param kwargs:
+        """
         iterator = self._prepare_download(**kwargs)
         for item in iterator:
             self._download_item(item, **kwargs)
 
     def _load_albums(self):
-        """From the discography returned by client.get(query, 'artist'),
-        generate album objects and append them to self.
+        """Load Album objects to self.
+
+        This parses the response of client.get(query, 'artist') responses.
         """
         if self.client.source == "qobuz":
             self.name = self.meta["name"]
@@ -554,13 +609,23 @@ class Artist(Tracklist):
     def _prepare_download(
         self, parent_folder: str = "StreamripDownloads", filters: tuple = (), **kwargs
     ) -> Iterable:
+        """Prepare the download.
+
+        :param parent_folder:
+        :type parent_folder: str
+        :param filters:
+        :type filters: tuple
+        :param kwargs:
+        :rtype: Iterable
+        """
         folder = sanitize_filename(self.name)
-        folder = os.path.join(parent_folder, folder)
+        self.folder = os.path.join(parent_folder, folder)
 
         logger.debug("Artist folder: %s", folder)
         logger.debug(f"Length of tracklist {len(self)}")
         logger.debug(f"Filters: {filters}")
 
+        final: Iterable
         if "repeats" in filters:
             final = self._remove_repeats(bit_depth=max, sampling_rate=min)
             filters = tuple(f for f in filters if f != "repeats")
@@ -575,7 +640,7 @@ class Artist(Tracklist):
         self.download_message()
         return final
 
-    def _download_item(
+    def _download_item(  # type: ignore
         self,
         item,
         parent_folder: str = "StreamripDownloads",
@@ -583,15 +648,27 @@ class Artist(Tracklist):
         database: MusicDB = None,
         **kwargs,
     ) -> bool:
+        """Download an item.
+
+        :param item:
+        :param parent_folder:
+        :type parent_folder: str
+        :param quality:
+        :type quality: int
+        :param database:
+        :type database: MusicDB
+        :param kwargs:
+        :rtype: bool
+        """
         try:
             item.load_meta()
         except NonStreamable:
             logger.info("Skipping album, not available to stream.")
-            return
+            return False
 
         # always an Album
         status = item.download(
-            parent_folder=parent_folder,
+            parent_folder=self.folder,
             quality=quality,
             database=database,
             **kwargs,
@@ -600,12 +677,17 @@ class Artist(Tracklist):
 
     @property
     def title(self) -> str:
+        """Get the artist name.
+
+        Implemented for consistency.
+
+        :rtype: str
+        """
         return self.name
 
     @classmethod
     def from_api(cls, item: dict, client: Client, source: str = "qobuz"):
-        """Create an Artist object from the api response of Qobuz, Tidal,
-        or Deezer.
+        """Create an Artist object from the api response of Qobuz, Tidal, or Deezer.
 
         :param resp: response dict
         :type resp: dict
@@ -652,8 +734,9 @@ class Artist(Tracklist):
     }
 
     def _remove_repeats(self, bit_depth=max, sampling_rate=max) -> Generator:
-        """Remove the repeated albums from self. May remove different
-        versions of the same album.
+        """Remove the repeated albums from self.
+
+        May remove different versions of the same album.
 
         :param bit_depth: either max or min functions
         :param sampling_rate: either max or min functions
@@ -674,9 +757,7 @@ class Artist(Tracklist):
                     break
 
     def _non_studio_albums(self, album: Album) -> bool:
-        """Passed as a parameter by the user.
-
-        This will download only studio albums.
+        """Filter non-studio-albums.
 
         :param artist: usually self
         :param album: the album to check
@@ -689,7 +770,7 @@ class Artist(Tracklist):
         )
 
     def _features(self, album: Album) -> bool:
-        """Passed as a parameter by the user.
+        """Filter features.
 
         This will download only albums where the requested
         artist is the album artist.
@@ -702,9 +783,7 @@ class Artist(Tracklist):
         return self["name"] == album["albumartist"]
 
     def _extras(self, album: Album) -> bool:
-        """Passed as a parameter by the user.
-
-        This will skip any extras.
+        """Filter extras.
 
         :param artist: usually self
         :param album: the album to check
@@ -714,9 +793,7 @@ class Artist(Tracklist):
         return self.TYPE_REGEXES["extra"].search(album.title) is None
 
     def _non_remasters(self, album: Album) -> bool:
-        """Passed as a parameter by the user.
-
-        This will download only remasterd albums.
+        """Filter non remasters.
 
         :param artist: usually self
         :param album: the album to check
@@ -726,7 +803,7 @@ class Artist(Tracklist):
         return self.TYPE_REGEXES["remaster"].search(album.title) is not None
 
     def _non_albums(self, album: Album) -> bool:
-        """This will ignore non-album releases.
+        """Filter releases that are not albums.
 
         :param artist: usually self
         :param album: the album to check
@@ -745,19 +822,22 @@ class Artist(Tracklist):
         return f"<Artist: {self.name}>"
 
     def __str__(self) -> str:
-        """Return a readable string representation of
-        this Artist.
+        """Return a readable string representation of this Artist.
 
         :rtype: str
         """
         return self.name
 
     def __hash__(self):
+        """Hash self."""
         return hash(self.id)
 
 
 class Label(Artist):
+    """Represents a downloadable Label."""
+
     def load_meta(self):
+        """Load metadata given an id."""
         assert self.client.source == "qobuz", "Label source must be qobuz"
 
         resp = self.client.get(self.id, "label")
@@ -768,11 +848,11 @@ class Label(Artist):
         self.loaded = True
 
     def __repr__(self):
+        """Return a string representation of the Label."""
         return f"<Label - {self.name}>"
 
     def __str__(self) -> str:
-        """Return a readable string representation of
-        this track.
+        """Return the name of the Label.
 
         :rtype: str
         """
@@ -783,7 +863,7 @@ class Label(Artist):
 
 
 def _get_tracklist(resp: dict, source: str) -> list:
-    """Returns the tracklist from an API response.
+    """Return the tracklist from an API response.
 
     :param resp:
     :type resp: dict
