@@ -793,7 +793,7 @@ class Tracklist(list):
                 except (KeyboardInterrupt, SystemExit):
                     executor.shutdown()
                     tqdm.write("Aborted! May take some time to shutdown.")
-                    exit("Aborted!")
+                    raise click.Abort
 
         else:
             for item in self:
