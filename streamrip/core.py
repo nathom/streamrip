@@ -386,7 +386,8 @@ class MusicDL(list):
 
                 playlist.append(track)
                 return True
-            except NoResultsFound:
+            except (NoResultsFound, StopIteration) as err:
+                logger.debug("No results found for query=%s. Exception: %s", query, err)
                 return False
 
         for purl in lastfm_urls:
@@ -469,9 +470,11 @@ class MusicDL(list):
                     if i > limit:
                         return
         else:
+            logger.debug("Not generator")
             items = (
                 results.get("data") or results.get("items") or results.get("collection")
             )
+            logger.debug("Number of results: %d", len(items))
             if items is None:
                 raise NoResultsFound(query)
 
@@ -637,7 +640,7 @@ class MusicDL(list):
         if remaining_tracks_match is not None:
             remaining_tracks = int(remaining_tracks_match.group(1)) - 50
         else:
-            raise ParsingError("Error parsing lastfm page")
+            raise ParsingError("Error parsing lastfm page: %s", r.text)
 
         playlist_title_match = re.search(
             r'<h1 class="playlisting-playlist-header-title">([^<]+)</h1>', r.text
