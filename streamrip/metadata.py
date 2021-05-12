@@ -70,15 +70,16 @@ class TrackMetadata:
         self.comment: Optional[str] = None
         self.description: Optional[str] = None
         self.purchase_date: Optional[str] = None
+        self.date: Optional[str] = None
         self.grouping: Optional[str] = None
         self.lyrics: Optional[str] = None
         self.encoder: Optional[str] = None
         self.compilation: Optional[str] = None
         self.cover: Optional[str] = None
-        self.tracktotal: int
-        self.tracknumber: int
-        self.discnumber: int
-        self.disctotal: int
+        self.tracktotal: Optional[int] = None
+        self.tracknumber: Optional[int] = None
+        self.discnumber: Optional[int] = None
+        self.disctotal: Optional[int] = None
 
         # not included in tags
         self.explicit: Optional[bool] = False
@@ -257,6 +258,8 @@ class TrackMetadata:
             self.year = track["created_at"][:4]
             self.label = track["label_name"]
             self.description = track["description"]
+            self.album = safe_get(track, "publisher_metadata", "album_title")
+            self.copyright = safe_get(track, "publisher_metadata", "p_line")
             self.tracknumber = 0
             self.tracktotal = 0
 
@@ -406,9 +409,8 @@ class TrackMetadata:
         if hasattr(self, "_year"):
             return self._year
 
-        if hasattr(self, "date"):
-            if self.date is not None:
-                return self.date[:4]
+        if hasattr(self, "date") and isinstance(self.date, str):
+            return self.date[:4]
 
         return None
 
