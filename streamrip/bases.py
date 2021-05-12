@@ -12,7 +12,7 @@ import re
 import shutil
 import subprocess
 from tempfile import gettempdir
-from typing import Any, Union
+from typing import Any, Union, Optional
 
 import click
 import tqdm
@@ -386,15 +386,22 @@ class Track:
         :type client: Client
         """
         meta = TrackMetadata(track=item, source=client.source)
+        cover_url: Optional[str]
         try:
             if client.source == "qobuz":
                 cover_url = item["album"]["image"]["large"]
             elif client.source == "tidal":
                 cover_url = tidal_cover_url(item["album"]["cover"], 640)
             elif client.source == "deezer":
-                cover_url = item["album"]["cover_large"]
+                cover_url = item["album"]["cover_big"]
+            elif client.source == "soundcloud":
+                if (small_url := item["artwork_url"]) is not None:
+                    cover_url = small_url.replace("large", "t500x500")
+                else:
+                    raise KeyError
             else:
                 raise InvalidSourceError(client.source)
+
         except KeyError:
             logger.debug("No cover found")
             cover_url = None
