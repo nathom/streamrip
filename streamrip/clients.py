@@ -36,7 +36,7 @@ from .exceptions import (
 from .spoofbuz import Spoofer
 from .utils import gen_threadsafe_session, get_quality
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("streamrip")
 
 
 class Client(ABC):
@@ -450,7 +450,6 @@ class DeezerClient(Client):
             f"{DEEZER_BASE}/search/{media_type}", params={"q": query}
         )
         response.raise_for_status()
-
         return response.json()
 
     def login(self, **kwargs):

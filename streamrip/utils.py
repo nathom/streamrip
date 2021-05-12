@@ -22,7 +22,7 @@ from .constants import AGENT, LOG_DIR, TIDAL_COVER_URL
 from .exceptions import InvalidSourceError, NonStreamable
 
 urllib3.disable_warnings()
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("streamrip")
 
 
 def safe_get(d: dict, *keys: Hashable, default=None):
@@ -197,9 +197,9 @@ def init_log(path: Optional[str] = None, level: str = "DEBUG"):
     :param rotate:
     :type rotate: str
     """
-    path = os.path.join(LOG_DIR, "streamrip.log")
+    # path = os.path.join(LOG_DIR, "streamrip.log")
     level = logging.getLevelName(level)
-    logging.basicConfig(filename=path, filemode="a", level=level)
+    logging.basicConfig(level=level)
 
 
 def decrypt_mqa_file(in_path, out_path, encryption_key):

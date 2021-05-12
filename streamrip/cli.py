@@ -14,7 +14,8 @@ from .constants import CACHE_DIR, CONFIG_DIR, CONFIG_PATH, QOBUZ_FEATURED_KEYS
 from .core import MusicDL
 from .utils import init_log
 
-logger = logging.getLogger(__name__)
+logging.basicConfig(level="INFO")
+logger = logging.getLogger("streamrip")
 
 if not os.path.isdir(CONFIG_DIR):
     os.makedirs(CONFIG_DIR, exist_ok=True)
@@ -54,7 +55,8 @@ def cli(ctx, **kwargs):
     global core
 
     if kwargs["debug"]:
-        init_log()
+        logger.setLevel("DEBUG")
+        logger.debug("Starting debug log")
 
     config = Config()
 

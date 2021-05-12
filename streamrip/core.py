@@ -6,8 +6,10 @@ import logging
 import os
 import re
 import sys
+import time
 from getpass import getpass
 from hashlib import md5
+from pprint import pprint
 from string import Formatter
 from typing import Dict, Generator, List, Optional, Tuple, Type, Union
 
@@ -16,7 +18,13 @@ import requests
 from tqdm import tqdm
 
 from .bases import Track, Video, YoutubeVideo
-from .clients import DeezerClient, QobuzClient, SoundCloudClient, TidalClient, Client
+from .clients import (
+    Client,
+    DeezerClient,
+    QobuzClient,
+    SoundCloudClient,
+    TidalClient,
+)
 from .config import Config
 from .constants import (
     CONFIG_PATH,
@@ -38,7 +46,7 @@ from .exceptions import (
 from .tracklists import Album, Artist, Label, Playlist, Tracklist
 from .utils import extract_interpreter_url
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("streamrip")
 
 
 Media = Union[
@@ -344,6 +352,15 @@ class MusicDL(list):
 
         :param urls:
         """
+
+        # Available keys: ['artist', 'title']
+        QUERY_FORMAT: Dict[str, str] = {
+            "tidal": "{title}",
+            "qobuz": "{title} {artist}",
+            "deezer": "{title} {artist}",
+            "soundcloud": "{title} {artist}",
+        }
+
         # For testing:
         # https://www.last.fm/user/nathan3895/playlists/12058911
         user_regex = re.compile(r"https://www\.last\.fm/user/([^/]+)/playlists/\d+")
@@ -361,6 +378,7 @@ class MusicDL(list):
             """
             try:
                 track = next(self.search(lastfm_source, query, media_type="track"))
+
                 if self.config.session["metadata"]["set_playlist_to_album"]:
                     # so that the playlist name (actually the album) isn't
                     # amended to include version and work tags from individual tracks
@@ -383,7 +401,11 @@ class MusicDL(list):
             tracks_not_found: int = 0
             with concurrent.futures.ThreadPoolExecutor(max_workers=15) as executor:
                 futures = [
-                    executor.submit(search_query, f"{title} {artist}", pl)
+                    executor.submit(
+                        search_query,
+                        QUERY_FORMAT[lastfm_source].format(title=title, artist=artist),
+                        pl,
+                    )
                     for title, artist in queries
                 ]
                 # only for the progress bar
@@ -396,6 +418,7 @@ class MusicDL(list):
                         tracks_not_found += 1
 
             pl.loaded = True
+
             click.secho(f"{tracks_not_found} tracks not found.", fg="yellow")
             self.append(pl)
 
@@ -422,14 +445,16 @@ class MusicDL(list):
         :type query: str
         :param media_type:
         :type media_type: str
-        :param limit:
+        :param limit: Not Implemented
         :type limit: int
         :rtype: Generator
         """
+        print(logger)
+        logger.debug("searching for %s", query)
+
         client = self.get_client(source)
         results = client.search(query, media_type)
 
-        i = 0
         if isinstance(results, Generator):  # QobuzClient
             for page in results:
                 tracklist = (
@@ -437,11 +462,10 @@ class MusicDL(list):
                     if media_type != "featured"
                     else page["albums"]["items"]
                 )
-                for item in tracklist:
+                for i, item in enumerate(tracklist):
                     yield MEDIA_CLASS[  # type: ignore
                         media_type if media_type != "featured" else "album"
                     ].from_api(item, client)
-                    i += 1
                     if i > limit:
                         return
         else:
@@ -451,9 +475,9 @@ class MusicDL(list):
             if items is None:
                 raise NoResultsFound(query)
 
-            for item in items:
+            for i, item in enumerate(items):
+                logger.debug(item["title"])
                 yield MEDIA_CLASS[media_type].from_api(item, client)  # type: ignore
-                i += 1
                 if i > limit:
                     return
 
@@ -589,6 +613,9 @@ class MusicDL(list):
         :type url: str
         :rtype: Tuple[str, list]
         """
+
+        logger.debug("Fetching lastfm playlist")
+
         info = []
         words = re.compile(r"[\w\s]+")
         title_tags = re.compile('title="([^"]+)"')
@@ -610,7 +637,7 @@ class MusicDL(list):
         if remaining_tracks_match is not None:
             remaining_tracks = int(remaining_tracks_match.group(1)) - 50
         else:
-            raise Exception("Error parsing lastfm page")
+            raise ParsingError("Error parsing lastfm page")
 
         playlist_title_match = re.search(
             r'<h1 class="playlisting-playlist-header-title">([^<]+)</h1>', r.text
@@ -618,14 +645,25 @@ class MusicDL(list):
         if playlist_title_match is not None:
             playlist_title = html.unescape(playlist_title_match.group(1))
         else:
-            raise Exception("Error finding title from response")
+            raise ParsingError("Error finding title from response")
 
-        page = 1
-        while remaining_tracks > 0:
-            page += 1
-            r = requests.get(f"{url}?page={page}")
-            get_titles(r.text)
-            remaining_tracks -= 50
+        if remaining_tracks > 0:
+            with concurrent.futures.ThreadPoolExecutor(max_workers=15) as executor:
+                last_page = int(remaining_tracks // 50) + int(
+                    remaining_tracks % 50 != 0
+                )
+
+                futures = [
+                    executor.submit(requests.get, f"{url}?page={page}")
+                    for page in range(1, last_page + 1)
+                ]
+
+            for future in tqdm(
+                concurrent.futures.as_completed(futures),
+                total=len(futures),
+                desc="Scraping playlist",
+            ):
+                get_titles(future.result().text)
 
         return playlist_title, info
 

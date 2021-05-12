@@ -41,7 +41,7 @@ from .utils import (
     tqdm_download,
 )
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("streamrip")
 
 TYPE_REGEXES = {
     "remaster": re.compile(r"(?i)(re)?master(ed)?"),

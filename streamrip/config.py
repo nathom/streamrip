@@ -1,10 +1,10 @@
 """A config class that manages arguments between the config file and CLI."""
 
 import copy
-from collections import OrderedDict
 import logging
 import os
 import re
+from collections import OrderedDict
 from pprint import pformat
 from typing import Any, Dict, List
 
@@ -22,7 +22,7 @@ from .exceptions import InvalidSourceError
 yaml = YAML()
 
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("streamrip")
 
 
 class Config:

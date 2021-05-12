@@ -20,7 +20,7 @@ from .constants import (
 from .exceptions import InvalidContainerError, InvalidSourceError
 from .utils import get_quality_id, safe_get, tidal_cover_url
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("streamrip")
 
 
 class TrackMetadata:

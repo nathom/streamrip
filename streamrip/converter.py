@@ -9,7 +9,7 @@ from typing import Optional
 
 from .exceptions import ConversionError
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("streamrip")
 
 SAMPLING_RATES = (44100, 48000, 88200, 96000, 176400, 192000)
 
