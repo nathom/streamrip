@@ -112,7 +112,15 @@ class MusicDL(list):
 
         parsed = self.parse_urls(url)
         if not parsed and len(self) == 0:
-            raise ParsingError(url)
+            if "last.fm" in url:
+                message = (
+                    f"For last.fm urls, use the {click.style('lastfm', fg='yellow')} "
+                    f"command. See {click.style('rip lastfm --help', fg='yellow')}."
+                )
+            else:
+                message = url
+
+            raise ParsingError(message)
 
         for source, url_type, item_id in parsed:
             if item_id in self.db:
