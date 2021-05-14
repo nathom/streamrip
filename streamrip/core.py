@@ -211,7 +211,7 @@ class MusicDL(list):
         try:
             arguments = self._get_download_args()
         except KeyError:
-            self._config_update_message()
+            self._config_updating_message()
             self.config.update()
             exit()
         except Exception as err:
