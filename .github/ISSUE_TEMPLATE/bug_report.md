@@ -1,7 +1,7 @@
 ---
 name: "\U0001F41B Bug Report"
 about: "If something isn't working as expected \U0001F914."
-title: ''
+title: 'Bug: '
 labels: bug
 assignees: nathom
 
@@ -21,7 +21,7 @@ type the command that caused the bug here
 **Expected behavior/code**
 A clear and concise description of what you expected to happen (or code).
 
-**`streamrip Configuration File (find using `rip config -o`):**
+**`streamrip` Configuration File (find using `rip config -o`):**
 
 <!-- If the command isn't working, you can find the file at one of the following paths:-->
 
