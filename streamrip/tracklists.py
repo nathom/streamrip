@@ -105,7 +105,9 @@ class Album(Tracklist):
         """
         # Generate the folder name
         self.folder_format = kwargs.get("folder_format", FOLDER_FORMAT)
-        self.quality = min(kwargs.get("quality", 3), self.client.max_quality)
+        if not hasattr(self, "quality"):
+            self.quality = min(kwargs.get("quality", 3), self.client.max_quality)
+
         self.folder = self._get_formatted_folder(
             kwargs.get("parent_folder", "StreamripDownloads"), self.quality
         )
@@ -185,7 +187,9 @@ class Album(Tracklist):
         else:
             kwargs["parent_folder"] = self.folder
 
-        if not track.download(quality=quality, database=database, **kwargs):
+        if not track.download(
+            quality=min(self.quality, quality), database=database, **kwargs
+        ):
             return False
 
         logger.debug("tagging tracks")
@@ -216,18 +220,11 @@ class Album(Tracklist):
         logging.debug(f"Loading {self.tracktotal} tracks to album")
         for track in _get_tracklist(resp, self.client.source):
             if track.get("type") == "Music Video":
-                self.append(
-                    Video.from_album_meta(
-                        track,
-                        self.client,
-                    )
-                )
+                self.append(Video.from_album_meta(track, self.client))
             else:
                 self.append(
                     Track.from_album_meta(
-                        album=self.meta,
-                        track=track,
-                        client=self.client,
+                        album=self.meta, track=track, client=self.client
                     )
                 )
 

@@ -104,7 +104,10 @@ class Track:
             self.cover_url = u
 
     def load_meta(self):
-        """Send a request to the client to get metadata for this Track."""
+        """Send a request to the client to get metadata for this Track.
+
+        Usually only called for single tracks and last.fm playlists.
+        """
         assert self.id is not None, "id must be set before loading metadata"
 
         self.resp = self.client.get(self.id, media_type="track")
@@ -137,7 +140,10 @@ class Track:
         :param kwargs:
         """
         # args override attributes
-        self.quality = min(kwargs["quality"], self.client.max_quality)
+        self.quality = min(
+            kwargs["quality"], self.client.max_quality, self.meta.quality
+        )
+
         self.folder = kwargs["parent_folder"] or self.folder
 
         self.file_format = kwargs.get("track_format", TRACK_FORMAT)

@@ -184,11 +184,9 @@ class TrackMetadata:
                 }
             )
             self.streamable = resp.get("allowStreaming", False)
-            if resp.get("audioQuality"):  # for album entries in single tracks
-                self.quality = TIDAL_Q_MAP[resp["audioQuality"]]
 
-            self.bit_depth = 24 if self.get("quality", False) == 3 else 16
-            self.sampling_rate = 44100
+            if q := resp.get("audioQuality"):  # for album entries in single tracks
+                self._get_tidal_quality(q)
 
         elif self.__source == "deezer":
             self.album = resp.get("title", "Unknown Album")
@@ -235,7 +233,7 @@ class TrackMetadata:
 
             self.tracknumber = track.get("track_number", 1)
             self.discnumber = track.get("media_number", 1)
-            self.artist = safe_get(track, "artist", "name")
+            self.artist = safe_get(track, "performer", "name")
 
         elif self.__source == "tidal":
             self.title = track["title"].strip()
@@ -243,6 +241,7 @@ class TrackMetadata:
             self.tracknumber = track.get("trackNumber", 1)
             self.discnumber = track.get("volumeNumber", 1)
             self.artist = track.get("artist", {}).get("name")
+            self._get_tidal_quality(track["audioQuality"])
 
         elif self.__source == "deezer":
             self.title = track["title"].strip()
@@ -282,6 +281,12 @@ class TrackMetadata:
         if work is not None:
             logger.debug("Work found: %s", work)
             self.title = f"{work}: {self.title}"
+
+    def _get_tidal_quality(self, q: str):
+        self.quality = TIDAL_Q_MAP[q]
+        if self.quality >= 2:
+            self.bit_depth = 24 if self.get("quality") == 3 else 16
+            self.sampling_rate = 44100
 
     @property
     def album(self) -> str:
