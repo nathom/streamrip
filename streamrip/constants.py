@@ -19,7 +19,9 @@ DOWNLOADS_DIR = os.path.join(HOME, "StreamripDownloads")
 
 AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:83.0) Gecko/20100101 Firefox/83.0"
 
-TIDAL_COVER_URL = "https://resources.tidal.com/images/{uuid}/{width}x{height}.jpg"
+TIDAL_COVER_URL = (
+    "https://resources.tidal.com/images/{uuid}/{width}x{height}.jpg"
+)
 
 
 QUALITY_DESC = {
@@ -142,9 +144,7 @@ ALBUM_KEYS = (
     "composer",
 )
 # TODO: rename these to DEFAULT_FOLDER_FORMAT etc
-FOLDER_FORMAT = (
-    "{albumartist} - {title} ({year}) [{container}] [{bit_depth}B-{sampling_rate}kHz]"
-)
+FOLDER_FORMAT = "{albumartist} - {title} ({year}) [{container}] [{bit_depth}B-{sampling_rate}kHz]"
 TRACK_FORMAT = "{tracknumber}. {artist} - {title}"
 
 

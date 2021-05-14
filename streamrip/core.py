@@ -48,7 +48,12 @@ logger = logging.getLogger("streamrip")
 
 
 Media = Union[
-    Type[Album], Type[Playlist], Type[Artist], Type[Track], Type[Label], Type[Video]
+    Type[Album],
+    Type[Playlist],
+    Type[Artist],
+    Type[Track],
+    Type[Label],
+    Type[Video],
 ]
 MEDIA_CLASS: Dict[str, Media] = {
     "album": Album,
@@ -175,18 +180,24 @@ class MusicDL(list):
             "track_format": self.config.session["path_format"]["track"],
             "embed_cover": self.config.session["artwork"]["embed"],
             "embed_cover_size": self.config.session["artwork"]["size"],
-            "keep_hires_cover": self.config.session["artwork"]["keep_hires_cover"],
+            "keep_hires_cover": self.config.session["artwork"][
+                "keep_hires_cover"
+            ],
             "set_playlist_to_album": self.config.session["metadata"][
                 "set_playlist_to_album"
             ],
             "stay_temp": self.config.session["conversion"]["enabled"],
             "conversion": self.config.session["conversion"],
-            "concurrent_downloads": self.config.session["concurrent_downloads"],
+            "concurrent_downloads": self.config.session[
+                "concurrent_downloads"
+            ],
             "new_tracknumbers": self.config.session["metadata"][
                 "new_playlist_tracknumbers"
             ],
             "download_videos": self.config.session["tidal"]["download_videos"],
-            "download_booklets": self.config.session["qobuz"]["download_booklets"],
+            "download_booklets": self.config.session["qobuz"][
+                "download_booklets"
+            ],
             "download_youtube_videos": self.config.session["youtube"][
                 "download_videos"
             ],
@@ -209,7 +220,9 @@ class MusicDL(list):
 
         logger.debug("Arguments from config: %s", arguments)
 
-        source_subdirs = self.config.session["downloads"]["source_subdirectories"]
+        source_subdirs = self.config.session["downloads"][
+            "source_subdirectories"
+        ]
         for item in self:
             if source_subdirs:
                 arguments["parent_folder"] = self.__get_source_subdir(
@@ -220,20 +233,26 @@ class MusicDL(list):
                 item.download(**arguments)
                 continue
 
-            arguments["quality"] = self.config.session[item.client.source]["quality"]
+            arguments["quality"] = self.config.session[item.client.source][
+                "quality"
+            ]
             if isinstance(item, Artist):
                 filters_ = tuple(
                     k for k, v in self.config.session["filters"].items() if v
                 )
                 arguments["filters"] = filters_
-                logger.debug("Added filter argument for artist/label: %s", filters_)
+                logger.debug(
+                    "Added filter argument for artist/label: %s", filters_
+                )
 
             if not (isinstance(item, Tracklist) and item.loaded):
                 logger.debug("Loading metadata")
                 try:
                     item.load_meta()
                 except NonStreamable:
-                    click.secho(f"{item!s} is not available, skipping.", fg="red")
+                    click.secho(
+                        f"{item!s} is not available, skipping.", fg="red"
+                    )
                     continue
 
             item.download(**arguments)
@@ -317,7 +336,9 @@ class MusicDL(list):
 
         parsed.extend(self.url_parse.findall(url))  # Qobuz, Tidal, Dezer
         soundcloud_urls = self.soundcloud_url_parse.findall(url)
-        soundcloud_items = [self.clients["soundcloud"].get(u) for u in soundcloud_urls]
+        soundcloud_items = [
+            self.clients["soundcloud"].get(u) for u in soundcloud_urls
+        ]
 
         parsed.extend(
             ("soundcloud", item["kind"], url)
@@ -349,11 +370,15 @@ class MusicDL(list):
 
         # For testing:
         # https://www.last.fm/user/nathan3895/playlists/12058911
-        user_regex = re.compile(r"https://www\.last\.fm/user/([^/]+)/playlists/\d+")
+        user_regex = re.compile(
+            r"https://www\.last\.fm/user/([^/]+)/playlists/\d+"
+        )
         lastfm_urls = self.lastfm_url_parse.findall(urls)
         try:
             lastfm_source = self.config.session["lastfm"]["source"]
-            lastfm_fallback_source = self.config.session["lastfm"]["fallback_source"]
+            lastfm_fallback_source = self.config.session["lastfm"][
+                "fallback_source"
+            ]
         except KeyError:
             self._config_updating_message()
             self.config.update()
@@ -383,7 +408,9 @@ class MusicDL(list):
                 except (NoResultsFound, StopIteration):
                     return None
 
-            track = try_search(lastfm_source) or try_search(lastfm_fallback_source)
+            track = try_search(lastfm_source) or try_search(
+                lastfm_fallback_source
+            )
             if track is None:
                 return False
 
@@ -405,7 +432,9 @@ class MusicDL(list):
                 pl.creator = creator_match.group(1)
 
             tracks_not_found = 0
-            with concurrent.futures.ThreadPoolExecutor(max_workers=15) as executor:
+            with concurrent.futures.ThreadPoolExecutor(
+                max_workers=15
+            ) as executor:
                 futures = [
                     executor.submit(search_query, title, artist, pl)
                     for title, artist in queries
@@ -422,7 +451,9 @@ class MusicDL(list):
             pl.loaded = True
 
             if tracks_not_found > 0:
-                click.secho(f"{tracks_not_found} tracks not found.", fg="yellow")
+                click.secho(
+                    f"{tracks_not_found} tracks not found.", fg="yellow"
+                )
             self.append(pl)
 
     def handle_txt(self, filepath: Union[str, os.PathLike]):
@@ -438,7 +469,11 @@ class MusicDL(list):
             self.handle_urls(txt.read())
 
     def search(
-        self, source: str, query: str, media_type: str = "album", limit: int = 200
+        self,
+        source: str,
+        query: str,
+        media_type: str = "album",
+        limit: int = 200,
     ) -> Generator:
         """Universal search.
 
@@ -473,7 +508,9 @@ class MusicDL(list):
         else:
             logger.debug("Not generator")
             items = (
-                results.get("data") or results.get("items") or results.get("collection")
+                results.get("data")
+                or results.get("items")
+                or results.get("collection")
             )
             if items is None:
                 raise NoResultsFound(query)
@@ -513,7 +550,9 @@ class MusicDL(list):
             raise NotImplementedError
 
         fields = (fname for _, fname, _, _ in Formatter().parse(fmt) if fname)
-        ret = fmt.format(**{k: media.get(k, default="Unknown") for k in fields})
+        ret = fmt.format(
+            **{k: media.get(k, default="Unknown") for k in fields}
+        )
         return ret
 
     def interactive_search(  # noqa
@@ -646,7 +685,8 @@ class MusicDL(list):
         remaining_tracks = total_tracks - 50
 
         playlist_title_match = re.search(
-            r'<h1 class="playlisting-playlist-header-title">([^<]+)</h1>', r.text
+            r'<h1 class="playlisting-playlist-header-title">([^<]+)</h1>',
+            r.text,
         )
         if playlist_title_match is None:
             raise ParsingError("Error finding title from response")
@@ -654,7 +694,9 @@ class MusicDL(list):
         playlist_title = html.unescape(playlist_title_match.group(1))
 
         if remaining_tracks > 0:
-            with concurrent.futures.ThreadPoolExecutor(max_workers=15) as executor:
+            with concurrent.futures.ThreadPoolExecutor(
+                max_workers=15
+            ) as executor:
                 last_page = int(remaining_tracks // 50) + int(
                     remaining_tracks % 50 != 0
                 )
@@ -695,7 +737,9 @@ class MusicDL(list):
             ).hexdigest()
 
             self.config.save()
-            click.secho(f'Credentials saved to config file at "{self.config._path}"')
+            click.secho(
+                f'Credentials saved to config file at "{self.config._path}"'
+            )
         else:
             raise Exception
 

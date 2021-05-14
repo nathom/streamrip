@@ -331,7 +331,11 @@ class ConfigDocumentation:
         :type path: str
         """
         with open(path, "r") as f:
-            lines = [line for line in f.readlines() if not line.strip().startswith("#")]
+            lines = [
+                line
+                for line in f.readlines()
+                if not line.strip().startswith("#")
+            ]
 
         with open(path, "w") as f:
             f.write("".join(lines))

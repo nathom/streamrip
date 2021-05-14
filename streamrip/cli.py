@@ -24,9 +24,14 @@ if not os.path.isdir(CACHE_DIR):
 
 
 @click.group(invoke_without_command=True)
-@click.option("-c", "--convert", metavar="CODEC", help="alac, mp3, flac, or ogg")
 @click.option(
-    "-u", "--urls", metavar="URLS", help="Url from Qobuz, Tidal, SoundCloud, or Deezer"
+    "-c", "--convert", metavar="CODEC", help="alac, mp3, flac, or ogg"
+)
+@click.option(
+    "-u",
+    "--urls",
+    metavar="URLS",
+    help="Url from Qobuz, Tidal, SoundCloud, or Deezer",
 )
 @click.option(
     "-q",
@@ -70,7 +75,9 @@ def cli(ctx, **kwargs):
 
         r = requests.get("https://pypi.org/pypi/streamrip/json").json()
         newest = r["info"]["version"]
-        if version.parse(metadata.version("streamrip")) < version.parse(newest):
+        if version.parse(metadata.version("streamrip")) < version.parse(
+            newest
+        ):
             click.secho(
                 "A new version of streamrip is available! "
                 "Run `pip3 install streamrip --upgrade` to update.",
@@ -138,9 +145,14 @@ def filter_discography(ctx, **kwargs):
 
 
 @cli.command()
-@click.option("-t", "--type", default="album", help="album, playlist, track, or artist")
 @click.option(
-    "-s", "--source", default="qobuz", help="qobuz, tidal, soundcloud, or deezer"
+    "-t", "--type", default="album", help="album, playlist, track, or artist"
+)
+@click.option(
+    "-s",
+    "--source",
+    default="qobuz",
+    help="qobuz, tidal, soundcloud, or deezer",
 )
 @click.argument("QUERY", nargs=-1)
 @click.pass_context
@@ -228,7 +240,9 @@ def discover(ctx, **kwargs):
 
 @cli.command()
 @click.option(
-    "-s", "--source", help="Qobuz, Tidal, Deezer, or SoundCloud. Default: Qobuz."
+    "-s",
+    "--source",
+    help="Qobuz, Tidal, Deezer, or SoundCloud. Default: Qobuz.",
 )
 @click.argument("URL")
 @click.pass_context
@@ -254,7 +268,9 @@ def lastfm(ctx, source, url):
 
 @cli.command()
 @click.option("-o", "--open", is_flag=True, help="Open the config file")
-@click.option("-d", "--directory", is_flag=True, help="Open the config directory")
+@click.option(
+    "-d", "--directory", is_flag=True, help="Open the config directory"
+)
 @click.option("-q", "--qobuz", is_flag=True, help="Set Qobuz credentials")
 @click.option("-t", "--tidal", is_flag=True, help="Re-login into Tidal")
 @click.option("--reset", is_flag=True, help="RESET the config file")
@@ -274,7 +290,9 @@ def config(ctx, **kwargs):
         click.launch(config_dir)
 
     if kwargs["qobuz"]:
-        config.file["qobuz"]["email"] = input(click.style("Qobuz email: ", fg="blue"))
+        config.file["qobuz"]["email"] = input(
+            click.style("Qobuz email: ", fg="blue")
+        )
 
         click.secho("Qobuz password (will not show on screen):", fg="blue")
         config.file["qobuz"]["password"] = md5(
@@ -282,7 +300,9 @@ def config(ctx, **kwargs):
         ).hexdigest()
 
         config.save()
-        click.secho("Qobuz credentials hashed and saved to config.", fg="green")
+        click.secho(
+            "Qobuz credentials hashed and saved to config.", fg="green"
+        )
 
     if kwargs["tidal"]:
         client = TidalClient()
