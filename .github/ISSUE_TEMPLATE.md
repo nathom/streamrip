@@ -35,8 +35,8 @@ A clear and concise description of what you expected to happen (or code).
 # Paste the contents of config.yaml here
 # REMOVE YOUR CREDENTIALS
 your:
-	- config
-	- file
+    - config
+    - file
 ```
 
 **Environment**
