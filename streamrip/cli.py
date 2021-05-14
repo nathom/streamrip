@@ -8,11 +8,12 @@ from hashlib import md5
 import click
 import requests
 
+from . import __version__
 from .clients import TidalClient
 from .config import Config
 from .constants import CACHE_DIR, CONFIG_DIR, CONFIG_PATH, QOBUZ_FEATURED_KEYS
 from .core import MusicDL
-from .utils import init_log
+
 
 logging.basicConfig(level="WARNING")
 logger = logging.getLogger("streamrip")
@@ -69,15 +70,9 @@ def cli(ctx, **kwargs):
         return
 
     if config.session["check_for_updates"]:
-        from importlib import metadata
-
-        from packaging import version
-
         r = requests.get("https://pypi.org/pypi/streamrip/json").json()
         newest = r["info"]["version"]
-        if version.parse(metadata.version("streamrip")) < version.parse(
-            newest
-        ):
+        if __version__ != newest:
             click.secho(
                 "A new version of streamrip is available! "
                 "Run `pip3 install streamrip --upgrade` to update.",

@@ -1,6 +1,5 @@
 click
 ruamel.yaml
-packaging
 pathvalidate
 requests
 mutagen
