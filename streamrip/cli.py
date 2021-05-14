@@ -14,7 +14,7 @@ from .constants import CACHE_DIR, CONFIG_DIR, CONFIG_PATH, QOBUZ_FEATURED_KEYS
 from .core import MusicDL
 from .utils import init_log
 
-logging.basicConfig(level="INFO")
+logging.basicConfig(level="WARNING")
 logger = logging.getLogger("streamrip")
 
 if not os.path.isdir(CONFIG_DIR):

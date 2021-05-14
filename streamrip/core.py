@@ -6,10 +6,8 @@ import logging
 import os
 import re
 import sys
-import time
 from getpass import getpass
 from hashlib import md5
-from pprint import pprint
 from string import Formatter
 from typing import Dict, Generator, List, Optional, Tuple, Type, Union
 
@@ -225,7 +223,6 @@ class MusicDL(list):
 
         source_subdirs = self.config.session["downloads"]["source_subdirectories"]
         for item in self:
-
             if source_subdirs:
                 arguments["parent_folder"] = self.__get_source_subdir(
                     item.client.source
@@ -244,6 +241,7 @@ class MusicDL(list):
                 logger.debug("Added filter argument for artist/label: %s", filters_)
 
             if not (isinstance(item, Tracklist) and item.loaded):
+                logger.debug("Loading metadata")
                 try:
                     item.load_meta()
                 except NonStreamable:
@@ -450,7 +448,6 @@ class MusicDL(list):
         :type limit: int
         :rtype: Generator
         """
-        print(logger)
         logger.debug("searching for %s", query)
 
         client = self.get_client(source)
@@ -474,9 +471,9 @@ class MusicDL(list):
             items = (
                 results.get("data") or results.get("items") or results.get("collection")
             )
-            logger.debug("Number of results: %d", len(items))
             if items is None:
                 raise NoResultsFound(query)
+            logger.debug("Number of results: %d", len(items))
 
             for i, item in enumerate(items):
                 logger.debug(item["title"])
@@ -637,18 +634,20 @@ class MusicDL(list):
         remaining_tracks_match = re.search(
             r'data-playlisting-entry-count="(\d+)"', r.text
         )
-        if remaining_tracks_match is not None:
-            remaining_tracks = int(remaining_tracks_match.group(1)) - 50
-        else:
+        if remaining_tracks_match is None:
             raise ParsingError("Error parsing lastfm page: %s", r.text)
+
+        total_tracks = int(remaining_tracks_match.group(1))
+        logger.debug("Total tracks: %d", total_tracks)
+        remaining_tracks = total_tracks - 50
 
         playlist_title_match = re.search(
             r'<h1 class="playlisting-playlist-header-title">([^<]+)</h1>', r.text
         )
-        if playlist_title_match is not None:
-            playlist_title = html.unescape(playlist_title_match.group(1))
-        else:
+        if playlist_title_match is None:
             raise ParsingError("Error finding title from response")
+
+        playlist_title = html.unescape(playlist_title_match.group(1))
 
         if remaining_tracks > 0:
             with concurrent.futures.ThreadPoolExecutor(max_workers=15) as executor:
