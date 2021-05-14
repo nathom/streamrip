@@ -157,7 +157,11 @@ class Album(Tracklist):
             self.cover_obj = None
 
         # Download the booklet if applicable
-        if self.get("booklets") and kwargs.get("download_booklets", True):
+        if (
+            self.get("booklets")
+            and kwargs.get("download_booklets", True)
+            and not any(f.endswith(".pdf") for f in os.listdir(self.folder))
+        ):
             click.secho("\nDownloading booklets", fg="blue")
             for item in self.booklets:
                 Booklet(item).download(parent_folder=self.folder)
