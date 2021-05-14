@@ -95,7 +95,7 @@ class Config:
         },
         "path_format": {"folder": FOLDER_FORMAT, "track": TRACK_FORMAT},
         "check_for_updates": True,
-        "lastfm": {"source": "qobuz"},
+        "lastfm": {"source": "qobuz", "fallback_source": "deezer"},
         "concurrent_downloads": False,
     }
 

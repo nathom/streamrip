@@ -200,23 +200,11 @@ class MusicDL(list):
         try:
             arguments = self._get_download_args()
         except KeyError:
-            click.secho(
-                "Updating config file... Some settings may be lost. Please run the "
-                "command again.",
-                fg="magenta",
-            )
+            self._config_update_message()
             self.config.update()
             exit()
         except Exception as err:
-            click.secho(
-                "There was a problem with your config file. This happens "
-                "sometimes after updates. Run ",
-                nl=False,
-                fg="red",
-            )
-            click.secho("rip config --reset ", fg="yellow", nl=False)
-            click.secho("to reset it. You will need to log in again.", fg="red")
-            click.secho(err, fg="red")
+            self._config_corrupted_message(err)
             exit()
 
         logger.debug("Arguments from config: %s", arguments)
@@ -363,9 +351,18 @@ class MusicDL(list):
         # https://www.last.fm/user/nathan3895/playlists/12058911
         user_regex = re.compile(r"https://www\.last\.fm/user/([^/]+)/playlists/\d+")
         lastfm_urls = self.lastfm_url_parse.findall(urls)
-        lastfm_source = self.config.session["lastfm"]["source"]
+        try:
+            lastfm_source = self.config.session["lastfm"]["source"]
+            lastfm_fallback_source = self.config.session["lastfm"]["fallback_source"]
+        except KeyError:
+            self._config_updating_message()
+            self.config.update()
+            exit()
+        except Exception as err:
+            self._config_corrupted_message(err)
+            raise click.Abort
 
-        def search_query(query: str, playlist: Playlist) -> bool:
+        def search_query(title, artist, playlist) -> bool:
             """Search for a query and add the first result to playlist.
 
             :param query:
@@ -374,19 +371,29 @@ class MusicDL(list):
             :type playlist: Playlist
             :rtype: bool
             """
-            try:
-                track = next(self.search(lastfm_source, query, media_type="track"))
 
-                if self.config.session["metadata"]["set_playlist_to_album"]:
-                    # so that the playlist name (actually the album) isn't
-                    # amended to include version and work tags from individual tracks
-                    track.meta.version = track.meta.work = None
+            def try_search(source) -> Optional[Track]:
+                if source == lastfm_fallback_source:
+                    click.secho("using fallback", fg="red")
+                try:
+                    query = QUERY_FORMAT[lastfm_source].format(
+                        title=title, artist=artist
+                    )
+                    return next(self.search(source, query, media_type="track"))
+                except (NoResultsFound, StopIteration):
+                    return None
 
-                playlist.append(track)
-                return True
-            except (NoResultsFound, StopIteration) as err:
-                logger.debug("No results found for query=%s. Exception: %s", query, err)
+            track = try_search(lastfm_source) or try_search(lastfm_fallback_source)
+            if track is None:
                 return False
+
+            if self.config.session["metadata"]["set_playlist_to_album"]:
+                # so that the playlist name (actually the album) isn't
+                # amended to include version and work tags from individual tracks
+                track.meta.version = track.meta.work = None
+
+            playlist.append(track)
+            return True
 
         for purl in lastfm_urls:
             click.secho(f"Fetching playlist at {purl}", fg="blue")
@@ -397,14 +404,10 @@ class MusicDL(list):
             if creator_match is not None:
                 pl.creator = creator_match.group(1)
 
-            tracks_not_found: int = 0
+            tracks_not_found = 0
             with concurrent.futures.ThreadPoolExecutor(max_workers=15) as executor:
                 futures = [
-                    executor.submit(
-                        search_query,
-                        QUERY_FORMAT[lastfm_source].format(title=title, artist=artist),
-                        pl,
-                    )
+                    executor.submit(search_query, title, artist, pl)
                     for title, artist in queries
                 ]
                 # only for the progress bar
@@ -418,7 +421,8 @@ class MusicDL(list):
 
             pl.loaded = True
 
-            click.secho(f"{tracks_not_found} tracks not found.", fg="yellow")
+            if tracks_not_found > 0:
+                click.secho(f"{tracks_not_found} tracks not found.", fg="yellow")
             self.append(pl)
 
     def handle_txt(self, filepath: Union[str, os.PathLike]):
@@ -719,3 +723,21 @@ class MusicDL(list):
             or self.config.file[source]["password"] is None
         ):
             self.prompt_creds(source)
+
+    def _config_updating_message(self):
+        click.secho(
+            "Updating config file... Some settings may be lost. Please run the "
+            "command again.",
+            fg="magenta",
+        )
+
+    def _config_corrupted_message(self, err: Exception):
+        click.secho(
+            "There was a problem with your config file. This happens "
+            "sometimes after updates. Run ",
+            nl=False,
+            fg="red",
+        )
+        click.secho("rip config --reset ", fg="yellow", nl=False)
+        click.secho("to reset it. You will need to log in again.", fg="red")
+        click.secho(str(err), fg="red")

@@ -637,6 +637,9 @@ class Track:
         """
         return f"{self['artist']} - {self['title']}"
 
+    def __bool__(self):
+        return True
+
 
 class Video:
     """Only for Tidal."""
@@ -736,6 +739,9 @@ class Video:
         """
         return f"<Video - {self.title}>"
 
+    def __bool__(self):
+        return True
+
 
 class Booklet:
     """Only for Qobuz."""
@@ -765,6 +771,9 @@ class Booklet:
         """
         filepath = os.path.join(parent_folder, f"{self.description}.pdf")
         tqdm_download(self.url, filepath)
+
+    def __bool__(self):
+        return True
 
 
 class Tracklist(list):
@@ -1004,6 +1013,9 @@ class Tracklist(list):
         if isinstance(key, int):
             super().__setitem__(key, val)
 
+    def __bool__(self):
+        return True
+
 
 class YoutubeVideo:
     """Dummy class implemented for consistency with the Media API."""
@@ -1094,3 +1106,6 @@ class YoutubeVideo:
         :param kwargs:
         """
         pass
+
+    def __bool__(self):
+        return True
