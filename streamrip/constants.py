@@ -132,7 +132,15 @@ FLAC_MAX_BLOCKSIZE = 16777215  # 16.7 MB
 
 # TODO: give these more descriptive names
 TRACK_KEYS = ("tracknumber", "artist", "albumartist", "composer", "title")
-ALBUM_KEYS = ("albumartist", "title", "year", "bit_depth", "sampling_rate", "container")
+ALBUM_KEYS = (
+    "albumartist",
+    "title",
+    "year",
+    "bit_depth",
+    "sampling_rate",
+    "container",
+    "composer",
+)
 # TODO: rename these to DEFAULT_FOLDER_FORMAT etc
 FOLDER_FORMAT = (
     "{albumartist} - {title} ({year}) [{container}] [{bit_depth}B-{sampling_rate}kHz]"
