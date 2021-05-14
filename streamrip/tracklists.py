@@ -128,15 +128,14 @@ class Album(Tracklist):
         if embed_cover_url is not None:
             tqdm_download(embed_cover_url, cover_path)
         else:  # sometimes happens with Deezer
-            cover_url = functools.reduce(
-                lambda c1, c2: c1 or c2, self.cover_urls.values()
-            )
+            cover_url = [u for u in self.cover_urls.values() if u][0]
             tqdm_download(cover_url, cover_path)
 
-        if kwargs.get("keep_hires_cover", True):
-            tqdm_download(
-                self.cover_urls["original"], os.path.join(self.folder, "cover.jpg")
-            )
+        hires_cov_path = os.path.join(self.folder, "cover.jpg")
+        if kwargs.get("keep_hires_cover", True) and not os.path.exists(
+            hires_cov_path
+        ):
+            tqdm_download(self.cover_urls["original"], hires_cov_path)
 
         cover_size = os.path.getsize(cover_path)
         if cover_size > FLAC_MAX_BLOCKSIZE:  # 16.77 MB
