@@ -15,21 +15,32 @@ A clear and concise description of the behavior.
 **Command used:**
 
 ```bash
-rip your command
+type the command that caused the bug here
 ```
 
 **Expected behavior/code**
 A clear and concise description of what you expected to happen (or code).
 
-**Streamrip Configuration file (find using `rip config -o`)**
+**`streamrip Configuration File (find using `rip config -o`):**
+
+<!-- If the command isn't working, you can find the file at one of the following paths:-->
+
+<!-- macOS: ~/Library/Application Support/streamrip -->
+
+<!-- Linux: ~/.config/streamrip or ~/.streamrip -->
+
+<!-- Windows: \Users\<username>\AppData\Local\Foo Bar -->
 
 ```yaml
+# Paste the contents of config.yaml here
+# REMOVE YOUR CREDENTIALS
 your:
-	config
-    here
+	- config
+	- file
 ```
 
 **Environment**
+
 - `streamrip` version(s): [e.g. v0.5.2]
 - Python version: [e.g. 3.8]
 - OS: [e.g. OSX 10.13.4, Windows 10]
