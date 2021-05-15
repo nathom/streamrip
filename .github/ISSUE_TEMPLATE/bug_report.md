@@ -15,11 +15,11 @@ A clear and concise description of the behavior.
 **Command used:**
 
 ```bash
-type the command that caused the bug here
+# Type the command that caused the bug here
 ```
 
-**Expected behavior/code**
-A clear and concise description of what you expected to happen (or code).
+**Expected behavior**
+A clear and concise description of what you expected to happen.
 
 **`streamrip` Configuration File (find using `rip config -o`):**
 
@@ -29,7 +29,7 @@ A clear and concise description of what you expected to happen (or code).
 
 <!-- Linux: ~/.config/streamrip or ~/.streamrip -->
 
-<!-- Windows: \Users\<username>\AppData\Local\Foo Bar -->
+<!-- Windows: \Users\<username>\AppData\Local\streamrip -->
 
 ```yaml
 # Paste the contents of config.yaml here
@@ -45,8 +45,14 @@ your:
 - Python version: [e.g. 3.8]
 - OS: [e.g. OSX 10.13.4, Windows 10]
 
+**Traceback**
+```bash
+# Paste the text that Python dumped on the error here
+# Delete this section if there was no traceback
+```
+
 **Possible Solution**
-<!--- Only if you have suggestions on a fix for the bug -->
+<!--- Only if you have suggestions on a fix for the bug. Otherwise, delete this section. -->
 
 **Additional context/Screenshots**
 Add any other context about the problem here. If applicable, add screenshots to help explain.
