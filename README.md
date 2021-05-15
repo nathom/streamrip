@@ -18,24 +18,13 @@ A scriptable stream downloader for Qobuz, Tidal, Deezer and SoundCloud.
 
 ## Installation
 
-First, ensure [pip](https://pip.pypa.io/en/stable/installing/) is installed. Then run the following in the command line:
-
-
-
-macOS/Linux:
+First, ensure [Python](https://www.python.org/downloads/) and [pip](https://pip.pypa.io/en/stable/installing/) are installed. Then run the following in the command line:
 
 ```bash
-pip3 install streamrip simple-term-menu --upgrade
+pip3 install streamrip --upgrade
 ```
 
-Windows:
-
-```bash
-pip3 install streamrip windows-curses --upgrade
-```
-
-
-If you would like to use `streamrip`'s conversion capabilities, download TIDAL videos, or download music from SoundCloud, install [ffmpeg](https://ffmpeg.org/download.html).
+If you would like to use `streamrip`'s conversion capabilities, download TIDAL videos, or download music from SoundCloud, install [ffmpeg](https://ffmpeg.org/download.html). To download music from YouTube, install [youtube-dl](https://github.com/ytdl-org/youtube-dl#installation).
 
 
 ## Example Usage

@@ -228,6 +228,10 @@ class ConfigDocumentation:
         download_videos: Download the video along with the audio
         video_downloads_folder: The path to download the videos to
     database: This stores a list of item IDs so that repeats are not downloaded.
+    conversion: Convert tracks to a codec after downloading them.
+        codec: FLAC, ALAC, OPUS, MP3, VORBIS, or AAC
+        sampling_rate: In Hz. Tracks are downsampled if their sampling rate is greater than this. Values greater than 48000 are only recommended if the audio will be processed. It is otherwise a waste of space as the human ear cannot discern higher frequencies.
+        bit_depth: Only 16 and 24 are available. It is only applied when the bit depth is higher than this value.
     filters: Filter a Qobuz artist's discography. Set to 'true' to turn on a filter.
         extras: Remove Collectors Editions, live recordings, etc.
         repeats: Picks the highest quality out of albums with identical titles.
@@ -249,6 +253,7 @@ class ConfigDocumentation:
         track: Available keys: "tracknumber", "artist", "albumartist", "composer", and "title"
     lastfm: Last.fm playlists are downloaded by searching for the titles of the tracks
         source: The source on which to search for the tracks.
+        fallback_source: If no results were found with the primary source, the item is searched for on this one.
     concurrent_downloads: Download (and convert) tracks all at once, instead of sequentially. If you are converting the tracks, and/or have fast internet, this will substantially improve processing speed.
     """
 
