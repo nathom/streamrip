@@ -1,24 +1,19 @@
 """Miscellaneous utility functions."""
 
 import base64
-import contextlib
 import logging
 import os
 import re
-import sys
 from string import Formatter
 from typing import Dict, Hashable, Optional, Union
 
 import click
 import requests
-from Crypto.Cipher import AES
-from Crypto.Util import Counter
 from pathvalidate import sanitize_filename
 from requests.packages import urllib3
 from tqdm import tqdm
-from tqdm.contrib import DummyTqdmFile
 
-from .constants import AGENT, LOG_DIR, TIDAL_COVER_URL
+from .constants import AGENT, TIDAL_COVER_URL
 from .exceptions import InvalidSourceError, NonStreamable
 
 urllib3.disable_warnings()
@@ -215,6 +210,19 @@ def decrypt_mqa_file(in_path, out_path, encryption_key):
     :param out_path:
     :param encryption_key:
     """
+    try:
+        from Crypto.Cipher import AES
+        from Crypto.Util import Counter
+    except (ImportError, ModuleNotFoundError):
+        click.secho(
+            "To download this item in MQA, you need to run ",
+            fg="yellow",
+            nl=False,
+        )
+        click.secho("pip3 install pycryptodome --upgrade", fg="blue", nl=False)
+        click.secho(".")
+        raise click.Abort
+
     # Do not change this
     master_key = "UIlTTEMmmLfGowo/UC60x2H45W6MdGgTRfo/umg4754="
 
