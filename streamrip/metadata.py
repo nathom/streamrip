@@ -275,6 +275,7 @@ class TrackMetadata:
             self.copyright = safe_get(track, "publisher_metadata", "p_line")
             self.tracknumber = 0
             self.tracktotal = 0
+            self.quality = 0
 
         else:
             raise ValueError(self.__source)

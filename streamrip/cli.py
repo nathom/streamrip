@@ -269,11 +269,23 @@ def lastfm(ctx, source, url):
 @click.option("-q", "--qobuz", is_flag=True, help="Set Qobuz credentials")
 @click.option("-t", "--tidal", is_flag=True, help="Re-login into Tidal")
 @click.option("--reset", is_flag=True, help="RESET the config file")
+@click.option(
+    "--update",
+    is_flag=True,
+    help="Reset the config file, keeping the credentials",
+)
+@click.option("-p", "--path", is_flag=True, help="Show the config file's path")
 @click.pass_context
 def config(ctx, **kwargs):
     """Manage the streamrip configuration file."""
     if kwargs["reset"]:
         config.reset()
+
+    if kwargs["update"]:
+        config.update()
+
+    if kwargs["path"]:
+        print(CONFIG_PATH)
 
     if kwargs["open"]:
         click.secho(f"Opening {CONFIG_PATH}", fg="green")
