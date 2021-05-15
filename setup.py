@@ -19,10 +19,11 @@ requirements.append("windows-curses; platform_system == 'Windows'")
 # can be removed when click v8.0 is released
 requirements.append("colorama; platform_system == 'Windows'")
 
+
 # https://github.com/pypa/sampleproject/blob/main/setup.py
 setup(
     name=pkg_name,
-    version="0.5.3",
+    version="0.5.4",
     author="Nathan",
     author_email="nathanthomas707@gmail.com",
     keywords="lossless, hi-res, qobuz, tidal, deezer, audio, convert, soundcloud, mp3",
