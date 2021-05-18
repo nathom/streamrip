@@ -2,5 +2,5 @@ click
 ruamel.yaml
 pathvalidate
 requests
-mutagen
+mutagen>=1.45.1
 tqdm
