@@ -5,7 +5,6 @@ import html
 import logging
 import os
 import re
-import sys
 from getpass import getpass
 from hashlib import md5
 from string import Formatter
@@ -574,6 +573,8 @@ class MusicDL(list):
                 return f"{res[0]+1}. {res[1].album}"
             elif isinstance(res[1], Track):
                 return f"{res[0]+1}. {res[1].meta.title}"
+            elif isinstance(res[1], Playlist):
+                return f"{res[0]+1}. {res[1].name}"
             else:
                 raise NotImplementedError(type(res[1]).__name__)
 
@@ -587,14 +588,7 @@ class MusicDL(list):
             return self.preview_media(results[int("".join(num)) - 1])
 
         if os.name == "nt":
-            try:
-                from pick import pick
-            except (ImportError, ModuleNotFoundError):
-                click.secho(
-                    "Run `pip3 install windows-curses` to use interactive mode.",
-                    fg="red",
-                )
-                sys.exit()
+            from pick import pick
 
             choice = pick(
                 tuple(enumerate(results)),
@@ -614,14 +608,7 @@ class MusicDL(list):
 
             return True
         else:
-            try:
-                from simple_term_menu import TerminalMenu
-            except (ImportError, ModuleNotFoundError):
-                click.secho(
-                    "Run `pip3 install simple-term-menu` to use interactive mode.",
-                    fg="red",
-                )
-                sys.exit()
+            from simple_term_menu import TerminalMenu
 
             menu = TerminalMenu(
                 map(title, enumerate(results)),
