@@ -29,7 +29,7 @@ A clear and concise description of what you expected to happen.
 
 <!-- Linux: ~/.config/streamrip or ~/.streamrip -->
 
-<!-- Windows: \Users\<username>\AppData\Local\streamrip  or C:\Users\<user>\AppData\Local\streamrip-->
+<!-- Windows: \Users\<username>\AppData\Local\streamrip  or C:\Users\<usename>\AppData\Roaming\streamrip-->
 
 
 ```yaml
