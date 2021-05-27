@@ -1,7 +1,7 @@
 ---
 name: "\U0001F41B Bug Report"
 about: "If something isn't working as expected \U0001F914."
-title: 'Bug: <A short and concise title>'
+title: 'Bug: Your Title'
 labels: bug
 assignees: nathom
 
@@ -29,7 +29,8 @@ A clear and concise description of what you expected to happen.
 
 <!-- Linux: ~/.config/streamrip or ~/.streamrip -->
 
-<!-- Windows: \Users\<username>\AppData\Local\streamrip -->
+<!-- Windows: \Users\<username>\AppData\Local\streamrip  or C:\Users\<user>\AppData\Local\streamrip-->
+
 
 ```yaml
 # Paste the contents of config.yaml here
