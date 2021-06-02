@@ -102,7 +102,7 @@ class Track:
             self.meta = kwargs["meta"]
 
         if (u := kwargs.get("cover_url")) is not None:
-            logger.debug(f"Cover url: {u}")
+            logger.debug("Cover url: %s", u)
             self.cover_url = u
 
     def load_meta(self):
