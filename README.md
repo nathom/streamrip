@@ -127,6 +127,7 @@ or by submitting code.
 - Limit each Issue to a single subject
 - For bug reports, include the traceback, command (including the url) you used,
 and version of `streamrip`
+- If you do not follow the template provided, I will not respond
 
 ### Contributing code
 
