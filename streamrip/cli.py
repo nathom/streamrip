@@ -275,6 +275,12 @@ def lastfm(ctx, source, url):
     help="Reset the config file, keeping the credentials",
 )
 @click.option("-p", "--path", is_flag=True, help="Show the config file's path")
+@click.option(
+    "-ov",
+    "--open-vim",
+    is_flag=True,
+    help="Open the config file in the vim text editor.",
+)
 @click.pass_context
 def config(ctx, **kwargs):
     """Manage the streamrip configuration file."""
@@ -290,6 +296,9 @@ def config(ctx, **kwargs):
     if kwargs["open"]:
         click.secho(f"Opening {CONFIG_PATH}", fg="green")
         click.launch(CONFIG_PATH)
+
+    if kwargs["open_vim"]:
+        os.system(f"vim '{CONFIG_PATH}'")
 
     if kwargs["directory"]:
         config_dir = os.path.dirname(CONFIG_PATH)
