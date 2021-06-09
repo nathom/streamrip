@@ -446,7 +446,7 @@ class TrackMetadata:
         """
         self._year = val
 
-    def get_formatter(self) -> dict:
+    def get_formatter(self, max_quality: int) -> dict:
         """Return a dict that is used to apply values to file format strings.
 
         :rtype: dict

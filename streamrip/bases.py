@@ -374,7 +374,7 @@ class Track:
         a dict with the keys allowed in formatter strings, and their values in
         the TrackMetadata object.
         """
-        formatter = self.meta.get_formatter()
+        formatter = self.meta.get_formatter(max_quality=self.quality)
         logger.debug("Track meta formatter %s", formatter)
         filename = clean_format(self.file_format, formatter)
         self.final_path = os.path.join(self.folder, filename)[

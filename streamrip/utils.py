@@ -5,7 +5,7 @@ import logging
 import os
 import re
 from string import Formatter
-from typing import Dict, Hashable, Optional, Union
+from typing import Dict, Hashable, Optional, Union, Tuple
 
 import click
 import requests
@@ -14,7 +14,7 @@ from requests.packages import urllib3
 from tqdm import tqdm
 
 from .constants import AGENT, TIDAL_COVER_URL
-from .exceptions import InvalidSourceError, NonStreamable
+from .exceptions import InvalidSourceError, NonStreamable, InvalidQuality
 
 urllib3.disable_warnings()
 logger = logging.getLogger("streamrip")
@@ -107,6 +107,21 @@ def get_quality_id(bit_depth: Optional[int], sampling_rate: Optional[int]):
             return 3
 
         return 4
+
+
+def get_stats_from_quality(
+    quality_id: int,
+) -> Tuple[Optional[int], Optional[int]]:
+    if quality_id <= 1:
+        return (None, None)
+    elif quality_id == 2:
+        return (16, 44100)
+    elif quality_id == 3:
+        return (24, 96000)
+    elif quality_id == 4:
+        return (24, 192000)
+    else:
+        raise InvalidQuality(quality_id)
 
 
 def tqdm_download(

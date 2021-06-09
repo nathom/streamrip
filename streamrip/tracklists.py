@@ -21,6 +21,7 @@ from .utils import (
     clean_format,
     get_container,
     safe_get,
+    get_stats_from_quality,
     tidal_cover_url,
     tqdm_download,
 )
@@ -104,10 +105,7 @@ class Album(Tracklist):
         """
         # Generate the folder name
         self.folder_format = kwargs.get("folder_format", FOLDER_FORMAT)
-        if not hasattr(self, "quality"):
-            self.quality = min(
-                kwargs.get("quality", 3), self.client.max_quality
-            )
+        self.quality = min(kwargs.get("quality", 3), self.client.max_quality)
 
         self.folder = self._get_formatted_folder(
             kwargs.get("parent_folder", "StreamripDownloads"), self.quality
@@ -238,20 +236,25 @@ class Album(Tracklist):
                 )
 
     def _get_formatter(self) -> dict:
-        """Get a formatter that is used for previews in core.py.
+        """Get a formatter that is used for naming folders and previews.
 
         :rtype: dict
         """
-        fmt = dict()
-        for key in ALBUM_KEYS:
-            # default to None
-            fmt[key] = self.get(key)
+        fmt = {key: self.get(key) for key in ALBUM_KEYS}
 
-        if fmt.get("sampling_rate", False):
-            fmt["sampling_rate"] /= 1000
-            # change 48.0kHz -> 48kHz, 44.1kHz -> 44.1kHz
-            if fmt["sampling_rate"] % 1 == 0.0:
-                fmt["sampling_rate"] = int(fmt["sampling_rate"])
+        max_bd, max_sr = get_stats_from_quality(self.quality)
+        if max_sr < fmt.get("sampling_rate", 0) or max_bd < fmt.get(
+            "bit_depth", 0
+        ):
+            fmt["sampling_rate"] = max_sr
+            fmt["bit_depth"] = max_bd
+
+        if sr := fmt.get("sampling_rate"):
+            if sr % 1000 == 0:
+                # truncate the decimal .0 when converting to str
+                fmt["sampling_rate"] = int(sr / 1000)
+            else:
+                fmt["sampling_rate"] = sr / 1000
 
         return fmt
 
