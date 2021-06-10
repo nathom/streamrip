@@ -242,12 +242,12 @@ class Album(Tracklist):
         """
         fmt = {key: self.get(key) for key in ALBUM_KEYS}
 
-        max_bd, max_sr = get_stats_from_quality(self.quality)
-        if max_sr < fmt.get("sampling_rate", 0) or max_bd < fmt.get(
-            "bit_depth", 0
-        ):
-            fmt["sampling_rate"] = max_sr
-            fmt["bit_depth"] = max_bd
+        stats = get_stats_from_quality(self.quality)
+
+        # The quality chosen is not the maximum available quality
+        if stats != (fmt.get("sampling_rate"), fmt.get("bit_depth")):
+            fmt["bit_depth"] = stats[0]
+            fmt["sampling_rate"] = stats[1]
 
         if sr := fmt.get("sampling_rate"):
             if sr % 1000 == 0:

@@ -570,7 +570,14 @@ class Track:
             "M4A": converter.AAC,
         }
 
-        self.container = codec.upper()
+        try:
+            self.container = codec.upper()
+        except AttributeError:
+            click.secho(
+                "Error: No audio codec chosen to convert to.", fg="red"
+            )
+            raise click.Abort
+
         if not hasattr(self, "final_path"):
             self.format_final_path()
 
