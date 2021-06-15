@@ -2,11 +2,12 @@
 
 import logging
 import os
+import shutil
 from getpass import getpass
 from hashlib import md5
 
 import click
-import requests
+import requests  # type: ignore
 
 from . import __version__
 from .clients import TidalClient
@@ -279,7 +280,7 @@ def lastfm(ctx, source, url):
     "-ov",
     "--open-vim",
     is_flag=True,
-    help="Open the config file in the vim text editor.",
+    help="Open the config file in the nvim or vim text editor.",
 )
 @click.pass_context
 def config(ctx, **kwargs):
@@ -298,7 +299,10 @@ def config(ctx, **kwargs):
         click.launch(CONFIG_PATH)
 
     if kwargs["open_vim"]:
-        os.system(f"vim '{CONFIG_PATH}'")
+        if shutil.which("nvim") is not None:
+            os.system(f"nvim '{CONFIG_PATH}'")
+        else:
+            os.system(f"vim '{CONFIG_PATH}'")
 
     if kwargs["directory"]:
         config_dir = os.path.dirname(CONFIG_PATH)
