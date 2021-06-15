@@ -473,7 +473,9 @@ class Playlist(Tracklist):
         fname = sanitize_filename(self.name)
         self.folder = os.path.join(parent_folder, fname)
 
-        self.__download_index = 1  # used for tracknumbers
+        # Used for safe concurrency with tracknumbers instead of an object
+        # level that stores an index
+        self.__indices = iter(range(1, len(self) + 1))
         self.download_message()
 
     def _download_item(self, item: Track, **kwargs) -> bool:  # type: ignore
@@ -482,19 +484,29 @@ class Playlist(Tracklist):
             item.load_meta()
             click.secho(f"Downloading {item!s}", fg="blue")
 
-        if kwargs.get("set_playlist_to_album", False):
+        if playlist_to_album := kwargs.get("set_playlist_to_album", False):
             item["album"] = self.name
             item["albumartist"] = self.creator
 
         if kwargs.get("new_tracknumbers", True):
-            item["tracknumber"] = self.__download_index
+            item["tracknumber"] = next(self.__indices)
             item["discnumber"] = 1
-            self.__download_index += 1
 
         self.downloaded = item.download(**kwargs)
 
         if self.downloaded and self.client.source != "deezer":
             item.tag(embed_cover=kwargs.get("embed_cover", True))
+
+        if playlist_to_album and self.client.source == "deezer":
+            # Because Deezer tracks come pre-tagged, the `set_playlist_to_album`
+            # option is never set. Here, we manually do this
+            from mutagen.flac import FLAC
+
+            audio = FLAC(item.path)
+            audio["ALBUM"] = self.name
+            audio["ALBUMARTIST"] = self.creator
+            audio["TRACKNUMBER"] = f"{item['tracknumber']:02}"
+            audio.save()
 
         return self.downloaded
 
