@@ -652,6 +652,7 @@ class MusicDL(list):
 
         def essence(s):
             s = re.sub(r"&#\d+;", "", s)  # remove HTML entities
+            # TODO: change to finditer
             return "".join(words.findall(s))
 
         def get_titles(s):
