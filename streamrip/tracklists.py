@@ -131,9 +131,7 @@ class Album(Tracklist):
             tqdm_download(cover_url, cover_path)
 
         hires_cov_path = os.path.join(self.folder, "cover.jpg")
-        if kwargs.get("keep_hires_cover", True) and not os.path.exists(
-            hires_cov_path
-        ):
+        if kwargs.get("keep_hires_cover", True) and not os.path.exists(hires_cov_path):
             tqdm_download(self.cover_urls["original"], hires_cov_path)
 
         cover_size = os.path.getsize(cover_path)
@@ -184,9 +182,7 @@ class Album(Tracklist):
         """
         logger.debug("Downloading track to %s", self.folder)
         if self.disctotal > 1 and isinstance(track, Track):
-            disc_folder = os.path.join(
-                self.folder, f"Disc {track.meta.discnumber}"
-            )
+            disc_folder = os.path.join(self.folder, f"Disc {track.meta.discnumber}")
             kwargs["parent_folder"] = disc_folder
         else:
             kwargs["parent_folder"] = self.folder
@@ -273,9 +269,7 @@ class Album(Tracklist):
             # lossy codecs don't have these metrics
             self.bit_depth = self.sampling_rate = None
 
-        formatted_folder = clean_format(
-            self.folder_format, self._get_formatter()
-        )
+        formatted_folder = clean_format(self.folder_format, self._get_formatter())
 
         return os.path.join(parent_folder, formatted_folder)
 
@@ -388,9 +382,7 @@ class Playlist(Tracklist):
         if self.client.source == "qobuz":
             self.name = self.meta["name"]
             self.image = self.meta["images"]
-            self.creator = safe_get(
-                self.meta, "owner", "name", default="Qobuz"
-            )
+            self.creator = safe_get(self.meta, "owner", "name", default="Qobuz")
 
             tracklist = self.meta["tracks"]["items"]
 
@@ -403,9 +395,7 @@ class Playlist(Tracklist):
         elif self.client.source == "tidal":
             self.name = self.meta["title"]
             self.image = tidal_cover_url(self.meta["image"], 640)
-            self.creator = safe_get(
-                self.meta, "creator", "name", default="TIDAL"
-            )
+            self.creator = safe_get(self.meta, "creator", "name", default="TIDAL")
 
             tracklist = self.meta["tracks"]
 
@@ -422,9 +412,7 @@ class Playlist(Tracklist):
         elif self.client.source == "deezer":
             self.name = self.meta["title"]
             self.image = self.meta["picture_big"]
-            self.creator = safe_get(
-                self.meta, "creator", "name", default="Deezer"
-            )
+            self.creator = safe_get(self.meta, "creator", "name", default="Deezer")
 
             tracklist = self.meta["tracks"]
 
@@ -467,9 +455,7 @@ class Playlist(Tracklist):
 
         logger.debug(f"Loaded {len(self)} tracks from playlist {self.name}")
 
-    def _prepare_download(
-        self, parent_folder: str = "StreamripDownloads", **kwargs
-    ):
+    def _prepare_download(self, parent_folder: str = "StreamripDownloads", **kwargs):
         fname = sanitize_filename(self.name)
         self.folder = os.path.join(parent_folder, fname)
 
@@ -667,9 +653,7 @@ class Artist(Tracklist):
             final = self
 
         if isinstance(filters, tuple) and self.client.source == "qobuz":
-            filter_funcs = (
-                getattr(self, f"_{filter_}") for filter_ in filters
-            )
+            filter_funcs = (getattr(self, f"_{filter_}") for filter_ in filters)
             for func in filter_funcs:
                 final = filter(func, final)
 
@@ -788,10 +772,7 @@ class Artist(Tracklist):
             best_bd = bit_depth(a["bit_depth"] for a in group)
             best_sr = sampling_rate(a["sampling_rate"] for a in group)
             for album in group:
-                if (
-                    album["bit_depth"] == best_bd
-                    and album["sampling_rate"] == best_sr
-                ):
+                if album["bit_depth"] == best_bd and album["sampling_rate"] == best_sr:
                     yield album
                     break
 

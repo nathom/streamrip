@@ -45,9 +45,7 @@ logger = logging.getLogger("streamrip")
 
 TYPE_REGEXES = {
     "remaster": re.compile(r"(?i)(re)?master(ed)?"),
-    "extra": re.compile(
-        r"(?i)(anniversary|deluxe|live|collector|demo|expanded)"
-    ),
+    "extra": re.compile(r"(?i)(anniversary|deluxe|live|collector|demo|expanded)"),
 }
 
 
@@ -120,15 +118,12 @@ class Track:
             if self.client.source == "qobuz":
                 self.cover_url = self.resp["album"]["image"]["large"]
             elif self.client.source == "tidal":
-                self.cover_url = tidal_cover_url(
-                    self.resp["album"]["cover"], 320
-                )
+                self.cover_url = tidal_cover_url(self.resp["album"]["cover"], 320)
             elif self.client.source == "deezer":
                 self.cover_url = self.resp["album"]["cover_medium"]
             elif self.client.source == "soundcloud":
                 self.cover_url = (
-                    self.resp["artwork_url"]
-                    or self.resp["user"].get("avatar_url")
+                    self.resp["artwork_url"] or self.resp["user"].get("avatar_url")
                 ).replace("large", "t500x500")
             else:
                 raise InvalidSourceError(self.client.source)
@@ -175,9 +170,7 @@ class Track:
             return False
 
         self.download_cover()  # only downloads for playlists and singles
-        self.path = os.path.join(
-            gettempdir(), f"{hash(self.id)}_{self.quality}.tmp"
-        )
+        self.path = os.path.join(gettempdir(), f"{hash(self.id)}_{self.quality}.tmp")
         return True
 
     def download(
@@ -352,9 +345,7 @@ class Track:
         if not hasattr(self, "cover_url"):
             return False
 
-        self.cover_path = os.path.join(
-            gettempdir(), f"cover{hash(self.cover_url)}.jpg"
-        )
+        self.cover_path = os.path.join(gettempdir(), f"cover{hash(self.cover_url)}.jpg")
         logger.debug(f"Downloading cover from {self.cover_url}")
         # click.secho(f"\nDownloading cover art for {self!s}", fg="blue")
 
@@ -377,18 +368,16 @@ class Track:
         formatter = self.meta.get_formatter(max_quality=self.quality)
         logger.debug("Track meta formatter %s", formatter)
         filename = clean_format(self.file_format, formatter)
-        self.final_path = os.path.join(self.folder, filename)[
-            :250
-        ].strip() + ext(self.quality, self.client.source)
+        self.final_path = os.path.join(self.folder, filename)[:250].strip() + ext(
+            self.quality, self.client.source
+        )
 
         logger.debug("Formatted path: %s", self.final_path)
 
         return self.final_path
 
     @classmethod
-    def from_album_meta(
-        cls, album: TrackMetadata, track: dict, client: Client
-    ):
+    def from_album_meta(cls, album: TrackMetadata, track: dict, client: Client):
         """Return a new Track object initialized with info.
 
         :param album: album metadata returned by API
@@ -456,9 +445,7 @@ class Track:
         :param embed_cover: Embed cover art into file
         :type embed_cover: bool
         """
-        assert isinstance(
-            self.meta, TrackMetadata
-        ), "meta must be TrackMetadata"
+        assert isinstance(self.meta, TrackMetadata), "meta must be TrackMetadata"
         if not self.downloaded:
             logger.info(
                 "Track %s not tagged because it was not downloaded",
@@ -554,9 +541,7 @@ class Track:
         """
         if not self.downloaded:
             logger.debug("Track not downloaded, skipping conversion")
-            click.secho(
-                "Track not downloaded, skipping conversion", fg="magenta"
-            )
+            click.secho("Track not downloaded, skipping conversion", fg="magenta")
             return
 
         CONV_CLASS = {
@@ -573,21 +558,15 @@ class Track:
         try:
             self.container = codec.upper()
         except AttributeError:
-            click.secho(
-                "Error: No audio codec chosen to convert to.", fg="red"
-            )
+            click.secho("Error: No audio codec chosen to convert to.", fg="red")
             raise click.Abort
 
         if not hasattr(self, "final_path"):
             self.format_final_path()
 
         if not os.path.isfile(self.path):
-            logger.info(
-                "File %s does not exist. Skipping conversion.", self.path
-            )
-            click.secho(
-                f"{self!s} does not exist. Skipping conversion.", fg="red"
-            )
+            logger.info("File %s does not exist. Skipping conversion.", self.path)
+            click.secho(f"{self!s} does not exist. Skipping conversion.", fg="red")
             return
 
         assert (
@@ -854,9 +833,7 @@ class Tracklist(list):
             # Tidal errors out with unlimited concurrency
             # max_workers = 15 if self.client.source == "tidal" else 90
             with concurrent.futures.ThreadPoolExecutor(15) as executor:
-                futures = [
-                    executor.submit(target, item, **kwargs) for item in self
-                ]
+                futures = [executor.submit(target, item, **kwargs) for item in self]
                 try:
                     concurrent.futures.wait(futures)
                 except (KeyboardInterrupt, SystemExit):

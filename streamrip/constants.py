@@ -144,7 +144,9 @@ ALBUM_KEYS = (
     "composer",
 )
 # TODO: rename these to DEFAULT_FOLDER_FORMAT etc
-FOLDER_FORMAT = "{albumartist} - {title} ({year}) [{container}] [{bit_depth}B-{sampling_rate}kHz]"
+FOLDER_FORMAT = (
+    "{albumartist} - {title} ({year}) [{container}] [{bit_depth}B-{sampling_rate}kHz]"
+)
 TRACK_FORMAT = "{tracknumber}. {artist} - {title}"
 
 
