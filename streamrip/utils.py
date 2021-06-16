@@ -361,3 +361,24 @@ def get_container(quality: int, source: str) -> str:
         return "AAC"
 
     return "MP3"
+
+
+class Version:
+    def __init__(self, version: str):
+        self.value = tuple(map(int, version.split(".")))
+
+    def __gt__(self, other) -> bool:
+        assert isinstance(other, Version)
+        for v1, v2 in zip(self.value, other.value):
+            if v1 > v2:
+                return True
+            elif v1 < v2:
+                return False
+        return False
+
+    def __lt__(self, other) -> bool:
+        return not self.__gt__(other) and not self.__eq__(other)
+
+    def __eq__(self, other) -> bool:
+        assert isinstance(other, Version)
+        return all(v1 == v2 for v1, v2 in zip(self.value, other.value))
