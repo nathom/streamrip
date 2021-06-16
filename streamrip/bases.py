@@ -12,7 +12,7 @@ import re
 import shutil
 import subprocess
 from tempfile import gettempdir
-from typing import Any, Union, Optional
+from typing import Any, Optional, Union
 
 import click
 import tqdm

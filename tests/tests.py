@@ -1,7 +1,8 @@
-import subprocess
-import click
 import os
 import shutil
+import subprocess
+
+import click
 
 test_urls = {
     "qobuz": "https://www.qobuz.com/us-en/album/blackest-blue-morcheeba/h4nngz0wgqesc",

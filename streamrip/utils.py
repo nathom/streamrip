@@ -5,7 +5,7 @@ import logging
 import os
 import re
 from string import Formatter
-from typing import Dict, Hashable, Optional, Union, Tuple
+from typing import Dict, Hashable, Optional, Tuple, Union
 
 import click
 import requests
@@ -14,7 +14,7 @@ from requests.packages import urllib3
 from tqdm import tqdm
 
 from .constants import AGENT, TIDAL_COVER_URL
-from .exceptions import InvalidSourceError, NonStreamable, InvalidQuality
+from .exceptions import InvalidQuality, InvalidSourceError, NonStreamable
 
 urllib3.disable_warnings()
 logger = logging.getLogger("streamrip")

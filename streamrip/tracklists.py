@@ -20,8 +20,8 @@ from .metadata import TrackMetadata
 from .utils import (
     clean_format,
     get_container,
-    safe_get,
     get_stats_from_quality,
+    safe_get,
     tidal_cover_url,
     tqdm_download,
 )
