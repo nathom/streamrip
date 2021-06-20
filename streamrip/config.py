@@ -34,7 +34,7 @@ class Config:
     default_config_path = os.path.join(os.path.dirname(__file__), "config.toml")
 
     with open(default_config_path) as cfg:
-        defaults: Dict[str, Any] = tomlkit.parse(cfg.read())
+        defaults: Dict[str, Any] = tomlkit.parse(cfg.read().strip())
 
     def __init__(self, path: str = None):
         """Create a Config object with state.
@@ -53,15 +53,15 @@ class Config:
         else:
             self._path = path
 
-        if not os.path.isfile(self._path):
+        if os.path.isfile(self._path):
+            self.load()
+            if self.file["misc"]["version"] != self.defaults["misc"]["version"]:
+                click.secho("Updating config file to new version. Some settings may be lost.", fg="yellow")
+                self.update()
+                self.load()
+        else:
             logger.debug("Creating toml config file at '%s'", self._path)
             shutil.copy(self.default_config_path, CONFIG_PATH)
-        else:
-            self.load()
-            if self.file["misc"]["version"] != __version__:
-                click.secho("Updating config file to new version...", fg="green")
-                self.reset()
-                self.load()
 
     def update(self):
         """Reset the config file except for credentials."""
@@ -86,7 +86,7 @@ class Config:
     def load(self):
         """Load infomation from the config files, making a deepcopy."""
         with open(self._path) as cfg:
-            for k, v in tomlkit.loads(cfg.read()).items():
+            for k, v in tomlkit.loads(cfg.read().strip()).items():
                 self.file[k] = v
                 if hasattr(v, "copy"):
                     self.session[k] = v.copy()
