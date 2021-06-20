@@ -36,6 +36,7 @@ from .constants import (
 from .db import MusicDB
 from .exceptions import (
     AuthenticationError,
+    MissingCredentials,
     NonStreamable,
     NoResultsFound,
     ParsingError,
@@ -96,9 +97,11 @@ class MusicDL(list):
         }
 
         self.db: Union[MusicDB, list]
-        if self.config.session["database"]["enabled"]:
-            if self.config.session["database"]["path"] is not None:
-                self.db = MusicDB(self.config.session["database"]["path"])
+        db_settings = self.config.session["database"]
+        if db_settings["enabled"]:
+            path = db_settings["path"]
+            if path:
+                self.db = MusicDB(path)
             else:
                 self.db = MusicDB(DB_PATH)
                 self.config.file["database"]["path"] = DB_PATH
@@ -172,6 +175,7 @@ class MusicDL(list):
 
         :rtype: dict
         """
+        logger.debug(self.config.session)
         return {
             "database": self.db,
             "parent_folder": self.config.session["downloads"]["folder"],
@@ -179,24 +183,18 @@ class MusicDL(list):
             "track_format": self.config.session["path_format"]["track"],
             "embed_cover": self.config.session["artwork"]["embed"],
             "embed_cover_size": self.config.session["artwork"]["size"],
-            "keep_hires_cover": self.config.session["artwork"][
-                "keep_hires_cover"
-            ],
+            "keep_hires_cover": self.config.session["artwork"]["keep_hires_cover"],
             "set_playlist_to_album": self.config.session["metadata"][
                 "set_playlist_to_album"
             ],
             "stay_temp": self.config.session["conversion"]["enabled"],
             "conversion": self.config.session["conversion"],
-            "concurrent_downloads": self.config.session[
-                "concurrent_downloads"
-            ],
+            "concurrent_downloads": self.config.session["downloads"]["concurrent"],
             "new_tracknumbers": self.config.session["metadata"][
                 "new_playlist_tracknumbers"
             ],
             "download_videos": self.config.session["tidal"]["download_videos"],
-            "download_booklets": self.config.session["qobuz"][
-                "download_booklets"
-            ],
+            "download_booklets": self.config.session["qobuz"]["download_booklets"],
             "download_youtube_videos": self.config.session["youtube"][
                 "download_videos"
             ],
@@ -209,9 +207,10 @@ class MusicDL(list):
         """Download all the items in self."""
         try:
             arguments = self._get_download_args()
-        except KeyError:
+        except KeyError as e:
             self._config_updating_message()
             self.config.update()
+            logger.debug("Config update error: %s", e)
             exit()
         except Exception as err:
             self._config_corrupted_message(err)
@@ -219,9 +218,7 @@ class MusicDL(list):
 
         logger.debug("Arguments from config: %s", arguments)
 
-        source_subdirs = self.config.session["downloads"][
-            "source_subdirectories"
-        ]
+        source_subdirs = self.config.session["downloads"]["source_subdirectories"]
         for item in self:
             if source_subdirs:
                 arguments["parent_folder"] = self.__get_source_subdir(
@@ -232,26 +229,20 @@ class MusicDL(list):
                 item.download(**arguments)
                 continue
 
-            arguments["quality"] = self.config.session[item.client.source][
-                "quality"
-            ]
+            arguments["quality"] = self.config.session[item.client.source]["quality"]
             if isinstance(item, Artist):
                 filters_ = tuple(
                     k for k, v in self.config.session["filters"].items() if v
                 )
                 arguments["filters"] = filters_
-                logger.debug(
-                    "Added filter argument for artist/label: %s", filters_
-                )
+                logger.debug("Added filter argument for artist/label: %s", filters_)
 
             if not (isinstance(item, Tracklist) and item.loaded):
                 logger.debug("Loading metadata")
                 try:
                     item.load_meta()
                 except NonStreamable:
-                    click.secho(
-                        f"{item!s} is not available, skipping.", fg="red"
-                    )
+                    click.secho(f"{item!s} is not available, skipping.", fg="red")
                     continue
 
             item.download(**arguments)
@@ -290,6 +281,12 @@ class MusicDL(list):
                 except AuthenticationError:
                     click.secho("Invalid credentials, try again.")
                     self.prompt_creds(client.source)
+                    creds = self.config.creds(client.source)
+                except MissingCredentials:
+                    logger.debug("Credentials are missing. Prompting..")
+                    self.prompt_creds(client.source)
+                    creds = self.config.creds(client.source)
+
             if (
                 client.source == "qobuz"
                 and not creds.get("secrets")
@@ -311,7 +308,6 @@ class MusicDL(list):
             https://www.qobuz.com/us-en/{type}/{name}/{id}
             https://open.qobuz.com/{type}/{id}
             https://play.qobuz.com/{type}/{id}
-            /us-en/{type}/-/{id}
 
             https://www.deezer.com/us/{type}/{id}
             https://tidal.com/browse/{type}/{id}

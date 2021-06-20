@@ -2,6 +2,10 @@ class AuthenticationError(Exception):
     pass
 
 
+class MissingCredentials(Exception):
+    pass
+
+
 class IneligibleError(Exception):
     pass
 

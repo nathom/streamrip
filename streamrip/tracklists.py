@@ -613,7 +613,7 @@ class Artist(Tracklist):
             albums = self.meta["albums"]
 
         elif self.client.source == "deezer":
-            # TODO: load artist name
+            self.name = self.meta["name"]
             albums = self.meta["albums"]
 
         else:

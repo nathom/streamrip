@@ -31,6 +31,7 @@ from .exceptions import (
     IneligibleError,
     InvalidAppIdError,
     InvalidAppSecretError,
+    MissingCredentials,
     InvalidQuality,
 )
 from .spoofbuz import Spoofer
@@ -113,6 +114,9 @@ class QobuzClient(Client):
         click.secho(f"Logging into {self.source}", fg="green")
         email: str = kwargs["email"]
         pwd: str = kwargs["pwd"]
+        if not email or not pwd:
+            raise MissingCredentials
+
         if self.logged_in:
             logger.debug("Already logged in")
             return
@@ -542,7 +546,7 @@ class TidalClient(Client):
         :param refresh_token:
         """
         if access_token is not None:
-            self.token_expiry = token_expiry
+            self.token_expiry = float(token_expiry)
             self.refresh_token = refresh_token
 
             if self.token_expiry - time.time() < 86400:  # 1 day

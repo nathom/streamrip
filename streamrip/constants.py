@@ -10,7 +10,7 @@ APPNAME = "streamrip"
 
 CACHE_DIR = click.get_app_dir(APPNAME)
 CONFIG_DIR = click.get_app_dir(APPNAME)
-CONFIG_PATH = os.path.join(CONFIG_DIR, "config.yaml")
+CONFIG_PATH = os.path.join(CONFIG_DIR, "config.toml")
 LOG_DIR = click.get_app_dir(APPNAME)
 DB_PATH = os.path.join(LOG_DIR, "downloads.db")
 
@@ -19,9 +19,7 @@ DOWNLOADS_DIR = os.path.join(HOME, "StreamripDownloads")
 
 AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:83.0) Gecko/20100101 Firefox/83.0"
 
-TIDAL_COVER_URL = (
-    "https://resources.tidal.com/images/{uuid}/{width}x{height}.jpg"
-)
+TIDAL_COVER_URL = "https://resources.tidal.com/images/{uuid}/{width}x{height}.jpg"
 
 
 QUALITY_DESC = {
@@ -31,7 +29,6 @@ QUALITY_DESC = {
     3: "24bit/96kHz",
     4: "24bit/192kHz",
 }
-
 
 QOBUZ_FEATURED_KEYS = (
     "most-streamed",

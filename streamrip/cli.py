@@ -67,7 +67,7 @@ def cli(ctx, **kwargs):
     if ctx.invoked_subcommand == "config":
         return
 
-    if config.session["check_for_updates"]:
+    if config.session["misc"]["check_for_updates"]:
         r = requests.get("https://pypi.org/pypi/streamrip/json").json()
         newest = r["info"]["version"]
         if __version__ != newest:
@@ -285,7 +285,7 @@ def config(ctx, **kwargs):
         config.update()
 
     if kwargs["path"]:
-        print(CONFIG_PATH)
+        click.echo(CONFIG_PATH)
 
     if kwargs["open"]:
         click.secho(f"Opening {CONFIG_PATH}", fg="green")
