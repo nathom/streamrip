@@ -31,8 +31,8 @@ from .exceptions import (
     IneligibleError,
     InvalidAppIdError,
     InvalidAppSecretError,
-    MissingCredentials,
     InvalidQuality,
+    MissingCredentials,
 )
 from .spoofbuz import Spoofer
 from .utils import gen_threadsafe_session, get_quality

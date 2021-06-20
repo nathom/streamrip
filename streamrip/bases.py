@@ -23,7 +23,7 @@ from pathvalidate import sanitize_filepath
 
 from . import converter
 from .clients import Client
-from .constants import FLAC_MAX_BLOCKSIZE, TRACK_FORMAT, FOLDER_FORMAT
+from .constants import FLAC_MAX_BLOCKSIZE, FOLDER_FORMAT, TRACK_FORMAT
 from .exceptions import (
     InvalidQuality,
     InvalidSourceError,

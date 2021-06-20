@@ -2,16 +2,16 @@
 
 import copy
 import logging
-import click
 import os
 import shutil
 from pprint import pformat
 from typing import Any, Dict
 
+import click
 import tomlkit
 
-from .constants import CONFIG_DIR, CONFIG_PATH
 from . import __version__
+from .constants import CONFIG_DIR, CONFIG_PATH
 from .exceptions import InvalidSourceError
 
 logger = logging.getLogger("streamrip")

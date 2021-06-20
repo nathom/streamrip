@@ -8,6 +8,7 @@ from collections import OrderedDict
 from typing import Generator, Hashable, Iterable, Optional, Union
 
 from .constants import (
+    ALBUM_KEYS,
     COPYRIGHT,
     COVER_SIZES,
     FLAC_KEY,
@@ -16,7 +17,6 @@ from .constants import (
     PHON_COPYRIGHT,
     TIDAL_Q_MAP,
     TRACK_KEYS,
-    ALBUM_KEYS,
 )
 from .exceptions import InvalidContainerError, InvalidSourceError
 from .utils import get_quality_id, safe_get, tidal_cover_url
