@@ -23,7 +23,7 @@ requirements.append("colorama; platform_system == 'Windows'")
 # https://github.com/pypa/sampleproject/blob/main/setup.py
 setup(
     name=pkg_name,
-    version="0.5.5",
+    version="0.6",
     author="Nathan",
     author_email="nathanthomas707@gmail.com",
     keywords="lossless, hi-res, qobuz, tidal, deezer, audio, convert, soundcloud, mp3",
