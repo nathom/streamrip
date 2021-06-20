@@ -82,9 +82,7 @@ def get_quality(quality_id: int, source: str) -> Union[str, int]:
         raise InvalidSourceError(source)
 
     possible_keys = set(q_map.keys())
-    assert (
-        quality_id in possible_keys
-    ), f"{quality_id} must be in {possible_keys}"
+    assert quality_id in possible_keys, f"{quality_id} must be in {possible_keys}"
     return q_map[quality_id]
 
 
@@ -125,9 +123,7 @@ def get_stats_from_quality(
         raise InvalidQuality(quality_id)
 
 
-def tqdm_download(
-    url: str, filepath: str, params: dict = None, desc: str = None
-):
+def tqdm_download(url: str, filepath: str, params: dict = None, desc: str = None):
     """Download a file with a progress bar.
 
     :param url: url to direct download
@@ -199,9 +195,7 @@ def tidal_cover_url(uuid, size):
     possibles = (80, 160, 320, 640, 1280)
     assert size in possibles, f"size must be in {possibles}"
 
-    return TIDAL_COVER_URL.format(
-        uuid=uuid.replace("-", "/"), height=size, width=size
-    )
+    return TIDAL_COVER_URL.format(uuid=uuid.replace("-", "/"), height=size, width=size)
 
 
 def init_log(path: Optional[str] = None, level: str = "DEBUG"):
@@ -303,9 +297,7 @@ def gen_threadsafe_session(
         headers = {}
 
     session = requests.Session()
-    adapter = requests.adapters.HTTPAdapter(
-        pool_connections=100, pool_maxsize=100
-    )
+    adapter = requests.adapters.HTTPAdapter(pool_connections=100, pool_maxsize=100)
     session.mount("https://", adapter)
     session.headers.update(headers)
     return session

@@ -25,9 +25,7 @@ class MusicDB:
         """Create a database at `self.path`."""
         with sqlite3.connect(self.path) as conn:
             try:
-                conn.execute(
-                    "CREATE TABLE downloads (id TEXT UNIQUE NOT NULL);"
-                )
+                conn.execute("CREATE TABLE downloads (id TEXT UNIQUE NOT NULL);")
                 logger.debug("Download-IDs database created: %s", self.path)
             except sqlite3.OperationalError:
                 pass

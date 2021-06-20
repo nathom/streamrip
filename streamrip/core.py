@@ -335,9 +335,7 @@ class MusicDL(list):
 
         parsed.extend(self.url_parse.findall(url))  # Qobuz, Tidal, Dezer
         soundcloud_urls = self.soundcloud_url_parse.findall(url)
-        soundcloud_items = [
-            self.clients["soundcloud"].get(u) for u in soundcloud_urls
-        ]
+        soundcloud_items = [self.clients["soundcloud"].get(u) for u in soundcloud_urls]
 
         parsed.extend(
             ("soundcloud", item["kind"], url)
@@ -369,15 +367,11 @@ class MusicDL(list):
 
         # For testing:
         # https://www.last.fm/user/nathan3895/playlists/12058911
-        user_regex = re.compile(
-            r"https://www\.last\.fm/user/([^/]+)/playlists/\d+"
-        )
+        user_regex = re.compile(r"https://www\.last\.fm/user/([^/]+)/playlists/\d+")
         lastfm_urls = self.lastfm_url_parse.findall(urls)
         try:
             lastfm_source = self.config.session["lastfm"]["source"]
-            lastfm_fallback_source = self.config.session["lastfm"][
-                "fallback_source"
-            ]
+            lastfm_fallback_source = self.config.session["lastfm"]["fallback_source"]
         except KeyError:
             self._config_updating_message()
             self.config.update()
@@ -407,9 +401,7 @@ class MusicDL(list):
                 except (NoResultsFound, StopIteration):
                     return None
 
-            track = try_search(lastfm_source) or try_search(
-                lastfm_fallback_source
-            )
+            track = try_search(lastfm_source) or try_search(lastfm_fallback_source)
             if track is None:
                 return False
 
@@ -431,9 +423,7 @@ class MusicDL(list):
                 pl.creator = creator_match.group(1)
 
             tracks_not_found = 0
-            with concurrent.futures.ThreadPoolExecutor(
-                max_workers=15
-            ) as executor:
+            with concurrent.futures.ThreadPoolExecutor(max_workers=15) as executor:
                 futures = [
                     executor.submit(search_query, title, artist, pl)
                     for title, artist in queries
@@ -450,9 +440,7 @@ class MusicDL(list):
             pl.loaded = True
 
             if tracks_not_found > 0:
-                click.secho(
-                    f"{tracks_not_found} tracks not found.", fg="yellow"
-                )
+                click.secho(f"{tracks_not_found} tracks not found.", fg="yellow")
             self.append(pl)
 
     def handle_txt(self, filepath: Union[str, os.PathLike]):
@@ -507,9 +495,7 @@ class MusicDL(list):
         else:
             logger.debug("Not generator")
             items = (
-                results.get("data")
-                or results.get("items")
-                or results.get("collection")
+                results.get("data") or results.get("items") or results.get("collection")
             )
             if items is None:
                 raise NoResultsFound(query)
@@ -549,9 +535,7 @@ class MusicDL(list):
             raise NotImplementedError
 
         fields = (fname for _, fname, _, _ in Formatter().parse(fmt) if fname)
-        ret = fmt.format(
-            **{k: media.get(k, default="Unknown") for k in fields}
-        )
+        ret = fmt.format(**{k: media.get(k, default="Unknown") for k in fields})
         return ret
 
     def interactive_search(  # noqa
@@ -682,9 +666,7 @@ class MusicDL(list):
         playlist_title = html.unescape(playlist_title_match.group(1))
 
         if remaining_tracks > 0:
-            with concurrent.futures.ThreadPoolExecutor(
-                max_workers=15
-            ) as executor:
+            with concurrent.futures.ThreadPoolExecutor(max_workers=15) as executor:
                 last_page = int(remaining_tracks // 50) + int(
                     remaining_tracks % 50 != 0
                 )
@@ -726,7 +708,8 @@ class MusicDL(list):
 
             self.config.save()
             click.secho(
-                f'Credentials saved to config file at "{self.config._path}"'
+                f'Credentials saved to config file at "{self.config._path}"',
+                fg="green",
             )
         else:
             raise Exception

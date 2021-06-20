@@ -7,14 +7,13 @@ from getpass import getpass
 from hashlib import md5
 
 import click
-import requests  # type: ignore
+import requests
 
 from . import __version__
 from .clients import TidalClient
 from .config import Config
 from .constants import CACHE_DIR, CONFIG_DIR, CONFIG_PATH, QOBUZ_FEATURED_KEYS
 from .core import MusicDL
-
 
 logging.basicConfig(level="WARNING")
 logger = logging.getLogger("streamrip")
@@ -26,9 +25,7 @@ if not os.path.isdir(CACHE_DIR):
 
 
 @click.group(invoke_without_command=True)
-@click.option(
-    "-c", "--convert", metavar="CODEC", help="alac, mp3, flac, or ogg"
-)
+@click.option("-c", "--convert", metavar="CODEC", help="alac, mp3, flac, or ogg")
 @click.option(
     "-u",
     "--urls",
@@ -141,9 +138,7 @@ def filter_discography(ctx, **kwargs):
 
 
 @cli.command()
-@click.option(
-    "-t", "--type", default="album", help="album, playlist, track, or artist"
-)
+@click.option("-t", "--type", default="album", help="album, playlist, track, or artist")
 @click.option(
     "-s",
     "--source",
@@ -264,9 +259,7 @@ def lastfm(ctx, source, url):
 
 @cli.command()
 @click.option("-o", "--open", is_flag=True, help="Open the config file")
-@click.option(
-    "-d", "--directory", is_flag=True, help="Open the config directory"
-)
+@click.option("-d", "--directory", is_flag=True, help="Open the config directory")
 @click.option("-q", "--qobuz", is_flag=True, help="Set Qobuz credentials")
 @click.option("-t", "--tidal", is_flag=True, help="Re-login into Tidal")
 @click.option("--reset", is_flag=True, help="RESET the config file")
@@ -310,9 +303,7 @@ def config(ctx, **kwargs):
         click.launch(config_dir)
 
     if kwargs["qobuz"]:
-        config.file["qobuz"]["email"] = input(
-            click.style("Qobuz email: ", fg="blue")
-        )
+        config.file["qobuz"]["email"] = input(click.style("Qobuz email: ", fg="blue"))
 
         click.secho("Qobuz password (will not show on screen):", fg="blue")
         config.file["qobuz"]["password"] = md5(
@@ -320,9 +311,7 @@ def config(ctx, **kwargs):
         ).hexdigest()
 
         config.save()
-        click.secho(
-            "Qobuz credentials hashed and saved to config.", fg="green"
-        )
+        click.secho("Qobuz credentials hashed and saved to config.", fg="green")
 
     if kwargs["tidal"]:
         client = TidalClient()
