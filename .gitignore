@@ -20,3 +20,5 @@ StreamripDownloads
 *test.py
 /.mypy_cache
 /streamrip/test.yaml
+/pyproject.toml
+/poetry.lock
