@@ -175,32 +175,32 @@ class MusicDL(list):
 
         :rtype: dict
         """
-        logger.debug(self.config.session)
+        session = self.config.session
+        logger.debug(session)
+        # So that the dictionary isn't searched for the same keys multiple times
+        artwork, conversion, filepaths = tuple(
+            session[key] for key in ("artwork", "conversion", "filepaths")
+        )
         return {
             "database": self.db,
-            "parent_folder": self.config.session["downloads"]["folder"],
-            "folder_format": self.config.session["path_format"]["folder"],
-            "track_format": self.config.session["path_format"]["track"],
-            "embed_cover": self.config.session["artwork"]["embed"],
-            "embed_cover_size": self.config.session["artwork"]["size"],
-            "keep_hires_cover": self.config.session["artwork"]["keep_hires_cover"],
-            "set_playlist_to_album": self.config.session["metadata"][
-                "set_playlist_to_album"
-            ],
-            "stay_temp": self.config.session["conversion"]["enabled"],
-            "conversion": self.config.session["conversion"],
-            "concurrent_downloads": self.config.session["downloads"]["concurrent"],
-            "new_tracknumbers": self.config.session["metadata"][
-                "new_playlist_tracknumbers"
-            ],
-            "download_videos": self.config.session["tidal"]["download_videos"],
-            "download_booklets": self.config.session["qobuz"]["download_booklets"],
-            "download_youtube_videos": self.config.session["youtube"][
-                "download_videos"
-            ],
-            "youtube_video_downloads_folder": self.config.session["youtube"][
+            "parent_folder": session["downloads"]["folder"],
+            "folder_format": filepaths["folder_format"],
+            "track_format": filepaths["track_format"],
+            "embed_cover": session["artwork"]["embed"],
+            "embed_cover_size": artwork["size"],
+            "keep_hires_cover": artwork["keep_hires_cover"],
+            "set_playlist_to_album": session["metadata"]["set_playlist_to_album"],
+            "stay_temp": conversion["enabled"],
+            "conversion": conversion,
+            "concurrent_downloads": session["downloads"]["concurrent"],
+            "new_tracknumbers": session["metadata"]["new_playlist_tracknumbers"],
+            "download_videos": session["tidal"]["download_videos"],
+            "download_booklets": session["qobuz"]["download_booklets"],
+            "download_youtube_videos": session["youtube"]["download_videos"],
+            "youtube_video_downloads_folder": session["youtube"][
                 "video_downloads_folder"
             ],
+            "add_singles_to_folder": filepaths["add_singles_to_folder"],
         }
 
     def download(self):

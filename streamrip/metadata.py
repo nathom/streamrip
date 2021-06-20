@@ -16,6 +16,7 @@ from .constants import (
     PHON_COPYRIGHT,
     TIDAL_Q_MAP,
     TRACK_KEYS,
+    ALBUM_KEYS,
 )
 from .exceptions import InvalidContainerError, InvalidSourceError
 from .utils import get_quality_id, safe_get, tidal_cover_url
@@ -435,6 +436,18 @@ class TrackMetadata:
         """
         # the keys in the tuple are the possible keys for format strings
         return {k: getattr(self, k) for k in TRACK_KEYS}
+
+    def get_album_formatter(self, max_quality: int) -> dict:
+        """Return a dict that is used to apply values to file format strings.
+
+        :param max_quality:
+        :type max_quality: int
+        :rtype: dict
+        """
+        formatter = {k: self.get(k) for k in ALBUM_KEYS}
+        formatter["container"] = "FLAC" if max_quality >= 2 else "MP3"
+        formatter["sampling_rate"] /= 1000
+        return formatter
 
     def tags(self, container: str = "flac") -> Generator:
         """Create a generator of key, value pairs for use with mutagen.

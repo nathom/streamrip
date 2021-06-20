@@ -23,7 +23,7 @@ from pathvalidate import sanitize_filepath
 
 from . import converter
 from .clients import Client
-from .constants import FLAC_MAX_BLOCKSIZE, TRACK_FORMAT
+from .constants import FLAC_MAX_BLOCKSIZE, TRACK_FORMAT, FOLDER_FORMAT
 from .exceptions import (
     InvalidQuality,
     InvalidSourceError,
@@ -146,7 +146,17 @@ class Track:
 
         self.folder = kwargs["parent_folder"] or self.folder
 
+        if kwargs["add_singles_to_folder"]:
+            self.folder = os.path.join(
+                self.folder,
+                clean_format(
+                    kwargs.get("folder_format", FOLDER_FORMAT),
+                    self.meta.get_album_formatter(self.quality),
+                ),
+            )
+
         self.file_format = kwargs.get("track_format", TRACK_FORMAT)
+
         self.folder = sanitize_filepath(self.folder, platform="auto")
         self.format_final_path()
 
