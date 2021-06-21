@@ -88,6 +88,7 @@ class Track:
         self.downloaded = False
         self.tagged = False
         self.converted = False
+        self.part_of_tracklist = kwargs.get("part_of_tracklist", False)
 
         self.final_path: str
         self.container: str
@@ -146,7 +147,7 @@ class Track:
 
         self.folder = kwargs["parent_folder"] or self.folder
 
-        if kwargs["add_singles_to_folder"]:
+        if not self.part_of_tracklist and kwargs["add_singles_to_folder"]:
             self.folder = os.path.join(
                 self.folder,
                 clean_format(
@@ -397,7 +398,7 @@ class Track:
         :raises IndexError
         """
         meta = TrackMetadata(album=album, track=track, source=client.source)
-        return cls(client=client, meta=meta, id=track["id"])
+        return cls(client=client, meta=meta, id=track["id"], part_of_tracklist=True)
 
     @classmethod
     def from_api(cls, item: dict, client: Client):
