@@ -321,6 +321,83 @@ def config(ctx, **kwargs):
         click.secho("Credentials saved to config.", fg="green")
 
 
+@cli.command()
+@click.option(
+    "-sr", "--sampling-rate", help="Downsample the tracks to this rate, in Hz."
+)
+@click.option("-bd", "--bit-depth", help="Downsample the tracks to this bit depth.")
+@click.option(
+    "-k",
+    "--keep-source",
+    is_flag=True,
+    help="Do not delete the old file after conversion.",
+)
+@click.argument("CODEC")
+@click.argument("PATH")
+@click.pass_context
+def convert(ctx, **kwargs):
+    from . import converter
+    import concurrent.futures
+    from tqdm import tqdm
+
+    codec_map = {
+        "FLAC": converter.FLAC,
+        "ALAC": converter.ALAC,
+        "OPUS": converter.OPUS,
+        "MP3": converter.LAME,
+        "AAC": converter.AAC,
+    }
+
+    codec = kwargs.get("codec").upper()
+    assert codec in codec_map.keys(), f"Invalid codec {codec}"
+
+    if s := kwargs.get("sampling_rate"):
+        sampling_rate = int(s)
+    else:
+        sampling_rate = None
+
+    if s := kwargs.get("bit_depth"):
+        bit_depth = int(s)
+    else:
+        bit_depth = None
+
+    converter_args = {
+        "sampling_rate": sampling_rate,
+        "bit_depth": bit_depth,
+        "remove_source": not kwargs.get("keep_source", False),
+    }
+    if os.path.isdir(kwargs["path"]):
+        dirname = kwargs["path"]
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            futures = []
+            audio_extensions = ("flac", "m4a", "aac", "opus", "mp3", "ogg")
+            audio_files = (
+                f
+                for f in os.listdir(kwargs["path"])
+                if any(f.endswith(ext) for ext in audio_extensions)
+            )
+            for file in audio_files:
+                futures.append(
+                    executor.submit(
+                        codec_map[codec](
+                            filename=os.path.join(dirname, file), **converter_args
+                        ).convert
+                    )
+                )
+            for future in tqdm(
+                concurrent.futures.as_completed(futures),
+                total=len(futures),
+                desc="Converting",
+            ):
+                # Only show loading bar
+                pass
+
+    elif os.path.isfile(kwargs["path"]):
+        codec_map[codec](filename=kwargs["path"], **converter_args).convert()
+    else:
+        click.secho(f"File {kwargs['path']} does not exist.", fg="red")
+
+
 def none_chosen():
     """Print message if nothing was chosen."""
     click.secho("No items chosen, exiting.", fg="bright_red")
