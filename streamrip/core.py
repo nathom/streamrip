@@ -26,13 +26,13 @@ from .config import Config
 from .constants import (
     CONFIG_PATH,
     DB_PATH,
+    DEEZER_DYNAMIC_LINK_REGEX,
     LASTFM_URL_REGEX,
     MEDIA_TYPES,
     QOBUZ_INTERPRETER_URL_REGEX,
     SOUNDCLOUD_URL_REGEX,
     URL_REGEX,
     YOUTUBE_URL_REGEX,
-    DEEZER_DYNAMIC_LINK_REGEX,
 )
 from .db import MusicDB
 from .exceptions import (
@@ -43,7 +43,7 @@ from .exceptions import (
     ParsingError,
 )
 from .tracklists import Album, Artist, Label, Playlist, Tracklist
-from .utils import extract_interpreter_url, extract_deezer_dynamic_link
+from .utils import extract_deezer_dynamic_link, extract_interpreter_url
 
 logger = logging.getLogger("streamrip")
 

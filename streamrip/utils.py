@@ -337,7 +337,9 @@ def extract_interpreter_url(url: str) -> str:
     )
 
 
-deezer_id_link_regex = re.compile(r"https://www\.deezer\.com/[a-z]{2}/(album|artist|playlist|track)/(\d+)")
+deezer_id_link_regex = re.compile(
+    r"https://www\.deezer\.com/[a-z]{2}/(album|artist|playlist|track)/(\d+)"
+)
 
 
 def extract_deezer_dynamic_link(url: str) -> Tuple[str, str]:
