@@ -31,6 +31,7 @@ setup(
     long_description=read_file("README.md"),
     long_description_content_type="text/markdown",
     install_requires=requirements,
+    include_package_data=True,  # Include config.toml
     py_modules=["streamrip"],
     entry_points={
         "console_scripts": [
