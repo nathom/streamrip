@@ -112,6 +112,12 @@ def get_quality_id(bit_depth: Optional[int], sampling_rate: Optional[int]):
 def get_stats_from_quality(
     quality_id: int,
 ) -> Tuple[Optional[int], Optional[int]]:
+    """Get bit depth and sampling rate based on the quality id.
+
+    :param quality_id:
+    :type quality_id: int
+    :rtype: Tuple[Optional[int], Optional[int]]
+    """
     if quality_id <= 1:
         return (None, None)
     elif quality_id == 2:
@@ -343,6 +349,12 @@ deezer_id_link_regex = re.compile(
 
 
 def extract_deezer_dynamic_link(url: str) -> Tuple[str, str]:
+    """Extract a deezer url that includes an ID from a deezer.page.link url.
+
+    :param url:
+    :type url: str
+    :rtype: Tuple[str, str]
+    """
     session = gen_threadsafe_session({"User-Agent": AGENT})
     r = session.get(url)
     match = deezer_id_link_regex.search(r.text)
@@ -370,24 +382,3 @@ def get_container(quality: int, source: str) -> str:
         return "AAC"
 
     return "MP3"
-
-
-class Version:
-    def __init__(self, version: str):
-        self.value = tuple(map(int, version.split(".")))
-
-    def __gt__(self, other) -> bool:
-        assert isinstance(other, Version)
-        for v1, v2 in zip(self.value, other.value):
-            if v1 > v2:
-                return True
-            elif v1 < v2:
-                return False
-        return False
-
-    def __lt__(self, other) -> bool:
-        return not self.__gt__(other) and not self.__eq__(other)
-
-    def __eq__(self, other) -> bool:
-        assert isinstance(other, Version)
-        return all(v1 == v2 for v1, v2 in zip(self.value, other.value))

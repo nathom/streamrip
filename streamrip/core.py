@@ -366,7 +366,6 @@ class MusicDL(list):
 
         :param urls:
         """
-
         # Available keys: ['artist', 'title']
         QUERY_FORMAT: Dict[str, str] = {
             "tidal": "{title}",
@@ -637,7 +636,6 @@ class MusicDL(list):
         :type url: str
         :rtype: Tuple[str, list]
         """
-
         logger.debug("Fetching lastfm playlist")
 
         info = []
