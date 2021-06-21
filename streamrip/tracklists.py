@@ -450,6 +450,7 @@ class Playlist(Tracklist):
                         id=track.get("id"),
                         meta=meta,
                         cover_url=gen_cover(track),
+                        part_of_tracklist=True,
                     )
                 )
 

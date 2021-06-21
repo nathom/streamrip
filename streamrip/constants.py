@@ -158,6 +158,7 @@ LASTFM_URL_REGEX = r"https://www.last.fm/user/\w+/playlists/\w+"
 QOBUZ_INTERPRETER_URL_REGEX = (
     r"https?://www\.qobuz\.com/\w\w-\w\w/interpreter/[-\w]+/[-\w]+"
 )
+DEEZER_DYNAMIC_LINK_REGEX = r"https://deezer\.page\.link/\w+"
 YOUTUBE_URL_REGEX = r"https://www\.youtube\.com/watch\?v=[-\w]+"
 
 TIDAL_MAX_Q = 7

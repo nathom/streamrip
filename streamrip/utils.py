@@ -337,6 +337,19 @@ def extract_interpreter_url(url: str) -> str:
     )
 
 
+deezer_id_link_regex = re.compile(r"https://www\.deezer\.com/[a-z]{2}/(\w+)/(\d+)")
+
+
+def extract_deezer_dynamic_link(url: str) -> Tuple[str, str]:
+    session = gen_threadsafe_session({"User-Agent": AGENT})
+    r = session.get(url)
+    match = deezer_id_link_regex.search(r.text)
+    if match:
+        return match.group(1), match.group(2)
+
+    raise Exception("Unable to extract Deezer dynamic link.")
+
+
 def get_container(quality: int, source: str) -> str:
     """Get the file container given the quality.
 

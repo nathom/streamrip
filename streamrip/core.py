@@ -32,6 +32,7 @@ from .constants import (
     SOUNDCLOUD_URL_REGEX,
     URL_REGEX,
     YOUTUBE_URL_REGEX,
+    DEEZER_DYNAMIC_LINK_REGEX,
 )
 from .db import MusicDB
 from .exceptions import (
@@ -42,7 +43,7 @@ from .exceptions import (
     ParsingError,
 )
 from .tracklists import Album, Artist, Label, Playlist, Tracklist
-from .utils import extract_interpreter_url
+from .utils import extract_interpreter_url, extract_deezer_dynamic_link
 
 logger = logging.getLogger("streamrip")
 
@@ -82,6 +83,7 @@ class MusicDL(list):
         self.lastfm_url_parse = re.compile(LASTFM_URL_REGEX)
         self.interpreter_url_parse = re.compile(QOBUZ_INTERPRETER_URL_REGEX)
         self.youtube_url_parse = re.compile(YOUTUBE_URL_REGEX)
+        self.deezer_dynamic_url_parse = re.compile(DEEZER_DYNAMIC_LINK_REGEX)
 
         self.config: Config
         if config is None:
@@ -328,6 +330,18 @@ class MusicDL(list):
                 for u in interpreter_urls
             )
             url = self.interpreter_url_parse.sub("", url)
+
+        dynamic_urls = self.deezer_dynamic_url_parse.findall(url)
+        if dynamic_urls:
+            click.secho(
+                "Extracting IDs from Deezer dynamic link. Use urls "
+                "of the form https://www.deezer.com/{country}/{type}/{id} for "
+                "faster processing.",
+                fg="yellow",
+            )
+            parsed.extend(
+                ("deezer", *extract_deezer_dynamic_link(url)) for url in dynamic_urls
+            )
 
         parsed.extend(self.url_parse.findall(url))  # Qobuz, Tidal, Dezer
         soundcloud_urls = self.soundcloud_url_parse.findall(url)
