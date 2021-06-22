@@ -62,6 +62,9 @@ def cli(ctx, **kwargs):
         logger.setLevel("DEBUG")
         logger.debug("Starting debug log")
 
+    if ctx.invoked_subcommand not in {None, "lastfm", "search", "disover"}:
+        return
+
     config = Config()
 
     if ctx.invoked_subcommand == "config":
@@ -81,9 +84,11 @@ def cli(ctx, **kwargs):
 
     if kwargs["no_db"]:
         config.session["database"]["enabled"] = False
+
     if kwargs["convert"]:
         config.session["conversion"]["enabled"] = True
         config.session["conversion"]["codec"] = kwargs["convert"]
+
     if kwargs["quality"] is not None:
         quality = int(kwargs["quality"])
         if quality not in range(5):
