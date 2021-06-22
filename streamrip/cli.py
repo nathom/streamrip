@@ -31,6 +31,7 @@ if not os.path.isdir(CACHE_DIR):
     "--urls",
     metavar="URLS",
     help="Url from Qobuz, Tidal, SoundCloud, or Deezer",
+    multiple=True,
 )
 @click.option(
     "-q",

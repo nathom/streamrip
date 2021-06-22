@@ -111,7 +111,7 @@ class MusicDL(list):
         else:
             self.db = []
 
-    def handle_urls(self, url: str):
+    def handle_urls(self, urls):
         """Download a url.
 
         :param url:
@@ -119,6 +119,7 @@ class MusicDL(list):
         :raises InvalidSourceError
         :raises ParsingError
         """
+        url = ' '.join(urls)
         # youtube is handled by youtube-dl, so much of the
         # processing is not necessary
         youtube_urls = self.youtube_url_parse.findall(url)
