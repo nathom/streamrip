@@ -111,44 +111,45 @@ class MusicDL(list):
         else:
             self.db = []
 
-    def handle_urls(self, url: str):
-        """Download a url.
+    def handle_urls(self, urls):
+        for url in urls:
+            """Download a url.
 
-        :param url:
-        :type url: str
-        :raises InvalidSourceError
-        :raises ParsingError
-        """
-        # youtube is handled by youtube-dl, so much of the
-        # processing is not necessary
-        youtube_urls = self.youtube_url_parse.findall(url)
-        if youtube_urls != []:
-            self.extend(YoutubeVideo(u) for u in youtube_urls)
+            :param url:
+            :type url: str
+            :raises InvalidSourceError
+            :raises ParsingError
+            """
+            # youtube is handled by youtube-dl, so much of the
+            # processing is not necessary
+            youtube_urls = self.youtube_url_parse.findall(url)
+            if youtube_urls != []:
+                self.extend(YoutubeVideo(u) for u in youtube_urls)
 
-        parsed = self.parse_urls(url)
-        if not parsed and len(self) == 0:
-            if "last.fm" in url:
-                message = (
-                    f"For last.fm urls, use the {click.style('lastfm', fg='yellow')} "
-                    f"command. See {click.style('rip lastfm --help', fg='yellow')}."
-                )
-            else:
-                message = url
+            parsed = self.parse_urls(url)
+            if not parsed and len(self) == 0:
+                if "last.fm" in url:
+                    message = (
+                        f"For last.fm urls, use the {click.style('lastfm', fg='yellow')} "
+                        f"command. See {click.style('rip lastfm --help', fg='yellow')}."
+                    )
+                else:
+                    message = url
 
-            raise ParsingError(message)
+                raise ParsingError(message)
 
-        for source, url_type, item_id in parsed:
-            if item_id in self.db:
-                logger.info(
-                    f"ID {item_id} already downloaded, use --no-db to override."
-                )
-                click.secho(
-                    f"ID {item_id} already downloaded, use --no-db to override.",
-                    fg="magenta",
-                )
-                continue
+            for source, url_type, item_id in parsed:
+                if item_id in self.db:
+                    logger.info(
+                        f"ID {item_id} already downloaded, use --no-db to override."
+                    )
+                    click.secho(
+                        f"ID {item_id} already downloaded, use --no-db to override.",
+                        fg="magenta",
+                    )
+                    continue
 
-            self.handle_item(source, url_type, item_id)
+                self.handle_item(source, url_type, item_id)
 
     def handle_item(self, source: str, media_type: str, item_id: str):
         """Get info and parse into a Media object.
