@@ -1,0 +1,39 @@
+[tool.poetry]
+name = "streamrip"
+version = "0.6.1"
+description = "A fast, all-in-one music ripper for Qobuz, Deezer, Tidal, and SoundCloud"
+authors = ["nathom <nathanthomas707@gmail.com>"]
+license = "GPL-3.0-only"
+readme = "README.md"
+homepage = "https://github.com/nathom/streamrip"
+repository = "https://github.com/nathom/streamrip"
+include = ["streamrip/config.toml"]
+keywords = ["hi-res", "free", "music", "download", "tqdm"]
+classifiers = [
+    "License :: OSI Approved :: GNU General Public License (GPL)",
+    "Operating System :: OS Independent",
+]
+
+[tool.poetry.scripts]
+rip = "streamrip.cli:main"
+
+[tool.poetry.dependencies]
+python = "^3.8"
+requests = "^2.25.1"
+mutagen = "^1.45.1"
+click = "^8.0.1"
+tqdm = "^4.61.1"
+tomlkit = "^0.7.2"
+pathvalidate = "^2.4.1"
+simple-term-menu = {version = "^1.2.1", platform = 'linux or darwin'}
+pick = {version = "^1.0.0", platform = 'win32 or cygwin'}
+windows-curses = {version = "^2.2.0", platform = 'win32 or cygwin'}
+
+[tool.poetry.urls]
+"Bug Reports" = "https://github.com/nathom/streamrip/issues"
+
+[tool.poetry.dev-dependencies]
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
