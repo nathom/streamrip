@@ -63,7 +63,7 @@ def cli(ctx, **kwargs):
         logger.setLevel("DEBUG")
         logger.debug("Starting debug log")
 
-    if ctx.invoked_subcommand not in {None, "lastfm", "search", "disover"}:
+    if ctx.invoked_subcommand not in {None, "lastfm", "search", "disover", "config"}:
         return
 
     config = Config()
@@ -284,6 +284,7 @@ def lastfm(ctx, source, url):
 @click.pass_context
 def config(ctx, **kwargs):
     """Manage the streamrip configuration file."""
+    global config
     if kwargs["reset"]:
         config.reset()
 
