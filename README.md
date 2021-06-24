@@ -37,6 +37,11 @@ Download an album from Qobuz
 rip -u https://open.qobuz.com/album/0060253780968
 ```
 
+Download multiple albums from Qobuz
+```bash
+rip -u https://www.qobuz.com/us-en/album/back-in-black-ac-dc/0886444889841 -u https://www.qobuz.com/us-en/album/blue-train-john-coltrane/0060253764852
+```
+
 ![Streamrip downloading an album](https://github.com/nathom/streamrip/blob/main/demo/download_url.png?raw=true)
 
 Download the album and convert it to `mp3`
