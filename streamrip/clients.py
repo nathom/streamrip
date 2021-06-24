@@ -545,7 +545,7 @@ class TidalClient(Client):
         :param token_expiry:
         :param refresh_token:
         """
-        if access_token is not None:
+        if access_token:
             self.token_expiry = float(token_expiry)
             self.refresh_token = refresh_token
 
