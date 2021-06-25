@@ -10,8 +10,7 @@ from typing import Any, Dict
 import click
 import tomlkit
 
-from . import __version__
-from .constants import CONFIG_DIR, CONFIG_PATH
+from .constants import CONFIG_DIR, CONFIG_PATH, DOWNLOADS_DIR
 from .exceptions import InvalidSourceError
 
 logger = logging.getLogger("streamrip")
@@ -64,7 +63,9 @@ class Config:
                 self.load()
         else:
             logger.debug("Creating toml config file at '%s'", self._path)
-            shutil.copy(self.default_config_path, CONFIG_PATH)
+            shutil.copy(self.default_config_path, self._path)
+            self.load()
+            self.file["downloads"]["folder"] = DOWNLOADS_DIR
 
     def update(self):
         """Reset the config file except for credentials."""

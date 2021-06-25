@@ -1,6 +1,6 @@
 [downloads]
 # Folder where tracks are downloaded to
-folder = "/Users/nathan/StreamripDownloads"
+folder = ""
 # Put Qobuz albums in a 'Qobuz' folder, Tidal albums in 'Tidal' etc.
 source_subdirectories = false
 # Download (and convert) tracks all at once, instead of sequentially. 
