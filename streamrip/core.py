@@ -119,7 +119,13 @@ class MusicDL(list):
         :raises InvalidSourceError
         :raises ParsingError
         """
-        url = ' '.join(urls)
+        if isinstance(urls, str):
+            url = urls
+        elif isinstance(urls, tuple):
+            url = " ".join(urls)
+        else:
+            raise Exception(f"Urls has invalid type {type(urls)}")
+
         # youtube is handled by youtube-dl, so much of the
         # processing is not necessary
         youtube_urls = self.youtube_url_parse.findall(url)
@@ -134,7 +140,7 @@ class MusicDL(list):
                     f"command. See {click.style('rip lastfm --help', fg='yellow')}."
                 )
             else:
-                message = url
+                message = f"Cannot find urls in text: {url}"
 
             raise ParsingError(message)
 
