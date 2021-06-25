@@ -32,12 +32,11 @@ A clear and concise description of what you expected to happen.
 <!-- Windows: \Users\<username>\AppData\Local\streamrip  or C:\Users\<usename>\AppData\Roaming\streamrip-->
 
 
-```yaml
-# Paste the contents of config.yaml here
+```toml
+# Paste the contents of config.toml here
 # REMOVE YOUR CREDENTIALS
-your:
-    - config
-    - file
+[your]
+config = "file"
 ```
 
 **Environment**
