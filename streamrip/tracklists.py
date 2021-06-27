@@ -220,7 +220,7 @@ class Album(Tracklist):
         This uses a classmethod to convert an item into a Track object, which
         stores the metadata inside a TrackMetadata object.
         """
-        logging.debug(f"Loading {self.tracktotal} tracks to album")
+        logging.debug("Loading %d tracks to album", self.tracktotal)
         for track in _get_tracklist(resp, self.client.source):
             if track.get("type") == "Music Video":
                 self.append(Video.from_album_meta(track, self.client))
