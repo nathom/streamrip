@@ -238,7 +238,13 @@ class Album(Tracklist):
         """
         fmt = {key: self.get(key) for key in ALBUM_KEYS}
 
-        stats = get_stats_from_quality(self.quality)
+        stats = tuple(
+            min(bd, sr)
+            for bd, sr in zip(
+                (self.meta.bit_depth, self.meta.sampling_rate),
+                get_stats_from_quality(self.quality),
+            )
+        )
 
         # The quality chosen is not the maximum available quality
         if stats != (fmt.get("sampling_rate"), fmt.get("bit_depth")):
