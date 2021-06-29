@@ -842,7 +842,6 @@ class Tracklist(list):
 
         if kwargs.get("concurrent_downloads", True):
             # Tidal errors out with unlimited concurrency
-            # max_workers = 15 if self.client.source == "tidal" else 90
             with concurrent.futures.ThreadPoolExecutor(15) as executor:
                 futures = [executor.submit(target, item, **kwargs) for item in self]
                 try:

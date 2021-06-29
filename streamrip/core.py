@@ -249,7 +249,7 @@ class MusicDL(list):
             if not (isinstance(item, Tracklist) and item.loaded):
                 logger.debug("Loading metadata")
                 try:
-                    item.load_meta()
+                    item.load_meta(**arguments)
                 except NonStreamable:
                     click.secho(f"{item!s} is not available, skipping.", fg="red")
                     continue

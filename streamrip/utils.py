@@ -8,6 +8,7 @@ import os
 import re
 from string import Formatter
 from typing import Dict, Hashable, Optional, Tuple, Union
+from collections import OrderedDict
 
 import click
 import requests
@@ -15,7 +16,7 @@ from pathvalidate import sanitize_filename
 from requests.packages import urllib3
 from tqdm import tqdm
 
-from .constants import AGENT, TIDAL_COVER_URL
+from .constants import AGENT, TIDAL_COVER_URL, COVER_SIZES
 from .exceptions import InvalidQuality, InvalidSourceError, NonStreamable
 
 urllib3.disable_warnings()
@@ -382,3 +383,32 @@ def get_container(quality: int, source: str) -> str:
         return "AAC"
 
     return "MP3"
+
+
+def get_cover_urls(resp: dict, source: str) -> dict:
+    if source == "qobuz":
+        cover_urls = OrderedDict(resp["image"])
+        cover_urls["original"] = cover_urls["large"].replace("600", "org")
+        return cover_urls
+
+    if source == "tidal":
+        uuid = resp["cover"]
+        return OrderedDict(
+            {
+                sk: tidal_cover_url(uuid, size)
+                for sk, size in zip(COVER_SIZES, (160, 320, 640, 1280))
+            }
+        )
+
+    if source == "deezer":
+        return OrderedDict(
+            {
+                sk: resp.get(rk)  # size key, resp key
+                for sk, rk in zip(
+                    COVER_SIZES,
+                    ("cover", "cover_medium", "cover_large", "cover_xl"),
+                )
+            }
+        )
+
+    raise InvalidSourceError(source)
