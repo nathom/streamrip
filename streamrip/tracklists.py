@@ -19,6 +19,7 @@ from .exceptions import InvalidSourceError, NonStreamable
 from .metadata import TrackMetadata
 from .utils import (
     clean_format,
+    get_cover_urls,
     get_container,
     get_stats_from_quality,
     safe_get,
@@ -68,7 +69,7 @@ class Album(Tracklist):
         self.loaded = False
         self.downloaded = False
 
-    def load_meta(self):
+    def load_meta(self, **kwargs):
         """Load detailed metadata from API using the id."""
         assert hasattr(self, "id"), "id must be set to load metadata"
         resp = self.client.get(self.id, media_type="album")
@@ -220,7 +221,7 @@ class Album(Tracklist):
         This uses a classmethod to convert an item into a Track object, which
         stores the metadata inside a TrackMetadata object.
         """
-        logging.debug(f"Loading {self.tracktotal} tracks to album")
+        logging.debug("Loading %d tracks to album", self.tracktotal)
         for track in _get_tracklist(resp, self.client.source):
             if track.get("type") == "Music Video":
                 self.append(Video.from_album_meta(track, self.client))
@@ -238,7 +239,13 @@ class Album(Tracklist):
         """
         fmt = {key: self.get(key) for key in ALBUM_KEYS}
 
-        stats = get_stats_from_quality(self.quality)
+        stats = tuple(
+            min(bd, sr)
+            for bd, sr in zip(
+                (self.meta.bit_depth, self.meta.sampling_rate),
+                get_stats_from_quality(self.quality),
+            )
+        )
 
         # The quality chosen is not the maximum available quality
         if stats != (fmt.get("sampling_rate"), fmt.get("bit_depth")):
@@ -338,6 +345,7 @@ class Playlist(Tracklist):
         :type album_id: Union[str, int]
         :param kwargs:
         """
+        self.name: str
         self.client = client
 
         for k, v in kwargs.items():
@@ -373,7 +381,7 @@ class Playlist(Tracklist):
         self._load_tracks(**kwargs)
         self.loaded = True
 
-    def _load_tracks(self, new_tracknumbers: bool = True):
+    def _load_tracks(self, new_tracknumbers: bool = True, **kwargs):
         """Parse the tracklist returned by the API.
 
         :param new_tracknumbers: replace tracknumber tag with playlist position
@@ -386,9 +394,6 @@ class Playlist(Tracklist):
 
             tracklist = self.meta["tracks"]["items"]
 
-            def gen_cover(track):
-                return track["album"]["image"]["small"]
-
             def meta_args(track):
                 return {"track": track, "album": track["album"]}
 
@@ -398,10 +403,6 @@ class Playlist(Tracklist):
             self.creator = safe_get(self.meta, "creator", "name", default="TIDAL")
 
             tracklist = self.meta["tracks"]
-
-            def gen_cover(track):
-                cover_url = tidal_cover_url(track["album"]["cover"], 640)
-                return cover_url
 
             def meta_args(track):
                 return {
@@ -416,17 +417,11 @@ class Playlist(Tracklist):
 
             tracklist = self.meta["tracks"]
 
-            def gen_cover(track):
-                return track["album"]["cover_medium"]
-
         elif self.client.source == "soundcloud":
             self.name = self.meta["title"]
             # self.image = self.meta.get("artwork_url").replace("large", "t500x500")
             self.creator = self.meta["user"]["username"]
             tracklist = self.meta["tracks"]
-
-            def gen_cover(track):
-                return track["artwork_url"].replace("large", "t500x500")
 
         else:
             raise NotImplementedError
@@ -443,13 +438,16 @@ class Playlist(Tracklist):
                 # tracknumber tags might cause conflicts if the playlist files are
                 # inside of a library folder
                 meta = TrackMetadata(track=track, source=self.client.source)
+                cover_url = get_cover_urls(track["album"], self.client.source)[
+                    kwargs.get("embed_cover_size", "large")
+                ]
 
                 self.append(
                     Track(
                         self.client,
                         id=track.get("id"),
                         meta=meta,
-                        cover_url=gen_cover(track),
+                        cover_url=cover_url,
                         part_of_tracklist=True,
                     )
                 )
@@ -484,7 +482,7 @@ class Playlist(Tracklist):
         if self.downloaded and self.client.source != "deezer":
             item.tag(embed_cover=kwargs.get("embed_cover", True))
 
-        if playlist_to_album and self.client.source == "deezer":
+        if self.downloaded and playlist_to_album and self.client.source == "deezer":
             # Because Deezer tracks come pre-tagged, the `set_playlist_to_album`
             # option is never set. Here, we manually do this
             from mutagen.flac import FLAC
@@ -584,7 +582,7 @@ class Artist(Tracklist):
 
         self.loaded = False
 
-    def load_meta(self):
+    def load_meta(self, **kwargs):
         """Send an API call to get album info based on id."""
         self.meta = self.client.get(self.id, media_type="artist")
         self._load_albums()
@@ -857,7 +855,7 @@ class Artist(Tracklist):
 class Label(Artist):
     """Represents a downloadable Label."""
 
-    def load_meta(self):
+    def load_meta(self, **kwargs):
         """Load metadata given an id."""
         assert self.client.source == "qobuz", "Label source must be qobuz"
 
