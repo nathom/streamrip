@@ -490,7 +490,7 @@ class Playlist(Tracklist):
         if self.downloaded and self.client.source != "deezer":
             item.tag(embed_cover=kwargs.get("embed_cover", True))
 
-        if playlist_to_album and self.client.source == "deezer":
+        if self.downloaded and playlist_to_album and self.client.source == "deezer":
             # Because Deezer tracks come pre-tagged, the `set_playlist_to_album`
             # option is never set. Here, we manually do this
             from mutagen.flac import FLAC
