@@ -401,7 +401,7 @@ def get_cover_urls(resp: dict, source: str) -> dict:
         )
 
     if source == "deezer":
-        return OrderedDict(
+        cover_urls = OrderedDict(
             {
                 sk: resp.get(rk)  # size key, resp key
                 for sk, rk in zip(
@@ -410,5 +410,9 @@ def get_cover_urls(resp: dict, source: str) -> dict:
                 )
             }
         )
+        if cover_urls["large"] is None and resp.get("cover_big") is not None:
+            cover_urls["large"] = resp["cover_big"]
+
+        return cover_urls
 
     raise InvalidSourceError(source)
