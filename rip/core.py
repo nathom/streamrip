@@ -14,7 +14,16 @@ import click
 import requests
 from tqdm import tqdm
 
-from streamrip.bases import Track, Video, YoutubeVideo
+from streamrip.media import (
+    Track,
+    Video,
+    YoutubeVideo,
+    Album,
+    Artist,
+    Label,
+    Playlist,
+    Tracklist,
+)
 from streamrip.clients import (
     Client,
     DeezerClient,
@@ -42,7 +51,6 @@ from streamrip.exceptions import (
     NoResultsFound,
     ParsingError,
 )
-from streamrip.tracklists import Album, Artist, Label, Playlist, Tracklist
 from streamrip.utils import extract_deezer_dynamic_link, extract_interpreter_url
 
 logger = logging.getLogger("streamrip")

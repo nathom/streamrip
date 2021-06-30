@@ -2,4 +2,4 @@
 
 __version__ = "0.6.7"
 
-from . import clients, converter, bases, tracklists, constants
+from . import clients, converter, media, constants

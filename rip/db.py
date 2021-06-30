@@ -19,6 +19,7 @@ class MusicDB:
         """
         if empty:
             self.path = None
+            return
 
         self.path = db_path
         if not os.path.exists(self.path):

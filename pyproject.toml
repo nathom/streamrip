@@ -8,6 +8,9 @@ readme = "README.md"
 homepage = "https://github.com/nathom/streamrip"
 repository = "https://github.com/nathom/streamrip"
 include = ["streamrip/config.toml"]
+packages = [
+    { include = "streamrip" },
+]
 keywords = ["hi-res", "free", "music", "download", "tqdm"]
 classifiers = [
     "License :: OSI Approved :: GNU General Public License (GPL)",
