@@ -15,7 +15,7 @@ classifiers = [
 ]
 
 [tool.poetry.scripts]
-rip = "streamrip.cli:main"
+rip = "rip.cli:main"
 
 [tool.poetry.dependencies]
 python = "^3.8"

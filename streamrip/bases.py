@@ -163,15 +163,15 @@ class Track:
 
         os.makedirs(self.folder, exist_ok=True)
 
-        if self.id in kwargs.get("database", []):
-            self.downloaded = True
-            self.tagged = True
-            self.path = self.final_path
-            decho(
-                f"{self['title']} already logged in database, skipping.",
-                fg="magenta",
-            )
-            return False  # because the track was not downloaded
+        # if self.id in kwargs.get("database", []):
+        #     self.downloaded = True
+        #     self.tagged = True
+        #     self.path = self.final_path
+        #     decho(
+        #         f"{self['title']} already logged in database, skipping.",
+        #         fg="magenta",
+        #     )
+        #     return False  # because the track was not downloaded
 
         if os.path.isfile(self.final_path):  # track already exists
             self.downloaded = True
@@ -263,10 +263,10 @@ class Track:
         if not kwargs.get("stay_temp", False):
             self.move(self.final_path)
 
-        database = kwargs.get("database")
-        if database:
-            database.add(self.id)
-            logger.debug(f"{self.id} added to database")
+        # database = kwargs.get("database")
+        # if database:
+        #     database.add(self.id)
+        #     logger.debug(f"{self.id} added to database")
 
         logger.debug("Downloaded: %s -> %s", self.path, self.final_path)
 

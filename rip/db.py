@@ -11,12 +11,15 @@ logger = logging.getLogger("streamrip")
 class MusicDB:
     """Simple interface for the downloaded track database."""
 
-    def __init__(self, db_path: Union[str, os.PathLike]):
+    def __init__(self, db_path: Union[str, os.PathLike], empty=False):
         """Create a MusicDB object.
 
         :param db_path: filepath of the database
         :type db_path: Union[str, os.PathLike]
         """
+        if empty:
+            self.path = None
+
         self.path = db_path
         if not os.path.exists(self.path):
             self.create()
@@ -39,6 +42,9 @@ class MusicDB:
         :type item_id: str
         :rtype: bool
         """
+        if self.path is None:
+            return False
+
         logger.debug("Checking database for ID %s", item_id)
         with sqlite3.connect(self.path) as conn:
             return (
@@ -55,6 +61,10 @@ class MusicDB:
         :type item_id: str
         """
         logger.debug("Adding ID %s", item_id)
+
+        if self.path is None:
+            return
+
         with sqlite3.connect(self.path) as conn:
             try:
                 conn.execute(

@@ -14,7 +14,8 @@ from pathvalidate import sanitize_filename
 from .bases import Booklet, Track, Tracklist, Video
 from .clients import Client
 from .constants import ALBUM_KEYS, FLAC_MAX_BLOCKSIZE, FOLDER_FORMAT
-from .db import MusicDB
+
+# from .db import MusicDB
 from .exceptions import InvalidSourceError, NonStreamable
 from .metadata import TrackMetadata
 from .utils import (

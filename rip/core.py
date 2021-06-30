@@ -14,8 +14,8 @@ import click
 import requests
 from tqdm import tqdm
 
-from .bases import Track, Video, YoutubeVideo
-from .clients import (
+from streamrip.bases import Track, Video, YoutubeVideo
+from streamrip.clients import (
     Client,
     DeezerClient,
     QobuzClient,
@@ -23,7 +23,7 @@ from .clients import (
     TidalClient,
 )
 from .config import Config
-from .constants import (
+from streamrip.constants import (
     CONFIG_PATH,
     DB_PATH,
     DEEZER_DYNAMIC_LINK_REGEX,
@@ -35,15 +35,15 @@ from .constants import (
     YOUTUBE_URL_REGEX,
 )
 from .db import MusicDB
-from .exceptions import (
+from streamrip.exceptions import (
     AuthenticationError,
     MissingCredentials,
     NonStreamable,
     NoResultsFound,
     ParsingError,
 )
-from .tracklists import Album, Artist, Label, Playlist, Tracklist
-from .utils import extract_deezer_dynamic_link, extract_interpreter_url
+from streamrip.tracklists import Album, Artist, Label, Playlist, Tracklist
+from streamrip.utils import extract_deezer_dynamic_link, extract_interpreter_url
 
 logger = logging.getLogger("streamrip")
 
@@ -98,7 +98,7 @@ class MusicDL(list):
             "soundcloud": SoundCloudClient(),
         }
 
-        self.db: Union[MusicDB, list]
+        self.db: MusicDB
         db_settings = self.config.session["database"]
         if db_settings["enabled"]:
             path = db_settings["path"]
@@ -109,7 +109,7 @@ class MusicDL(list):
                 self.config.file["database"]["path"] = DB_PATH
                 self.config.save()
         else:
-            self.db = []
+            self.db = MusicDB(None, empty=True)
 
     def handle_urls(self, urls):
         """Download a url.
@@ -191,7 +191,6 @@ class MusicDL(list):
             session[key] for key in ("artwork", "conversion", "filepaths")
         )
         return {
-            "database": self.db,
             "parent_folder": session["downloads"]["folder"],
             "folder_format": filepaths["folder_format"],
             "track_format": filepaths["track_format"],
@@ -254,14 +253,13 @@ class MusicDL(list):
                     click.secho(f"{item!s} is not available, skipping.", fg="red")
                     continue
 
-            item.download(**arguments)
+            if item.download(**arguments) and hasattr(item, "id"):
+                self.db.add(item.id)
+
             if isinstance(item, Track):
                 item.tag()
                 if arguments["conversion"]["enabled"]:
                     item.convert(**arguments["conversion"])
-
-            if self.db != [] and hasattr(item, "id"):
-                self.db.add(item.id)
 
     def get_client(self, source: str) -> Client:
         """Get a client given the source and log in.

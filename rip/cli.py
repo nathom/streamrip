@@ -9,10 +9,10 @@ from hashlib import md5
 import click
 import requests
 
-from . import __version__
-from .clients import TidalClient
+from streamrip import __version__
+from streamrip.clients import TidalClient
 from .config import Config
-from .constants import CACHE_DIR, CONFIG_DIR, CONFIG_PATH, QOBUZ_FEATURED_KEYS
+from streamrip.constants import CACHE_DIR, CONFIG_DIR, CONFIG_PATH, QOBUZ_FEATURED_KEYS
 from .core import MusicDL
 
 logging.basicConfig(level="WARNING")
