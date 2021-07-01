@@ -1,27 +1,9 @@
 """The streamrip command line interface."""
-
-import logging
-import os
-import shutil
-from getpass import getpass
-from hashlib import md5
-
 import click
-import requests
-
-from streamrip import __version__
-from streamrip.clients import TidalClient
-from .config import Config
-from streamrip.constants import CACHE_DIR, CONFIG_DIR, CONFIG_PATH, QOBUZ_FEATURED_KEYS
-from .core import MusicDL
+import logging
 
 logging.basicConfig(level="WARNING")
 logger = logging.getLogger("streamrip")
-
-if not os.path.isdir(CONFIG_DIR):
-    os.makedirs(CONFIG_DIR, exist_ok=True)
-if not os.path.isdir(CACHE_DIR):
-    os.makedirs(CONFIG_DIR, exist_ok=True)
 
 
 @click.group(invoke_without_command=True)
@@ -56,6 +38,21 @@ def cli(ctx, **kwargs):
         $ rip config --open
 
     """
+    import os
+
+    import requests
+
+    from streamrip import __version__
+    from .config import Config
+    from streamrip.constants import CONFIG_DIR
+    from .core import MusicDL
+
+    logging.basicConfig(level="WARNING")
+    logger = logging.getLogger("streamrip")
+
+    if not os.path.isdir(CONFIG_DIR):
+        os.makedirs(CONFIG_DIR, exist_ok=True)
+
     global config
     global core
 
@@ -225,6 +222,8 @@ def discover(ctx, **kwargs):
 
         * universal-chanson
     """
+    from streamrip.constants import QOBUZ_FEATURED_KEYS
+
     assert (
         kwargs["list"] in QOBUZ_FEATURED_KEYS
     ), f"Invalid featured key {kwargs['list']}"
@@ -284,6 +283,13 @@ def lastfm(ctx, source, url):
 @click.pass_context
 def config(ctx, **kwargs):
     """Manage the streamrip configuration file."""
+    from streamrip.clients import TidalClient
+    from streamrip.constants import CONFIG_PATH
+    from hashlib import md5
+    from getpass import getpass
+    import shutil
+    import os
+
     global config
     if kwargs["reset"]:
         config.reset()
@@ -343,9 +349,10 @@ def config(ctx, **kwargs):
 @click.argument("PATH")
 @click.pass_context
 def convert(ctx, **kwargs):
-    from . import converter
+    from streamrip import converter
     import concurrent.futures
     from tqdm import tqdm
+    import os
 
     codec_map = {
         "FLAC": converter.FLAC,
