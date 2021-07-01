@@ -660,9 +660,6 @@ class TidalClient(Client):
                 # pending
                 time.sleep(4)
                 continue
-            elif status == 1:
-                # error checking
-                raise Exception
             elif status == 0:
                 # successful
                 break
