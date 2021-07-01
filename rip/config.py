@@ -86,6 +86,9 @@ class Config:
             os.makedirs(CONFIG_DIR, exist_ok=True)
 
         shutil.copy(self.default_config_path, self._path)
+        self.load()
+        self.file["downloads"]["folder"] = DOWNLOADS_DIR
+        self.save()
 
     def load(self):
         """Load infomation from the config files, making a deepcopy."""

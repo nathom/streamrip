@@ -107,7 +107,7 @@ class Track:
             logger.debug("Cover url: %s", u)
             self.cover_url = u
 
-    def load_meta(self):
+    def load_meta(self, **kwargs):
         """Send a request to the client to get metadata for this Track.
 
         Usually only called for single tracks and last.fm playlists.
@@ -672,7 +672,7 @@ class Video:
         self.explicit = kwargs.get("explicit", False)
         self.tracknumber = kwargs.get("tracknumber", None)
 
-    def load_meta(self):
+    def load_meta(self, **kwargs):
         """Given an id at contruction, get the metadata of the video."""
         resp = self.client.get(self.id, "video")
         self.title = resp["title"]
