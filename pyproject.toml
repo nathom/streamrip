@@ -10,6 +10,7 @@ repository = "https://github.com/nathom/streamrip"
 include = ["streamrip/config.toml"]
 packages = [
     { include = "streamrip" },
+    { include = "rip" },
 ]
 keywords = ["hi-res", "free", "music", "download", "tqdm"]
 classifiers = [

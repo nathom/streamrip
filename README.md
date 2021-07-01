@@ -1,6 +1,7 @@
 # streamrip
 
 [![Downloads](https://static.pepy.tech/personalized-badge/streamrip?period=total&units=international_system&left_color=black&right_color=green&left_text=Downloads)](https://pepy.tech/project/streamrip)
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/python/black)
 
 
 A scriptable stream downloader for Qobuz, Tidal, Deezer and SoundCloud.
