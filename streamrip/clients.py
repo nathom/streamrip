@@ -669,6 +669,8 @@ class TidalClient(Client):
             else:
                 raise Exception
 
+        self._update_authorization()
+
     def _get_device_code(self):
         """Get the device code that will be used to log in on the browser."""
         data = {
