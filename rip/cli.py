@@ -60,7 +60,7 @@ def cli(ctx, **kwargs):
         logger.setLevel("DEBUG")
         logger.debug("Starting debug log")
 
-    if ctx.invoked_subcommand not in {None, "lastfm", "search", "disover", "config"}:
+    if ctx.invoked_subcommand not in {None, "lastfm", "search", "discover", "config"}:
         return
 
     config = Config()
