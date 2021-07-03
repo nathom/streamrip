@@ -5,6 +5,7 @@ import html
 import logging
 import os
 import re
+
 from getpass import getpass
 from hashlib import md5
 from string import Formatter
@@ -32,16 +33,17 @@ from streamrip.clients import (
     TidalClient,
 )
 from .config import Config
-from streamrip.constants import (
+from streamrip.constants import MEDIA_TYPES
+from .constants import (
+    URL_REGEX,
+    SOUNDCLOUD_URL_REGEX,
+    LASTFM_URL_REGEX,
+    QOBUZ_INTERPRETER_URL_REGEX,
+    YOUTUBE_URL_REGEX,
+    DEEZER_DYNAMIC_LINK_REGEX,
     CONFIG_PATH,
     DB_PATH,
-    DEEZER_DYNAMIC_LINK_REGEX,
-    LASTFM_URL_REGEX,
-    MEDIA_TYPES,
-    QOBUZ_INTERPRETER_URL_REGEX,
-    SOUNDCLOUD_URL_REGEX,
-    URL_REGEX,
-    YOUTUBE_URL_REGEX,
+    FAILED_DB_PATH,
 )
 from . import db
 from streamrip.exceptions import (
@@ -51,11 +53,11 @@ from streamrip.exceptions import (
     NoResultsFound,
     ParsingError,
 )
-from streamrip.utils import extract_deezer_dynamic_link, extract_interpreter_url
+from .utils import extract_deezer_dynamic_link, extract_interpreter_url
 
 logger = logging.getLogger("streamrip")
 
-
+# ---------------- Constants ------------------ #
 Media = Union[
     Type[Album],
     Type[Playlist],
@@ -72,6 +74,7 @@ MEDIA_CLASS: Dict[str, Media] = {
     "label": Label,
     "video": Video,
 }
+# ---------------------------------------------- #
 
 
 class MusicDL(list):
@@ -86,13 +89,6 @@ class MusicDL(list):
         :param config:
         :type config: Optional[Config]
         """
-        self.url_parse = re.compile(URL_REGEX)
-        self.soundcloud_url_parse = re.compile(SOUNDCLOUD_URL_REGEX)
-        self.lastfm_url_parse = re.compile(LASTFM_URL_REGEX)
-        self.interpreter_url_parse = re.compile(QOBUZ_INTERPRETER_URL_REGEX)
-        self.youtube_url_parse = re.compile(YOUTUBE_URL_REGEX)
-        self.deezer_dynamic_url_parse = re.compile(DEEZER_DYNAMIC_LINK_REGEX)
-
         self.config: Config
         if config is None:
             self.config = Config(CONFIG_PATH)
@@ -136,7 +132,7 @@ class MusicDL(list):
 
         # youtube is handled by youtube-dl, so much of the
         # processing is not necessary
-        youtube_urls = self.youtube_url_parse.findall(url)
+        youtube_urls = YOUTUBE_URL_REGEX.findall(url)
         if youtube_urls != []:
             self.extend(YoutubeVideo(u) for u in youtube_urls)
 
@@ -333,7 +329,7 @@ class MusicDL(list):
         """
         parsed: List[Tuple[str, str, str]] = []
 
-        interpreter_urls = self.interpreter_url_parse.findall(url)
+        interpreter_urls = QOBUZ_INTERPRETER_URL_REGEX.findall(url)
         if interpreter_urls:
             click.secho(
                 "Extracting IDs from Qobuz interpreter urls. Use urls "
@@ -344,9 +340,9 @@ class MusicDL(list):
                 ("qobuz", "artist", extract_interpreter_url(u))
                 for u in interpreter_urls
             )
-            url = self.interpreter_url_parse.sub("", url)
+            url = QOBUZ_INTERPRETER_URL_REGEX.sub("", url)
 
-        dynamic_urls = self.deezer_dynamic_url_parse.findall(url)
+        dynamic_urls = DEEZER_DYNAMIC_LINK_REGEX.findall(url)
         if dynamic_urls:
             click.secho(
                 "Extracting IDs from Deezer dynamic link. Use urls "
@@ -358,8 +354,8 @@ class MusicDL(list):
                 ("deezer", *extract_deezer_dynamic_link(url)) for url in dynamic_urls
             )
 
-        parsed.extend(self.url_parse.findall(url))  # Qobuz, Tidal, Dezer
-        soundcloud_urls = self.soundcloud_url_parse.findall(url)
+        parsed.extend(URL_REGEX.findall(url))  # Qobuz, Tidal, Dezer
+        soundcloud_urls = URL_REGEX.findall(url)
         soundcloud_items = [self.clients["soundcloud"].get(u) for u in soundcloud_urls]
 
         parsed.extend(
@@ -392,7 +388,7 @@ class MusicDL(list):
         # For testing:
         # https://www.last.fm/user/nathan3895/playlists/12058911
         user_regex = re.compile(r"https://www\.last\.fm/user/([^/]+)/playlists/\d+")
-        lastfm_urls = self.lastfm_url_parse.findall(urls)
+        lastfm_urls = LASTFM_URL_REGEX.findall(urls)
         try:
             lastfm_source = self.config.session["lastfm"]["source"]
             lastfm_fallback_source = self.config.session["lastfm"]["fallback_source"]
