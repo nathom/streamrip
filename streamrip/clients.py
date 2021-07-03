@@ -268,11 +268,13 @@ class QobuzClient(Client):
         extras = {
             "artist": "albums",
             "playlist": "tracks",
-            "label": "albums",  # not tested
+            "label": "albums",
         }
 
         if media_type in extras:
             params.update({"extra": extras[media_type]})
+
+        logger.debug("request params: %s", params)
 
         epoint = f"{media_type}/get"
 

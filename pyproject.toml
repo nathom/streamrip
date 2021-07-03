@@ -32,6 +32,7 @@ pathvalidate = "^2.4.1"
 simple-term-menu = {version = "^1.2.1", platform = 'linux or darwin'}
 pick = {version = "^1.0.0", platform = 'win32 or cygwin'}
 windows-curses = {version = "^2.2.0", platform = 'win32 or cygwin'}
+Pillow = "^8.3.0"
 
 [tool.poetry.urls]
 "Bug Reports" = "https://github.com/nathom/streamrip/issues"

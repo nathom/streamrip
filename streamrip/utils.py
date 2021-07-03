@@ -416,3 +416,26 @@ def get_cover_urls(resp: dict, source: str) -> dict:
         return cover_urls
 
     raise InvalidSourceError(source)
+
+
+def downsize_image(filepath: str, width: int, height: int):
+    """Downsize an image. If either the width or the height is greater
+    than the image's width or height, that dimension will not be changed.
+
+    :param filepath:
+    :type filepath: str
+    :param width:
+    :type width: int
+    :param height:
+    :type height: int
+    :raises: ValueError
+    """
+    from PIL import Image
+
+    image = Image.open(filepath)
+
+    width = min(width, image.width)
+    height = min(height, image.height)
+
+    resized_image = image.resize((width, height))
+    resized_image.save(filepath)

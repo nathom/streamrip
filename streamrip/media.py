@@ -33,6 +33,7 @@ from .exceptions import (
 from .metadata import TrackMetadata
 from .utils import (
     clean_format,
+    downsize_image,
     get_cover_urls,
     decho,
     decrypt_mqa_file,
@@ -173,7 +174,10 @@ class Track:
             decho(f"Track already exists: {self.final_path}", fg="magenta")
             return False
 
-        self.download_cover()  # only downloads for playlists and singles
+        self.download_cover(
+            width=kwargs.get("max_artwork_width", 999999),
+            height=kwargs.get("max_artwork_height", 999999),
+        )  # only downloads for playlists and singles
         self.path = os.path.join(gettempdir(), f"{hash(self.id)}_{self.quality}.tmp")
         return True
 
@@ -339,7 +343,7 @@ class Track:
         """
         return click.style(f"Track {int(self.meta.tracknumber):02}", fg="blue")
 
-    def download_cover(self):
+    def download_cover(self, width=999999, height=999999):
         """Download the cover art, if cover_url is given."""
         if not hasattr(self, "cover_url"):
             return False
@@ -354,6 +358,7 @@ class Track:
                 self.cover_path,
                 desc=click.style("Cover", fg="cyan"),
             )
+            downsize_image(self.cover_path, width, height)
         else:
             logger.debug("Cover already exists, skipping download")
 
@@ -1247,6 +1252,12 @@ class Album(Tracklist):
             )
             # large is about 600x600px which is guaranteed < 16.7 MB
             tqdm_download(self.cover_urls["large"], cover_path)
+
+        downsize_image(
+            cover_path,
+            kwargs.get("max_artwork_width", 999999),
+            kwargs.get("max_artwork_height", 999999),
+        )
 
         embed_cover = kwargs.get("embed_cover", True)  # embed by default
         if self.client.source != "deezer" and embed_cover:
