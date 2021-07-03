@@ -43,7 +43,7 @@ from streamrip.constants import (
     URL_REGEX,
     YOUTUBE_URL_REGEX,
 )
-from .db import MusicDB
+from . import db
 from streamrip.exceptions import (
     AuthenticationError,
     MissingCredentials,
@@ -106,18 +106,18 @@ class MusicDL(list):
             "soundcloud": SoundCloudClient(),
         }
 
-        self.db: MusicDB
+        self.db: db.Database
         db_settings = self.config.session["database"]
         if db_settings["enabled"]:
             path = db_settings["path"]
             if path:
-                self.db = MusicDB(path)
+                self.db = db.Downloads(path)
             else:
-                self.db = MusicDB(DB_PATH)
+                self.db = db.Downloads(DB_PATH)
                 self.config.file["database"]["path"] = DB_PATH
                 self.config.save()
         else:
-            self.db = MusicDB(None, empty=True)
+            self.db = db.Downloads(None, empty=True)
 
     def handle_urls(self, urls):
         """Download a url.
@@ -153,7 +153,7 @@ class MusicDL(list):
             raise ParsingError(message)
 
         for source, url_type, item_id in parsed:
-            if item_id in self.db:
+            if {"id": item_id} in self.db:
                 logger.info(
                     f"ID {item_id} already downloaded, use --no-db to override."
                 )
@@ -262,7 +262,7 @@ class MusicDL(list):
                     continue
 
             if item.download(**arguments) and hasattr(item, "id"):
-                self.db.add(item.id)
+                self.db.add([item.id])
 
             if isinstance(item, Track):
                 item.tag()
