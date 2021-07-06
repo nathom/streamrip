@@ -32,11 +32,16 @@ class NonStreamable(Exception):
         super().__init__(self.message)
 
     def print(self, item):
+        print(self.print_msg(item))
+
+    def print_msg(self, item) -> str:
+        base_msg = click.style(f"Unable to stream {item!s}.", fg="yellow")
         if self.message:
-            click.secho(f"Unable to stream {item!s}. Message: ", nl=False, fg="yellow")
-            click.secho(self.message, fg="red")
-        else:
-            click.secho(f"Unable to stream {item!s}.", fg="yellow")
+            base_msg += click.style(" Message: ", fg="yellow") + click.style(
+                self.message, fg="red"
+            )
+
+        return base_msg
 
 
 class InvalidContainerError(Exception):

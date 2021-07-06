@@ -230,16 +230,19 @@ class MusicDL(list):
             "max_artwork_height": int(artwork["max_height"]),
         }
 
-    def repair(self, max_items=float("inf")):
-        print(list(self.failed_db))
+    def repair(self, max_items=None):
+        if max_items is None:
+            max_items = float("inf")
+
         if self.failed_db.is_dummy:
             click.secho(
-                "Failed downloads database must be enabled to repair!", fg="red"
+                "Failed downloads database must be enabled in the config file "
+                "to repair!",
+                fg="red",
             )
-            exit(1)
+            raise click.Abort
 
         for counter, (source, media_type, item_id) in enumerate(self.failed_db):
-            # print(f"handling item {source = } {media_type = } {item_id = }")
             if counter >= max_items:
                 break
 
@@ -293,13 +296,11 @@ class MusicDL(list):
             try:
                 item.download(**arguments)
             except NonStreamable as e:
-                print("caught in core")
                 e.print(item)
                 self.failed_db.add((item.client.source, item.type, item.id))
                 continue
             except PartialFailure as e:
                 for failed_item in e.failed_items:
-                    print(f"adding {failed_item} to database")
                     self.failed_db.add(failed_item)
                 continue
 

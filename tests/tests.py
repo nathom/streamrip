@@ -44,7 +44,7 @@ def download_albums():
         procs.append(subprocess.run([*rip_url, url]))
 
     for p in procs:
-        print(p)
+        click.echo(p)
 
 
 def check_album_dl_success(folder, correct):

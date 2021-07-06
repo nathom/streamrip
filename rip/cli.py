@@ -356,6 +356,19 @@ def config(ctx, **kwargs):
 @click.argument("PATH")
 @click.pass_context
 def convert(ctx, **kwargs):
+    """Batch convert audio files.
+
+    This is a tool that is included with the `rip` program that assists with
+    converting audio files. This is essentially a wrapper over ffmpeg
+    that is designed to be easy to use with sensible default options.
+
+    Examples (assuming /my/music is filled with FLAC files):
+
+        $ rip convert MP3 /my/music
+
+        $ rip convert ALAC --sampling-rate 48000 /my/music
+
+    """
     from streamrip import converter
     import concurrent.futures
     from tqdm import tqdm
@@ -425,7 +438,15 @@ def convert(ctx, **kwargs):
 )
 @click.pass_context
 def repair(ctx, **kwargs):
-    core.repair()
+    """Retry failed downloads.
+
+    If the failed downloads database is enabled in the config file (it is by default),
+    when an item is not available for download, it is logged in the database.
+
+    When this command is called, it tries to download those items again. This is useful
+    for times when a temporary server error may miss a few tracks in an album.
+    """
+    core.repair(max_items=kwargs.get("num_items"))
 
 
 def none_chosen():

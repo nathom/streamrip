@@ -230,6 +230,7 @@ class Track(Media):
         :param progress_bar: turn on/off progress bar
         :type progress_bar: bool
         """
+        # raise NonStreamable
         self._prepare_download(
             quality=quality,
             parent_folder=parent_folder,
@@ -976,16 +977,16 @@ class Tracklist(list):
                     for future in future_map.keys():
                         try:
                             future.result()
-                        except NonStreamable:
-                            print("caught in media conc")
+                        except NonStreamable as e:
                             item = future_map[future]
+                            e.print(item)
                             failed_downloads.append(
                                 (item.client.source, item.type, item.id)
                             )
 
                 except (KeyboardInterrupt, SystemExit):
                     executor.shutdown()
-                    tqdm.write("Aborted! May take some time to shutdown.")
+                    click.echo("Aborted! May take some time to shutdown.")
                     raise click.Abort
 
         else:
