@@ -9,8 +9,9 @@ logger = logging.getLogger("streamrip")
 
 
 class Database:
+    """A wrapper for an sqlite database."""
+
     structure: dict
-    # name of table
     name: str
 
     def __init__(self, path, dummy=False):
@@ -28,12 +29,13 @@ class Database:
             self.create()
 
     def create(self):
+        """Create a database."""
         if self.is_dummy:
             return
 
         with sqlite3.connect(self.path) as conn:
             params = ", ".join(
-                f"{key} {' '.join(map(str.upper, props))}"
+                f"{key} {' '.join(map(str.upper, props))} NOT NULL"
                 for key, props in self.structure.items()
             )
             command = f"CREATE TABLE {self.name} ({params})"
@@ -43,9 +45,15 @@ class Database:
             conn.execute(command)
 
     def keys(self):
+        """Get the column names of the table."""
         return self.structure.keys()
 
-    def contains(self, **items):
+    def contains(self, **items) -> bool:
+        """Check whether items matches an entry in the table.
+
+        :param items: a dict of column-name + expected value
+        :rtype: bool
+        """
         if self.is_dummy:
             return False
 
@@ -62,13 +70,17 @@ class Database:
 
             logger.debug(f"executing {command}")
 
-            result = conn.execute(command, tuple(items.values()))
-            return result
+            return bool(conn.execute(command, tuple(items.values())).fetchone()[0])
 
     def __contains__(self, keys: dict) -> bool:
         return self.contains(**keys)
 
     def add(self, items: List[str]):
+        """Add a row to the table.
+
+        :param items: Column-name + value. Values must be provided for all cols.
+        :type items: List[str]
+        """
         if self.is_dummy:
             return
 
@@ -87,6 +99,19 @@ class Database:
                 # tried to insert an item that was already there
                 logger.debug(e)
 
+    def remove(self, **items):
+        # not in use currently
+        if self.is_dummy:
+            return
+
+        conditions = " AND ".join(f"{key}=?" for key in items.keys())
+        command = f"DELETE FROM {self.name} WHERE {conditions}"
+
+        with sqlite3.connect(self.path) as conn:
+            logger.debug(command)
+            print(command)
+            conn.execute(command, tuple(items.values()))
+
     def __iter__(self):
         if self.is_dummy:
             return ()
@@ -104,7 +129,7 @@ class Database:
 class Downloads(Database):
     name = "downloads"
     structure = {
-        "id": ["unique", "text"],
+        "id": ["text", "unique"],
     }
 
 
