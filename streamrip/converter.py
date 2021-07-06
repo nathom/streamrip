@@ -11,7 +11,7 @@ from .exceptions import ConversionError
 
 logger = logging.getLogger("streamrip")
 
-SAMPLING_RATES = (44100, 48000, 88200, 96000, 176400, 192000)
+SAMPLING_RATES = {44100, 48000, 88200, 96000, 176400, 192000}
 
 
 class Converter:

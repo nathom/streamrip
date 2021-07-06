@@ -56,7 +56,13 @@ download_videos = false
 video_downloads_folder = ""
 
 # This stores a list of item IDs so that repeats are not downloaded.
-[database]
+[database.downloads]
+enabled = true
+path = ""
+
+# If a download fails, the item ID is stored here. Then, `rip repair` can be
+# called to retry the downloads
+[database.failed_downloads]
 enabled = true
 path = ""
 
@@ -94,6 +100,10 @@ embed = true
 # "original" images can be up to 30MB, and may fail embedding. 
 # Using "large" is recommended.
 size = "large"
+# Both of these options limit the size of the embedded artwork. If their values
+# are larger than the actual dimensions of the image, they will be ignored.
+max_width = 999999
+max_height = 999999
 # Save the cover image at the highest quality as a seperate jpg file
 keep_hires_cover = true
 
@@ -128,4 +138,4 @@ fallback_source = "deezer"
 check_for_updates = true
 
 # Metadata to identify this config file. Do not change.
-version = "0.6.1"
+version = "0.7"

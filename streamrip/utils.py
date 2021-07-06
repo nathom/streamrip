@@ -148,7 +148,7 @@ def tqdm_download(url: str, filepath: str, params: dict = None, desc: str = None
     total = int(r.headers.get("content-length", 0))
     logger.debug(f"File size = {total}")
     if total < 1000 and not url.endswith("jpg") and not url.endswith("png"):
-        raise NonStreamable(url)
+        raise NonStreamable("Resource not found.")
 
     try:
         with open(filepath, "wb") as file, tqdm(
@@ -322,49 +322,6 @@ def decho(message, fg=None):
     logger.debug(message)
 
 
-interpreter_artist_regex = re.compile(r"getSimilarArtist\(\s*'(\w+)'")
-
-
-def extract_interpreter_url(url: str) -> str:
-    """Extract artist ID from a Qobuz interpreter url.
-
-    :param url: Urls of the form "https://www.qobuz.com/us-en/interpreter/{artist}/download-streaming-albums"
-    :type url: str
-    :rtype: str
-    """
-    session = gen_threadsafe_session({"User-Agent": AGENT})
-    r = session.get(url)
-    match = interpreter_artist_regex.search(r.text)
-    if match:
-        return match.group(1)
-
-    raise Exception(
-        "Unable to extract artist id from interpreter url. Use a "
-        "url that contains an artist id."
-    )
-
-
-deezer_id_link_regex = re.compile(
-    r"https://www\.deezer\.com/[a-z]{2}/(album|artist|playlist|track)/(\d+)"
-)
-
-
-def extract_deezer_dynamic_link(url: str) -> Tuple[str, str]:
-    """Extract a deezer url that includes an ID from a deezer.page.link url.
-
-    :param url:
-    :type url: str
-    :rtype: Tuple[str, str]
-    """
-    session = gen_threadsafe_session({"User-Agent": AGENT})
-    r = session.get(url)
-    match = deezer_id_link_regex.search(r.text)
-    if match:
-        return match.group(1), match.group(2)
-
-    raise Exception("Unable to extract Deezer dynamic link.")
-
-
 def get_container(quality: int, source: str) -> str:
     """Get the file container given the quality.
 
@@ -416,3 +373,26 @@ def get_cover_urls(resp: dict, source: str) -> dict:
         return cover_urls
 
     raise InvalidSourceError(source)
+
+
+def downsize_image(filepath: str, width: int, height: int):
+    """Downsize an image. If either the width or the height is greater
+    than the image's width or height, that dimension will not be changed.
+
+    :param filepath:
+    :type filepath: str
+    :param width:
+    :type width: int
+    :param height:
+    :type height: int
+    :raises: ValueError
+    """
+    from PIL import Image
+
+    image = Image.open(filepath)
+
+    width = min(width, image.width)
+    height = min(height, image.height)
+
+    resized_image = image.resize((width, height))
+    resized_image.save(filepath)

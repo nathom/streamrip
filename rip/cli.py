@@ -1,27 +1,10 @@
 """The streamrip command line interface."""
-
-import logging
-import os
-import shutil
-from getpass import getpass
-from hashlib import md5
-
 import click
-import requests
-
-from . import __version__
-from .clients import TidalClient
-from .config import Config
-from .constants import CACHE_DIR, CONFIG_DIR, CONFIG_PATH, QOBUZ_FEATURED_KEYS
-from .core import MusicDL
+import logging
+from streamrip import __version__
 
 logging.basicConfig(level="WARNING")
 logger = logging.getLogger("streamrip")
-
-if not os.path.isdir(CONFIG_DIR):
-    os.makedirs(CONFIG_DIR, exist_ok=True)
-if not os.path.isdir(CACHE_DIR):
-    os.makedirs(CONFIG_DIR, exist_ok=True)
 
 
 @click.group(invoke_without_command=True)
@@ -39,10 +22,10 @@ if not os.path.isdir(CACHE_DIR):
     metavar="INT",
     help="0: < 320kbps, 1: 320 kbps, 2: 16 bit/44.1 kHz, 3: 24 bit/<=96 kHz, 4: 24 bit/<=192 kHz",
 )
-@click.option("-t", "--text", metavar="PATH")
-@click.option("-nd", "--no-db", is_flag=True)
-@click.option("--debug", is_flag=True)
-@click.version_option(prog_name="streamrip")
+@click.option("-t", "--text", metavar="PATH", help="Download urls from a text file.")
+@click.option("-nd", "--no-db", is_flag=True, help="Ignore the database.")
+@click.option("--debug", is_flag=True, help="Show debugging logs.")
+@click.version_option(prog_name="rip", version=__version__)
 @click.pass_context
 def cli(ctx, **kwargs):
     """Streamrip: The all-in-one Qobuz, Tidal, SoundCloud, and Deezer music downloader.
@@ -56,6 +39,20 @@ def cli(ctx, **kwargs):
         $ rip config --open
 
     """
+    import os
+
+    import requests
+
+    from .config import Config
+    from .constants import CONFIG_DIR
+    from .core import MusicDL
+
+    logging.basicConfig(level="WARNING")
+    logger = logging.getLogger("streamrip")
+
+    if not os.path.isdir(CONFIG_DIR):
+        os.makedirs(CONFIG_DIR, exist_ok=True)
+
     global config
     global core
 
@@ -63,7 +60,14 @@ def cli(ctx, **kwargs):
         logger.setLevel("DEBUG")
         logger.debug("Starting debug log")
 
-    if ctx.invoked_subcommand not in {None, "lastfm", "search", "disover", "config"}:
+    if ctx.invoked_subcommand not in {
+        None,
+        "lastfm",
+        "search",
+        "discover",
+        "config",
+        "repair",
+    }:
         return
 
     config = Config()
@@ -225,6 +229,8 @@ def discover(ctx, **kwargs):
 
         * universal-chanson
     """
+    from streamrip.constants import QOBUZ_FEATURED_KEYS
+
     assert (
         kwargs["list"] in QOBUZ_FEATURED_KEYS
     ), f"Invalid featured key {kwargs['list']}"
@@ -284,6 +290,13 @@ def lastfm(ctx, source, url):
 @click.pass_context
 def config(ctx, **kwargs):
     """Manage the streamrip configuration file."""
+    from streamrip.clients import TidalClient
+    from .constants import CONFIG_PATH
+    from hashlib import md5
+    from getpass import getpass
+    import shutil
+    import os
+
     global config
     if kwargs["reset"]:
         config.reset()
@@ -343,9 +356,23 @@ def config(ctx, **kwargs):
 @click.argument("PATH")
 @click.pass_context
 def convert(ctx, **kwargs):
-    from . import converter
+    """Batch convert audio files.
+
+    This is a tool that is included with the `rip` program that assists with
+    converting audio files. This is essentially a wrapper over ffmpeg
+    that is designed to be easy to use with sensible default options.
+
+    Examples (assuming /my/music is filled with FLAC files):
+
+        $ rip convert MP3 /my/music
+
+        $ rip convert ALAC --sampling-rate 48000 /my/music
+
+    """
+    from streamrip import converter
     import concurrent.futures
     from tqdm import tqdm
+    import os
 
     codec_map = {
         "FLAC": converter.FLAC,
@@ -403,6 +430,23 @@ def convert(ctx, **kwargs):
         codec_map[codec](filename=kwargs["path"], **converter_args).convert()
     else:
         click.secho(f"File {kwargs['path']} does not exist.", fg="red")
+
+
+@cli.command()
+@click.option(
+    "-n", "--num-items", help="The number of items to atttempt downloads for."
+)
+@click.pass_context
+def repair(ctx, **kwargs):
+    """Retry failed downloads.
+
+    If the failed downloads database is enabled in the config file (it is by default),
+    when an item is not available for download, it is logged in the database.
+
+    When this command is called, it tries to download those items again. This is useful
+    for times when a temporary server error may miss a few tracks in an album.
+    """
+    core.repair(max_items=kwargs.get("num_items"))
 
 
 def none_chosen():

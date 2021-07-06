@@ -1,6 +1,0 @@
-click
-pathvalidate
-requests
-mutagen>=1.45.1
-tqdm
-tomlkit

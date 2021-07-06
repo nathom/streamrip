@@ -268,11 +268,13 @@ class QobuzClient(Client):
         extras = {
             "artist": "albums",
             "playlist": "tracks",
-            "label": "albums",  # not tested
+            "label": "albums",
         }
 
         if media_type in extras:
             params.update({"extra": extras[media_type]})
+
+        logger.debug("request params: %s", params)
 
         epoint = f"{media_type}/get"
 
@@ -660,14 +662,13 @@ class TidalClient(Client):
                 # pending
                 time.sleep(4)
                 continue
-            elif status == 1:
-                # error checking
-                raise Exception
             elif status == 0:
                 # successful
                 break
             else:
                 raise Exception
+
+        self._update_authorization()
 
     def _get_device_code(self):
         """Get the device code that will be used to log in on the browser."""

@@ -5,6 +5,7 @@ import html
 import logging
 import os
 import re
+
 from getpass import getpass
 from hashlib import md5
 from string import Formatter
@@ -14,8 +15,17 @@ import click
 import requests
 from tqdm import tqdm
 
-from .bases import Track, Video, YoutubeVideo
-from .clients import (
+from streamrip.media import (
+    Track,
+    Video,
+    YoutubeVideo,
+    Album,
+    Artist,
+    Label,
+    Playlist,
+    Tracklist,
+)
+from streamrip.clients import (
     Client,
     DeezerClient,
     QobuzClient,
@@ -23,31 +33,33 @@ from .clients import (
     TidalClient,
 )
 from .config import Config
+from streamrip.constants import MEDIA_TYPES
 from .constants import (
+    URL_REGEX,
+    SOUNDCLOUD_URL_REGEX,
+    LASTFM_URL_REGEX,
+    QOBUZ_INTERPRETER_URL_REGEX,
+    YOUTUBE_URL_REGEX,
+    DEEZER_DYNAMIC_LINK_REGEX,
     CONFIG_PATH,
     DB_PATH,
-    DEEZER_DYNAMIC_LINK_REGEX,
-    LASTFM_URL_REGEX,
-    MEDIA_TYPES,
-    QOBUZ_INTERPRETER_URL_REGEX,
-    SOUNDCLOUD_URL_REGEX,
-    URL_REGEX,
-    YOUTUBE_URL_REGEX,
+    FAILED_DB_PATH,
 )
-from .db import MusicDB
-from .exceptions import (
+from . import db
+from streamrip.exceptions import (
     AuthenticationError,
+    PartialFailure,
+    ItemExists,
     MissingCredentials,
     NonStreamable,
     NoResultsFound,
     ParsingError,
 )
-from .tracklists import Album, Artist, Label, Playlist, Tracklist
 from .utils import extract_deezer_dynamic_link, extract_interpreter_url
 
 logger = logging.getLogger("streamrip")
 
-
+# ---------------- Constants ------------------ #
 Media = Union[
     Type[Album],
     Type[Playlist],
@@ -65,6 +77,9 @@ MEDIA_CLASS: Dict[str, Media] = {
     "video": Video,
 }
 
+DB_PATH_MAP = {"downloads": DB_PATH, "failed_downloads": FAILED_DB_PATH}
+# ---------------------------------------------- #
+
 
 class MusicDL(list):
     """MusicDL."""
@@ -78,13 +93,6 @@ class MusicDL(list):
         :param config:
         :type config: Optional[Config]
         """
-        self.url_parse = re.compile(URL_REGEX)
-        self.soundcloud_url_parse = re.compile(SOUNDCLOUD_URL_REGEX)
-        self.lastfm_url_parse = re.compile(LASTFM_URL_REGEX)
-        self.interpreter_url_parse = re.compile(QOBUZ_INTERPRETER_URL_REGEX)
-        self.youtube_url_parse = re.compile(YOUTUBE_URL_REGEX)
-        self.deezer_dynamic_url_parse = re.compile(DEEZER_DYNAMIC_LINK_REGEX)
-
         self.config: Config
         if config is None:
             self.config = Config(CONFIG_PATH)
@@ -98,18 +106,28 @@ class MusicDL(list):
             "soundcloud": SoundCloudClient(),
         }
 
-        self.db: Union[MusicDB, list]
-        db_settings = self.config.session["database"]
-        if db_settings["enabled"]:
-            path = db_settings["path"]
-            if path:
-                self.db = MusicDB(path)
-            else:
-                self.db = MusicDB(DB_PATH)
-                self.config.file["database"]["path"] = DB_PATH
-                self.config.save()
-        else:
-            self.db = []
+        def get_db(db_type: str) -> db.Database:
+            db_settings = self.config.session["database"]
+            db_class = db.CLASS_MAP[db_type]
+            database = db_class(None, dummy=True)
+
+            default_db_path = DB_PATH_MAP[db_type]
+            if db_settings[db_type]["enabled"]:
+                path = db_settings[db_type]["path"]
+
+                if path:
+                    database = db_class(path)
+                else:
+                    database = db_class(default_db_path)
+
+                    assert config is not None
+                    config.file["database"][db_type]["path"] = default_db_path
+                    config.save()
+
+            return database
+
+        self.db = get_db("downloads")
+        self.failed_db = get_db("failed_downloads")
 
     def handle_urls(self, urls):
         """Download a url.
@@ -128,7 +146,7 @@ class MusicDL(list):
 
         # youtube is handled by youtube-dl, so much of the
         # processing is not necessary
-        youtube_urls = self.youtube_url_parse.findall(url)
+        youtube_urls = YOUTUBE_URL_REGEX.findall(url)
         if youtube_urls != []:
             self.extend(YoutubeVideo(u) for u in youtube_urls)
 
@@ -145,7 +163,7 @@ class MusicDL(list):
             raise ParsingError(message)
 
         for source, url_type, item_id in parsed:
-            if item_id in self.db:
+            if {"id": item_id} in self.db:
                 logger.info(
                     f"ID {item_id} already downloaded, use --no-db to override."
                 )
@@ -191,7 +209,6 @@ class MusicDL(list):
             session[key] for key in ("artwork", "conversion", "filepaths")
         )
         return {
-            "database": self.db,
             "parent_folder": session["downloads"]["folder"],
             "folder_format": filepaths["folder_format"],
             "track_format": filepaths["track_format"],
@@ -210,7 +227,29 @@ class MusicDL(list):
                 "video_downloads_folder"
             ],
             "add_singles_to_folder": filepaths["add_singles_to_folder"],
+            "max_artwork_width": int(artwork["max_width"]),
+            "max_artwork_height": int(artwork["max_height"]),
         }
+
+    def repair(self, max_items=None):
+        if max_items is None:
+            max_items = float("inf")
+
+        if self.failed_db.is_dummy:
+            click.secho(
+                "Failed downloads database must be enabled in the config file "
+                "to repair!",
+                fg="red",
+            )
+            raise click.Abort
+
+        for counter, (source, media_type, item_id) in enumerate(self.failed_db):
+            if counter >= max_items:
+                break
+
+            self.handle_item(source, media_type, item_id)
+
+        self.download()
 
     def download(self):
         """Download all the items in self."""
@@ -251,17 +290,31 @@ class MusicDL(list):
                 try:
                     item.load_meta(**arguments)
                 except NonStreamable:
+                    self.failed_db.add((item.client.source, item.type, item.id))
                     click.secho(f"{item!s} is not available, skipping.", fg="red")
                     continue
 
-            item.download(**arguments)
+            try:
+                item.download(**arguments)
+            except NonStreamable as e:
+                e.print(item)
+                self.failed_db.add((item.client.source, item.type, item.id))
+                continue
+            except PartialFailure as e:
+                for failed_item in e.failed_items:
+                    self.failed_db.add(failed_item)
+                continue
+            except ItemExists as e:
+                click.secho(f'"{e!s}" already exists. Skipping.', fg="yellow")
+                continue
+
+            if hasattr(item, "id"):
+                self.db.add([item.id])
+
             if isinstance(item, Track):
                 item.tag()
                 if arguments["conversion"]["enabled"]:
                     item.convert(**arguments["conversion"])
-
-            if self.db != [] and hasattr(item, "id"):
-                self.db.add(item.id)
 
     def get_client(self, source: str) -> Client:
         """Get a client given the source and log in.
@@ -325,7 +378,7 @@ class MusicDL(list):
         """
         parsed: List[Tuple[str, str, str]] = []
 
-        interpreter_urls = self.interpreter_url_parse.findall(url)
+        interpreter_urls = QOBUZ_INTERPRETER_URL_REGEX.findall(url)
         if interpreter_urls:
             click.secho(
                 "Extracting IDs from Qobuz interpreter urls. Use urls "
@@ -336,9 +389,9 @@ class MusicDL(list):
                 ("qobuz", "artist", extract_interpreter_url(u))
                 for u in interpreter_urls
             )
-            url = self.interpreter_url_parse.sub("", url)
+            url = QOBUZ_INTERPRETER_URL_REGEX.sub("", url)
 
-        dynamic_urls = self.deezer_dynamic_url_parse.findall(url)
+        dynamic_urls = DEEZER_DYNAMIC_LINK_REGEX.findall(url)
         if dynamic_urls:
             click.secho(
                 "Extracting IDs from Deezer dynamic link. Use urls "
@@ -350,8 +403,8 @@ class MusicDL(list):
                 ("deezer", *extract_deezer_dynamic_link(url)) for url in dynamic_urls
             )
 
-        parsed.extend(self.url_parse.findall(url))  # Qobuz, Tidal, Dezer
-        soundcloud_urls = self.soundcloud_url_parse.findall(url)
+        parsed.extend(URL_REGEX.findall(url))  # Qobuz, Tidal, Dezer
+        soundcloud_urls = SOUNDCLOUD_URL_REGEX.findall(url)
         soundcloud_items = [self.clients["soundcloud"].get(u) for u in soundcloud_urls]
 
         parsed.extend(
@@ -384,7 +437,7 @@ class MusicDL(list):
         # For testing:
         # https://www.last.fm/user/nathan3895/playlists/12058911
         user_regex = re.compile(r"https://www\.last\.fm/user/([^/]+)/playlists/\d+")
-        lastfm_urls = self.lastfm_url_parse.findall(urls)
+        lastfm_urls = LASTFM_URL_REGEX.findall(urls)
         try:
             lastfm_source = self.config.session["lastfm"]["source"]
             lastfm_fallback_source = self.config.session["lastfm"]["fallback_source"]
@@ -554,7 +607,7 @@ class MusicDL(list):
         ret = fmt.format(**{k: media.get(k, default="Unknown") for k in fields})
         return ret
 
-    def interactive_search(  # noqa
+    def interactive_search(
         self, query: str, source: str = "qobuz", media_type: str = "album"
     ):
         """Show an interactive menu that contains search results.
