@@ -49,6 +49,7 @@ from . import db
 from streamrip.exceptions import (
     AuthenticationError,
     PartialFailure,
+    ItemExists,
     MissingCredentials,
     NonStreamable,
     NoResultsFound,
@@ -302,6 +303,9 @@ class MusicDL(list):
             except PartialFailure as e:
                 for failed_item in e.failed_items:
                     self.failed_db.add(failed_item)
+                continue
+            except ItemExists as e:
+                click.secho(f'"{e!s}" already exists. Skipping.', fg="yellow")
                 continue
 
             if hasattr(item, "id"):

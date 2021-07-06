@@ -207,10 +207,13 @@ class Track(Media):
             raise ItemExists(self.final_path)
 
         if hasattr(self, "cover_url"):
-            self.download_cover(
-                width=kwargs.get("max_artwork_width", 999999),
-                height=kwargs.get("max_artwork_height", 999999),
-            )  # only downloads for playlists and singles
+            try:
+                self.download_cover(
+                    width=kwargs.get("max_artwork_width", 999999),
+                    height=kwargs.get("max_artwork_height", 999999),
+                )  # only downloads for playlists and singles
+            except ItemExists as e:
+                logger.debug(e)
 
         self.path = os.path.join(gettempdir(), f"{hash(self.id)}_{self.quality}.tmp")
 
@@ -230,7 +233,6 @@ class Track(Media):
         :param progress_bar: turn on/off progress bar
         :type progress_bar: bool
         """
-        # raise NonStreamable
         self._prepare_download(
             quality=quality,
             parent_folder=parent_folder,
