@@ -1,0 +1,10 @@
+[database]
+bruh = "something"
+
+[database.downloads]
+enabled = true
+path = "asdf"
+
+[database.failed]
+enabled = false
+path = "asrdfg"

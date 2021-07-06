@@ -20,7 +20,6 @@ URL_REGEX = re.compile(
     r"(album|artist|track|playlist|video|label))|(?:\/[-\w]+?))+\/([-\w]+)"
 )
 SOUNDCLOUD_URL_REGEX = re.compile(r"https://soundcloud.com/[-\w:/]+")
-SOUNDCLOUD_CLIENT_ID = re.compile("a3e059563d7fd3372b49b37f00a00bcf")
 LASTFM_URL_REGEX = re.compile(r"https://www.last.fm/user/\w+/playlists/\w+")
 QOBUZ_INTERPRETER_URL_REGEX = re.compile(
     r"https?://www\.qobuz\.com/\w\w-\w\w/interpreter/[-\w]+/[-\w]+"

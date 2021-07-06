@@ -1,10 +1,12 @@
 """Constants that are kept in one place."""
 
 import mutagen.id3 as id3
+import re
 
 AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:83.0) Gecko/20100101 Firefox/83.0"
 
 TIDAL_COVER_URL = "https://resources.tidal.com/images/{uuid}/{width}x{height}.jpg"
+SOUNDCLOUD_CLIENT_ID = re.compile("a3e059563d7fd3372b49b37f00a00bcf")
 
 
 QUALITY_DESC = {
@@ -131,20 +133,6 @@ FOLDER_FORMAT = (
 )
 TRACK_FORMAT = "{tracknumber}. {artist} - {title}"
 
-
-# ------------------ Regexes ------------------- #
-URL_REGEX = (
-    r"https?://(?:www|open|play|listen)?\.?(qobuz|tidal|deezer)\.com(?:(?:/"
-    r"(album|artist|track|playlist|video|label))|(?:\/[-\w]+?))+\/([-\w]+)"
-)
-SOUNDCLOUD_URL_REGEX = r"https://soundcloud.com/[-\w:/]+"
-SOUNDCLOUD_CLIENT_ID = "a3e059563d7fd3372b49b37f00a00bcf"
-LASTFM_URL_REGEX = r"https://www.last.fm/user/\w+/playlists/\w+"
-QOBUZ_INTERPRETER_URL_REGEX = (
-    r"https?://www\.qobuz\.com/\w\w-\w\w/interpreter/[-\w]+/[-\w]+"
-)
-DEEZER_DYNAMIC_LINK_REGEX = r"https://deezer\.page\.link/\w+"
-YOUTUBE_URL_REGEX = r"https://www\.youtube\.com/watch\?v=[-\w]+"
 
 TIDAL_MAX_Q = 7
 

@@ -56,7 +56,13 @@ download_videos = false
 video_downloads_folder = ""
 
 # This stores a list of item IDs so that repeats are not downloaded.
-[database]
+[database.downloads]
+enabled = true
+path = ""
+
+# If a download fails, the item ID is stored here. Then, `rip repair` can be
+# called to retry the downloads
+[database.failed_downloads]
 enabled = true
 path = ""
 

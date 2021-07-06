@@ -10,7 +10,7 @@ from typing import Any, Dict
 import click
 import tomlkit
 
-from streamrip.constants import CONFIG_DIR, CONFIG_PATH, DOWNLOADS_DIR
+from .constants import CONFIG_DIR, CONFIG_PATH, DOWNLOADS_DIR
 from streamrip.exceptions import InvalidSourceError
 
 logger = logging.getLogger("streamrip")

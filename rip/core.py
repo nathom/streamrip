@@ -48,6 +48,7 @@ from .constants import (
 from . import db
 from streamrip.exceptions import (
     AuthenticationError,
+    PartialFailure,
     MissingCredentials,
     NonStreamable,
     NoResultsFound,
@@ -74,6 +75,8 @@ MEDIA_CLASS: Dict[str, Media] = {
     "label": Label,
     "video": Video,
 }
+
+DB_PATH_MAP = {"downloads": DB_PATH, "failed_downloads": FAILED_DB_PATH}
 # ---------------------------------------------- #
 
 
@@ -102,18 +105,28 @@ class MusicDL(list):
             "soundcloud": SoundCloudClient(),
         }
 
-        self.db: db.Database
-        db_settings = self.config.session["database"]
-        if db_settings["enabled"]:
-            path = db_settings["path"]
-            if path:
-                self.db = db.Downloads(path)
-            else:
-                self.db = db.Downloads(DB_PATH)
-                self.config.file["database"]["path"] = DB_PATH
-                self.config.save()
-        else:
-            self.db = db.Downloads(None, empty=True)
+        def get_db(db_type: str) -> db.Database:
+            db_settings = self.config.session["database"]
+            db_class = db.CLASS_MAP[db_type]
+            database = db_class(None, dummy=True)
+
+            default_db_path = DB_PATH_MAP[db_type]
+            if db_settings[db_type]["enabled"]:
+                path = db_settings[db_type]["path"]
+
+                if path:
+                    database = db_class(path)
+                else:
+                    database = db_class(default_db_path)
+
+                    assert config is not None
+                    config.file["database"][db_type]["path"] = default_db_path
+                    config.save()
+
+            return database
+
+        self.db = get_db("downloads")
+        self.failed_db = get_db("failed_downloads")
 
     def handle_urls(self, urls):
         """Download a url.
@@ -217,6 +230,23 @@ class MusicDL(list):
             "max_artwork_height": int(artwork["max_height"]),
         }
 
+    def repair(self, max_items=float("inf")):
+        print(list(self.failed_db))
+        if self.failed_db.is_dummy:
+            click.secho(
+                "Failed downloads database must be enabled to repair!", fg="red"
+            )
+            exit(1)
+
+        for counter, (source, media_type, item_id) in enumerate(self.failed_db):
+            # print(f"handling item {source = } {media_type = } {item_id = }")
+            if counter >= max_items:
+                break
+
+            self.handle_item(source, media_type, item_id)
+
+        self.download()
+
     def download(self):
         """Download all the items in self."""
         try:
@@ -256,10 +286,24 @@ class MusicDL(list):
                 try:
                     item.load_meta(**arguments)
                 except NonStreamable:
+                    self.failed_db.add((item.client.source, item.type, item.id))
                     click.secho(f"{item!s} is not available, skipping.", fg="red")
                     continue
 
-            if item.download(**arguments) and hasattr(item, "id"):
+            try:
+                item.download(**arguments)
+            except NonStreamable as e:
+                print("caught in core")
+                e.print(item)
+                self.failed_db.add((item.client.source, item.type, item.id))
+                continue
+            except PartialFailure as e:
+                for failed_item in e.failed_items:
+                    print(f"adding {failed_item} to database")
+                    self.failed_db.add(failed_item)
+                continue
+
+            if hasattr(item, "id"):
                 self.db.add([item.id])
 
             if isinstance(item, Track):
@@ -355,7 +399,7 @@ class MusicDL(list):
             )
 
         parsed.extend(URL_REGEX.findall(url))  # Qobuz, Tidal, Dezer
-        soundcloud_urls = URL_REGEX.findall(url)
+        soundcloud_urls = SOUNDCLOUD_URL_REGEX.findall(url)
         soundcloud_items = [self.clients["soundcloud"].get(u) for u in soundcloud_urls]
 
         parsed.extend(
@@ -558,7 +602,7 @@ class MusicDL(list):
         ret = fmt.format(**{k: media.get(k, default="Unknown") for k in fields})
         return ret
 
-    def interactive_search(  # noqa
+    def interactive_search(
         self, query: str, source: str = "qobuz", media_type: str = "album"
     ):
         """Show an interactive menu that contains search results.

@@ -8,11 +8,12 @@ as a single track.
 import concurrent.futures
 import logging
 import os
+import abc
 import re
 import shutil
 import subprocess
 from tempfile import gettempdir
-from typing import Any, Optional, Union, Iterable, Generator, Dict
+from typing import Any, Optional, Union, Iterable, Generator, Dict, Tuple, List
 
 import click
 import tqdm
@@ -26,6 +27,8 @@ from .clients import Client
 from .constants import FLAC_MAX_BLOCKSIZE, FOLDER_FORMAT, TRACK_FORMAT, ALBUM_KEYS
 from .exceptions import (
     InvalidQuality,
+    PartialFailure,
+    ItemExists,
     InvalidSourceError,
     NonStreamable,
     TooLargeCoverArt,
@@ -35,7 +38,6 @@ from .utils import (
     clean_format,
     downsize_image,
     get_cover_urls,
-    decho,
     decrypt_mqa_file,
     get_container,
     ext,
@@ -53,7 +55,38 @@ TYPE_REGEXES = {
 }
 
 
-class Track:
+class Media(abc.ABC):
+    @abc.abstractmethod
+    def download(self, **kwargs):
+        pass
+
+    @abc.abstractmethod
+    def load_meta(self, **kwargs):
+        pass
+
+    @abc.abstractmethod
+    def tag(self, **kwargs):
+        pass
+
+    @property
+    @abc.abstractmethod
+    def type(self):
+        pass
+
+    @abc.abstractmethod
+    def convert(self, **kwargs):
+        pass
+
+    @abc.abstractmethod
+    def __repr__(self):
+        pass
+
+    @abc.abstractmethod
+    def __str__(self):
+        pass
+
+
+class Track(Media):
     """Represents a downloadable track.
 
     Loading metadata as a single track:
@@ -171,15 +204,15 @@ class Track:
             self.downloaded = True
             self.tagged = True
             self.path = self.final_path
-            decho(f"Track already exists: {self.final_path}", fg="magenta")
-            return False
+            raise ItemExists(self.final_path)
 
-        self.download_cover(
-            width=kwargs.get("max_artwork_width", 999999),
-            height=kwargs.get("max_artwork_height", 999999),
-        )  # only downloads for playlists and singles
+        if hasattr(self, "cover_url"):
+            self.download_cover(
+                width=kwargs.get("max_artwork_width", 999999),
+                height=kwargs.get("max_artwork_height", 999999),
+            )  # only downloads for playlists and singles
+
         self.path = os.path.join(gettempdir(), f"{hash(self.id)}_{self.quality}.tmp")
-        return True
 
     def download(
         self,
@@ -187,7 +220,7 @@ class Track:
         parent_folder: str = "StreamripDownloads",
         progress_bar: bool = True,
         **kwargs,
-    ) -> bool:
+    ):
         """Download the track.
 
         :param quality: (0, 1, 2, 3, 4)
@@ -197,13 +230,12 @@ class Track:
         :param progress_bar: turn on/off progress bar
         :type progress_bar: bool
         """
-        if not self._prepare_download(
+        self._prepare_download(
             quality=quality,
             parent_folder=parent_folder,
             progress_bar=progress_bar,
             **kwargs,
-        ):
-            return False
+        )
 
         if self.client.source == "soundcloud":
             # soundcloud client needs whole dict to get file url
@@ -214,14 +246,14 @@ class Track:
         try:
             dl_info = self.client.get_file_url(url_id, self.quality)
         except Exception as e:
-            click.secho(f"Unable to download track. {e}", fg="red")
-            return False
+            # click.secho(f"Unable to download track. {e}", fg="red")
+            raise NonStreamable(e)
 
         if self.client.source == "qobuz":
             assert isinstance(dl_info, dict)  # for typing
             if not self.__validate_qobuz_dl_info(dl_info):
-                click.secho("Track is not available for download", fg="red")
-                return False
+                # click.secho("Track is not available for download", fg="red")
+                raise NonStreamable("Track is not available for download")
 
             self.sampling_rate = dl_info.get("sampling_rate")
             self.bit_depth = dl_info.get("bit_depth")
@@ -230,19 +262,12 @@ class Track:
         if self.client.source in ("qobuz", "tidal", "deezer"):
             assert isinstance(dl_info, dict)
             logger.debug("Downloadable URL found: %s", dl_info.get("url"))
-            try:
-                tqdm_download(
-                    dl_info["url"], self.path, desc=self._progress_desc
-                )  # downloads file
-            except NonStreamable:
-                click.secho(
-                    f"Track {self!s} is not available for download, skipping.",
-                    fg="red",
-                )
-                return False
+            tqdm_download(
+                dl_info["url"], self.path, desc=self._progress_desc
+            )  # downloads file
 
         elif self.client.source == "soundcloud":
-            assert isinstance(dl_info, dict)
+            assert isinstance(dl_info, dict)  # for typing
             self._soundcloud_download(dl_info)
 
         else:
@@ -254,6 +279,7 @@ class Track:
             and dl_info.get("enc_key", False)
         ):
             out_path = f"{self.path}_dec"
+            logger.debug("Decrypting MQA file")
             decrypt_mqa_file(self.path, out_path, dl_info["enc_key"])
             self.path = out_path
 
@@ -266,8 +292,6 @@ class Track:
 
         if not kwargs.get("keep_cover", True) and hasattr(self, "cover_path"):
             os.remove(self.cover_path)
-
-        return True
 
     def __validate_qobuz_dl_info(self, info: dict) -> bool:
         """Check if the download info dict returned by Qobuz is downloadable.
@@ -336,6 +360,10 @@ class Track:
             self.quality = 2
 
     @property
+    def type(self) -> str:
+        return "track"
+
+    @property
     def _progress_desc(self) -> str:
         """Get the description that is used on the progress bar.
 
@@ -345,9 +373,6 @@ class Track:
 
     def download_cover(self, width=999999, height=999999):
         """Download the cover art, if cover_url is given."""
-        if not hasattr(self, "cover_url"):
-            return False
-
         self.cover_path = os.path.join(gettempdir(), f"cover{hash(self.cover_url)}.jpg")
         logger.debug(f"Downloading cover from {self.cover_url}")
         # click.secho(f"\nDownloading cover art for {self!s}", fg="blue")
@@ -361,6 +386,7 @@ class Track:
             downsize_image(self.cover_path, width, height)
         else:
             logger.debug("Cover already exists, skipping download")
+            raise ItemExists(self.cover_path)
 
     def format_final_path(self) -> str:
         """Return the final filepath of the downloaded file.
@@ -430,11 +456,12 @@ class Track:
             cover_url=cover_url,
         )
 
-    def tag(  # noqa
+    def tag(
         self,
         album_meta: dict = None,
         cover: Union[Picture, APIC, MP4Cover] = None,
         embed_cover: bool = True,
+        **kwargs,
     ):
         """Tag the track using the stored metadata.
 
@@ -659,7 +686,7 @@ class Track:
         return True
 
 
-class Video:
+class Video(Media):
     """Only for Tidal."""
 
     def __init__(self, client: Client, id: str, **kwargs):
@@ -709,8 +736,6 @@ class Video:
         p = subprocess.Popen(command)
         p.wait()  # remove this?
 
-        return False  # so that it is not tagged
-
     def tag(self, *args, **kwargs):
         """Return False.
 
@@ -738,6 +763,9 @@ class Video:
             tracknumber=track["trackNumber"],
         )
 
+    def convert(self, *args, **kwargs):
+        pass
+
     @property
     def path(self) -> str:
         """Get path to download the mp4 file.
@@ -753,6 +781,10 @@ class Video:
 
         return os.path.join(self.parent_folder, f"{fname}.mp4")
 
+    @property
+    def type(self) -> str:
+        return "video"
+
     def __str__(self) -> str:
         """Return the title.
 
@@ -766,6 +798,101 @@ class Video:
         :rtype: str
         """
         return f"<Video - {self.title}>"
+
+    def __bool__(self):
+        return True
+
+
+class YoutubeVideo(Media):
+    """Dummy class implemented for consistency with the Media API."""
+
+    class DummyClient:
+        """Used because YouTube downloads use youtube-dl, not a client."""
+
+        source = "youtube"
+
+    def __init__(self, url: str):
+        """Create a YoutubeVideo object.
+
+        :param url: URL to the youtube video.
+        :type url: str
+        """
+        self.url = url
+        self.client = self.DummyClient()
+
+    def download(
+        self,
+        parent_folder: str = "StreamripDownloads",
+        download_youtube_videos: bool = False,
+        youtube_video_downloads_folder: str = "StreamripDownloads",
+        **kwargs,
+    ):
+        """Download the video using 'youtube-dl'.
+
+        :param parent_folder:
+        :type parent_folder: str
+        :param download_youtube_videos: True if the video should be downloaded.
+        :type download_youtube_videos: bool
+        :param youtube_video_downloads_folder: Folder to put videos if
+        downloaded.
+        :type youtube_video_downloads_folder: str
+        :param kwargs:
+        """
+        click.secho(f"Downloading url {self.url}", fg="blue")
+        filename_formatter = "%(track_number)s.%(track)s.%(container)s"
+        filename = os.path.join(parent_folder, filename_formatter)
+
+        p = subprocess.Popen(
+            [
+                "youtube-dl",
+                "-x",  # audio only
+                "-q",  # quiet mode
+                "--add-metadata",
+                "--audio-format",
+                "mp3",
+                "--embed-thumbnail",
+                "-o",
+                filename,
+                self.url,
+            ]
+        )
+
+        if download_youtube_videos:
+            click.secho("Downloading video stream", fg="blue")
+            pv = subprocess.Popen(
+                [
+                    "youtube-dl",
+                    "-q",
+                    "-o",
+                    os.path.join(
+                        youtube_video_downloads_folder,
+                        "%(title)s.%(container)s",
+                    ),
+                    self.url,
+                ]
+            )
+            pv.wait()
+        p.wait()
+
+    def load_meta(self, *args, **kwargs):
+        """Return None.
+
+        Dummy method.
+
+        :param args:
+        :param kwargs:
+        """
+        pass
+
+    def tag(self, *args, **kwargs):
+        """Return None.
+
+        Dummy method.
+
+        :param args:
+        :param kwargs:
+        """
+        pass
 
     def __bool__(self):
         return True
@@ -800,6 +927,9 @@ class Booklet:
         filepath = os.path.join(parent_folder, f"{self.description}.pdf")
         tqdm_download(self.url, filepath)
 
+    def type(self) -> str:
+        return "booklet"
+
     def __bool__(self):
         return True
 
@@ -833,12 +963,26 @@ class Tracklist(list):
         else:
             target = self._download_item
 
+        # TODO: make this function return the items that have not been downloaded
+        failed_downloads: List[Tuple[str, str, str]] = []
         if kwargs.get("concurrent_downloads", True):
-            # Tidal errors out with unlimited concurrency
             with concurrent.futures.ThreadPoolExecutor(15) as executor:
-                futures = [executor.submit(target, item, **kwargs) for item in self]
+                future_map = {
+                    executor.submit(target, item, **kwargs): item for item in self
+                }
+                # futures = [executor.submit(target, item, **kwargs) for item in self]
                 try:
-                    concurrent.futures.wait(futures)
+                    concurrent.futures.wait(future_map.keys())
+                    for future in future_map.keys():
+                        try:
+                            future.result()
+                        except NonStreamable:
+                            print("caught in media conc")
+                            item = future_map[future]
+                            failed_downloads.append(
+                                (item.client.source, item.type, item.id)
+                            )
+
                 except (KeyboardInterrupt, SystemExit):
                     executor.shutdown()
                     tqdm.write("Aborted! May take some time to shutdown.")
@@ -850,20 +994,29 @@ class Tracklist(list):
                     # soundcloud only gets metadata after `target` is called
                     # message will be printed in `target`
                     click.secho(f'\nDownloading "{item!s}"', fg="blue")
-                target(item, **kwargs)
+                try:
+                    target(item, **kwargs)
+                except ItemExists:
+                    click.secho(f"{item!s} exists. Skipping.", fg="yellow")
+                except NonStreamable as e:
+                    e.print(item)
+                    failed_downloads.append((item.client.source, item.type, item.id))
 
         self.downloaded = True
 
-    def _download_and_convert_item(self, item, **kwargs):
+        if failed_downloads:
+            raise PartialFailure(failed_downloads)
+
+    def _download_and_convert_item(self, item: Media, **kwargs):
         """Download and convert an item.
 
         :param item:
         :param kwargs: should contain a `conversion` dict.
         """
-        if self._download_item(item, **kwargs):
-            item.convert(**kwargs["conversion"])
+        self._download_item(item, **kwargs)
+        item.convert(**kwargs["conversion"])
 
-    def _download_item(item, *args: Any, **kwargs: Any) -> bool:
+    def _download_item(self, item: Media, **kwargs: Any):
         """Abstract method.
 
         :param item:
@@ -1017,6 +1170,10 @@ class Tracklist(list):
 
         return album
 
+    @property
+    def type(self) -> str:
+        return self.__class__.__name__.lower()
+
     def __getitem__(self, key):
         """Get an item if key is int, otherwise get an attr.
 
@@ -1039,101 +1196,6 @@ class Tracklist(list):
 
         if isinstance(key, int):
             super().__setitem__(key, val)
-
-    def __bool__(self):
-        return True
-
-
-class YoutubeVideo:
-    """Dummy class implemented for consistency with the Media API."""
-
-    class DummyClient:
-        """Used because YouTube downloads use youtube-dl, not a client."""
-
-        source = "youtube"
-
-    def __init__(self, url: str):
-        """Create a YoutubeVideo object.
-
-        :param url: URL to the youtube video.
-        :type url: str
-        """
-        self.url = url
-        self.client = self.DummyClient()
-
-    def download(
-        self,
-        parent_folder: str = "StreamripDownloads",
-        download_youtube_videos: bool = False,
-        youtube_video_downloads_folder: str = "StreamripDownloads",
-        **kwargs,
-    ):
-        """Download the video using 'youtube-dl'.
-
-        :param parent_folder:
-        :type parent_folder: str
-        :param download_youtube_videos: True if the video should be downloaded.
-        :type download_youtube_videos: bool
-        :param youtube_video_downloads_folder: Folder to put videos if
-        downloaded.
-        :type youtube_video_downloads_folder: str
-        :param kwargs:
-        """
-        click.secho(f"Downloading url {self.url}", fg="blue")
-        filename_formatter = "%(track_number)s.%(track)s.%(container)s"
-        filename = os.path.join(parent_folder, filename_formatter)
-
-        p = subprocess.Popen(
-            [
-                "youtube-dl",
-                "-x",  # audio only
-                "-q",  # quiet mode
-                "--add-metadata",
-                "--audio-format",
-                "mp3",
-                "--embed-thumbnail",
-                "-o",
-                filename,
-                self.url,
-            ]
-        )
-
-        if download_youtube_videos:
-            click.secho("Downloading video stream", fg="blue")
-            pv = subprocess.Popen(
-                [
-                    "youtube-dl",
-                    "-q",
-                    "-o",
-                    os.path.join(
-                        youtube_video_downloads_folder,
-                        "%(title)s.%(container)s",
-                    ),
-                    self.url,
-                ]
-            )
-            pv.wait()
-        p.wait()
-
-    def load_meta(self, *args, **kwargs):
-        """Return None.
-
-        Dummy method.
-
-        :param args:
-        :param kwargs:
-        """
-        pass
-
-    def tag(self, *args, **kwargs):
-        """Return None.
-
-        Dummy method.
-
-        :param args:
-        :param kwargs:
-        """
-        pass
 
     def __bool__(self):
         return True
@@ -1278,12 +1340,7 @@ class Album(Tracklist):
             for item in self.booklets:
                 Booklet(item).download(parent_folder=self.folder)
 
-    def _download_item(  # type: ignore
-        self,
-        track: Union[Track, Video],
-        quality: int = 3,
-        **kwargs,
-    ) -> bool:
+    def _download_item(self, item: Media, **kwargs: Any):
         """Download an item.
 
         :param track: The item.
@@ -1294,24 +1351,23 @@ class Album(Tracklist):
         :rtype: bool
         """
         logger.debug("Downloading track to %s", self.folder)
-        if self.disctotal > 1 and isinstance(track, Track):
-            disc_folder = os.path.join(self.folder, f"Disc {track.meta.discnumber}")
+        if self.disctotal > 1 and isinstance(item, Track):
+            disc_folder = os.path.join(self.folder, f"Disc {item.meta.discnumber}")
             kwargs["parent_folder"] = disc_folder
         else:
             kwargs["parent_folder"] = self.folder
 
-        if not track.download(quality=min(self.quality, quality), **kwargs):
-            return False
+        quality = kwargs.get("quality", 3)
+        kwargs.pop("quality")
+        item.download(quality=min(self.quality, quality), **kwargs)
 
         logger.debug("tagging tracks")
         # deezer tracks come tagged
         if kwargs.get("tag_tracks", True) and self.client.source != "deezer":
-            track.tag(
+            item.tag(
                 cover=self.cover_obj,
                 embed_cover=kwargs.get("embed_cover", True),
             )
-
-        return True
 
     @staticmethod
     def _parse_get_resp(resp: dict, client: Client) -> TrackMetadata:
@@ -1573,26 +1629,28 @@ class Playlist(Tracklist):
         self.__indices = iter(range(1, len(self) + 1))
         self.download_message()
 
-    def _download_item(self, item: Track, **kwargs) -> bool:  # type: ignore
+    def _download_item(self, item: Media, **kwargs):
+        assert isinstance(item, Track)
+
         kwargs["parent_folder"] = self.folder
         if self.client.source == "soundcloud":
             item.load_meta()
             click.secho(f"Downloading {item!s}", fg="blue")
 
         if playlist_to_album := kwargs.get("set_playlist_to_album", False):
-            item["album"] = self.name
-            item["albumartist"] = self.creator
+            item.meta.album = self.name
+            item.meta.albumartist = self.creator
 
         if kwargs.get("new_tracknumbers", True):
-            item["tracknumber"] = next(self.__indices)
-            item["discnumber"] = 1
+            item.meta.tracknumber = next(self.__indices)
+            item.meta.discnumber = 1
 
-        self.downloaded = item.download(**kwargs)
+        item.download(**kwargs)
 
-        if self.downloaded and self.client.source != "deezer":
+        if self.client.source != "deezer":
             item.tag(embed_cover=kwargs.get("embed_cover", True))
 
-        if self.downloaded and playlist_to_album and self.client.source == "deezer":
+        if playlist_to_album and self.client.source == "deezer":
             # Because Deezer tracks come pre-tagged, the `set_playlist_to_album`
             # option is never set. Here, we manually do this
             from mutagen.flac import FLAC
@@ -1602,8 +1660,6 @@ class Playlist(Tracklist):
             audio["ALBUMARTIST"] = self.creator
             audio["TRACKNUMBER"] = f"{item['tracknumber']:02}"
             audio.save()
-
-        return self.downloaded
 
     @staticmethod
     def _parse_get_resp(item: dict, client: Client) -> dict:
@@ -1769,13 +1825,7 @@ class Artist(Tracklist):
         self.download_message()
         return final
 
-    def _download_item(  # type: ignore
-        self,
-        item,
-        parent_folder: str = "StreamripDownloads",
-        quality: int = 3,
-        **kwargs,
-    ) -> bool:
+    def _download_item(self, item: Media, **kwargs):
         """Download an item.
 
         :param item:
@@ -1786,19 +1836,14 @@ class Artist(Tracklist):
         :param kwargs:
         :rtype: bool
         """
-        try:
-            item.load_meta()
-        except NonStreamable:
-            logger.info("Skipping album, not available to stream.")
-            return False
+        item.load_meta()
 
+        kwargs.pop("parent_folder")
         # always an Album
-        status = item.download(
+        item.download(
             parent_folder=self.folder,
-            quality=quality,
             **kwargs,
         )
-        return status
 
     @property
     def title(self) -> str:

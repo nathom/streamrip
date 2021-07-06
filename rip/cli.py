@@ -1,6 +1,7 @@
 """The streamrip command line interface."""
 import click
 import logging
+from streamrip import __version__
 
 logging.basicConfig(level="WARNING")
 logger = logging.getLogger("streamrip")
@@ -21,10 +22,10 @@ logger = logging.getLogger("streamrip")
     metavar="INT",
     help="0: < 320kbps, 1: 320 kbps, 2: 16 bit/44.1 kHz, 3: 24 bit/<=96 kHz, 4: 24 bit/<=192 kHz",
 )
-@click.option("-t", "--text", metavar="PATH")
-@click.option("-nd", "--no-db", is_flag=True)
-@click.option("--debug", is_flag=True)
-@click.version_option(prog_name="streamrip")
+@click.option("-t", "--text", metavar="PATH", help="Download urls from a text file.")
+@click.option("-nd", "--no-db", is_flag=True, help="Ignore the database.")
+@click.option("--debug", is_flag=True, help="Show debugging logs.")
+@click.version_option(prog_name="rip", version=__version__)
 @click.pass_context
 def cli(ctx, **kwargs):
     """Streamrip: The all-in-one Qobuz, Tidal, SoundCloud, and Deezer music downloader.
@@ -42,9 +43,8 @@ def cli(ctx, **kwargs):
 
     import requests
 
-    from streamrip import __version__
     from .config import Config
-    from streamrip.constants import CONFIG_DIR
+    from .constants import CONFIG_DIR
     from .core import MusicDL
 
     logging.basicConfig(level="WARNING")
@@ -60,7 +60,14 @@ def cli(ctx, **kwargs):
         logger.setLevel("DEBUG")
         logger.debug("Starting debug log")
 
-    if ctx.invoked_subcommand not in {None, "lastfm", "search", "discover", "config"}:
+    if ctx.invoked_subcommand not in {
+        None,
+        "lastfm",
+        "search",
+        "discover",
+        "config",
+        "repair",
+    }:
         return
 
     config = Config()
@@ -284,7 +291,7 @@ def lastfm(ctx, source, url):
 def config(ctx, **kwargs):
     """Manage the streamrip configuration file."""
     from streamrip.clients import TidalClient
-    from streamrip.constants import CONFIG_PATH
+    from .constants import CONFIG_PATH
     from hashlib import md5
     from getpass import getpass
     import shutil
@@ -410,6 +417,15 @@ def convert(ctx, **kwargs):
         codec_map[codec](filename=kwargs["path"], **converter_args).convert()
     else:
         click.secho(f"File {kwargs['path']} does not exist.", fg="red")
+
+
+@cli.command()
+@click.option(
+    "-n", "--num-items", help="The number of items to atttempt downloads for."
+)
+@click.pass_context
+def repair(ctx, **kwargs):
+    core.repair()
 
 
 def none_chosen():

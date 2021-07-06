@@ -148,7 +148,7 @@ def tqdm_download(url: str, filepath: str, params: dict = None, desc: str = None
     total = int(r.headers.get("content-length", 0))
     logger.debug(f"File size = {total}")
     if total < 1000 and not url.endswith("jpg") and not url.endswith("png"):
-        raise NonStreamable(url)
+        raise NonStreamable("Resource not found.")
 
     try:
         with open(filepath, "wb") as file, tqdm(
@@ -320,9 +320,6 @@ def decho(message, fg=None):
     """
     click.secho(message, fg=fg)
     logger.debug(message)
-
-
-interpreter_artist_regex = re.compile(r"getSimilarArtist\(\s*'(\w+)'")
 
 
 def get_container(quality: int, source: str) -> str:
