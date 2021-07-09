@@ -193,6 +193,9 @@ def search(ctx, **kwargs):
 
 @cli.command()
 @click.option("-l", "--list", default="ideal-discography")
+@click.option(
+    "-s", "--scrape", is_flag=True, help="Download all of the items in a list."
+)
 @click.pass_context
 def discover(ctx, **kwargs):
     """Search for albums in Qobuz's featured lists.
@@ -228,12 +231,18 @@ def discover(ctx, **kwargs):
         * universal-jeunesse
 
         * universal-chanson
+
     """
     from streamrip.constants import QOBUZ_FEATURED_KEYS
 
     assert (
         kwargs["list"] in QOBUZ_FEATURED_KEYS
     ), f"Invalid featured key {kwargs['list']}"
+
+    if kwargs["scrape"]:
+        core.scrape(kwargs["list"])
+        core.download()
+        return
 
     if core.interactive_search(kwargs["list"], "qobuz", "featured"):
         core.download()

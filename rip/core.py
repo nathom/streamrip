@@ -316,6 +316,9 @@ class MusicDL(list):
                 if arguments["conversion"]["enabled"]:
                     item.convert(**arguments["conversion"])
 
+    def scrape(self, featured_list: str):
+        self.extend(self.search("qobuz", featured_list, "featured", limit=500))
+
     def get_client(self, source: str) -> Client:
         """Get a client given the source and log in.
 
