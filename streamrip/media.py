@@ -265,9 +265,11 @@ class Track(Media):
         if self.client.source in ("qobuz", "tidal", "deezer"):
             assert isinstance(dl_info, dict)
             logger.debug("Downloadable URL found: %s", dl_info.get("url"))
-            tqdm_download(
-                dl_info["url"], self.path, desc=self._progress_desc
-            )  # downloads file
+            try:
+                download_url = dl_info["url"]
+            except KeyError as e:
+                click.secho(f"Panic: {e} dl_info = {dl_info}", fg="red")
+            tqdm_download(download_url, self.path, desc=self._progress_desc)
 
         elif self.client.source == "soundcloud":
             assert isinstance(dl_info, dict)  # for typing

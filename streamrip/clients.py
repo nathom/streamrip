@@ -122,7 +122,7 @@ class QobuzClient(Client):
             return
 
         if (kwargs.get("app_id") or kwargs.get("secrets")) in (None, [], ""):
-            click.secho("Fetching tokens, this may take a few seconds.")
+            click.secho("Fetching tokens — this may take a few seconds.", fg='magenta')
             logger.info("Fetching tokens from Qobuz")
             spoofer = Spoofer()
             kwargs["app_id"] = spoofer.get_app_id()
