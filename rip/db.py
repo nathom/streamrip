@@ -73,7 +73,16 @@ class Database:
             return bool(conn.execute(command, tuple(items.values())).fetchone()[0])
 
     def __contains__(self, keys: dict) -> bool:
-        return self.contains(**keys)
+        if isinstance(keys, dict):
+            return self.contains(**keys)
+
+        if isinstance(keys, str) and len(self.structure) == 1:
+            only_key = tuple(self.structure.keys())[0]
+            query = {only_key: keys}
+            logger.debug("Searching for %s in database", query)
+            return self.contains(**query)
+
+        raise TypeError(keys)
 
     def add(self, items: List[str]):
         """Add a row to the table.

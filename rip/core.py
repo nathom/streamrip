@@ -532,6 +532,7 @@ class MusicDL(list):
         source: str,
         query: str,
         media_type: str = "album",
+        check_db: bool = False,
         limit: int = 200,
     ) -> Generator:
         """Universal search.
@@ -559,9 +560,17 @@ class MusicDL(list):
                     else page["albums"]["items"]
                 )
                 for i, item in enumerate(tracklist):
+                    if item_id := item["id"] in self.db:
+                        click.secho(
+                            f"ID {item_id} already logged in database. Skipping.",
+                            fg="magenta",
+                        )
+                        continue
+
                     yield MEDIA_CLASS[  # type: ignore
                         media_type if media_type != "featured" else "album"
                     ].from_api(item, client)
+
                     if i > limit:
                         return
         else:
@@ -611,7 +620,11 @@ class MusicDL(list):
         return ret
 
     def interactive_search(
-        self, query: str, source: str = "qobuz", media_type: str = "album"
+        self,
+        query: str,
+        source: str = "qobuz",
+        media_type: str = "album",
+        limit: int = 50,
     ):
         """Show an interactive menu that contains search results.
 
@@ -622,7 +635,7 @@ class MusicDL(list):
         :param media_type:
         :type media_type: str
         """
-        results = tuple(self.search(source, query, media_type, limit=50))
+        results = tuple(self.search(source, query, media_type, limit=limit))
 
         def title(res):
             if isinstance(res[1], Album):
