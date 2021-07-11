@@ -196,6 +196,7 @@ def search(ctx, **kwargs):
 @click.option(
     "-s", "--scrape", is_flag=True, help="Download all of the items in a list."
 )
+@click.option("-n", "--num-items", default=50, help="Number of items to parse.")
 @click.pass_context
 def discover(ctx, **kwargs):
     """Search for albums in Qobuz's featured lists.
@@ -244,7 +245,9 @@ def discover(ctx, **kwargs):
         core.download()
         return
 
-    if core.interactive_search(kwargs["list"], "qobuz", "featured"):
+    if core.interactive_search(
+        kwargs["list"], "qobuz", "featured", limit=int(kwargs["num_items"])
+    ):
         core.download()
     else:
         none_chosen()
