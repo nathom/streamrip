@@ -929,7 +929,9 @@ class Booklet:
         :type parent_folder: str
         :param kwargs:
         """
-        filepath = os.path.join(parent_folder, f"{self.description}.pdf")
+        filepath = os.path.join(
+            parent_folder, f"{sanitize_filename(self.description)}.pdf"
+        )
         tqdm_download(self.url, filepath)
 
     def type(self) -> str:
