@@ -127,15 +127,13 @@ For more in-depth information about `streamrip`, see the [wiki](https://github.c
 All contributions are appreciated! You can help out the project by opening an issue
 or by submitting code.
 
-### Guidelines for opening issues
+### Issues
 
-- Include a general description of the feature request or bug in the title
-- Limit each Issue to a single subject
-- For bug reports, include the traceback, command (including the url) you used,
-and version of `streamrip`
-- If you do not follow the template provided, I will not respond
+If you're opening an issue **use the Feature Request or Bug Report templates properly**. This ensures
+that I have all of the information necessary to debug the issue. If you do not follow the templates,
+**I will silently close the issue** and you'll have to deal with it yourself.
 
-### Contributing code
+### Code
 
 If you're new to Git, follow these steps to open your first Pull Request (PR):
 
