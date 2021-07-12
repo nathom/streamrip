@@ -120,9 +120,10 @@ new_playlist_tracknumbers = true
 # template
 add_singles_to_folder = false
 # Available keys: "albumartist", "title", "year", "bit_depth", "sampling_rate",
-# and "container"
+# "container", and "albumcomposer"
 folder_format = "{albumartist} - {title} ({year}) [{container}] [{bit_depth}B-{sampling_rate}kHz]"
-# Available keys: "tracknumber", "artist", "albumartist", "composer", and "title"
+# Available keys: "tracknumber", "artist", "albumartist", "composer", "title",
+# and "albumcomposer"
 track_format = "{tracknumber}. {artist} - {title}"
 
 # Last.fm playlists are downloaded by searching for the titles of the tracks

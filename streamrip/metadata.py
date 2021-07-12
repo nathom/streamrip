@@ -134,7 +134,7 @@ class TrackMetadata:
             self.date = resp.get("release_date_original") or resp.get("release_date")
             self.copyright = resp.get("copyright")
             self.albumartist = safe_get(resp, "artist", "name")
-            self.composer = safe_get(resp, "composer", "name")
+            self.albumcomposer = safe_get(resp, "composer", "name")
             self.label = resp.get("label")
             self.description = resp.get("description")
             self.disctotal = (
