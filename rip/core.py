@@ -109,10 +109,9 @@ class MusicDL(list):
         def get_db(db_type: str) -> db.Database:
             db_settings = self.config.session["database"]
             db_class = db.CLASS_MAP[db_type]
-            database = db_class(None, dummy=True)
 
-            default_db_path = DB_PATH_MAP[db_type]
-            if db_settings[db_type]["enabled"]:
+            if db_settings[db_type]["enabled"] and db_settings.get("enabled", True):
+                default_db_path = DB_PATH_MAP[db_type]
                 path = db_settings[db_type]["path"]
 
                 if path:
@@ -123,6 +122,8 @@ class MusicDL(list):
                     assert config is not None
                     config.file["database"][db_type]["path"] = default_db_path
                     config.save()
+            else:
+                database = db_class(None, dummy=True)
 
             return database
 
@@ -163,7 +164,7 @@ class MusicDL(list):
             raise ParsingError(message)
 
         for source, url_type, item_id in parsed:
-            if {"id": item_id} in self.db:
+            if item_id in self.db:
                 logger.info(
                     f"ID {item_id} already downloaded, use --no-db to override."
                 )
@@ -268,6 +269,7 @@ class MusicDL(list):
 
         source_subdirs = self.config.session["downloads"]["source_subdirectories"]
         for item in self:
+            # Item already checked in database in handle_urls
             if source_subdirs:
                 arguments["parent_folder"] = self.__get_source_subdir(
                     item.client.source
@@ -285,7 +287,7 @@ class MusicDL(list):
                 arguments["filters"] = filters_
                 logger.debug("Added filter argument for artist/label: %s", filters_)
 
-            if not (isinstance(item, Tracklist) and item.loaded):
+            if not isinstance(item, Tracklist) or not item.loaded:
                 logger.debug("Loading metadata")
                 try:
                     item.load_meta(**arguments)
@@ -296,20 +298,25 @@ class MusicDL(list):
 
             try:
                 item.download(**arguments)
+                for item_id in item.downloaded_ids:
+                    self.db.add([item_id])
             except NonStreamable as e:
                 e.print(item)
                 self.failed_db.add((item.client.source, item.type, item.id))
                 continue
             except PartialFailure as e:
-                for failed_item in e.failed_items:
-                    self.failed_db.add(failed_item)
+                # add successful downloads to database?
+                for failed_item_info in e.failed_items:
+                    self.failed_db.add(failed_item_info)
                 continue
             except ItemExists as e:
                 click.secho(f'"{e!s}" already exists. Skipping.', fg="yellow")
                 continue
 
             if hasattr(item, "id"):
-                self.db.add([item.id])
+                self.db.add(item.id)
+                for item_id in item.downloaded_ids:
+                    self.db.add(item_id)
 
             if isinstance(item, Track):
                 item.tag()
@@ -560,7 +567,7 @@ class MusicDL(list):
                     else page["albums"]["items"]
                 )
                 for i, item in enumerate(tracklist):
-                    if item_id := item["id"] in self.db:
+                    if item_id := str(item["id"]) in self.db:
                         click.secho(
                             f"ID {item_id} already logged in database. Skipping.",
                             fg="magenta",

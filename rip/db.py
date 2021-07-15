@@ -3,7 +3,7 @@
 import logging
 import os
 import sqlite3
-from typing import List
+from typing import Tuple, Union
 
 logger = logging.getLogger("streamrip")
 
@@ -84,14 +84,22 @@ class Database:
 
         raise TypeError(keys)
 
-    def add(self, items: List[str]):
+    def add(self, items: Union[str, Tuple[str]]):
         """Add a row to the table.
 
         :param items: Column-name + value. Values must be provided for all cols.
-        :type items: List[str]
+        :type items: Tuple[str]
         """
         if self.is_dummy:
             return
+
+        if isinstance(items, str) and len(self.structure) == 1:
+            items = [items]
+        else:
+            raise TypeError(
+                "Only tables with 1 column can have string inputs. Use a list "
+                "where len(list) == len(structure)."
+            )
 
         assert len(items) == len(self.structure)
 
