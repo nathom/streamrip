@@ -413,15 +413,21 @@ def convert(ctx, **kwargs):
         "remove_source": not kwargs.get("keep_source", False),
     }
     if os.path.isdir(kwargs["path"]):
+        import itertools
+        from pathlib import Path
+
         dirname = kwargs["path"]
+        audio_extensions = ("flac", "m4a", "aac", "opus", "mp3", "ogg")
+        path_obj = Path(dirname)
+        audio_files = (
+            path.as_posix()
+            for path in itertools.chain.from_iterable(
+                (path_obj.rglob(f"*.{ext}") for ext in audio_extensions)
+            )
+        )
+
         with concurrent.futures.ThreadPoolExecutor() as executor:
             futures = []
-            audio_extensions = ("flac", "m4a", "aac", "opus", "mp3", "ogg")
-            audio_files = (
-                f
-                for f in os.listdir(kwargs["path"])
-                if any(f.endswith(ext) for ext in audio_extensions)
-            )
             for file in audio_files:
                 futures.append(
                     executor.submit(
@@ -436,7 +442,7 @@ def convert(ctx, **kwargs):
                 desc="Converting",
             ):
                 # Only show loading bar
-                pass
+                future.result()
 
     elif os.path.isfile(kwargs["path"]):
         codec_map[codec](filename=kwargs["path"], **converter_args).convert()
