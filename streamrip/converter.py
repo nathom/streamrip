@@ -98,11 +98,13 @@ class Converter:
             "ffmpeg",
             "-i",
             self.filename,
-            "-loglevel",
-            "panic",
-            "-c:a",
-            self.codec_lib,
         ]
+
+        if logger.getEffectiveLevel() != logging.DEBUG:
+            command.extend(("-loglevel", "panic"))
+
+        command.extend(("-c:a", self.codec_lib))
+
         if self.show_progress:
             command.append("-stats")
 
