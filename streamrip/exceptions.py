@@ -35,13 +35,16 @@ class NonStreamable(Exception):
         print(self.print_msg(item))
 
     def print_msg(self, item) -> str:
-        base_msg = click.style(f"Unable to stream {item!s}.", fg="yellow")
+        base_msg = [click.style(f"Unable to stream {item!s}.", fg="yellow")]
         if self.message:
-            base_msg += click.style(" Message: ", fg="yellow") + click.style(
-                self.message, fg="red"
+            base_msg.extend(
+                (
+                    click.style("Message:", fg="yellow"),
+                    click.style(self.message, fg="red"),
+                )
             )
 
-        return base_msg
+        return " ".join(base_msg)
 
 
 class InvalidContainerError(Exception):
