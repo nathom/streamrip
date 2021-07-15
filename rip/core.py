@@ -638,14 +638,18 @@ class MusicDL(list):
         results = tuple(self.search(source, query, media_type, limit=limit))
 
         def title(res):
-            if isinstance(res[1], Album):
-                return f"{res[0]+1}. {res[1].album}"
-            elif isinstance(res[1], Track):
-                return f"{res[0]+1}. {res[1].meta.title}"
-            elif isinstance(res[1], Playlist):
-                return f"{res[0]+1}. {res[1].name}"
+            index, item = res
+            item_no = index + 1
+            if isinstance(item, Album):
+                return f"{item_no}. {item.album}"
+            elif isinstance(item, Track):
+                return f"{item_no}. {item.meta.title}"
+            elif isinstance(item, Playlist):
+                return f"{item_no}. {item.name}"
+            elif isinstance(item, Artist):
+                return f"{item_no}. {item.name}"
             else:
-                raise NotImplementedError(type(res[1]).__name__)
+                raise NotImplementedError(item.type)
 
         def from_title(s):
             num = []
