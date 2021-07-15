@@ -68,6 +68,7 @@ class TrackMetadata:
         self.album: str
         self.albumartist: str
         self.composer: Optional[str] = None
+        self.albumcomposer: Optional[str] = None
         self.comment: Optional[str] = None
         self.description: Optional[str] = None
         self.purchase_date: Optional[str] = None
