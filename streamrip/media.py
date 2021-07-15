@@ -55,6 +55,8 @@ TYPE_REGEXES = {
 
 
 class Media(abc.ABC):
+    __metaclass__ = abc.ABCMeta
+
     @abc.abstractmethod
     def download(self, **kwargs):
         pass
@@ -67,11 +69,6 @@ class Media(abc.ABC):
     def tag(self, **kwargs):
         pass
 
-    @property
-    @abc.abstractmethod
-    def type(self):
-        pass
-
     @abc.abstractmethod
     def convert(self, **kwargs):
         pass
@@ -82,6 +79,29 @@ class Media(abc.ABC):
 
     @abc.abstractmethod
     def __str__(self):
+        pass
+
+    @property
+    @abc.abstractmethod
+    def type(self):
+        pass
+
+    #     @property
+    #     @abc.abstractmethod
+    #     def id(self):
+    #         pass
+
+    #     @id.setter
+    #     def id(self, other):
+    #         pass
+
+    @property
+    @abc.abstractmethod
+    def downloaded_ids(self):
+        pass
+
+    @downloaded_ids.setter
+    def downloaded_ids(self, other):
         pass
 
 
@@ -102,6 +122,19 @@ class Track(Media):
     >>> t.tag()
     """
 
+    id = None
+    downloaded_ids: set = set()
+    downloaded: bool = False
+    tagged: bool = False
+    converted: bool = False
+
+    quality: int
+    folder: str
+    meta: TrackMetadata
+
+    final_path: str
+    container: str
+
     def __init__(self, client: Client, **kwargs):
         """Create a track object.
 
@@ -117,21 +150,12 @@ class Track(Media):
         :type meta: Optional[TrackMetadata]
         :param kwargs: id, filepath_format, meta, quality, folder
         """
+        logger.debug(kwargs)
+
         self.client = client
-        self.id = None
         self.__dict__.update(kwargs)
 
-        self.downloaded = False
-        self.tagged = False
-        self.converted = False
         self.part_of_tracklist = kwargs.get("part_of_tracklist", False)
-
-        self.final_path: str
-        self.container: str
-
-        # TODO: find better solution
-        for attr in ("quality", "folder", "meta"):
-            setattr(self, attr, None)
 
         if isinstance(kwargs.get("meta"), TrackMetadata):
             self.meta = kwargs["meta"]
@@ -373,7 +397,7 @@ class Track(Media):
 
         :rtype: str
         """
-        return click.style(f"Track {int(self.meta.tracknumber):02}", fg="blue")
+        return click.style(f"Track {self.meta.tracknumber:02}", fg="blue")
 
     def download_cover(self, width=999999, height=999999):
         """Download the cover art, if cover_url is given."""
@@ -645,7 +669,7 @@ class Track(Media):
         :param keys:
         :param default:
         """
-        return safe_get(self.meta, *keys, default=default)
+        return safe_get(self.meta, *keys, default=default)  # type: ignore
 
     def set(self, key, val):
         """Set attribute `key` to `val`.
@@ -821,7 +845,7 @@ class YoutubeVideo(Media):
         :param url: URL to the youtube video.
         :type url: str
         """
-        self.url = url
+        self.id = url
         self.client = self.DummyClient()
 
     def download(
@@ -842,7 +866,7 @@ class YoutubeVideo(Media):
         :type youtube_video_downloads_folder: str
         :param kwargs:
         """
-        click.secho(f"Downloading url {self.url}", fg="blue")
+        click.secho(f"Downloading url {self.id}", fg="blue")
         filename_formatter = "%(track_number)s.%(track)s.%(container)s"
         filename = os.path.join(parent_folder, filename_formatter)
 
@@ -857,7 +881,7 @@ class YoutubeVideo(Media):
                 "--embed-thumbnail",
                 "-o",
                 filename,
-                self.url,
+                self.id,
             ]
         )
 
@@ -872,7 +896,7 @@ class YoutubeVideo(Media):
                         youtube_video_downloads_folder,
                         "%(title)s.%(container)s",
                     ),
-                    self.url,
+                    self.id,
                 ]
             )
             pv.wait()
@@ -1180,6 +1204,10 @@ class Tracklist(list):
     def type(self) -> str:
         return self.__class__.__name__.lower()
 
+    @property
+    def downloaded_ids(self):
+        raise NotImplementedError
+
     def __getitem__(self, key):
         """Get an item if key is int, otherwise get an attr.
 
@@ -1207,7 +1235,7 @@ class Tracklist(list):
         return True
 
 
-class Album(Tracklist):
+class Album(Tracklist, Media):
     """Represents a downloadable album.
 
     Usage:
@@ -1217,6 +1245,9 @@ class Album(Tracklist):
     >>> album.load_meta()
     >>> album.download()
     """
+
+    downloaded_ids: set = set()
+    id: str
 
     def __init__(self, client: Client, **kwargs):
         """Create a new Album object.
@@ -1302,11 +1333,12 @@ class Album(Tracklist):
         ), f"Invalid cover size. Must be in {self.cover_urls.keys()}"
 
         embed_cover_url = self.cover_urls[embed_cover_size]
-        if embed_cover_url is not None:
-            tqdm_download(embed_cover_url, cover_path)
-        else:  # sometimes happens with Deezer
-            cover_url = [u for u in self.cover_urls.values() if u][0]
-            tqdm_download(cover_url, cover_path)
+        if not os.path.exists(cover_path):
+            if embed_cover_url is not None:
+                tqdm_download(embed_cover_url, cover_path)
+            else:  # sometimes happens with Deezer
+                cover_url = [u for u in self.cover_urls.values() if u][0]
+                tqdm_download(cover_url, cover_path)
 
         hires_cov_path = os.path.join(self.folder, "cover.jpg")
         if kwargs.get("keep_hires_cover", True) and not os.path.exists(hires_cov_path):
@@ -1374,6 +1406,8 @@ class Album(Tracklist):
                 cover=self.cover_obj,
                 embed_cover=kwargs.get("embed_cover", True),
             )
+
+        self.downloaded_ids.add(item.id)
 
     @staticmethod
     def _parse_get_resp(resp: dict, client: Client) -> TrackMetadata:
@@ -1499,7 +1533,7 @@ class Album(Tracklist):
         return hash(self.id)
 
 
-class Playlist(Tracklist):
+class Playlist(Tracklist, Media):
     """Represents a downloadable playlist.
 
     Usage:
@@ -1508,6 +1542,9 @@ class Playlist(Tracklist):
     >>> pl.load_meta()
     >>> pl.download()
     """
+
+    id = None
+    downloaded_ids: set = set()
 
     def __init__(self, client: Client, **kwargs):
         """Create a new Playlist object.
@@ -1519,6 +1556,7 @@ class Playlist(Tracklist):
         """
         self.name: str
         self.client = client
+        logger.debug(kwargs)
 
         for k, v in kwargs.items():
             setattr(self, k, v)
@@ -1667,6 +1705,8 @@ class Playlist(Tracklist):
             audio["TRACKNUMBER"] = f"{item['tracknumber']:02}"
             audio.save()
 
+        self.downloaded_ids.add(item.id)
+
     @staticmethod
     def _parse_get_resp(item: dict, client: Client) -> dict:
         """Parse information from a search result returned by a client.search call.
@@ -1717,6 +1757,9 @@ class Playlist(Tracklist):
         """
         return f"<Playlist: {self.name}>"
 
+    def tag(self):
+        raise NotImplementedError
+
     def __str__(self) -> str:
         """Return a readable string representation of this track.
 
@@ -1725,7 +1768,7 @@ class Playlist(Tracklist):
         return f"{self.name} ({len(self)} tracks)"
 
 
-class Artist(Tracklist):
+class Artist(Tracklist, Media):
     """Represents a downloadable artist.
 
     Usage:
@@ -1744,6 +1787,7 @@ class Artist(Tracklist):
         :param kwargs:
         """
         self.client = client
+        self.downloaded_ids: set = set()
 
         for k, v in kwargs.items():
             setattr(self, k, v)
@@ -1842,7 +1886,11 @@ class Artist(Tracklist):
         :param kwargs:
         :rtype: bool
         """
-        item.load_meta()
+        try:
+            item.load_meta()
+        except NonStreamable as e:
+            e.print(item)
+            return
 
         kwargs.pop("parent_folder")
         # always an Album
@@ -1850,6 +1898,7 @@ class Artist(Tracklist):
             parent_folder=self.folder,
             **kwargs,
         )
+        self.downloaded_ids.update(item.downloaded_ids)
 
     @property
     def title(self) -> str:
