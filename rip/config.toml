@@ -139,4 +139,4 @@ fallback_source = "deezer"
 check_for_updates = true
 
 # Metadata to identify this config file. Do not change.
-version = "0.7"
+version = "0.7.1"
