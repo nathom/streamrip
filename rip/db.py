@@ -93,13 +93,14 @@ class Database:
         if self.is_dummy:
             return
 
-        if isinstance(items, str) and len(self.structure) == 1:
-            items = [items]
-        else:
-            raise TypeError(
-                "Only tables with 1 column can have string inputs. Use a list "
-                "where len(list) == len(structure)."
-            )
+        if isinstance(items, str):
+            if len(self.structure) == 1:
+                items = (items,)
+            else:
+                raise TypeError(
+                    "Only tables with 1 column can have string inputs. Use a list "
+                    "where len(list) == len(structure)."
+                )
 
         assert len(items) == len(self.structure)
 
