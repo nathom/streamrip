@@ -886,7 +886,18 @@ class SoundCloudClient(Client):
 
     def __init__(self):
         """Create a SoundCloudClient."""
-        self.session = gen_threadsafe_session(headers={"User-Agent": AGENT})
+        self.session = gen_threadsafe_session(
+            headers={
+                "User-Agent": AGENT,
+                "Host": "api-v2.soundcloud.com",
+                "Origin": "https://soundcloud.com",
+                "Referer": "https://soundcloud.com/",
+                "Sec-Fetch-Dest": "empty",
+                "Sec-Fetch-Mode": "cors",
+                "Sec-Fetch-Site": "same-site",
+                "Sec-GPC": "1",
+            }
+        )
 
     def login(self):
         """Login is not necessary for SoundCloud."""
@@ -969,6 +980,12 @@ class SoundCloudClient(Client):
         :param resp_obj: Return the object returned by `requests.get` instead
         of the json response dict.
         """
+        param_arg = params
+        params = {
+            "client_id": SOUNDCLOUD_CLIENT_ID,
+            "app_version": "1626941202",
+            "app_locale": "en",
+        }
         if params is None:
             params = {}
         params["client_id"] = SOUNDCLOUD_CLIENT_ID
@@ -979,6 +996,7 @@ class SoundCloudClient(Client):
 
         logger.debug(f"Fetching url {url}")
         r = self.session.get(url, params=params)
+        logger.debug(r.text)
         if resp_obj:
             return r
 
