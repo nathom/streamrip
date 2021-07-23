@@ -986,9 +986,9 @@ class SoundCloudClient(Client):
             "app_version": "1626941202",
             "app_locale": "en",
         }
-        if params is None:
-            params = {}
-        params["client_id"] = SOUNDCLOUD_CLIENT_ID
+        if param_arg is not None:
+            params.update(param_arg)
+
         if no_base:
             url = path
         else:
