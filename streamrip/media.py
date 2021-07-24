@@ -1778,6 +1778,8 @@ class Artist(Tracklist, Media):
     >>> artist.download()
     """
 
+    downloaded_ids: set = set()
+
     def __init__(self, client: Client, **kwargs):
         """Create a new Artist object.
 
@@ -1787,7 +1789,6 @@ class Artist(Tracklist, Media):
         :param kwargs:
         """
         self.client = client
-        self.downloaded_ids: set = set()
 
         for k, v in kwargs.items():
             setattr(self, k, v)
