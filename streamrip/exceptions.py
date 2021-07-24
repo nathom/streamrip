@@ -32,7 +32,7 @@ class NonStreamable(Exception):
         super().__init__(self.message)
 
     def print(self, item):
-        print(self.print_msg(item))
+        click.echo(self.print_msg(item))
 
     def print_msg(self, item) -> str:
         base_msg = [click.style(f"Unable to stream {item!s}.", fg="yellow")]

@@ -128,7 +128,6 @@ class Database:
 
         with sqlite3.connect(self.path) as conn:
             logger.debug(command)
-            print(command)
             conn.execute(command, tuple(items.values()))
 
     def __iter__(self):
