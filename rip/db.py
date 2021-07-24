@@ -68,7 +68,7 @@ class Database:
             conditions = " AND ".join(f"{key}=?" for key in items.keys())
             command = f"SELECT EXISTS(SELECT 1 FROM {self.name} WHERE {conditions})"
 
-            logger.debug(f"executing {command}")
+            logger.debug("Executing %s", command)
 
             return bool(conn.execute(command, tuple(items.values())).fetchone()[0])
 
@@ -108,7 +108,8 @@ class Database:
         question_marks = ", ".join("?" for _ in items)
         command = f"INSERT INTO {self.name} ({params}) VALUES ({question_marks})"
 
-        logger.debug(f"executing {command}")
+        logger.debug("Executing %s", command)
+        logger.debug("Items to add: %s", items)
 
         with sqlite3.connect(self.path) as conn:
             try:

@@ -6,7 +6,9 @@ import re
 AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:83.0) Gecko/20100101 Firefox/83.0"
 
 TIDAL_COVER_URL = "https://resources.tidal.com/images/{uuid}/{width}x{height}.jpg"
-SOUNDCLOUD_CLIENT_ID = re.compile("a3e059563d7fd3372b49b37f00a00bcf")
+SOUNDCLOUD_CLIENT_ID = "QFciLWLC1GS4P3EZvXIjA3jKhKO5pKB3"
+SOUNDCLOUD_USER_ID = "672320-86895-162383-801513"
+SOUNDCLOUD_APP_VERSION = "1626941202"
 
 
 QUALITY_DESC = {

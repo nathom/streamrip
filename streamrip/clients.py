@@ -21,6 +21,8 @@ from .constants import (
     QOBUZ_FEATURED_KEYS,
     SOUNDCLOUD_BASE,
     SOUNDCLOUD_CLIENT_ID,
+    SOUNDCLOUD_USER_ID,
+    SOUNDCLOUD_APP_VERSION,
     TIDAL_AUTH_URL,
     TIDAL_BASE,
     TIDAL_CLIENT_INFO,
@@ -122,7 +124,7 @@ class QobuzClient(Client):
             return
 
         if (kwargs.get("app_id") or kwargs.get("secrets")) in (None, [], ""):
-            click.secho("Fetching tokens — this may take a few seconds.", fg='magenta')
+            click.secho("Fetching tokens — this may take a few seconds.", fg="magenta")
             logger.info("Fetching tokens from Qobuz")
             spoofer = Spoofer()
             kwargs["app_id"] = spoofer.get_app_id()
@@ -958,7 +960,7 @@ class SoundCloudClient(Client):
             resp, _ = self._get(url, no_base=True)
             return {"url": resp["url"], "type": "mp3"}
 
-    def search(self, query: str, media_type="album"):
+    def search(self, query: str, media_type="album", limit=50, offset=50):
         """Search for a query.
 
         :param query:
@@ -966,7 +968,14 @@ class SoundCloudClient(Client):
         :param media_type: Can be album, though it will return a playlist
         response.
         """
-        params = {"q": query}
+        params = {
+            "q": query,
+            "facet": "genre",
+            "user_id": SOUNDCLOUD_USER_ID,
+            "limit": limit,
+            "offset": offset,
+            "linked_partitioning": "1",
+        }
         resp, _ = self._get(f"search/{media_type}s", params=params)
         return resp
 
@@ -983,7 +992,7 @@ class SoundCloudClient(Client):
         param_arg = params
         params = {
             "client_id": SOUNDCLOUD_CLIENT_ID,
-            "app_version": "1626941202",
+            "app_version": SOUNDCLOUD_APP_VERSION,
             "app_locale": "en",
         }
         if param_arg is not None:
@@ -994,7 +1003,8 @@ class SoundCloudClient(Client):
         else:
             url = f"{SOUNDCLOUD_BASE}/{path}"
 
-        logger.debug(f"Fetching url {url}")
+        logger.debug("Fetching url %s", url)
+        logger.debug("Parameters: %s", params)
         r = self.session.get(url, params=params)
         logger.debug(r.text)
         if resp_obj:

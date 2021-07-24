@@ -314,9 +314,9 @@ class MusicDL(list):
                 continue
 
             if hasattr(item, "id"):
-                self.db.add(item.id)
+                self.db.add(str(item.id))
                 for item_id in item.downloaded_ids:
-                    self.db.add(item_id)
+                    self.db.add(str(item_id))
 
             if isinstance(item, Track):
                 item.tag()
