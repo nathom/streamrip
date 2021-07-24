@@ -1,0 +1,1032 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+    <title>Welcome to streamrip’s documentation! &#8212; streamrip  documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css" />
+    <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+    <script src="_static/jquery.js"></script>
+    <script src="_static/underscore.js"></script>
+    <script src="_static/doctools.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="welcome-to-streamrip-s-documentation">
+<h1>Welcome to streamrip’s documentation!<a class="headerlink" href="#welcome-to-streamrip-s-documentation" title="Permalink to this headline">¶</a></h1>
+<div class="toctree-wrapper compound">
+</div>
+</section>
+<section id="indices-and-tables">
+<h1>Indices and tables<a class="headerlink" href="#indices-and-tables" title="Permalink to this headline">¶</a></h1>
+<ul class="simple">
+<li><p><a class="reference internal" href="genindex.html"><span class="std std-ref">Index</span></a></p></li>
+<li><p><a class="reference internal" href="py-modindex.html"><span class="std std-ref">Module Index</span></a></p></li>
+<li><p><a class="reference internal" href="search.html"><span class="std std-ref">Search Page</span></a></p></li>
+</ul>
+<span class="target" id="module-streamrip.clients"></span></section>
+<section id="clients">
+<h1>Clients<a class="headerlink" href="#clients" title="Permalink to this headline">¶</a></h1>
+<dl class="py class">
+<dt class="sig sig-object py" id="streamrip.clients.QobuzClient">
+<em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">streamrip.clients.</span></span><span class="sig-name descname"><span class="pre">QobuzClient</span></span><a class="headerlink" href="#streamrip.clients.QobuzClient" title="Permalink to this definition">¶</a></dt>
+<dd><p>QobuzClient.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="streamrip.clients.QobuzClient.get">
+<span class="sig-name descname"><span class="pre">get</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">item_id</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span> </span><span class="pre">int</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">media_type</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">str</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">'album'</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">dict</span></span></span><a class="headerlink" href="#streamrip.clients.QobuzClient.get" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get an item from the API.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>item_id</strong> (<em>Union</em><em>[</em><em>str</em><em>, </em><em>int</em><em>]</em>) – </p></li>
+<li><p><strong>media_type</strong> (<em>str</em>) – </p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>dict</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="streamrip.clients.QobuzClient.get_file_url">
+<span class="sig-name descname"><span class="pre">get_file_url</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">item_id</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">quality</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">3</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">dict</span></span></span><a class="headerlink" href="#streamrip.clients.QobuzClient.get_file_url" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the downloadble file url for a track.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>item_id</strong> – </p></li>
+<li><p><strong>quality</strong> – </p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>dict</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="streamrip.clients.QobuzClient.get_tokens">
+<span class="sig-name descname"><span class="pre">get_tokens</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span> </span><span class="pre">Sequence</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#streamrip.clients.QobuzClient.get_tokens" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return app id and secrets.</p>
+<p>These can be saved and reused.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>Tuple[str, Sequence[str]]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="streamrip.clients.QobuzClient.login">
+<span class="sig-name descname"><span class="pre">login</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#streamrip.clients.QobuzClient.login" title="Permalink to this definition">¶</a></dt>
+<dd><p>Authenticate the QobuzClient. Must have a paid membership.</p>
+<p>If <cite>app_id</cite> and <cite>secrets</cite> are not provided, this will run the
+Spoofer script, which retrieves them. This will take some time,
+so it is recommended to cache them somewhere for reuse.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>email</strong> (<em>str</em>) – email for the qobuz account</p></li>
+<li><p><strong>pwd</strong> (<em>str</em>) – password for the qobuz account</p></li>
+<li><p><strong>kwargs</strong> – app_id: str, secrets: list, return_secrets: bool</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="streamrip.clients.QobuzClient.search">
+<span class="sig-name descname"><span class="pre">search</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">query</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">media_type</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">str</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">'album'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">limit</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">int</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">500</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Generator</span></span></span><a class="headerlink" href="#streamrip.clients.QobuzClient.search" title="Permalink to this definition">¶</a></dt>
+<dd><p>Search the qobuz API.</p>
+<p>If ‘featured’ is given as media type, this will retrieve results
+from the featured albums in qobuz. The queries available with this type
+are:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>most-streamed</p></li>
+<li><p>recent-releases</p></li>
+<li><p>best-sellers</p></li>
+<li><p>press-awards</p></li>
+<li><p>ideal-discography</p></li>
+<li><p>editor-picks</p></li>
+<li><p>most-featured</p></li>
+<li><p>qobuzissims</p></li>
+<li><p>new-releases</p></li>
+<li><p>new-releases-full</p></li>
+<li><p>harmonia-mundi</p></li>
+<li><p>universal-classic</p></li>
+<li><p>universal-jazz</p></li>
+<li><p>universal-jeunesse</p></li>
+<li><p>universal-chanson</p></li>
+</ul>
+</div></blockquote>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>query</strong> (<em>str</em>) – </p></li>
+<li><p><strong>media_type</strong> (<em>str</em>) – </p></li>
+<li><p><strong>limit</strong> (<em>int</em>) – </p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>Generator</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="streamrip.clients.TidalClient">
+<em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">streamrip.clients.</span></span><span class="sig-name descname"><span class="pre">TidalClient</span></span><a class="headerlink" href="#streamrip.clients.TidalClient" title="Permalink to this definition">¶</a></dt>
+<dd><p>TidalClient.</p>
+<dl class="py property">
+<dt class="sig sig-object py" id="streamrip.clients.TidalClient.authorization">
+<em class="property"><span class="pre">property</span> </em><span class="sig-name descname"><span class="pre">authorization</span></span><a class="headerlink" href="#streamrip.clients.TidalClient.authorization" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the auth header.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="streamrip.clients.TidalClient.get">
+<span class="sig-name descname"><span class="pre">get</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">item_id</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">media_type</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#streamrip.clients.TidalClient.get" title="Permalink to this definition">¶</a></dt>
+<dd><p>Public method that internally calls _api_get.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>item_id</strong> – </p></li>
+<li><p><strong>media_type</strong> – </p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="streamrip.clients.TidalClient.get_file_url">
+<span class="sig-name descname"><span class="pre">get_file_url</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">track_id</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">quality</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">int</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">3</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">video</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#streamrip.clients.TidalClient.get_file_url" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the file url for a track or video given an id.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>track_id</strong> – or video id</p></li>
+<li><p><strong>quality</strong> (<em>int</em>) – 0, 1, 2, or 3. It is irrelevant for videos.</p></li>
+<li><p><strong>video</strong> – </p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="streamrip.clients.TidalClient.get_tokens">
+<span class="sig-name descname"><span class="pre">get_tokens</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">dict</span></span></span><a class="headerlink" href="#streamrip.clients.TidalClient.get_tokens" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return tokens to save for later use.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>dict</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="streamrip.clients.TidalClient.login">
+<span class="sig-name descname"><span class="pre">login</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">user_id</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">country_code</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">access_token</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">token_expiry</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">refresh_token</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#streamrip.clients.TidalClient.login" title="Permalink to this definition">¶</a></dt>
+<dd><p>Login to Tidal using the browser.</p>
+<p>Providing information from previous logins will allow a user
+to stay logged in.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>user_id</strong> – </p></li>
+<li><p><strong>country_code</strong> – </p></li>
+<li><p><strong>access_token</strong> – </p></li>
+<li><p><strong>token_expiry</strong> – </p></li>
+<li><p><strong>refresh_token</strong> – </p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="streamrip.clients.TidalClient.search">
+<span class="sig-name descname"><span class="pre">search</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">query</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">media_type</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">str</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">'album'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">limit</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">int</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">100</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">dict</span></span></span><a class="headerlink" href="#streamrip.clients.TidalClient.search" title="Permalink to this definition">¶</a></dt>
+<dd><p>Search for a query.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>query</strong> (<em>str</em>) – </p></li>
+<li><p><strong>media_type</strong> (<em>str</em>) – track, album, playlist, or video.</p></li>
+<li><p><strong>limit</strong> (<em>int</em>) – max is 100</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>dict</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="streamrip.clients.DeezerClient">
+<em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">streamrip.clients.</span></span><span class="sig-name descname"><span class="pre">DeezerClient</span></span><a class="headerlink" href="#streamrip.clients.DeezerClient" title="Permalink to this definition">¶</a></dt>
+<dd><p>DeezerClient.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="streamrip.clients.DeezerClient.get">
+<span class="sig-name descname"><span class="pre">get</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">meta_id</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span> </span><span class="pre">int</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">media_type</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">str</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">'album'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#streamrip.clients.DeezerClient.get" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get metadata.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>meta_id</strong> (<em>Union</em><em>[</em><em>str</em><em>, </em><em>int</em><em>]</em>) – </p></li>
+<li><p><strong>type</strong> (<em>str</em>) – </p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="streamrip.clients.DeezerClient.get_file_url">
+<em class="property"><span class="pre">static</span> </em><span class="sig-name descname"><span class="pre">get_file_url</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">meta_id</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span> </span><span class="pre">int</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">quality</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">int</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">6</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#streamrip.clients.DeezerClient.get_file_url" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get downloadable url for a track.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>meta_id</strong> (<em>Union</em><em>[</em><em>str</em><em>, </em><em>int</em><em>]</em>) – The track ID.</p></li>
+<li><p><strong>quality</strong> (<em>int</em>) – </p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="streamrip.clients.DeezerClient.login">
+<span class="sig-name descname"><span class="pre">login</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#streamrip.clients.DeezerClient.login" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return None.</p>
+<p>Dummy method.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>kwargs</strong> – </p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="streamrip.clients.DeezerClient.search">
+<span class="sig-name descname"><span class="pre">search</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">query</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">media_type</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">str</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">'album'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">limit</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">int</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">200</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">dict</span></span></span><a class="headerlink" href="#streamrip.clients.DeezerClient.search" title="Permalink to this definition">¶</a></dt>
+<dd><p>Search API for query.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>query</strong> (<em>str</em>) – </p></li>
+<li><p><strong>media_type</strong> (<em>str</em>) – </p></li>
+<li><p><strong>limit</strong> (<em>int</em>) – </p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="streamrip.clients.SoundCloudClient">
+<em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">streamrip.clients.</span></span><span class="sig-name descname"><span class="pre">SoundCloudClient</span></span><a class="headerlink" href="#streamrip.clients.SoundCloudClient" title="Permalink to this definition">¶</a></dt>
+<dd><p>SoundCloudClient.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="streamrip.clients.SoundCloudClient.get">
+<span class="sig-name descname"><span class="pre">get</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">id</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">media_type</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'track'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#streamrip.clients.SoundCloudClient.get" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get metadata for a media type given an id.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>id</strong> – </p></li>
+<li><p><strong>media_type</strong> – </p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="streamrip.clients.SoundCloudClient.get_file_url">
+<span class="sig-name descname"><span class="pre">get_file_url</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">track</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">quality</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#streamrip.clients.SoundCloudClient.get_file_url" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the streamable file url from soundcloud.</p>
+<p>It will most likely be an hls stream, which will have to be manually
+parsed, or downloaded with ffmpeg.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>track</strong> (<em>dict</em>) – </p></li>
+<li><p><strong>quality</strong> – </p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>dict</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="streamrip.clients.SoundCloudClient.login">
+<span class="sig-name descname"><span class="pre">login</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#streamrip.clients.SoundCloudClient.login" title="Permalink to this definition">¶</a></dt>
+<dd><p>Login is not necessary for SoundCloud.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="streamrip.clients.SoundCloudClient.search">
+<span class="sig-name descname"><span class="pre">search</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">query</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">media_type</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'album'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#streamrip.clients.SoundCloudClient.search" title="Permalink to this definition">¶</a></dt>
+<dd><p>Search for a query.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>query</strong> (<em>str</em>) – </p></li>
+<li><p><strong>media_type</strong> – Can be album, though it will return a playlist</p></li>
+</ul>
+</dd>
+</dl>
+<p>response.</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="module-streamrip.media">
+<span id="media"></span><h1>Media<a class="headerlink" href="#module-streamrip.media" title="Permalink to this headline">¶</a></h1>
+<dl class="py class">
+<dt class="sig sig-object py" id="streamrip.media.Track">
+<em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">streamrip.media.</span></span><span class="sig-name descname"><span class="pre">Track</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">client</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">streamrip.clients.Client</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#streamrip.media.Track" title="Permalink to this definition">¶</a></dt>
+<dd><p>Represents a downloadable track.</p>
+<p>Loading metadata as a single track:
+&gt;&gt;&gt; t = Track(client, id=’20252078’)
+&gt;&gt;&gt; t.load_meta()  # load metadata from api</p>
+<p>Loading metadata as part of an Album:
+&gt;&gt;&gt; t = Track.from_album_meta(api_track_dict, client)</p>
+<p>where <cite>api_track_dict</cite> is a track entry in an album tracklist.</p>
+<p>Downloading and tagging:
+&gt;&gt;&gt; t.download()
+&gt;&gt;&gt; t.tag()</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="streamrip.media.Track.convert">
+<span class="sig-name descname"><span class="pre">convert</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">codec</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">str</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">'ALAC'</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#streamrip.media.Track.convert" title="Permalink to this definition">¶</a></dt>
+<dd><p>Convert the track to another codec.</p>
+<dl class="simple">
+<dt>Valid values for codec:</dt><dd><ul class="simple">
+<li><p>FLAC</p></li>
+<li><p>ALAC</p></li>
+<li><p>MP3</p></li>
+<li><p>OPUS</p></li>
+<li><p>OGG</p></li>
+<li><p>VORBIS</p></li>
+<li><p>AAC</p></li>
+<li><p>M4A</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>codec</strong> (<em>str</em>) – the codec to convert the track to</p></li>
+<li><p><strong>kwargs</strong> – </p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="streamrip.media.Track.download">
+<span class="sig-name descname"><span class="pre">download</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">quality</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">int</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">3</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">parent_folder</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">str</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">'StreamripDownloads'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">progress_bar</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">bool</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#streamrip.media.Track.download" title="Permalink to this definition">¶</a></dt>
+<dd><p>Download the track.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>quality</strong> (<em>int</em>) – (0, 1, 2, 3, 4)</p></li>
+<li><p><strong>folder</strong> (<em>Optional</em><em>[</em><em>Union</em><em>[</em><em>str</em><em>, </em><em>os.PathLike</em><em>]</em><em>]</em>) – folder to download the files to</p></li>
+<li><p><strong>progress_bar</strong> (<em>bool</em>) – turn on/off progress bar</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="streamrip.media.Track.download_cover">
+<span class="sig-name descname"><span class="pre">download_cover</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">width</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">999999</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">height</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">999999</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#streamrip.media.Track.download_cover" title="Permalink to this definition">¶</a></dt>
+<dd><p>Download the cover art, if cover_url is given.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="streamrip.media.Track.format_final_path">
+<span class="sig-name descname"><span class="pre">format_final_path</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="headerlink" href="#streamrip.media.Track.format_final_path" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the final filepath of the downloaded file.</p>
+<p>This uses the <cite>get_formatter</cite> method of TrackMetadata, which returns
+a dict with the keys allowed in formatter strings, and their values in
+the TrackMetadata object.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="streamrip.media.Track.from_album_meta">
+<em class="property"><span class="pre">classmethod</span> </em><span class="sig-name descname"><span class="pre">from_album_meta</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">album</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">streamrip.metadata.TrackMetadata</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">track</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">dict</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">client</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">streamrip.clients.Client</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#streamrip.media.Track.from_album_meta" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return a new Track object initialized with info.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>album</strong> – album metadata returned by API</p></li>
+<li><p><strong>pos</strong> – index of the track</p></li>
+<li><p><strong>client</strong> (<em>Client</em>) – qopy client object</p></li>
+</ul>
+</dd>
+</dl>
+<p>:raises IndexError</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="streamrip.media.Track.from_api">
+<em class="property"><span class="pre">classmethod</span> </em><span class="sig-name descname"><span class="pre">from_api</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">item</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">dict</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">client</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">streamrip.clients.Client</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#streamrip.media.Track.from_api" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return a new Track initialized from search result.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>item</strong> (<em>dict</em>) – </p></li>
+<li><p><strong>client</strong> (<em>Client</em>) – </p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="streamrip.media.Track.get">
+<span class="sig-name descname"><span class="pre">get</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">keys</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">default</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Any</span></span></span><a class="headerlink" href="#streamrip.media.Track.get" title="Permalink to this definition">¶</a></dt>
+<dd><p>Safe get method that allows for layered access.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>keys</strong> – </p></li>
+<li><p><strong>default</strong> – </p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="streamrip.media.Track.load_meta">
+<span class="sig-name descname"><span class="pre">load_meta</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#streamrip.media.Track.load_meta" title="Permalink to this definition">¶</a></dt>
+<dd><p>Send a request to the client to get metadata for this Track.</p>
+<p>Usually only called for single tracks and last.fm playlists.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="streamrip.media.Track.move">
+<span class="sig-name descname"><span class="pre">move</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#streamrip.media.Track.move" title="Permalink to this definition">¶</a></dt>
+<dd><p>Move the Track and set self.path to the new path.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>path</strong> (<em>str</em>) – </p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="streamrip.media.Track.set">
+<span class="sig-name descname"><span class="pre">set</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">val</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#streamrip.media.Track.set" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set attribute <cite>key</cite> to <cite>val</cite>.</p>
+<p>Equivalent to __setitem__. Implemented only for consistency.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>key</strong> – </p></li>
+<li><p><strong>val</strong> – </p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="streamrip.media.Track.tag">
+<span class="sig-name descname"><span class="pre">tag</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">album_meta</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">dict</span><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cover</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><span class="pre">mutagen.flac.Picture</span><span class="p"><span class="pre">,</span> </span><span class="pre">mutagen.id3.APIC</span><span class="p"><span class="pre">,</span> </span><span class="pre">mutagen.mp4.MP4Cover</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">embed_cover</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">bool</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#streamrip.media.Track.tag" title="Permalink to this definition">¶</a></dt>
+<dd><p>Tag the track using the stored metadata.</p>
+<p>The info stored in the TrackMetadata object (self.meta) can be updated
+with album metadata if necessary. The cover must be a mutagen cover-type
+object that already has the bytes loaded.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>album_meta</strong> (<em>dict</em>) – album metadata to update Track with</p></li>
+<li><p><strong>cover</strong> (<em>Union</em><em>[</em><em>Picture</em><em>, </em><em>APIC</em><em>]</em>) – initialized mutagen cover object</p></li>
+<li><p><strong>embed_cover</strong> (<em>bool</em>) – Embed cover art into file</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="streamrip.media.Track.title">
+<em class="property"><span class="pre">property</span> </em><span class="sig-name descname"><span class="pre">title</span></span><em class="property"><span class="pre">:</span> <span class="pre">str</span></em><a class="headerlink" href="#streamrip.media.Track.title" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the title of the track.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="streamrip.media.Booklet">
+<em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">streamrip.media.</span></span><span class="sig-name descname"><span class="pre">Booklet</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">resp</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">dict</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#streamrip.media.Booklet" title="Permalink to this definition">¶</a></dt>
+<dd><p>Only for Qobuz.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="streamrip.media.Booklet.download">
+<span class="sig-name descname"><span class="pre">download</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">parent_folder</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#streamrip.media.Booklet.download" title="Permalink to this definition">¶</a></dt>
+<dd><p>Download the Booklet.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>parent_folder</strong> (<em>str</em>) – </p></li>
+<li><p><strong>kwargs</strong> – </p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="streamrip.media.Video">
+<em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">streamrip.media.</span></span><span class="sig-name descname"><span class="pre">Video</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">client</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">streamrip.clients.Client</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">id</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#streamrip.media.Video" title="Permalink to this definition">¶</a></dt>
+<dd><p>Only for Tidal.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="streamrip.media.Video.download">
+<span class="sig-name descname"><span class="pre">download</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#streamrip.media.Video.download" title="Permalink to this definition">¶</a></dt>
+<dd><p>Download the Video.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>kwargs</strong> – </p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="streamrip.media.Video.from_album_meta">
+<em class="property"><span class="pre">classmethod</span> </em><span class="sig-name descname"><span class="pre">from_album_meta</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">track</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">dict</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">client</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">streamrip.clients.Client</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#streamrip.media.Video.from_album_meta" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return a new Video object given an album API response.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>track</strong> (<em>dict</em>) – track dict from album</p></li>
+<li><p><strong>client</strong> (<em>Client</em>) – </p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="streamrip.media.Video.load_meta">
+<span class="sig-name descname"><span class="pre">load_meta</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#streamrip.media.Video.load_meta" title="Permalink to this definition">¶</a></dt>
+<dd><p>Given an id at contruction, get the metadata of the video.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="streamrip.media.Video.path">
+<em class="property"><span class="pre">property</span> </em><span class="sig-name descname"><span class="pre">path</span></span><em class="property"><span class="pre">:</span> <span class="pre">str</span></em><a class="headerlink" href="#streamrip.media.Video.path" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get path to download the mp4 file.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="streamrip.media.Video.tag">
+<span class="sig-name descname"><span class="pre">tag</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#streamrip.media.Video.tag" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return False.</p>
+<p>This is a dummy method.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>args</strong> – </p></li>
+<li><p><strong>kwargs</strong> – </p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="streamrip.media.YoutubeVideo">
+<em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">streamrip.media.</span></span><span class="sig-name descname"><span class="pre">YoutubeVideo</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">url</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#streamrip.media.YoutubeVideo" title="Permalink to this definition">¶</a></dt>
+<dd><p>Dummy class implemented for consistency with the Media API.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="streamrip.media.YoutubeVideo.DummyClient">
+<em class="property"><span class="pre">class</span> </em><span class="sig-name descname"><span class="pre">DummyClient</span></span><a class="headerlink" href="#streamrip.media.YoutubeVideo.DummyClient" title="Permalink to this definition">¶</a></dt>
+<dd><p>Used because YouTube downloads use youtube-dl, not a client.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="streamrip.media.YoutubeVideo.download">
+<span class="sig-name descname"><span class="pre">download</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">parent_folder</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">str</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">'StreamripDownloads'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">download_youtube_videos</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">bool</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">youtube_video_downloads_folder</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">str</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">'StreamripDownloads'</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#streamrip.media.YoutubeVideo.download" title="Permalink to this definition">¶</a></dt>
+<dd><p>Download the video using ‘youtube-dl’.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>parent_folder</strong> (<em>str</em>) – </p></li>
+<li><p><strong>download_youtube_videos</strong> (<em>bool</em>) – True if the video should be downloaded.</p></li>
+<li><p><strong>youtube_video_downloads_folder</strong> – Folder to put videos if</p></li>
+</ul>
+</dd>
+</dl>
+<p>downloaded.
+:type youtube_video_downloads_folder: str
+:param kwargs:</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="streamrip.media.YoutubeVideo.load_meta">
+<span class="sig-name descname"><span class="pre">load_meta</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#streamrip.media.YoutubeVideo.load_meta" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return None.</p>
+<p>Dummy method.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>args</strong> – </p></li>
+<li><p><strong>kwargs</strong> – </p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="streamrip.media.YoutubeVideo.tag">
+<span class="sig-name descname"><span class="pre">tag</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#streamrip.media.YoutubeVideo.tag" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return None.</p>
+<p>Dummy method.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>args</strong> – </p></li>
+<li><p><strong>kwargs</strong> – </p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="streamrip.media.Tracklist">
+<em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">streamrip.media.</span></span><span class="sig-name descname"><span class="pre">Tracklist</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">iterable</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">()</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#streamrip.media.Tracklist" title="Permalink to this definition">¶</a></dt>
+<dd><p>A base class for tracklist-like objects.</p>
+<p>Implements methods to give it dict-like behavior. If a Tracklist
+subclass is subscripted with [s: str], it will return an attribute s.
+If it is subscripted with [i: int] it will return the i’th track in
+the tracklist.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="streamrip.media.Tracklist.convert">
+<span class="sig-name descname"><span class="pre">convert</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">codec</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'ALAC'</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#streamrip.media.Tracklist.convert" title="Permalink to this definition">¶</a></dt>
+<dd><p>Convert every item in <cite>self</cite>.</p>
+<p>Deprecated. Use _download_and_convert_item instead.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>codec</strong> – </p></li>
+<li><p><strong>kwargs</strong> – </p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="streamrip.media.Tracklist.download">
+<span class="sig-name descname"><span class="pre">download</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#streamrip.media.Tracklist.download" title="Permalink to this definition">¶</a></dt>
+<dd><p>Download all of the items in the tracklist.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>kwargs</strong> – </p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="streamrip.media.Tracklist.download_message">
+<span class="sig-name descname"><span class="pre">download_message</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#streamrip.media.Tracklist.download_message" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the message to display after calling <cite>Tracklist.download</cite>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="streamrip.media.Tracklist.essence">
+<em class="property"><span class="pre">static</span> </em><span class="sig-name descname"><span class="pre">essence</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">album</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="headerlink" href="#streamrip.media.Tracklist.essence" title="Permalink to this definition">¶</a></dt>
+<dd><p>Ignore text in parens/brackets, return all lowercase.</p>
+<p>Used to group two albums that may be named similarly, but not exactly
+the same.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="streamrip.media.Tracklist.from_api">
+<em class="property"><span class="pre">classmethod</span> </em><span class="sig-name descname"><span class="pre">from_api</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">item</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">dict</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">client</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">streamrip.clients.Client</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#streamrip.media.Tracklist.from_api" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create an Album object from an API response.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>resp</strong> (<em>dict</em>) – response dict</p></li>
+<li><p><strong>source</strong> (<em>str</em>) – in (‘qobuz’, ‘deezer’, ‘tidal’)</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="streamrip.media.Tracklist.get">
+<span class="sig-name descname"><span class="pre">get</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span> </span><span class="pre">int</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">default</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#streamrip.media.Tracklist.get" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get an item if key is int, otherwise get an attr.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>key</strong> – If it is a str, get an attribute. If an int, get the item</p>
+</dd>
+</dl>
+<p>at the index.
+:type key: Union[str, int]
+:param default:</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="streamrip.media.Tracklist.get_cover_obj">
+<em class="property"><span class="pre">static</span> </em><span class="sig-name descname"><span class="pre">get_cover_obj</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cover_path</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">container</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">source</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#streamrip.media.Tracklist.get_cover_obj" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return an initialized cover object that is reused for every track.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>cover_path</strong> (<em>str</em>) – Path to the image, must be a JPEG.</p></li>
+<li><p><strong>quality</strong> (<em>int</em>) – quality ID</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>Union[Picture, APIC]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="streamrip.media.Tracklist.set">
+<span class="sig-name descname"><span class="pre">set</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">val</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#streamrip.media.Tracklist.set" title="Permalink to this definition">¶</a></dt>
+<dd><p>For consistency with <cite>Tracklist.get</cite>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>key</strong> – </p></li>
+<li><p><strong>val</strong> – </p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="streamrip.media.Album">
+<em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">streamrip.media.</span></span><span class="sig-name descname"><span class="pre">Album</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">client</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">streamrip.clients.Client</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#streamrip.media.Album" title="Permalink to this definition">¶</a></dt>
+<dd><p>Represents a downloadable album.</p>
+<p>Usage:</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">resp</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;fleetwood mac rumours&#39;</span><span class="p">,</span> <span class="s1">&#39;album&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">album</span> <span class="o">=</span> <span class="n">Album</span><span class="o">.</span><span class="n">from_api</span><span class="p">(</span><span class="n">resp</span><span class="p">[</span><span class="s1">&#39;items&#39;</span><span class="p">][</span><span class="mi">0</span><span class="p">],</span> <span class="n">client</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">album</span><span class="o">.</span><span class="n">load_meta</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">album</span><span class="o">.</span><span class="n">download</span><span class="p">()</span>
+</pre></div>
+</div>
+<dl class="py method">
+<dt class="sig sig-object py" id="streamrip.media.Album.from_api">
+<em class="property"><span class="pre">classmethod</span> </em><span class="sig-name descname"><span class="pre">from_api</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">resp</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">dict</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">client</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">streamrip.clients.Client</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#streamrip.media.Album.from_api" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create an Album object from an API response.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>resp</strong> (<em>dict</em>) – </p></li>
+<li><p><strong>client</strong> (<em>Client</em>) – </p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="streamrip.media.Album.load_meta">
+<span class="sig-name descname"><span class="pre">load_meta</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#streamrip.media.Album.load_meta" title="Permalink to this definition">¶</a></dt>
+<dd><p>Load detailed metadata from API using the id.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="streamrip.media.Album.title">
+<em class="property"><span class="pre">property</span> </em><span class="sig-name descname"><span class="pre">title</span></span><em class="property"><span class="pre">:</span> <span class="pre">str</span></em><a class="headerlink" href="#streamrip.media.Album.title" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the title of the album.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="streamrip.media.Playlist">
+<em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">streamrip.media.</span></span><span class="sig-name descname"><span class="pre">Playlist</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">client</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">streamrip.clients.Client</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#streamrip.media.Playlist" title="Permalink to this definition">¶</a></dt>
+<dd><p>Represents a downloadable playlist.</p>
+<p>Usage:
+&gt;&gt;&gt; resp = client.search(‘hip hop’, ‘playlist’)
+&gt;&gt;&gt; pl = Playlist.from_api(resp[‘items’][0], client)
+&gt;&gt;&gt; pl.load_meta()
+&gt;&gt;&gt; pl.download()</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="streamrip.media.Playlist.from_api">
+<em class="property"><span class="pre">classmethod</span> </em><span class="sig-name descname"><span class="pre">from_api</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">resp</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">dict</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">client</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">streamrip.clients.Client</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#streamrip.media.Playlist.from_api" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return a Playlist object from an API response.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>resp</strong> (<em>dict</em>) – a single search result entry of a playlist</p></li>
+<li><p><strong>client</strong> (<em>Client</em>) – </p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="streamrip.media.Playlist.load_meta">
+<span class="sig-name descname"><span class="pre">load_meta</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#streamrip.media.Playlist.load_meta" title="Permalink to this definition">¶</a></dt>
+<dd><p>Send a request to fetch the tracklist from the api.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>new_tracknumbers</strong> (<em>bool</em>) – replace the tracknumber with playlist position</p></li>
+<li><p><strong>kwargs</strong> – </p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="streamrip.media.Playlist.title">
+<em class="property"><span class="pre">property</span> </em><span class="sig-name descname"><span class="pre">title</span></span><em class="property"><span class="pre">:</span> <span class="pre">str</span></em><a class="headerlink" href="#streamrip.media.Playlist.title" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the title.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="streamrip.media.Artist">
+<em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">streamrip.media.</span></span><span class="sig-name descname"><span class="pre">Artist</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">client</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">streamrip.clients.Client</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#streamrip.media.Artist" title="Permalink to this definition">¶</a></dt>
+<dd><p>Represents a downloadable artist.</p>
+<p>Usage:
+&gt;&gt;&gt; resp = client.get(‘fleetwood mac’, ‘artist’)
+&gt;&gt;&gt; artist = Artist.from_api(resp[‘items’][0], client)
+&gt;&gt;&gt; artist.load_meta()
+&gt;&gt;&gt; artist.download()</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="streamrip.media.Artist.download">
+<span class="sig-name descname"><span class="pre">download</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#streamrip.media.Artist.download" title="Permalink to this definition">¶</a></dt>
+<dd><p>Download all items in self.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>kwargs</strong> – </p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="streamrip.media.Artist.from_api">
+<em class="property"><span class="pre">classmethod</span> </em><span class="sig-name descname"><span class="pre">from_api</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">item</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">dict</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">client</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">streamrip.clients.Client</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">source</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">str</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">'qobuz'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#streamrip.media.Artist.from_api" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create an Artist object from the api response of Qobuz, Tidal, or Deezer.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>resp</strong> (<em>dict</em>) – response dict</p></li>
+<li><p><strong>source</strong> (<em>str</em>) – in (‘qobuz’, ‘deezer’, ‘tidal’)</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="streamrip.media.Artist.load_meta">
+<span class="sig-name descname"><span class="pre">load_meta</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#streamrip.media.Artist.load_meta" title="Permalink to this definition">¶</a></dt>
+<dd><p>Send an API call to get album info based on id.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="streamrip.media.Artist.title">
+<em class="property"><span class="pre">property</span> </em><span class="sig-name descname"><span class="pre">title</span></span><em class="property"><span class="pre">:</span> <span class="pre">str</span></em><a class="headerlink" href="#streamrip.media.Artist.title" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the artist name.</p>
+<p>Implemented for consistency.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="streamrip.media.Label">
+<em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">streamrip.media.</span></span><span class="sig-name descname"><span class="pre">Label</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">client</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">streamrip.clients.Client</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#streamrip.media.Label" title="Permalink to this definition">¶</a></dt>
+<dd><p>Represents a downloadable Label.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="streamrip.media.Label.load_meta">
+<span class="sig-name descname"><span class="pre">load_meta</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#streamrip.media.Label.load_meta" title="Permalink to this definition">¶</a></dt>
+<dd><p>Load metadata given an id.</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="#">streamrip</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="#">Documentation overview</a><ul>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2021, nathom.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 4.1.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="_sources/index.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>
