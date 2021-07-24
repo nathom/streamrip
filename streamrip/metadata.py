@@ -264,9 +264,9 @@ class TrackMetadata:
         :param work:
         :type work: str
         """
-        if version is not None:
+        if version is not None and version not in self.title:
             self.title = f"{self.title} ({version})"
-        if work is not None:
+        if work is not None and work not in self.title:
             logger.debug("Work found: %s", work)
             self.title = f"{work}: {self.title}"
 
