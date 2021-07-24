@@ -442,7 +442,7 @@ class Track(Media):
         :param pos: index of the track
         :param client: qopy client object
         :type client: Client
-        :raises IndexError
+        :raises: IndexError
         """
         meta = TrackMetadata(album=album, track=track, source=client.source)
         return cls(client=client, meta=meta, id=track["id"], part_of_tracklist=True)
