@@ -5,10 +5,10 @@ from __future__ import annotations
 import base64
 import logging
 import os
-import re
 from string import Formatter
 from typing import Dict, Hashable, Optional, Tuple, Union
 from collections import OrderedDict
+from json import JSONDecodeError
 
 import click
 import requests
@@ -16,7 +16,7 @@ from pathvalidate import sanitize_filename
 from requests.packages import urllib3
 from tqdm import tqdm
 
-from .constants import AGENT, TIDAL_COVER_URL, COVER_SIZES
+from .constants import TIDAL_COVER_URL, COVER_SIZES
 from .exceptions import InvalidQuality, InvalidSourceError, NonStreamable
 
 urllib3.disable_warnings()
@@ -146,9 +146,13 @@ def tqdm_download(url: str, filepath: str, params: dict = None, desc: str = None
     session = gen_threadsafe_session()
     r = session.get(url, allow_redirects=True, stream=True, params=params)
     total = int(r.headers.get("content-length", 0))
-    logger.debug(f"File size = {total}")
+    logger.debug("File size = %s", total)
     if total < 1000 and not url.endswith("jpg") and not url.endswith("png"):
-        raise NonStreamable("Resource not found.")
+        logger.debug("Response text: %s", r.text)
+        try:
+            raise NonStreamable(r.json()["error"])
+        except JSONDecodeError:
+            raise NonStreamable("Resource not found.")
 
     try:
         with open(filepath, "wb") as file, tqdm(
