@@ -343,7 +343,8 @@ class Track(Media):
         :type path: str
         """
         os.makedirs(os.path.dirname(path), exist_ok=True)
-        shutil.move(self.path, path)
+        shutil.copy(self.path, path)
+        os.remove(self.path)
         self.path = path
 
     def _soundcloud_download(self, dl_info: dict):

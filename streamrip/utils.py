@@ -50,6 +50,27 @@ def safe_get(d: dict, *keys: Hashable, default=None):
     return res
 
 
+__QUALITY_MAP: Dict[str, Dict[int, Union[int, str]]] = {
+    "qobuz": {
+        1: 5,
+        2: 6,
+        3: 7,
+        4: 27,
+    },
+    "deezer": {
+        0: 9,
+        1: 3,
+        2: 1,
+    },
+    "tidal": {
+        0: "LOW",  # AAC
+        1: "HIGH",  # AAC
+        2: "LOSSLESS",  # CD Quality
+        3: "HI_RES",  # MQA
+    },
+}
+
+
 def get_quality(quality_id: int, source: str) -> Union[str, int]:
     """Get the source-specific quality id.
 
@@ -59,33 +80,8 @@ def get_quality(quality_id: int, source: str) -> Union[str, int]:
     :type source: str
     :rtype: Union[str, int]
     """
-    q_map: Dict[int, Union[int, str]]
-    if source == "qobuz":
-        q_map = {
-            1: 5,
-            2: 6,
-            3: 7,
-            4: 27,
-        }
-    elif source == "tidal":
-        q_map = {
-            0: "LOW",  # AAC
-            1: "HIGH",  # AAC
-            2: "LOSSLESS",  # CD Quality
-            3: "HI_RES",  # MQA
-        }
-    elif source == "deezer":
-        q_map = {
-            0: 128,
-            1: 320,
-            2: 1411,
-        }
-    else:
-        raise InvalidSourceError(source)
 
-    possible_keys = set(q_map.keys())
-    assert quality_id in possible_keys, f"{quality_id} must be in {possible_keys}"
-    return q_map[quality_id]
+    return __QUALITY_MAP[source][quality_id]
 
 
 def get_quality_id(bit_depth: Optional[int], sampling_rate: Optional[int]):

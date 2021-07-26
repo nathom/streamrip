@@ -91,6 +91,17 @@ optional = false
 python-versions = ">=3.5"
 
 [[package]]
+name = "deezer-py"
+version = "1.0.4"
+description = "A wrapper for all Deezer's APIs"
+category = "main"
+optional = false
+python-versions = ">=3.6"
+
+[package.dependencies]
+requests = "*"
+
+[[package]]
 name = "docutils"
 version = "0.17.1"
 description = "Docutils -- Python Documentation Utilities"
@@ -451,7 +462,7 @@ python-versions = "*"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.8"
-content-hash = "06048e747453dcda8fc0beb92254466e7e21bf6136be73ae25abe9468fd379a0"
+content-hash = "baac80bc5ff3ccb5a23168ac3303732f79cd16dbafad48a5e216bba531baebd7"
 
 [metadata.files]
 alabaster = [
@@ -489,6 +500,10 @@ colorama = [
 decorator = [
     {file = "decorator-5.0.9-py3-none-any.whl", hash = "sha256:6e5c199c16f7a9f0e3a61a4a54b3d27e7dad0dbdde92b944426cb20914376323"},
     {file = "decorator-5.0.9.tar.gz", hash = "sha256:72ecfba4320a893c53f9706bebb2d55c270c1e51a28789361aa93e4a21319ed5"},
+]
+deezer-py = [
+    {file = "deezer-py-1.0.4.tar.gz", hash = "sha256:73396d09b5ba1b0e3365b6b68b38dd16af71ccb6b825d328cf6740a0cce7a75c"},
+    {file = "deezer_py-1.0.4-py3-none-any.whl", hash = "sha256:ca60481b0799f5818976d2af52a69acb15f75b443d0bdc4d5e70e48013d933ce"},
 ]
 docutils = [
     {file = "docutils-0.17.1-py2.py3-none-any.whl", hash = "sha256:cf316c8370a737a022b72b56874f6602acf974a37a9fba42ec2876387549fc61"},
