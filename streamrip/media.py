@@ -343,8 +343,15 @@ class Track(Media):
         :type path: str
         """
         os.makedirs(os.path.dirname(path), exist_ok=True)
-        shutil.copy(self.path, path)
-        os.remove(self.path)
+
+        try:
+            shutil.move(self.path, path)
+        except FileNotFoundError as e:
+            # This sometimes happens when using Music.app's Auto folder
+            logger.debug("%s during shutil.move", e)
+            os.makedirs(os.path.dirname(path), exist_ok=True)
+            shutil.move(self.path, path)
+
         self.path = path
 
     def _soundcloud_download(self, dl_info: dict):
