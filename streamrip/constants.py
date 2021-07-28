@@ -154,6 +154,14 @@ TIDAL_Q_MAP = {
 
 DEEZER_MAX_Q = 6
 AVAILABLE_QUALITY_IDS = (0, 1, 2, 3, 4)
+DEEZER_FORMATS = {
+    "AAC_64",
+    "MP3_64",
+    "MP3_128",
+    "MP3_256",
+    "MP3_320",
+    "FLAC",
+}
 # video only for tidal
 MEDIA_TYPES = {"track", "album", "artist", "label", "playlist", "video"}
 

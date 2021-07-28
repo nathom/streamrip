@@ -273,7 +273,7 @@ class Track(Media):
             dl_info = self.client.get_file_url(url_id, self.quality)
         except Exception as e:
             # click.secho(f"Unable to download track. {e}", fg="red")
-            raise NonStreamable(e)
+            raise NonStreamable(repr(e))
 
         if self.client.source == "qobuz":
             assert isinstance(dl_info, dict)  # for typing
@@ -285,14 +285,43 @@ class Track(Media):
             self.bit_depth = dl_info.get("bit_depth")
 
         # --------- Download Track ----------
-        if self.client.source in ("qobuz", "tidal", "deezer"):
-            assert isinstance(dl_info, dict)
+        if self.client.source in {"qobuz", "tidal"}:
+            assert isinstance(dl_info, dict), dl_info
             logger.debug("Downloadable URL found: %s", dl_info.get("url"))
             try:
                 download_url = dl_info["url"]
             except KeyError as e:
                 click.secho(f"Panic: {e} dl_info = {dl_info}", fg="red")
-            tqdm_download(download_url, self.path, desc=self._progress_desc)
+
+            _quick_download(download_url, self.path, desc=self._progress_desc)
+
+        elif self.client.source == "deezer":
+            # We can only find out if the requested quality is available
+            # after the streaming request is sent for deezer
+            assert isinstance(dl_info, dict)
+
+            try:
+                stream = DownloadStream(
+                    dl_info["url"], source="deezer", item_id=self.id
+                )
+            except NonStreamable:
+                self.id = dl_info["fallback_id"]
+                dl_info = self.client.get_file_url(self.id, self.quality)
+                assert isinstance(dl_info, dict)
+                stream = DownloadStream(
+                    dl_info["url"], source="deezer", item_id=self.id
+                )
+
+            stream_size = len(stream)
+            stream_quality = dl_info["size_to_quality"][stream_size]
+            if self.quality != stream_quality:
+                # The chosen quality is not available
+                self.quality = stream_quality
+                self.format_final_path()  # If the extension is different
+
+            with open(self.path, "wb") as file:
+                for chunk in tqdm_stream(stream, desc=self._progress_desc):
+                    file.write(chunk)
 
         elif self.client.source == "soundcloud":
             assert isinstance(dl_info, dict)  # for typing
@@ -1699,19 +1728,18 @@ class Playlist(Tracklist, Media):
 
         item.download(**kwargs)
 
-        if self.client.source != "deezer":
-            item.tag(embed_cover=kwargs.get("embed_cover", True))
+        item.tag(embed_cover=kwargs.get("embed_cover", True))
 
-        if playlist_to_album and self.client.source == "deezer":
-            # Because Deezer tracks come pre-tagged, the `set_playlist_to_album`
-            # option is never set. Here, we manually do this
-            from mutagen.flac import FLAC
+        # if playlist_to_album and self.client.source == "deezer":
+        #     # Because Deezer tracks come pre-tagged, the `set_playlist_to_album`
+        #     # option is never set. Here, we manually do this
+        #     from mutagen.flac import FLAC
 
-            audio = FLAC(item.path)
-            audio["ALBUM"] = self.name
-            audio["ALBUMARTIST"] = self.creator
-            audio["TRACKNUMBER"] = f"{item['tracknumber']:02}"
-            audio.save()
+        #     audio = FLAC(item.path)
+        #     audio["ALBUM"] = self.name
+        #     audio["ALBUMARTIST"] = self.creator
+        #     audio["TRACKNUMBER"] = f"{item['tracknumber']:02}"
+        #     audio.save()
 
         self.downloaded_ids.add(item.id)
 

@@ -6,8 +6,19 @@ import base64
 import logging
 import os
 from string import Formatter
-from typing import Dict, Hashable, Optional, Tuple, Union
+from typing import (
+    Dict,
+    Hashable,
+    Optional,
+    Tuple,
+    Union,
+    Generator,
+)
 from collections import OrderedDict
+import functools
+from Cryptodome.Cipher import Blowfish
+import hashlib
+import re
 from json import JSONDecodeError
 
 import click
@@ -28,9 +39,9 @@ def safe_get(d: dict, *keys: Hashable, default=None):
 
     Usage:
         >>> d = {'foo': {'bar': 'baz'}}
-        >>> _safe_get(d, 'baz')
+        >>> safe_get(d, 'baz')
         None
-        >>> _safe_get(d, 'foo', 'bar')
+        >>> safe_get(d, 'foo', 'bar')
         'baz'
 
     :param d:
@@ -49,8 +60,21 @@ def safe_get(d: dict, *keys: Hashable, default=None):
             curr = res
     return res
 
+    """
+        FLAC = 9
+    MP3_320 = 3
+    MP3_128 = 1
+    MP4_RA3 = 15
+    MP4_RA2 = 14
+    MP4_RA1 = 13
+    DEFAULT = 8
+    LOCAL = 0
 
-__QUALITY_MAP: Dict[str, Dict[int, Union[int, str]]] = {
+
+    """
+
+
+__QUALITY_MAP: Dict[str, Dict[int, Union[int, str, Tuple[int, str]]]] = {
     "qobuz": {
         1: 5,
         2: 6,
@@ -58,9 +82,9 @@ __QUALITY_MAP: Dict[str, Dict[int, Union[int, str]]] = {
         4: 27,
     },
     "deezer": {
-        0: 9,
-        1: 3,
-        2: 1,
+        0: (9, "MP3_128"),
+        1: (3, "MP3_320"),
+        2: (1, "FLAC"),
     },
     "tidal": {
         0: "LOW",  # AAC
@@ -71,7 +95,7 @@ __QUALITY_MAP: Dict[str, Dict[int, Union[int, str]]] = {
 }
 
 
-def get_quality(quality_id: int, source: str) -> Union[str, int]:
+def get_quality(quality_id: int, source: str) -> Union[str, int, Tuple[int, str]]:
     """Get the source-specific quality id.
 
     :param quality_id: the universal quality id (0, 1, 2, 4)
@@ -169,6 +193,84 @@ def tqdm_download(url: str, filepath: str, params: dict = None, desc: str = None
         except OSError:
             pass
         raise
+
+
+class DownloadStream:
+    """An iterator over chunks of a stream.
+
+    Usage:
+
+        >>> stream = DownloadStream('https://google.com', None)
+        >>> with open('google.html', 'wb') as file:
+        >>>     for chunk in stream:
+        >>>         file.write(chunk)
+
+    """
+
+    is_encrypted = re.compile("/m(?:obile|edia)/")
+
+    def __init__(
+        self,
+        url: str,
+        source: str = None,
+        params: dict = None,
+        headers: dict = None,
+        item_id: str = None,
+    ):
+        self.source = source
+        self.session = gen_threadsafe_session(headers=headers)
+
+        self.id = item_id
+        if isinstance(self.id, int):
+            self.id = str(self.id)
+
+        if params is None:
+            params = {}
+
+        self.request = self.session.get(
+            url, allow_redirects=True, stream=True, params=params
+        )
+        self.file_size = int(self.request.headers["Content-Length"])
+
+        if self.file_size == 0:
+            raise NonStreamable
+
+    def __iter__(self) -> Generator:
+        if self.source == "deezer" and self.is_encrypted.search(self.url) is not None:
+            assert isinstance(self.id, str), self.id
+
+            blowfish_key = self._generate_blowfish_key(self.id)
+            return (
+                (self._decrypt_chunk(blowfish_key, chunk[:2048]) + chunk[2048:])
+                if len(chunk) >= 2048
+                else chunk
+                for chunk in self.request.iter_content(2048 * 3)
+            )
+
+        return self.request.iter_content(chunk_size=1024)
+
+    @property
+    def url(self):
+        return self.request.url
+
+    def __len__(self):
+        return self.file_size
+
+    @staticmethod
+    def _generate_blowfish_key(track_id: str):
+        SECRET = "g4el58wc0zvf9na1"
+        md5_hash = hashlib.md5(track_id.encode()).hexdigest()
+        # good luck :)
+        return "".join(
+            chr(functools.reduce(lambda x, y: x ^ y, map(ord, t)))
+            for t in zip(md5_hash[:16], md5_hash[16:], SECRET)
+        ).encode()
+
+    @staticmethod
+    def _decrypt_chunk(key, data):
+        return Blowfish.new(
+            key, Blowfish.MODE_CBC, b"\x00\x01\x02\x03\x04\x05\x06\x07"
+        ).decrypt(data)
 
 
 def clean_format(formatter: str, format_info):
@@ -396,3 +498,27 @@ def downsize_image(filepath: str, width: int, height: int):
 
     resized_image = image.resize((width, height))
     resized_image.save(filepath)
+
+
+TQDM_BAR_FORMAT = (
+    "{desc} |{bar}| ("
+    + click.style("{elapsed}", fg="magenta")
+    + " at "
+    + click.style("{rate_fmt}{postfix}", fg="cyan", bold=True)
+    + ")"
+)
+
+
+def tqdm_stream(iterator: DownloadStream, desc: Optional[str] = None) -> Generator:
+    with tqdm(
+        total=len(iterator),
+        unit="B",
+        unit_scale=True,
+        unit_divisor=1024,
+        desc=desc,
+        dynamic_ncols=True,
+        bar_format=TQDM_BAR_FORMAT,
+    ) as bar:
+        for chunk in iterator:
+            bar.update(len(chunk))
+            yield chunk
