@@ -45,7 +45,7 @@ def cli(ctx, **kwargs):
 
     from .config import Config
     from .constants import CONFIG_DIR
-    from .core import MusicDL
+    from .core import RipCore
 
     logging.basicConfig(level="WARNING")
     logger = logging.getLogger("streamrip")
@@ -104,7 +104,7 @@ def cli(ctx, **kwargs):
         config.session["tidal"]["quality"] = quality
         config.session["deezer"]["quality"] = quality
 
-    core = MusicDL(config)
+    core = RipCore(config)
 
     if kwargs["urls"]:
         logger.debug(f"handling {kwargs['urls']}")

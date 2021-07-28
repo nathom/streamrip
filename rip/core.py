@@ -81,14 +81,22 @@ DB_PATH_MAP = {"downloads": DB_PATH, "failed_downloads": FAILED_DB_PATH}
 # ---------------------------------------------- #
 
 
-class MusicDL(list):
-    """MusicDL."""
+class RipCore(list):
+    """RipCore."""
+
+    clients = {
+        "qobuz": QobuzClient(),
+        "tidal": TidalClient(),
+        "deezer": DeezerClient(),
+        "soundcloud": SoundCloudClient(),
+        "deezloader": DeezloaderClient(),
+    }
 
     def __init__(
         self,
         config: Optional[Config] = None,
     ):
-        """Create a MusicDL object.
+        """Create a RipCore object.
 
         :param config:
         :type config: Optional[Config]
@@ -98,13 +106,6 @@ class MusicDL(list):
             self.config = Config(CONFIG_PATH)
         else:
             self.config = config
-
-        self.clients = {
-            "qobuz": QobuzClient(),
-            "tidal": TidalClient(),
-            "deezer": DeezerClient(),
-            "soundcloud": SoundCloudClient(),
-        }
 
         def get_db(db_type: str) -> db.Database:
             db_settings = self.config.session["database"]
