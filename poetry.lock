@@ -197,6 +197,14 @@ optional = false
 python-versions = ">=3.6"
 
 [[package]]
+name = "pycryptodomex"
+version = "3.10.1"
+description = "Cryptographic library for Python"
+category = "main"
+optional = false
+python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*"
+
+[[package]]
 name = "pygments"
 version = "2.9.0"
 description = "Pygments is a syntax highlighting package written in Python."
@@ -272,7 +280,7 @@ python-versions = ">=3.6"
 
 [[package]]
 name = "sphinx"
-version = "4.1.1"
+version = "4.1.2"
 description = "Python documentation generator"
 category = "dev"
 optional = false
@@ -397,6 +405,22 @@ notebook = ["ipywidgets (>=6)"]
 telegram = ["requests"]
 
 [[package]]
+name = "types-click"
+version = "7.1.2"
+description = "Typing stubs for click"
+category = "dev"
+optional = false
+python-versions = "*"
+
+[[package]]
+name = "types-pillow"
+version = "8.3.1"
+description = "Typing stubs for Pillow"
+category = "dev"
+optional = false
+python-versions = "*"
+
+[[package]]
 name = "urllib3"
 version = "1.26.6"
 description = "HTTP library with thread-safe connection pooling, file post, and more."
@@ -462,7 +486,7 @@ python-versions = "*"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.8"
-content-hash = "baac80bc5ff3ccb5a23168ac3303732f79cd16dbafad48a5e216bba531baebd7"
+content-hash = "8128cd9440b4931b23509f72a3952e1d4115a3783ded70c3b458de921ed30c56"
 
 [metadata.files]
 alabaster = [
@@ -614,6 +638,38 @@ pillow = [
     {file = "Pillow-8.3.1-pp37-pypy37_pp73-win_amd64.whl", hash = "sha256:1c03e24be975e2afe70dfc5da6f187eea0b49a68bb2b69db0f30a61b7031cee4"},
     {file = "Pillow-8.3.1.tar.gz", hash = "sha256:2cac53839bfc5cece8fdbe7f084d5e3ee61e1303cccc86511d351adcb9e2c792"},
 ]
+pycryptodomex = [
+    {file = "pycryptodomex-3.10.1-cp27-cp27m-macosx_10_9_x86_64.whl", hash = "sha256:4344ab16faf6c2d9df2b6772995623698fb2d5f114dace4ab2ff335550cf71d5"},
+    {file = "pycryptodomex-3.10.1-cp27-cp27m-manylinux1_i686.whl", hash = "sha256:f933ecf4cb736c7af60a6a533db2bf569717f2318b265f92907acff1db43bc34"},
+    {file = "pycryptodomex-3.10.1-cp27-cp27m-manylinux1_x86_64.whl", hash = "sha256:0bd35af6a18b724c689e56f2dbbdd8e409288be71952d271ba3d9614b31d188c"},
+    {file = "pycryptodomex-3.10.1-cp27-cp27m-manylinux2010_i686.whl", hash = "sha256:ec9901d19cadb80d9235ee41cc58983f18660314a0eb3fc7b11b0522ac3b6c4a"},
+    {file = "pycryptodomex-3.10.1-cp27-cp27m-manylinux2010_x86_64.whl", hash = "sha256:c2b680987f418858e89dbb4f09c8c919ece62811780a27051ace72b2f69fb1be"},
+    {file = "pycryptodomex-3.10.1-cp27-cp27m-manylinux2014_aarch64.whl", hash = "sha256:a6584ae58001d17bb4dc0faa8a426919c2c028ef4d90ceb4191802ca6edb8204"},
+    {file = "pycryptodomex-3.10.1-cp27-cp27m-win32.whl", hash = "sha256:4195604f75cdc1db9bccdb9e44d783add3c817319c30aaff011670c9ed167690"},
+    {file = "pycryptodomex-3.10.1-cp27-cp27m-win_amd64.whl", hash = "sha256:9f713ffb4e27b5575bd917c70bbc3f7b348241a351015dbbc514c01b7061ff7e"},
+    {file = "pycryptodomex-3.10.1-cp27-cp27mu-manylinux1_i686.whl", hash = "sha256:418f51c61eab52d9920f4ef468d22c89dab1be5ac796f71cf3802f6a6e667df0"},
+    {file = "pycryptodomex-3.10.1-cp27-cp27mu-manylinux1_x86_64.whl", hash = "sha256:8a98e02cbf8f624add45deff444539bf26345b479fc04fa0937b23cd84078d91"},
+    {file = "pycryptodomex-3.10.1-cp27-cp27mu-manylinux2010_i686.whl", hash = "sha256:dbd2c361db939a4252589baa94da4404d45e3fc70da1a31e541644cdf354336e"},
+    {file = "pycryptodomex-3.10.1-cp27-cp27mu-manylinux2010_x86_64.whl", hash = "sha256:564063e3782474c92cbb333effd06e6eb718471783c6e67f28c63f0fc3ac7b23"},
+    {file = "pycryptodomex-3.10.1-cp27-cp27mu-manylinux2014_aarch64.whl", hash = "sha256:e4a1245e7b846e88ba63e7543483bda61b9acbaee61eadbead5a1ce479d94740"},
+    {file = "pycryptodomex-3.10.1-cp35-abi3-macosx_10_9_x86_64.whl", hash = "sha256:3b8eb85b3cc7f083d87978c264d10ff9de3b4bfc46f1c6fdc2792e7d7ebc87bb"},
+    {file = "pycryptodomex-3.10.1-cp35-abi3-manylinux1_i686.whl", hash = "sha256:f3bb267df679f70a9f40f17d62d22fe12e8b75e490f41807e7560de4d3e6bf9f"},
+    {file = "pycryptodomex-3.10.1-cp35-abi3-manylinux1_x86_64.whl", hash = "sha256:04265a7a84ae002001249bd1de2823bcf46832bd4b58f6965567cb8a07cf4f00"},
+    {file = "pycryptodomex-3.10.1-cp35-abi3-manylinux2010_i686.whl", hash = "sha256:72f44b5be46faef2a1bf2a85902511b31f4dd7b01ce0c3978e92edb2cc812a82"},
+    {file = "pycryptodomex-3.10.1-cp35-abi3-manylinux2010_x86_64.whl", hash = "sha256:e090a8609e2095aa86978559b140cf8968af99ee54b8791b29ff804838f29f10"},
+    {file = "pycryptodomex-3.10.1-cp35-abi3-manylinux2014_aarch64.whl", hash = "sha256:20c45a30f3389148f94edb77f3b216c677a277942f62a2b81a1cc0b6b2dde7fc"},
+    {file = "pycryptodomex-3.10.1-cp35-abi3-win32.whl", hash = "sha256:fc9c55dc1ed57db76595f2d19a479fc1c3a1be2c9da8de798a93d286c5f65f38"},
+    {file = "pycryptodomex-3.10.1-cp35-abi3-win_amd64.whl", hash = "sha256:3dfce70c4e425607ae87b8eae67c9c7dbba59a33b62d70f79417aef0bc5c735b"},
+    {file = "pycryptodomex-3.10.1-pp27-pypy_73-macosx_10_9_x86_64.whl", hash = "sha256:940db96449d7b2ebb2c7bf190be1514f3d67914bd37e54e8d30a182bd375a1a9"},
+    {file = "pycryptodomex-3.10.1-pp27-pypy_73-manylinux1_x86_64.whl", hash = "sha256:d8fae5ba3d34c868ae43614e0bd6fb61114b2687ac3255798791ce075d95aece"},
+    {file = "pycryptodomex-3.10.1-pp27-pypy_73-manylinux2010_x86_64.whl", hash = "sha256:f2abeb4c4ce7584912f4d637b2c57f23720d35dd2892bfeb1b2c84b6fb7a8c88"},
+    {file = "pycryptodomex-3.10.1-pp27-pypy_73-win32.whl", hash = "sha256:36dab7f506948056ceba2d57c1ade74e898401960de697cefc02f3519bd26c1b"},
+    {file = "pycryptodomex-3.10.1-pp36-pypy36_pp73-macosx_10_9_x86_64.whl", hash = "sha256:37ec1b407ec032c7a0c1fdd2da12813f560bad38ae61ad9c7ce3c0573b3e5e30"},
+    {file = "pycryptodomex-3.10.1-pp36-pypy36_pp73-manylinux1_x86_64.whl", hash = "sha256:00a584ee52bf5e27d540129ca9bf7c4a7e7447f24ff4a220faa1304ad0c09bcd"},
+    {file = "pycryptodomex-3.10.1-pp36-pypy36_pp73-manylinux2010_x86_64.whl", hash = "sha256:961333e7ee896651f02d4692242aa36b787b8e8e0baa2256717b2b9d55ae0a3c"},
+    {file = "pycryptodomex-3.10.1-pp36-pypy36_pp73-win32.whl", hash = "sha256:2959304d1ce31ab303d9fb5db2b294814278b35154d9b30bf7facc52d6088d0a"},
+    {file = "pycryptodomex-3.10.1.tar.gz", hash = "sha256:541cd3e3e252fb19a7b48f420b798b53483302b7fe4d9954c947605d0a263d62"},
+]
 pygments = [
     {file = "Pygments-2.9.0-py3-none-any.whl", hash = "sha256:d66e804411278594d764fc69ec36ec13d9ae9147193a1740cd34d272ca383b8e"},
     {file = "Pygments-2.9.0.tar.gz", hash = "sha256:a18f47b506a429f6f4b9df81bb02beab9ca21d0a5fee38ed15aef65f0545519f"},
@@ -647,8 +703,8 @@ soupsieve = [
     {file = "soupsieve-2.2.1.tar.gz", hash = "sha256:052774848f448cf19c7e959adf5566904d525f33a3f8b6ba6f6f8f26ec7de0cc"},
 ]
 sphinx = [
-    {file = "Sphinx-4.1.1-py3-none-any.whl", hash = "sha256:3d513088236eef51e5b0adb78b0492eb22cc3b8ccdb0b36dd021173b365d4454"},
-    {file = "Sphinx-4.1.1.tar.gz", hash = "sha256:23c846a1841af998cb736218539bb86d16f5eb95f5760b1966abcd2d584e62b8"},
+    {file = "Sphinx-4.1.2-py3-none-any.whl", hash = "sha256:46d52c6cee13fec44744b8c01ed692c18a640f6910a725cbb938bc36e8d64544"},
+    {file = "Sphinx-4.1.2.tar.gz", hash = "sha256:3092d929cd807926d846018f2ace47ba2f3b671b309c7a89cd3306e80c826b13"},
 ]
 sphinxcontrib-applehelp = [
     {file = "sphinxcontrib-applehelp-1.0.2.tar.gz", hash = "sha256:a072735ec80e7675e3f432fcae8610ecf509c5f1869d17e2eecff44389cdbc58"},
@@ -681,6 +737,14 @@ tomlkit = [
 tqdm = [
     {file = "tqdm-4.61.2-py2.py3-none-any.whl", hash = "sha256:5aa445ea0ad8b16d82b15ab342de6b195a722d75fc1ef9934a46bba6feafbc64"},
     {file = "tqdm-4.61.2.tar.gz", hash = "sha256:8bb94db0d4468fea27d004a0f1d1c02da3cdedc00fe491c0de986b76a04d6b0a"},
+]
+types-click = [
+    {file = "types-click-7.1.2.tar.gz", hash = "sha256:040897284e4f9466825c3865f708a985a8e7ba4d8e22cb9198ffb7b522160850"},
+    {file = "types_click-7.1.2-py2.py3-none-any.whl", hash = "sha256:4722746f1ec9fd3fc8b1d7fb8c840604dc22f9e32bcc7a31a36d6d85cc2bce24"},
+]
+types-pillow = [
+    {file = "types-Pillow-8.3.1.tar.gz", hash = "sha256:12329f4700941f60a0054194815b4bf674e5dfac73debd97ef7548c51f2c5103"},
+    {file = "types_Pillow-8.3.1-py3-none-any.whl", hash = "sha256:9556ba9cb25f570371bd082dc30fe77a549a22bac035ce9d3a606bfc541d12ec"},
 ]
 urllib3 = [
     {file = "urllib3-1.26.6-py2.py3-none-any.whl", hash = "sha256:39fb8672126159acb139a7718dd10806104dec1e2f0f6c88aab05d17df10c8d4"},

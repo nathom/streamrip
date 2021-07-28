@@ -34,6 +34,7 @@ pick = {version = "^1.0.0", platform = 'win32 or cygwin'}
 windows-curses = {version = "^2.2.0", platform = 'win32 or cygwin'}
 Pillow = "^8.3.0"
 deezer-py = "^1.0.4"
+pycryptodomex = "^3.10.1"
 
 [tool.poetry.urls]
 "Bug Reports" = "https://github.com/nathom/streamrip/issues"
@@ -41,6 +42,8 @@ deezer-py = "^1.0.4"
 [tool.poetry.dev-dependencies]
 Sphinx = "^4.1.1"
 autodoc = "^0.5.0"
+types-click = "^7.1.2"
+types-Pillow = "^8.3.1"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
