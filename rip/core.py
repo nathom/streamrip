@@ -28,6 +28,7 @@ from streamrip.media import (
 from streamrip.clients import (
     Client,
     DeezerClient,
+    DeezloaderClient,
     QobuzClient,
     SoundCloudClient,
     TidalClient,

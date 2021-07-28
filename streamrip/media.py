@@ -23,7 +23,7 @@ from mutagen.mp4 import MP4, MP4Cover
 from pathvalidate import sanitize_filepath, sanitize_filename
 
 from . import converter
-from .clients import Client
+from .clients import Client, DeezloaderClient
 from .constants import FLAC_MAX_BLOCKSIZE, FOLDER_FORMAT, TRACK_FORMAT, ALBUM_KEYS
 from .exceptions import (
     InvalidQuality,
@@ -40,6 +40,7 @@ from .utils import (
     downsize_image,
     get_cover_urls,
     decrypt_mqa_file,
+    tqdm_download,
     get_container,
     DownloadStream,
     ext,
@@ -266,7 +267,6 @@ class Track(Media):
             raise NonStreamable(repr(e))
 
         if self.client.source == "qobuz":
-            assert isinstance(dl_info, dict)  # for typing
             if not self.__validate_qobuz_dl_info(dl_info):
                 # click.secho("Track is not available for download", fg="red")
                 raise NonStreamable("Track is not available for download")
@@ -276,7 +276,6 @@ class Track(Media):
 
         # --------- Download Track ----------
         if self.client.source in {"qobuz", "tidal"}:
-            assert isinstance(dl_info, dict), dl_info
             logger.debug("Downloadable URL found: %s", dl_info.get("url"))
             try:
                 download_url = dl_info["url"]
@@ -285,10 +284,12 @@ class Track(Media):
 
             _quick_download(download_url, self.path, desc=self._progress_desc)
 
+        elif isinstance(self.client, DeezloaderClient):
+            tqdm_download(dl_info["url"], self.path, desc=self._progress_desc)
+
         elif self.client.source == "deezer":
             # We can only find out if the requested quality is available
             # after the streaming request is sent for deezer
-            assert isinstance(dl_info, dict)
 
             try:
                 stream = DownloadStream(
@@ -314,7 +315,6 @@ class Track(Media):
                     file.write(chunk)
 
         elif self.client.source == "soundcloud":
-            assert isinstance(dl_info, dict)  # for typing
             self._soundcloud_download(dl_info)
 
         else:
@@ -1345,6 +1345,7 @@ class Album(Tracklist, Media):
         # Generate the folder name
         self.folder_format = kwargs.get("folder_format", FOLDER_FORMAT)
         self.quality = min(kwargs.get("quality", 3), self.client.max_quality)
+        print(f"{self.quality=} {self.client.max_quality = }")
 
         self.folder = self._get_formatted_folder(
             kwargs.get("parent_folder", "StreamripDownloads"), self.quality
@@ -1476,13 +1477,17 @@ class Album(Tracklist, Media):
         """
         fmt = {key: self.get(key) for key in ALBUM_KEYS}
 
+        # Get minimum of both bit depth and sampling rate
         stats = tuple(
-            min(bd, sr)
-            for bd, sr in zip(
+            min(stat1, stat2)
+            for stat1, stat2 in zip(
                 (self.meta.bit_depth, self.meta.sampling_rate),
                 get_stats_from_quality(self.quality),
             )
+            if stat1 is not None and stat2 is not None
         )
+        if not stats:
+            stats = (None, None)
 
         # The quality chosen is not the maximum available quality
         if stats != (fmt.get("sampling_rate"), fmt.get("bit_depth")):
@@ -1496,6 +1501,7 @@ class Album(Tracklist, Media):
             else:
                 fmt["sampling_rate"] = sr / 1000
 
+        logger.debug("Formatter: %s", fmt)
         return fmt
 
     def _get_formatted_folder(self, parent_folder: str, quality: int) -> str:

@@ -198,9 +198,9 @@ class TrackMetadata:
             # not embedded
             self.explicit = bool(resp.get("parental_warning"))
             self.quality = 2
-            self.bit_depth = 16
+            self.bit_depth = None
             self.cover_urls = get_cover_urls(resp, self.__source)
-            self.sampling_rate = 44100
+            self.sampling_rate = None
             self.streamable = True
 
         elif self.__source == "soundcloud":

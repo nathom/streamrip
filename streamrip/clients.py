@@ -87,7 +87,7 @@ class Client(ABC):
         pass
 
     @abstractmethod
-    def get_file_url(self, track_id, quality=3) -> Union[dict, str]:
+    def get_file_url(self, track_id, quality=3) -> dict:
         """Get the direct download url dict for a file.
 
         :param track_id: id of the track
@@ -629,20 +629,77 @@ class DeezerClient(Client):
         }.get(filetype)
 
 
-def generate_blowfish_key(trackId: str):
-    SECRET = "g4el58wc0zvf9na1"
-    md5_hash = hashlib.md5(trackId.encode()).hexdigest()
-    key = "".join(
-        chr(ord(md5_hash[i]) ^ ord(md5_hash[i + 16]) ^ ord(SECRET[i]))
-        for i in range(16)
-    )
-    return key.encode()
+class DeezloaderClient(Client):
 
+    source = "deezer"
+    max_quality = 1
 
-def decrypt_chunk(key, data):
-    return Blowfish.new(
-        key, Blowfish.MODE_CBC, b"\x00\x01\x02\x03\x04\x05\x06\x07"
-    ).decrypt(data)
+    def __init__(self):
+        self.session = gen_threadsafe_session()
+
+        # no login required
+        self.logged_in = True
+
+    def search(self, query: str, media_type: str = "album", limit: int = 200) -> dict:
+        """Search API for query.
+
+        :param query:
+        :type query: str
+        :param media_type:
+        :type media_type: str
+        :param limit:
+        :type limit: int
+        """
+        # TODO: use limit parameter
+        response = self.session.get(
+            f"{DEEZER_BASE}/search/{media_type}", params={"q": query}
+        )
+        response.raise_for_status()
+        return response.json()
+
+    def login(self, **kwargs):
+        """Return None.
+
+        Dummy method.
+
+        :param kwargs:
+        """
+        logger.debug("Deezer does not require login call, returning")
+
+    def get(self, meta_id: Union[str, int], media_type: str = "album"):
+        """Get metadata.
+
+        :param meta_id:
+        :type meta_id: Union[str, int]
+        :param type_:
+        :type type_: str
+        """
+        url = f"{DEEZER_BASE}/{media_type}/{meta_id}"
+        item = self.session.get(url).json()
+        if media_type in ("album", "playlist"):
+            tracks = self.session.get(f"{url}/tracks", params={"limit": 1000}).json()
+            item["tracks"] = tracks["data"]
+            item["track_total"] = len(tracks["data"])
+        elif media_type == "artist":
+            albums = self.session.get(f"{url}/albums").json()
+            item["albums"] = albums["data"]
+
+        logger.debug(item)
+        return item
+
+    @staticmethod
+    def get_file_url(meta_id: Union[str, int], quality: int = 6):
+        """Get downloadable url for a track.
+
+        :param meta_id: The track ID.
+        :type meta_id: Union[str, int]
+        :param quality:
+        :type quality: int
+        """
+        quality = min(DEEZER_MAX_Q, quality)
+        url = f"{DEEZER_DL}/{get_quality(quality, 'deezer')}/{DEEZER_BASE}/track/{meta_id}"
+        logger.debug(f"Download url {url}")
+        return {"url": url}
 
 
 class TidalClient(Client):

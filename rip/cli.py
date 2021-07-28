@@ -153,7 +153,7 @@ def filter_discography(ctx, **kwargs):
     "-s",
     "--source",
     default="qobuz",
-    help="qobuz, tidal, soundcloud, or deezer",
+    help="qobuz, tidal, soundcloud, deezer, or deezloader",
 )
 @click.argument("QUERY", nargs=-1)
 @click.pass_context
@@ -257,7 +257,7 @@ def discover(ctx, **kwargs):
 @click.option(
     "-s",
     "--source",
-    help="Qobuz, Tidal, Deezer, or SoundCloud. Default: Qobuz.",
+    help="Qobuz, Tidal, Deezer, Deezloader, or SoundCloud. Default: Qobuz.",
 )
 @click.argument("URL")
 @click.pass_context
