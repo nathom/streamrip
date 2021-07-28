@@ -141,7 +141,9 @@ class Config:
             return self.qobuz_creds
         if source == "tidal":
             return self.tidal_creds
-        if source == "deezer" or source == "soundcloud":
+        if source == "deezer":
+            return {"arl": self.file["deezer"]["arl"]}
+        if source == "soundcloud":
             return {}
 
         raise InvalidSourceError(source)

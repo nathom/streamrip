@@ -345,33 +345,32 @@ class MusicDL(list):
         :param client:
         """
         creds = self.config.creds(client.source)
-        if not client.logged_in:
-            while True:
-                try:
-                    client.login(**creds)
-                    break
-                except AuthenticationError:
-                    click.secho("Invalid credentials, try again.")
-                    self.prompt_creds(client.source)
-                    creds = self.config.creds(client.source)
-                except MissingCredentials:
-                    logger.debug("Credentials are missing. Prompting..")
-                    self.prompt_creds(client.source)
-                    creds = self.config.creds(client.source)
+        while True:
+            try:
+                client.login(**creds)
+                break
+            except AuthenticationError:
+                click.secho("Invalid credentials, try again.")
+                self.prompt_creds(client.source)
+                creds = self.config.creds(client.source)
+            except MissingCredentials:
+                logger.debug("Credentials are missing. Prompting..")
+                self.prompt_creds(client.source)
+                creds = self.config.creds(client.source)
 
-            if (
-                client.source == "qobuz"
-                and not creds.get("secrets")
-                and not creds.get("app_id")
-            ):
-                (
-                    self.config.file["qobuz"]["app_id"],
-                    self.config.file["qobuz"]["secrets"],
-                ) = client.get_tokens()
-                self.config.save()
-            elif client.source == "tidal":
-                self.config.file["tidal"].update(client.get_tokens())
-                self.config.save()
+        if (
+            client.source == "qobuz"
+            and not creds.get("secrets")
+            and not creds.get("app_id")
+        ):
+            (
+                self.config.file["qobuz"]["app_id"],
+                self.config.file["qobuz"]["secrets"],
+            ) = client.get_tokens()
+            self.config.save()
+        elif client.source == "tidal":
+            self.config.file["tidal"].update(client.get_tokens())
+            self.config.save()  # only for the expiry stamp
 
     def parse_urls(self, url: str) -> List[Tuple[str, str, str]]:
         """Return the type of the url and the id.
@@ -791,16 +790,24 @@ class MusicDL(list):
         :type source: str
         """
         if source == "qobuz":
-            click.secho(f"Enter {source.capitalize()} email:", fg="green")
+            click.secho("Enter Qobuz email:", fg="green")
             self.config.file[source]["email"] = input()
             click.secho(
-                f"Enter {source.capitalize()} password (will not show on screen):",
+                "Enter Qobuz password (will not show on screen):",
                 fg="green",
             )
             self.config.file[source]["password"] = md5(
                 getpass(prompt="").encode("utf-8")
             ).hexdigest()
 
+            self.config.save()
+            click.secho(
+                f'Credentials saved to config file at "{self.config._path}"',
+                fg="green",
+            )
+        elif source == "deezer":
+            click.secho("Enter Deezer ARL: ", fg="green")
+            self.config.file["deezer"]["arl"] = input()
             self.config.save()
             click.secho(
                 f'Credentials saved to config file at "{self.config._path}"',
@@ -821,9 +828,6 @@ class MusicDL(list):
             "deezer",
             "soundcloud",
         ), f"Invalid source {source}"
-        if source == "deezer":
-            # no login for deezer
-            return
 
         if source == "soundcloud":
             return
