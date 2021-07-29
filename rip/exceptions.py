@@ -1,0 +1,2 @@
+class DeezloaderFallback(Exception):
+    pass

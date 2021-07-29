@@ -280,12 +280,20 @@ class Track(Media):
             try:
                 download_url = dl_info["url"]
             except KeyError as e:
+                if restrictions := dl_info["restrictions"]:
+                    # Turn CamelCase code into a readable sentence
+                    words = re.findall(r"([A-Z][a-z]+)", restrictions[0]["code"])
+                    raise NonStreamable(
+                        words[0] + " " + " ".join(map(str.lower, words[1:])) + "."
+                    )
+
                 click.secho(f"Panic: {e} dl_info = {dl_info}", fg="red")
+                raise NonStreamable
 
             _quick_download(download_url, self.path, desc=self._progress_desc)
 
         elif isinstance(self.client, DeezloaderClient):
-            tqdm_download(dl_info["url"], self.path, desc=self._progress_desc)
+            _quick_download(dl_info["url"], self.path, desc=self._progress_desc)
 
         elif self.client.source == "deezer":
             # We can only find out if the requested quality is available
@@ -1205,7 +1213,8 @@ class Tracklist(list):
         """
         click.secho(
             f"\n\nDownloading {self.title} ({self.__class__.__name__})\n",
-            fg="blue",
+            fg="magenta",
+            bold=True,
         )
 
     @staticmethod
@@ -1345,7 +1354,6 @@ class Album(Tracklist, Media):
         # Generate the folder name
         self.folder_format = kwargs.get("folder_format", FOLDER_FORMAT)
         self.quality = min(kwargs.get("quality", 3), self.client.max_quality)
-        print(f"{self.quality=} {self.client.max_quality = }")
 
         self.folder = self._get_formatted_folder(
             kwargs.get("parent_folder", "StreamripDownloads"), self.quality

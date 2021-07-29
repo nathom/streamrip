@@ -35,6 +35,7 @@ from streamrip.clients import (
 )
 from .config import Config
 from streamrip.constants import MEDIA_TYPES
+from streamrip.utils import set_progress_bar_theme, TQDM_DEFAULT_THEME
 from .constants import (
     URL_REGEX,
     SOUNDCLOUD_URL_REGEX,
@@ -56,7 +57,12 @@ from streamrip.exceptions import (
     NoResultsFound,
     ParsingError,
 )
-from .utils import extract_deezer_dynamic_link, extract_interpreter_url
+from .utils import (
+    extract_deezer_dynamic_link,
+    extract_interpreter_url,
+)
+from .exceptions import DeezloaderFallback
+
 
 logger = logging.getLogger("streamrip")
 
@@ -191,8 +197,6 @@ class RipCore(list):
         :param item_id:
         :type item_id: str
         """
-        self.assert_creds(source)
-
         client = self.get_client(source)
 
         if media_type not in MEDIA_TYPES:
@@ -340,8 +344,11 @@ class RipCore(list):
         """
         client = self.clients[source]
         if not client.logged_in:
-            self.assert_creds(source)
-            self.login(client)
+            try:
+                self.login(client)
+            except DeezloaderFallback:
+                client = self.clients["deezloader"]
+
         return client
 
     def login(self, client):
@@ -350,16 +357,27 @@ class RipCore(list):
         :param client:
         """
         creds = self.config.creds(client.source)
+        if client.source == "deezer" and creds["arl"] == "":
+            if self.config.session["deezer"]["deezloader_warnings"]:
+                click.secho(
+                    "Falling back to Deezloader (max 320kbps MP3). If you have a subscription, run ",
+                    nl=False,
+                    fg="yellow",
+                )
+                click.secho("rip config --deezer ", nl=False, bold=True)
+                click.secho("to download FLAC files.\n\n", fg="yellow")
+            raise DeezloaderFallback
+
         while True:
             try:
                 client.login(**creds)
                 break
             except AuthenticationError:
-                click.secho("Invalid credentials, try again.")
+                click.secho("Invalid credentials, try again.", fg="yellow")
                 self.prompt_creds(client.source)
                 creds = self.config.creds(client.source)
             except MissingCredentials:
-                logger.debug("Credentials are missing. Prompting..")
+                logger.debug("Credentials are missing. Prompting..", fg="yellow")
                 self.prompt_creds(client.source)
                 creds = self.config.creds(client.source)
 
@@ -571,13 +589,6 @@ class RipCore(list):
                     else page["albums"]["items"]
                 )
                 for i, item in enumerate(tracklist):
-                    if item_id := str(item["id"]) in self.db:
-                        click.secho(
-                            f"ID {item_id} already logged in database. Skipping.",
-                            fg="magenta",
-                        )
-                        continue
-
                     yield MEDIA_CLASS[  # type: ignore
                         media_type if media_type != "featured" else "album"
                     ].from_api(item, client)
@@ -811,8 +822,20 @@ class RipCore(list):
                 fg="green",
             )
         elif source == "deezer":
-            click.secho("Enter Deezer ARL: ", fg="green")
-            self.config.file["deezer"]["arl"] = input()
+            click.secho(
+                "If you're not sure how to find the ARL cookie, see the instructions at ",
+                italic=True,
+                nl=False,
+                dim=True,
+            )
+            click.secho(
+                "https://github.com/nathom/streamrip/wiki/Finding-your-Deezer-ARL-Cookie",
+                underline=True,
+                italic=True,
+                fg="blue",
+            )
+
+            self.config.file["deezer"]["arl"] = input(click.style("ARL: ", fg="green"))
             self.config.save()
             click.secho(
                 f'Credentials saved to config file at "{self.config._path}"',
@@ -820,28 +843,6 @@ class RipCore(list):
             )
         else:
             raise Exception
-
-    def assert_creds(self, source: str):
-        """Ensure that the credentials for `source` are valid.
-
-        :param source:
-        :type source: str
-        """
-        assert source in (
-            "qobuz",
-            "tidal",
-            "deezer",
-            "soundcloud",
-        ), f"Invalid source {source}"
-
-        if source == "soundcloud":
-            return
-
-        if source == "qobuz" and (
-            self.config.file[source]["email"] is None
-            or self.config.file[source]["password"] is None
-        ):
-            self.prompt_creds(source)
 
     def _config_updating_message(self):
         click.secho(

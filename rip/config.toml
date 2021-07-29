@@ -38,12 +38,20 @@ refresh_token = ""
 # in again using `rip config --tidal`
 token_expiry = ""
 
-# Doesn't require login
 [deezer]
 # 0, 1, or 2
+# This only applies to paid Deezer subscriptions. Those using deezloader
+# are automatically limited to quality = 1
 quality = 2
-use_deemix_server = true
+# An authentication cookie that allows streamrip to use your Deezer account
+# See [ADD LINK] for instructions on how to find this
 arl = ""
+# This allows for free 320kbps MP3 downloads from Deezer
+# If an arl is provided, deezloader is never used
+use_deezloader = true
+# This warns you when the paid deezer account is not logged in and rip falls
+# back to deezloader, which is unreliable
+deezloader_warnings = true
 
 [soundcloud]
 # Only 0 is available for now
