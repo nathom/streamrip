@@ -70,11 +70,19 @@ class Config:
     def update(self):
         """Reset the config file except for credentials."""
         self.reset()
-        temp = copy.deepcopy(self.defaults)
-        temp["qobuz"].update(self.file["qobuz"])
-        temp["tidal"].update(self.file["tidal"])
-        self.dump(temp)
-        del temp
+        # Save original credentials
+        qobuz_creds = self.file["qobuz"]
+        tidal_creds = self.file["tidal"]
+
+        # Reset and load config file
+        shutil.copy(self.default_config_path, self._path)
+        self.load()
+
+        # Set credentials and download directory, then save
+        self.file["qobuz"].update(qobuz_creds)
+        self.file["tidal"].update(tidal_creds)
+        self.file["downloads"]["folder"] = DOWNLOADS_DIR
+        self.save()
 
     def save(self):
         """Save the config state to file."""

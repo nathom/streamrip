@@ -230,7 +230,7 @@ class DownloadStream:
         self.request = self.session.get(
             url, allow_redirects=True, stream=True, params=params
         )
-        self.file_size = int(self.request.headers["Content-Length"])
+        self.file_size = int(self.request.headers.get("Content-Length", 0))
 
         if self.file_size == 0:
             raise NonStreamable
