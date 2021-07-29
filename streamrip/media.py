@@ -422,6 +422,7 @@ class Track(Media):
         :type dl_info: dict
         :rtype: str
         """
+        logger.debug("dl_info: %s", dl_info)
         if dl_info["type"] == "mp3":
             self.path += ".mp3"
             # convert hls stream to mp3

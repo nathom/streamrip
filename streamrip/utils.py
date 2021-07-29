@@ -77,8 +77,8 @@ class DownloadStream:
         )
         self.file_size = int(self.request.headers.get("Content-Length", 0))
 
-        if self.file_size == 0:
-            raise NonStreamable
+        if self.file_size == 0 and not self.url.endswith(".jpg"):
+            raise NonStreamable("File not found.")
 
     def __iter__(self) -> Iterator:
         """Iterate through chunks of the stream.
