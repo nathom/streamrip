@@ -1,3 +1,5 @@
+"""Utility functions for RipCore."""
+
 import re
 from typing import Tuple
 

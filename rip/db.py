@@ -15,6 +15,11 @@ class Database:
     name: str
 
     def __init__(self, path, dummy=False):
+        """Create a Database instance.
+
+        :param path: Path to the database file.
+        :param dummy: Make the database empty.
+        """
         assert self.structure != []
         assert self.name
 
@@ -72,7 +77,15 @@ class Database:
 
             return bool(conn.execute(command, tuple(items.values())).fetchone()[0])
 
-    def __contains__(self, keys: dict) -> bool:
+    def __contains__(self, keys: Union[str, dict]) -> bool:
+        """Check whether a key-value pair exists in the database.
+
+        :param keys: Either a dict with the structure {key: value_to_search_for, ...},
+        or if there is only one key in the table, value_to_search_for can be
+        passed in by itself.
+        :type keys: Union[str, dict]
+        :rtype: bool
+        """
         if isinstance(keys, dict):
             return self.contains(**keys)
 
@@ -119,6 +132,12 @@ class Database:
                 logger.debug(e)
 
     def remove(self, **items):
+        """Remove items from a table.
+
+        Warning: NOT TESTED!
+
+        :param items:
+        """
         # not in use currently
         if self.is_dummy:
             return
@@ -131,6 +150,7 @@ class Database:
             conn.execute(command, tuple(items.values()))
 
     def __iter__(self):
+        """Iterate through the rows of the table."""
         if self.is_dummy:
             return ()
 
@@ -138,6 +158,7 @@ class Database:
             return conn.execute(f"SELECT * FROM {self.name}")
 
     def reset(self):
+        """Delete the database file."""
         try:
             os.remove(self.path)
         except FileNotFoundError:
@@ -145,6 +166,8 @@ class Database:
 
 
 class Downloads(Database):
+    """A table that stores the downloaded IDs."""
+
     name = "downloads"
     structure = {
         "id": ["text", "unique"],
@@ -152,6 +175,8 @@ class Downloads(Database):
 
 
 class FailedDownloads(Database):
+    """A table that stores information about failed downloads."""
+
     name = "failed_downloads"
     structure = {
         "source": ["text"],

@@ -1,3 +1,5 @@
+"""Various constant values that are used by RipCore."""
+
 import os
 import re
 from pathlib import Path

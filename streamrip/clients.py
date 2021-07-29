@@ -472,6 +472,10 @@ class DeezerClient(Client):
         return response
 
     def login(self, **kwargs):
+        """Log into Deezer.
+
+        :param kwargs:
+        """
         try:
             arl = kwargs["arl"]
         except KeyError:
@@ -491,7 +495,6 @@ class DeezerClient(Client):
         :param type_:
         :type type_: str
         """
-
         GET_FUNCTIONS = {
             "track": self.client.api.get_track,
             "album": self.client.api.get_album,
@@ -630,11 +633,13 @@ class DeezerClient(Client):
 
 
 class DeezloaderClient(Client):
+    """DeezloaderClient."""
 
     source = "deezer"
     max_quality = 1
 
     def __init__(self):
+        """Create a DeezloaderClient."""
         self.session = gen_threadsafe_session()
 
         # no login required
@@ -1037,7 +1042,7 @@ class TidalClient(Client):
         params["countryCode"] = self.country_code
         params["limit"] = 100
         r = self.session.get(f"{TIDAL_BASE}/{path}", params=params)
-        r.raise_for_status()
+        # r.raise_for_status()
         return r.json()
 
     def _get_video_stream_url(self, video_id: str) -> str:

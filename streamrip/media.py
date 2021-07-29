@@ -63,38 +63,60 @@ TYPE_REGEXES = {
 
 
 class Media(abc.ABC):
+    """An interface for a downloadable item."""
+
     @abc.abstractmethod
     def download(self, **kwargs):
+        """Download the item.
+
+        :param kwargs:
+        """
         pass
 
     @abc.abstractmethod
     def load_meta(self, **kwargs):
+        """Load all of the metadata for an item.
+
+        :param kwargs:
+        """
         pass
 
     @abc.abstractmethod
     def tag(self, **kwargs):
+        """Tag this item with metadata, if applicable.
+
+        :param kwargs:
+        """
         pass
 
     @abc.abstractmethod
     def convert(self, **kwargs):
+        """Convert this item between file formats.
+
+        :param kwargs:
+        """
         pass
 
     @abc.abstractmethod
     def __repr__(self):
+        """Return a string representation of the item."""
         pass
 
     @abc.abstractmethod
     def __str__(self):
+        """Get a readable representation of the item."""
         pass
 
     @property
     @abc.abstractmethod
     def type(self):
+        """Return the type of the item."""
         pass
 
     @property
     @abc.abstractmethod
     def downloaded_ids(self):
+        """If the item is a collection, this is a set of downloaded IDs."""
         pass
 
     @downloaded_ids.setter
@@ -268,8 +290,8 @@ class Track(Media):
         try:
             dl_info = self.client.get_file_url(url_id, self.quality)
         except Exception as e:
-            # click.secho(f"Unable to download track. {e}", fg="red")
-            raise NonStreamable(repr(e))
+            # raise NonStreamable(repr(e))
+            raise NonStreamable(e)
 
         if self.client.source == "qobuz":
             if not self.__validate_qobuz_dl_info(dl_info):
@@ -429,6 +451,10 @@ class Track(Media):
 
     @property
     def type(self) -> str:
+        """Return "track".
+
+        :rtype: str
+        """
         return "track"
 
     @property
@@ -754,6 +780,7 @@ class Track(Media):
         return f"{self['artist']} - {self['title']}"
 
     def __bool__(self):
+        """Return True."""
         return True
 
 
@@ -835,6 +862,13 @@ class Video(Media):
         )
 
     def convert(self, *args, **kwargs):
+        """Return None.
+
+        Dummy method.
+
+        :param args:
+        :param kwargs:
+        """
         pass
 
     @property
@@ -854,6 +888,10 @@ class Video(Media):
 
     @property
     def type(self) -> str:
+        """Return "video".
+
+        :rtype: str
+        """
         return "video"
 
     def __str__(self) -> str:
@@ -871,6 +909,7 @@ class Video(Media):
         return f"<Video - {self.title}>"
 
     def __bool__(self):
+        """Return True."""
         return True
 
 
@@ -966,6 +1005,7 @@ class YoutubeVideo(Media):
         pass
 
     def __bool__(self):
+        """Return True."""
         return True
 
 
@@ -1001,9 +1041,14 @@ class Booklet:
         _quick_download(self.url, filepath, "Booklet")
 
     def type(self) -> str:
+        """Return "booklet".
+
+        :rtype: str
+        """
         return "booklet"
 
     def __bool__(self):
+        """Return True."""
         return True
 
 
@@ -1039,13 +1084,13 @@ class Tracklist(list):
         # TODO: make this function return the items that have not been downloaded
         failed_downloads: List[Tuple[str, str, str]] = []
         if kwargs.get("concurrent_downloads", True):
+            click.echo()  # To separate cover progress bars and the rest
             with concurrent.futures.ThreadPoolExecutor(
                 kwargs.get("max_connections", 3)
             ) as executor:
                 future_map = {
                     executor.submit(target, item, **kwargs): item for item in self
                 }
-                # futures = [executor.submit(target, item, **kwargs) for item in self]
                 try:
                     concurrent.futures.wait(future_map.keys())
                     for future in future_map.keys():
@@ -1248,10 +1293,15 @@ class Tracklist(list):
 
     @property
     def type(self) -> str:
-        return self.__class__.__name__.lower()
+        """Return "booklet".
+
+        :rtype: str
+        """
+        return "booklet"
 
     @property
     def downloaded_ids(self):
+        """Return the IDs of tracks that have been downloaded."""
         raise NotImplementedError
 
     def __getitem__(self, key):
@@ -1278,6 +1328,7 @@ class Tracklist(list):
             super().__setitem__(key, val)
 
     def __bool__(self):
+        """Return True."""
         return True
 
 
@@ -1809,6 +1860,7 @@ class Playlist(Tracklist, Media):
         return f"<Playlist: {self.name}>"
 
     def tag(self):
+        """Raise NotImplementedError."""
         raise NotImplementedError
 
     def __str__(self) -> str:

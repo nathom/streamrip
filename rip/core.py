@@ -240,6 +240,10 @@ class RipCore(list):
         }
 
     def repair(self, max_items=None):
+        """Iterate through the failed_downloads database and retry them.
+
+        :param max_items: The maximum number of items to download.
+        """
         if max_items is None:
             max_items = float("inf")
 
@@ -331,6 +335,11 @@ class RipCore(list):
                     item.convert(**arguments["conversion"])
 
     def scrape(self, featured_list: str):
+        """Download all of the items in a Qobuz featured list.
+
+        :param featured_list: The name of the list. See `rip discover --help`.
+        :type featured_list: str
+        """
         self.extend(self.search("qobuz", featured_list, "featured", limit=500))
 
     def get_client(self, source: str) -> Client:

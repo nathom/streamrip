@@ -1,41 +1,64 @@
+"""Streamrip specific exceptions."""
 from typing import List
 
 import click
 
 
 class AuthenticationError(Exception):
-    pass
+    """AuthenticationError."""
 
 
 class MissingCredentials(Exception):
-    pass
+    """MissingCredentials."""
 
 
 class IneligibleError(Exception):
-    pass
+    """IneligibleError.
+
+    Raised when the account is not eligible to stream a track.
+    """
 
 
 class InvalidAppIdError(Exception):
-    pass
+    """InvalidAppIdError."""
 
 
 class InvalidAppSecretError(Exception):
-    pass
+    """InvalidAppSecretError."""
 
 
 class InvalidQuality(Exception):
-    pass
+    """InvalidQuality."""
 
 
 class NonStreamable(Exception):
+    """Item is not streamable.
+
+    A versatile error that can have many causes.
+    """
+
     def __init__(self, message=None):
+        """Create a NonStreamable exception.
+
+        :param message:
+        """
         self.message = message
         super().__init__(self.message)
 
     def print(self, item):
+        """Print a readable version of the exception.
+
+        :param item:
+        """
         click.echo(self.print_msg(item))
 
     def print_msg(self, item) -> str:
+        """Return a generic readable message.
+
+        :param item:
+        :type item: Media
+        :rtype: str
+        """
         base_msg = [click.style(f"Unable to stream {item!s}.", fg="yellow")]
         if self.message:
             base_msg.extend(
@@ -49,38 +72,45 @@ class NonStreamable(Exception):
 
 
 class InvalidContainerError(Exception):
-    pass
+    """InvalidContainerError."""
 
 
 class InvalidSourceError(Exception):
-    pass
+    """InvalidSourceError."""
 
 
 class ParsingError(Exception):
-    pass
+    """ParsingError."""
 
 
 class TooLargeCoverArt(Exception):
-    pass
+    """TooLargeCoverArt."""
 
 
 class BadEncoderOption(Exception):
-    pass
+    """BadEncoderOption."""
 
 
 class ConversionError(Exception):
-    pass
+    """ConversionError."""
 
 
 class NoResultsFound(Exception):
-    pass
+    """NoResultsFound."""
 
 
 class ItemExists(Exception):
-    pass
+    """ItemExists."""
 
 
 class PartialFailure(Exception):
+    """Raise if part of a tracklist fails to download."""
+
     def __init__(self, failed_items: List):
+        """Create a PartialFailure exception.
+
+        :param failed_items:
+        :type failed_items: List
+        """
         self.failed_items = failed_items
         super().__init__()

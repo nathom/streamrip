@@ -11,7 +11,7 @@ import re
 from collections import OrderedDict
 from json import JSONDecodeError
 from string import Formatter
-from typing import Dict, Generator, Hashable, Optional, Tuple, Union
+from typing import Dict, Hashable, Iterator, Optional, Tuple, Union
 
 import click
 import requests
@@ -25,6 +25,116 @@ from .exceptions import InvalidQuality, InvalidSourceError, NonStreamable
 
 urllib3.disable_warnings()
 logger = logging.getLogger("streamrip")
+
+
+class DownloadStream:
+    """An iterator over chunks of a stream.
+
+    Usage:
+
+        >>> stream = DownloadStream('https://google.com', None)
+        >>> with open('google.html', 'wb') as file:
+        >>>     for chunk in stream:
+        >>>         file.write(chunk)
+
+    """
+
+    is_encrypted = re.compile("/m(?:obile|edia)/")
+
+    def __init__(
+        self,
+        url: str,
+        source: str = None,
+        params: dict = None,
+        headers: dict = None,
+        item_id: str = None,
+    ):
+        """Create an iterable DownloadStream of a URL.
+
+        :param url: The url to download
+        :type url: str
+        :param source: Only applicable for Deezer
+        :type source: str
+        :param params: Parameters to pass in the request
+        :type params: dict
+        :param headers: Headers to pass in the request
+        :type headers: dict
+        :param item_id: (Only for Deezer) the ID of the track
+        :type item_id: str
+        """
+        self.source = source
+        self.session = gen_threadsafe_session(headers=headers)
+
+        self.id = item_id
+        if isinstance(self.id, int):
+            self.id = str(self.id)
+
+        if params is None:
+            params = {}
+
+        self.request = self.session.get(
+            url, allow_redirects=True, stream=True, params=params
+        )
+        self.file_size = int(self.request.headers.get("Content-Length", 0))
+
+        if self.file_size == 0:
+            raise NonStreamable
+
+    def __iter__(self) -> Iterator:
+        """Iterate through chunks of the stream.
+
+        :rtype: Iterator
+        """
+        if self.source == "deezer" and self.is_encrypted.search(self.url) is not None:
+            assert isinstance(self.id, str), self.id
+
+            blowfish_key = self._generate_blowfish_key(self.id)
+            return (
+                (self._decrypt_chunk(blowfish_key, chunk[:2048]) + chunk[2048:])
+                if len(chunk) >= 2048
+                else chunk
+                for chunk in self.request.iter_content(2048 * 3)
+            )
+
+        return self.request.iter_content(chunk_size=1024)
+
+    @property
+    def url(self):
+        """Return the requested url."""
+        return self.request.url
+
+    def __len__(self) -> int:
+        """Return the value of the "Content-Length" header.
+
+        :rtype: int
+        """
+        return self.file_size
+
+    @staticmethod
+    def _generate_blowfish_key(track_id: str):
+        """Generate the blowfish key for Deezer downloads.
+
+        :param track_id:
+        :type track_id: str
+        """
+        SECRET = "g4el58wc0zvf9na1"
+        md5_hash = hashlib.md5(track_id.encode()).hexdigest()
+        # good luck :)
+        return "".join(
+            chr(functools.reduce(lambda x, y: x ^ y, map(ord, t)))
+            for t in zip(md5_hash[:16], md5_hash[16:], SECRET)
+        ).encode()
+
+    @staticmethod
+    def _decrypt_chunk(key, data):
+        """Decrypt a chunk of a Deezer stream.
+
+        :param key:
+        :param data:
+        """
+        return Blowfish.new(
+            key, Blowfish.MODE_CBC, b"\x00\x01\x02\x03\x04\x05\x06\x07"
+        ).decrypt(data)
 
 
 def safe_get(d: dict, *keys: Hashable, default=None):
@@ -84,7 +194,6 @@ def get_quality(quality_id: int, source: str) -> Union[str, int, Tuple[int, str]
     :type source: str
     :rtype: Union[str, int]
     """
-
     return __QUALITY_MAP[source][quality_id]
 
 
@@ -173,84 +282,6 @@ def tqdm_download(url: str, filepath: str, params: dict = None, desc: str = None
         except OSError:
             pass
         raise
-
-
-class DownloadStream:
-    """An iterator over chunks of a stream.
-
-    Usage:
-
-        >>> stream = DownloadStream('https://google.com', None)
-        >>> with open('google.html', 'wb') as file:
-        >>>     for chunk in stream:
-        >>>         file.write(chunk)
-
-    """
-
-    is_encrypted = re.compile("/m(?:obile|edia)/")
-
-    def __init__(
-        self,
-        url: str,
-        source: str = None,
-        params: dict = None,
-        headers: dict = None,
-        item_id: str = None,
-    ):
-        self.source = source
-        self.session = gen_threadsafe_session(headers=headers)
-
-        self.id = item_id
-        if isinstance(self.id, int):
-            self.id = str(self.id)
-
-        if params is None:
-            params = {}
-
-        self.request = self.session.get(
-            url, allow_redirects=True, stream=True, params=params
-        )
-        self.file_size = int(self.request.headers.get("Content-Length", 0))
-
-        if self.file_size == 0:
-            raise NonStreamable
-
-    def __iter__(self) -> Generator:
-        if self.source == "deezer" and self.is_encrypted.search(self.url) is not None:
-            assert isinstance(self.id, str), self.id
-
-            blowfish_key = self._generate_blowfish_key(self.id)
-            return (
-                (self._decrypt_chunk(blowfish_key, chunk[:2048]) + chunk[2048:])
-                if len(chunk) >= 2048
-                else chunk
-                for chunk in self.request.iter_content(2048 * 3)
-            )
-
-        return self.request.iter_content(chunk_size=1024)
-
-    @property
-    def url(self):
-        return self.request.url
-
-    def __len__(self):
-        return self.file_size
-
-    @staticmethod
-    def _generate_blowfish_key(track_id: str):
-        SECRET = "g4el58wc0zvf9na1"
-        md5_hash = hashlib.md5(track_id.encode()).hexdigest()
-        # good luck :)
-        return "".join(
-            chr(functools.reduce(lambda x, y: x ^ y, map(ord, t)))
-            for t in zip(md5_hash[:16], md5_hash[16:], SECRET)
-        ).encode()
-
-    @staticmethod
-    def _decrypt_chunk(key, data):
-        return Blowfish.new(
-            key, Blowfish.MODE_CBC, b"\x00\x01\x02\x03\x04\x05\x06\x07"
-        ).decrypt(data)
 
 
 def clean_format(formatter: str, format_info):
@@ -425,6 +456,14 @@ def get_container(quality: int, source: str) -> str:
 
 
 def get_cover_urls(resp: dict, source: str) -> dict:
+    """Parse a response dict containing cover info according to the source.
+
+    :param resp:
+    :type resp: dict
+    :param source:
+    :type source: str
+    :rtype: dict
+    """
     if source == "qobuz":
         cover_urls = OrderedDict(resp["image"])
         cover_urls["original"] = cover_urls["large"].replace("600", "org")
@@ -458,8 +497,10 @@ def get_cover_urls(resp: dict, source: str) -> dict:
 
 
 def downsize_image(filepath: str, width: int, height: int):
-    """Downsize an image. If either the width or the height is greater
-    than the image's width or height, that dimension will not be changed.
+    """Downsize an image.
+
+    If either the width or the height is greater than the image's width or
+    height, that dimension will not be changed.
 
     :param filepath:
     :type filepath: str
@@ -496,11 +537,26 @@ TQDM_BAR_FORMAT = TQDM_THEMES["dainty"]
 
 
 def set_progress_bar_theme(theme: str):
+    """Set the theme of the tqdm progress bar.
+
+    :param theme:
+    :type theme: str
+    """
     global TQDM_BAR_FORMAT
     TQDM_BAR_FORMAT = TQDM_THEMES[theme]
 
 
-def tqdm_stream(iterator: DownloadStream, desc: Optional[str] = None) -> Generator:
+def tqdm_stream(
+    iterator: DownloadStream, desc: Optional[str] = None
+) -> Iterator[bytes]:
+    """Return a tqdm bar with presets appropriate for downloading large files.
+
+    :param iterator:
+    :type iterator: DownloadStream
+    :param desc: Description to add for the progress bar
+    :type desc: Optional[str]
+    :rtype: Iterator
+    """
     with tqdm(
         total=len(iterator),
         unit="B",
