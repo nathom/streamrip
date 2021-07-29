@@ -30,7 +30,8 @@ logger = logging.getLogger("streamrip")
 @click.version_option(prog_name="rip", version=__version__)
 @click.pass_context
 def cli(ctx, **kwargs):
-    """Streamrip: The all-in-one Qobuz, Tidal, SoundCloud, and Deezer music downloader.
+    """Streamrip: The all-in-one Qobuz, Tidal, SoundCloud, and Deezer music
+    downloader.
 
     To get started, try:
 
@@ -40,6 +41,10 @@ def cli(ctx, **kwargs):
 
         $ rip config --open
 
+    \b
+    Repository: https://github.com/nathom/streamrip
+    Bug Reports & Feature Requests: https://github.com/nathom/streamrip/issues
+    Release Notes: https://github.com/nathom/streamrip/releases
     """
     import os
 
@@ -62,6 +67,9 @@ def cli(ctx, **kwargs):
         logger.setLevel("DEBUG")
         logger.debug("Starting debug log")
 
+    if ctx.invoked_subcommand is None and not ctx.params["urls"]:
+        click.echo(cli.get_help(ctx))
+
     if ctx.invoked_subcommand not in {
         None,
         "lastfm",
@@ -70,6 +78,7 @@ def cli(ctx, **kwargs):
         "config",
         "repair",
     }:
+
         return
 
     config = Config()
@@ -150,12 +159,19 @@ def filter_discography(ctx, **kwargs):
 
 
 @cli.command()
-@click.option("-t", "--type", default="album", help="album, playlist, track, or artist")
+@click.option(
+    "-t",
+    "--type",
+    default="album",
+    help="album, playlist, track, or artist",
+    show_default=True,
+)
 @click.option(
     "-s",
     "--source",
     default="qobuz",
     help="qobuz, tidal, soundcloud, deezer, or deezloader",
+    show_default=True,
 )
 @click.argument("QUERY", nargs=-1)
 @click.pass_context
@@ -194,45 +210,34 @@ def search(ctx, **kwargs):
 
 
 @cli.command()
-@click.option("-l", "--list", default="ideal-discography")
+@click.option("-l", "--list", default="ideal-discography", show_default=True)
 @click.option(
     "-s", "--scrape", is_flag=True, help="Download all of the items in a list."
 )
-@click.option("-n", "--num-items", default=50, help="Number of items to parse.")
+@click.option(
+    "-n", "--num-items", default=50, help="Number of items to parse.", show_default=True
+)
 @click.pass_context
 def discover(ctx, **kwargs):
     """Search for albums in Qobuz's featured lists.
 
     Avaiable options for `--list`:
 
+    \b
         * most-streamed
-
         * recent-releases
-
         * best-sellers
-
         * press-awards
-
         * ideal-discography
-
         * editor-picks
-
         * most-featured
-
         * qobuzissims
-
         * new-releases
-
         * new-releases-full
-
         * harmonia-mundi
-
         * universal-classic
-
         * universal-jazz
-
         * universal-jeunesse
-
         * universal-chanson
 
     """
@@ -259,22 +264,28 @@ def discover(ctx, **kwargs):
 @click.option(
     "-s",
     "--source",
-    help="Qobuz, Tidal, Deezer, Deezloader, or SoundCloud. Default: Qobuz.",
+    help="qobuz, tidal, deezer, deezloader, or soundcloud",
 )
 @click.argument("URL")
 @click.pass_context
 def lastfm(ctx, source, url):
     """Search for tracks from a last.fm playlist on a given source.
 
+    This can be used to download playlists from Spotify and Apple Music.
+    To import a playlist from one of those services, go to https://www.last.fm,
+    log in, and to to the playlists section to import a link.
+
+    \b
     Examples:
 
+        \b
+        Download a playlist using Qobuz as the source
         $ rip lastfm https://www.last.fm/user/nathan3895/playlists/12059037
 
-        Download a playlist using Qobuz as the source
-
+        \b
+        Download a playlist using Tidal as the source
         $ rip lastfm -s tidal https://www.last.fm/user/nathan3895/playlists/12059037
 
-        Download a playlist using Tidal as the source
     """
     if source is not None:
         config.session["lastfm"]["source"] = source
