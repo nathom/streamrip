@@ -500,13 +500,24 @@ def downsize_image(filepath: str, width: int, height: int):
     resized_image.save(filepath)
 
 
-TQDM_BAR_FORMAT = (
-    "{desc} |{bar}| ("
-    + click.style("{elapsed}", fg="magenta")
-    + " at "
-    + click.style("{rate_fmt}{postfix}", fg="cyan", bold=True)
-    + ")"
-)
+TQDM_THEMES = {
+    "plain": None,
+    "dainty": (
+        "{desc} |{bar}| "
+        + click.style("{remaining}", fg="magenta")
+        + " left at "
+        + click.style("{rate_fmt}{postfix} ", fg="cyan", bold=True)
+    ),
+}
+
+TQDM_DEFAULT_THEME = "dainty"
+
+TQDM_BAR_FORMAT = TQDM_THEMES["dainty"]
+
+
+def set_progress_bar_theme(theme: str):
+    global TQDM_BAR_FORMAT
+    TQDM_BAR_FORMAT = TQDM_THEMES[theme]
 
 
 def tqdm_stream(iterator: DownloadStream, desc: Optional[str] = None) -> Generator:

@@ -136,6 +136,10 @@ source = "qobuz"
 # on this one.
 fallback_source = "deezer"
 
+[theme]
+# Options: "dainty" or "plain"
+progress_bar = "dainty"
+
 [misc]
 # Check whether a newer version of streamrip is available when starting up
 check_for_updates = true

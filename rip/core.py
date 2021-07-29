@@ -108,6 +108,9 @@ class RipCore(list):
         else:
             self.config = config
 
+        if (theme := self.config.file["theme"]["progress_bar"]) != TQDM_DEFAULT_THEME:
+            set_progress_bar_theme(theme.lower())
+
         def get_db(db_type: str) -> db.Database:
             db_settings = self.config.session["database"]
             db_class = db.CLASS_MAP[db_type]
