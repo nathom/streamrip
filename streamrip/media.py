@@ -1034,7 +1034,9 @@ class Tracklist(list):
         # TODO: make this function return the items that have not been downloaded
         failed_downloads: List[Tuple[str, str, str]] = []
         if kwargs.get("concurrent_downloads", True):
-            with concurrent.futures.ThreadPoolExecutor(15) as executor:
+            with concurrent.futures.ThreadPoolExecutor(
+                kwargs.get("max_connections", 3)
+            ) as executor:
                 future_map = {
                     executor.submit(target, item, **kwargs): item for item in self
                 }

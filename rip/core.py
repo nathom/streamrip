@@ -218,6 +218,7 @@ class RipCore(list):
         artwork, conversion, filepaths = tuple(
             session[key] for key in ("artwork", "conversion", "filepaths")
         )
+        concurrency = session["downloads"]["concurrency"]
         return {
             "parent_folder": session["downloads"]["folder"],
             "folder_format": filepaths["folder_format"],
@@ -228,7 +229,8 @@ class RipCore(list):
             "set_playlist_to_album": session["metadata"]["set_playlist_to_album"],
             "stay_temp": conversion["enabled"],
             "conversion": conversion,
-            "concurrent_downloads": session["downloads"]["concurrent"],
+            "concurrent_downloads": concurrency["enabled"],
+            "max_connections": concurrency["max_connections"],
             "new_tracknumbers": session["metadata"]["new_playlist_tracknumbers"],
             "download_videos": session["tidal"]["download_videos"],
             "download_booklets": session["qobuz"]["download_booklets"],
