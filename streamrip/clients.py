@@ -4,31 +4,31 @@ import base64
 import binascii
 import hashlib
 import json
-from Cryptodome.Cipher import Blowfish, AES  # type: ignore
 import logging
 import re
 import time
-from pprint import pformat
-import requests
-import deezer  # type: ignore
 from abc import ABC, abstractmethod
-from typing import Generator, Sequence, Tuple, Union, Dict, Any, Optional
+from pprint import pformat
+from typing import Any, Dict, Generator, Optional, Sequence, Tuple, Union
 
 import click  # type: ignore
+import deezer  # type: ignore
+import requests
+from Cryptodome.Cipher import AES, Blowfish  # type: ignore
 
 from .constants import (
     AGENT,
     AVAILABLE_QUALITY_IDS,
     DEEZER_BASE,
-    DEEZER_FORMATS,
     DEEZER_DL,
+    DEEZER_FORMATS,
     DEEZER_MAX_Q,
     QOBUZ_BASE,
     QOBUZ_FEATURED_KEYS,
+    SOUNDCLOUD_APP_VERSION,
     SOUNDCLOUD_BASE,
     SOUNDCLOUD_CLIENT_ID,
     SOUNDCLOUD_USER_ID,
-    SOUNDCLOUD_APP_VERSION,
     TIDAL_AUTH_URL,
     TIDAL_BASE,
     TIDAL_CLIENT_INFO,

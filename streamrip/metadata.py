@@ -19,7 +19,7 @@ from .constants import (
     TRACK_KEYS,
 )
 from .exceptions import InvalidContainerError, InvalidSourceError
-from .utils import get_quality_id, safe_get, tidal_cover_url, get_cover_urls
+from .utils import get_cover_urls, get_quality_id, safe_get, tidal_cover_url
 
 logger = logging.getLogger("streamrip")
 

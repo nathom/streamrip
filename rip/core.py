@@ -5,7 +5,6 @@ import html
 import logging
 import os
 import re
-
 from getpass import getpass
 from hashlib import md5
 from string import Formatter
@@ -15,16 +14,6 @@ import click
 import requests
 from tqdm import tqdm
 
-from streamrip.media import (
-    Track,
-    Video,
-    YoutubeVideo,
-    Album,
-    Artist,
-    Label,
-    Playlist,
-    Tracklist,
-)
 from streamrip.clients import (
     Client,
     DeezerClient,
@@ -33,36 +22,43 @@ from streamrip.clients import (
     SoundCloudClient,
     TidalClient,
 )
-from .config import Config
 from streamrip.constants import MEDIA_TYPES
-from streamrip.utils import set_progress_bar_theme, TQDM_DEFAULT_THEME
-from .constants import (
-    URL_REGEX,
-    SOUNDCLOUD_URL_REGEX,
-    LASTFM_URL_REGEX,
-    QOBUZ_INTERPRETER_URL_REGEX,
-    YOUTUBE_URL_REGEX,
-    DEEZER_DYNAMIC_LINK_REGEX,
-    CONFIG_PATH,
-    DB_PATH,
-    FAILED_DB_PATH,
-)
-from . import db
 from streamrip.exceptions import (
     AuthenticationError,
-    PartialFailure,
     ItemExists,
     MissingCredentials,
     NonStreamable,
     NoResultsFound,
     ParsingError,
+    PartialFailure,
 )
-from .utils import (
-    extract_deezer_dynamic_link,
-    extract_interpreter_url,
+from streamrip.media import (
+    Album,
+    Artist,
+    Label,
+    Playlist,
+    Track,
+    Tracklist,
+    Video,
+    YoutubeVideo,
+)
+from streamrip.utils import TQDM_DEFAULT_THEME, set_progress_bar_theme
+
+from . import db
+from .config import Config
+from .constants import (
+    CONFIG_PATH,
+    DB_PATH,
+    DEEZER_DYNAMIC_LINK_REGEX,
+    FAILED_DB_PATH,
+    LASTFM_URL_REGEX,
+    QOBUZ_INTERPRETER_URL_REGEX,
+    SOUNDCLOUD_URL_REGEX,
+    URL_REGEX,
+    YOUTUBE_URL_REGEX,
 )
 from .exceptions import DeezloaderFallback
-
+from .utils import extract_deezer_dynamic_link, extract_interpreter_url
 
 logger = logging.getLogger("streamrip")
 

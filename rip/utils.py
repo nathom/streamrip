@@ -1,7 +1,8 @@
-from streamrip.utils import gen_threadsafe_session
-from streamrip.constants import AGENT
-from typing import Tuple
 import re
+from typing import Tuple
+
+from streamrip.constants import AGENT
+from streamrip.utils import gen_threadsafe_session
 
 interpreter_artist_regex = re.compile(r"getSimilarArtist\(\s*'(\w+)'")
 

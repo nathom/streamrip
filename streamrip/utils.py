@@ -3,31 +3,24 @@
 from __future__ import annotations
 
 import base64
+import functools
+import hashlib
 import logging
 import os
-from string import Formatter
-from typing import (
-    Dict,
-    Hashable,
-    Optional,
-    Tuple,
-    Union,
-    Generator,
-)
-from collections import OrderedDict
-import functools
-from Cryptodome.Cipher import Blowfish
-import hashlib
 import re
+from collections import OrderedDict
 from json import JSONDecodeError
+from string import Formatter
+from typing import Dict, Generator, Hashable, Optional, Tuple, Union
 
 import click
 import requests
+from Cryptodome.Cipher import Blowfish
 from pathvalidate import sanitize_filename
 from requests.packages import urllib3
 from tqdm import tqdm
 
-from .constants import TIDAL_COVER_URL, COVER_SIZES
+from .constants import COVER_SIZES, TIDAL_COVER_URL
 from .exceptions import InvalidQuality, InvalidSourceError, NonStreamable
 
 urllib3.disable_warnings()
@@ -59,19 +52,6 @@ def safe_get(d: dict, *keys: Hashable, default=None):
         else:
             curr = res
     return res
-
-    """
-        FLAC = 9
-    MP3_320 = 3
-    MP3_128 = 1
-    MP4_RA3 = 15
-    MP4_RA2 = 14
-    MP4_RA1 = 13
-    DEFAULT = 8
-    LOCAL = 0
-
-
-    """
 
 
 __QUALITY_MAP: Dict[str, Dict[int, Union[int, str, Tuple[int, str]]]] = {

@@ -1,7 +1,8 @@
-import click
-import re
 import os
+import re
 from pathlib import Path
+
+import click
 
 APPNAME = "streamrip"
 APP_DIR = click.get_app_dir(APPNAME)

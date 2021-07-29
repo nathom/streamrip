@@ -1,6 +1,8 @@
 """The streamrip command line interface."""
-import click
 import logging
+
+import click
+
 from streamrip import __version__
 
 logging.basicConfig(level="WARNING")
@@ -303,12 +305,14 @@ def lastfm(ctx, source, url):
 @click.pass_context
 def config(ctx, **kwargs):
     """Manage the streamrip configuration file."""
-    from streamrip.clients import TidalClient
-    from .constants import CONFIG_PATH
-    from hashlib import md5
-    from getpass import getpass
-    import shutil
     import os
+    import shutil
+    from getpass import getpass
+    from hashlib import md5
+
+    from streamrip.clients import TidalClient
+
+    from .constants import CONFIG_PATH
 
     global config
     if kwargs["reset"]:
@@ -398,10 +402,12 @@ def convert(ctx, **kwargs):
         $ rip convert ALAC --sampling-rate 48000 /my/music
 
     """
-    from streamrip import converter
     import concurrent.futures
-    from tqdm import tqdm
     import os
+
+    from tqdm import tqdm
+
+    from streamrip import converter
 
     codec_map = {
         "FLAC": converter.FLAC,

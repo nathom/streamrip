@@ -22,7 +22,7 @@ project = "streamrip"
 copyright = "2021, nathom"
 author = "nathom"
 
-pygments_style = 'sphinx'
+pygments_style = "sphinx"
 
 
 # -- General configuration ---------------------------------------------------

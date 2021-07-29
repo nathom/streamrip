@@ -5,48 +5,53 @@ and the other objects. They can also be downloaded individually, for example,
 as a single track.
 """
 
+import abc
 import concurrent.futures
 import logging
 import os
-import abc
 import re
 import shutil
 import subprocess
 from tempfile import gettempdir
-from tqdm import tqdm
-from typing import Any, Optional, Union, Iterable, Generator, Dict, Tuple, List
+from typing import Any, Dict, Generator, Iterable, List, Optional, Tuple, Union
 
 import click
 from mutagen.flac import FLAC, Picture
 from mutagen.id3 import APIC, ID3, ID3NoHeaderError
 from mutagen.mp4 import MP4, MP4Cover
-from pathvalidate import sanitize_filepath, sanitize_filename
+from pathvalidate import sanitize_filename, sanitize_filepath
+from tqdm import tqdm
 
 from . import converter
 from .clients import Client, DeezloaderClient
-from .constants import FLAC_MAX_BLOCKSIZE, FOLDER_FORMAT, TRACK_FORMAT, ALBUM_KEYS
+from .constants import (
+    ALBUM_KEYS,
+    FLAC_MAX_BLOCKSIZE,
+    FOLDER_FORMAT,
+    TRACK_FORMAT,
+)
 from .exceptions import (
     InvalidQuality,
-    PartialFailure,
-    ItemExists,
     InvalidSourceError,
+    ItemExists,
     NonStreamable,
+    PartialFailure,
     TooLargeCoverArt,
 )
 from .metadata import TrackMetadata
 from .utils import (
-    clean_format,
-    tqdm_stream,
-    downsize_image,
-    get_cover_urls,
-    decrypt_mqa_file,
-    tqdm_download,
-    get_container,
     DownloadStream,
+    clean_format,
+    decrypt_mqa_file,
+    downsize_image,
     ext,
+    get_container,
+    get_cover_urls,
     get_stats_from_quality,
     safe_get,
     tidal_cover_url,
+    tqdm_download,
+    tqdm_stream,
 )
 
 logger = logging.getLogger("streamrip")
