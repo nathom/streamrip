@@ -286,6 +286,7 @@ def lastfm(ctx, source, url):
 @click.option("-d", "--directory", is_flag=True, help="Open the config directory")
 @click.option("-q", "--qobuz", is_flag=True, help="Set Qobuz credentials")
 @click.option("-t", "--tidal", is_flag=True, help="Re-login into Tidal")
+@click.option("-dz", "--deezer", is_flag=True, help="Set the Deezer ARL")
 @click.option("--reset", is_flag=True, help="RESET the config file")
 @click.option(
     "--update",
@@ -351,6 +352,22 @@ def config(ctx, **kwargs):
         config.file["tidal"].update(client.get_tokens())
         config.save()
         click.secho("Credentials saved to config.", fg="green")
+
+    if kwargs["deezer"]:
+        click.secho(
+            "If you're not sure how to find the ARL cookie, see the instructions at ",
+            italic=True,
+            nl=False,
+            dim=True,
+        )
+        click.secho(
+            "https://github.com/nathom/streamrip/wiki/Finding-your-Deezer-ARL-Cookie",
+            underline=True,
+            italic=True,
+            fg="blue",
+        )
+        config.file["deezer"]["arl"] = input(click.style("ARL: ", fg="green"))
+        config.save()
 
 
 @cli.command()
