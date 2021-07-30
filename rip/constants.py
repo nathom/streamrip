@@ -2,8 +2,9 @@
 
 import os
 import re
-from appdirs import user_config_dir
 from pathlib import Path
+
+from appdirs import user_config_dir
 
 APPNAME = "streamrip"
 APP_DIR = user_config_dir(APPNAME)

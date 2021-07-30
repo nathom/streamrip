@@ -11,10 +11,9 @@ from abc import ABC, abstractmethod
 from pprint import pformat
 from typing import Any, Dict, Generator, Optional, Sequence, Tuple, Union
 
-from click import style, secho
 import deezer
-import requests
-from Cryptodome.Cipher import AES, Blowfish  # type: ignore
+from click import secho
+from Cryptodome.Cipher import AES
 
 from .constants import (
     AGENT,
@@ -587,40 +586,6 @@ class DeezerClient(Client):
         return binascii.hexlify(
             AES.new("jo6aey6haid2Teih".encode(), AES.MODE_ECB).encrypt(data)
         ).decode("utf-8")
-
-    def _decrypt_stream(self, url: str, meta_id: str, output_stream):
-        headers = {"User-Agent": AGENT}
-        chunk_len = 0
-        # isCryptedStream = (
-        #     "/mobile/" in track.downloadURL or "/media/" in track.downloadURL
-        # )
-
-        # itemData = {
-        #     "id": track.id,
-        #     "title": track.title,
-        #     "artist": track.mainArtist.name,
-        # }
-
-        with requests.get(url, headers=headers, stream=True, timeout=10) as request:
-            request.raise_for_status()
-            blowfish_key = generate_blowfish_key(meta_id)
-
-            file_size = int(request.headers["Content-Length"])
-            if file_size == 0:
-                raise Exception
-
-            for chunk in request.iter_content(2048 * 3):
-                if len(chunk) >= 2048:
-                    chunk = decrypt_chunk(blowfish_key, chunk[0:2048]) + chunk[2048:]
-
-                output_stream.write(chunk)
-                chunk_len += len(chunk)
-
-        # except (SSLError, u3SSLError):
-        #     streamTrack(outputStream, track, chunkLength, downloadObject, listener)
-        # except (RequestsConnectionError, ReadTimeout, ChunkedEncodingError):
-        #     sleep(2)
-        #     streamTrack(outputStream, track, start, downloadObject, listener)
 
     @staticmethod
     def _quality_id_from_filetype(filetype: str) -> Optional[int]:

@@ -11,8 +11,8 @@ from collections import OrderedDict
 from string import Formatter
 from typing import Dict, Hashable, Iterator, Optional, Tuple, Union
 
-from click import secho
 import requests
+from click import secho, style
 from Cryptodome.Cipher import Blowfish
 from pathvalidate import sanitize_filename
 from requests.packages import urllib3

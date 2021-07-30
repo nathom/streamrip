@@ -10,7 +10,6 @@ from typing import Generator, Hashable, Iterable, Optional, Union
 from .constants import (
     ALBUM_KEYS,
     COPYRIGHT,
-    COVER_SIZES,
     FLAC_KEY,
     MP3_KEY,
     MP4_KEY,
@@ -19,7 +18,7 @@ from .constants import (
     TRACK_KEYS,
 )
 from .exceptions import InvalidContainerError, InvalidSourceError
-from .utils import get_cover_urls, get_quality_id, safe_get, tidal_cover_url
+from .utils import get_cover_urls, get_quality_id, safe_get
 
 logger = logging.getLogger("streamrip")
 

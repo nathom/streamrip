@@ -10,8 +10,8 @@ from hashlib import md5
 from string import Formatter
 from typing import Dict, Generator, List, Optional, Tuple, Type, Union
 
-from click import style, secho
 import requests
+from click import secho, style
 from tqdm import tqdm
 
 from streamrip.clients import (

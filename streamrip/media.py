@@ -15,7 +15,7 @@ import subprocess
 from tempfile import gettempdir
 from typing import Any, Dict, Generator, Iterable, List, Optional, Tuple, Union
 
-from click import style, secho
+from click import echo, secho, style
 from mutagen.flac import FLAC, Picture
 from mutagen.id3 import APIC, ID3, ID3NoHeaderError
 from mutagen.mp4 import MP4, MP4Cover
