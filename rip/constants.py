@@ -2,12 +2,11 @@
 
 import os
 import re
+from appdirs import user_config_dir
 from pathlib import Path
 
-from click import style, secho
-
 APPNAME = "streamrip"
-APP_DIR = get_app_dir(APPNAME)
+APP_DIR = user_config_dir(APPNAME)
 HOME = Path.home()
 
 LOG_DIR = CACHE_DIR = CONFIG_DIR = APP_DIR
