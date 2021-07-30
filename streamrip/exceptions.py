@@ -1,7 +1,7 @@
 """Streamrip specific exceptions."""
 from typing import List
 
-import click
+from click import style, secho
 
 
 class AuthenticationError(Exception):

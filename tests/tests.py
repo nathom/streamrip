@@ -2,7 +2,7 @@ import os
 import shutil
 import subprocess
 
-import click
+from click import style, secho, echo
 
 test_urls = {
     "qobuz": "https://www.qobuz.com/us-en/album/blackest-blue-morcheeba/h4nngz0wgqesc",

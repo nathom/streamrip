@@ -7,7 +7,7 @@ import shutil
 from pprint import pformat
 from typing import Any, Dict
 
-import click
+from click import style, secho
 import tomlkit
 
 from streamrip.exceptions import InvalidSourceError

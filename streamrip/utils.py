@@ -6,14 +6,12 @@ import base64
 import functools
 import hashlib
 import logging
-import os
 import re
 from collections import OrderedDict
-from json import JSONDecodeError
 from string import Formatter
 from typing import Dict, Hashable, Iterator, Optional, Tuple, Union
 
-import click
+from click import secho
 import requests
 from Cryptodome.Cipher import Blowfish
 from pathvalidate import sanitize_filename
@@ -240,50 +238,6 @@ def get_stats_from_quality(
         raise InvalidQuality(quality_id)
 
 
-def tqdm_download(url: str, filepath: str, params: dict = None, desc: str = None):
-    """Download a file with a progress bar.
-
-    :param url: url to direct download
-    :param filepath: file to write
-    :type url: str
-    :type filepath: str
-    """
-    logger.debug(f"Downloading {url} to {filepath} with params {params}")
-    if params is None:
-        params = {}
-
-    session = gen_threadsafe_session()
-    r = session.get(url, allow_redirects=True, stream=True, params=params)
-    total = int(r.headers.get("content-length", 0))
-    logger.debug("File size = %s", total)
-    if total < 1000 and not url.endswith("jpg") and not url.endswith("png"):
-        logger.debug("Response text: %s", r.text)
-        try:
-            raise NonStreamable(r.json()["error"])
-        except JSONDecodeError:
-            raise NonStreamable("Resource not found.")
-
-    try:
-        with open(filepath, "wb") as file, tqdm(
-            total=total,
-            unit="iB",
-            unit_scale=True,
-            unit_divisor=1024,
-            desc=desc,
-            dynamic_ncols=True,
-            # leave=False,
-        ) as bar:
-            for data in r.iter_content(chunk_size=1024):
-                size = file.write(data)
-                bar.update(size)
-    except Exception:
-        try:
-            os.remove(filepath)
-        except OSError:
-            pass
-        raise
-
-
 def clean_format(formatter: str, format_info):
     """Format track or folder names sanitizing every formatter key.
 
@@ -345,14 +299,14 @@ def decrypt_mqa_file(in_path, out_path, encryption_key):
         from Crypto.Cipher import AES
         from Crypto.Util import Counter
     except (ImportError, ModuleNotFoundError):
-        secho(
+        click.secho(
             "To download this item in MQA, you need to run ",
             fg="yellow",
             nl=False,
         )
-        secho("pip3 install pycryptodome --upgrade", fg="blue", nl=False)
-        secho(".")
-        raise click.Abort
+        click.secho("pip3 install pycryptodome --upgrade", fg="blue", nl=False)
+        click.secho(".")
+        exit()
 
     # Do not change this
     master_key = "UIlTTEMmmLfGowo/UC60x2H45W6MdGgTRfo/umg4754="
@@ -431,7 +385,7 @@ def decho(message, fg=None):
     :param fg: ANSI color with which to display the message on the
     screen
     """
-    secho(message, fg=fg)
+    click.secho(message, fg=fg)
     logger.debug(message)
 
 

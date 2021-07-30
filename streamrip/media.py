@@ -15,12 +15,11 @@ import subprocess
 from tempfile import gettempdir
 from typing import Any, Dict, Generator, Iterable, List, Optional, Tuple, Union
 
-import click
+from click import style, secho
 from mutagen.flac import FLAC, Picture
 from mutagen.id3 import APIC, ID3, ID3NoHeaderError
 from mutagen.mp4 import MP4, MP4Cover
 from pathvalidate import sanitize_filename, sanitize_filepath
-from tqdm import tqdm
 
 from . import converter
 from .clients import Client, DeezloaderClient
@@ -50,7 +49,6 @@ from .utils import (
     get_stats_from_quality,
     safe_get,
     tidal_cover_url,
-    tqdm_download,
     tqdm_stream,
 )
 
@@ -272,7 +270,7 @@ class Track(Media):
         :type progress_bar: bool
         """
         if not self.part_of_tracklist:
-            secho(f"Downloading {self!s}\n", bold=True)
+            click.secho(f"Downloading {self!s}\n", bold=True)
 
         self._prepare_download(
             quality=quality,
@@ -295,7 +293,6 @@ class Track(Media):
 
         if self.client.source == "qobuz":
             if not self.__validate_qobuz_dl_info(dl_info):
-                # secho("Track is not available for download", fg="red")
                 raise NonStreamable("Track is not available for download")
 
             self.sampling_rate = dl_info.get("sampling_rate")
@@ -314,7 +311,7 @@ class Track(Media):
                         words[0] + " " + " ".join(map(str.lower, words[1:])) + "."
                     )
 
-                secho(f"Panic: {e} dl_info = {dl_info}", fg="red")
+                click.secho(f"Panic: {e} dl_info = {dl_info}", fg="red")
                 raise NonStreamable
 
             _quick_download(download_url, self.path, desc=self._progress_desc)
@@ -470,7 +467,6 @@ class Track(Media):
         """Download the cover art, if cover_url is given."""
         self.cover_path = os.path.join(gettempdir(), f"cover{hash(self.cover_url)}.jpg")
         logger.debug(f"Downloading cover from {self.cover_url}")
-        # secho(f"\nDownloading cover art for {self!s}", fg="blue")
 
         if not os.path.exists(self.cover_path):
             _cover_download(self.cover_url, self.cover_path)
@@ -670,7 +666,7 @@ class Track(Media):
         """
         if not self.downloaded:
             logger.debug("Track not downloaded, skipping conversion")
-            secho("Track not downloaded, skipping conversion", fg="magenta")
+            click.secho("Track not downloaded, skipping conversion", fg="magenta")
             return
 
         CONV_CLASS = {
@@ -687,15 +683,15 @@ class Track(Media):
         try:
             self.container = codec.upper()
         except AttributeError:
-            secho("Error: No audio codec chosen to convert to.", fg="red")
-            raise click.Abort
+            click.secho("Error: No audio codec chosen to convert to.", fg="red")
+            exit()
 
         if not hasattr(self, "final_path"):
             self.format_final_path()
 
         if not os.path.isfile(self.path):
             logger.info("File %s does not exist. Skipping conversion.", self.path)
-            secho(f"{self!s} does not exist. Skipping conversion.", fg="red")
+            click.secho(f"{self!s} does not exist. Skipping conversion.", fg="red")
             return
 
         assert (
@@ -707,7 +703,6 @@ class Track(Media):
             sampling_rate=kwargs.get("sampling_rate"),
             remove_source=kwargs.get("remove_source", True),
         )
-        # secho(f"Converting {self!s}", fg="blue")
         engine.convert()
         self.path = engine.final_fn
         self.final_path = self.final_path.replace(
@@ -814,7 +809,7 @@ class Video(Media):
 
         :param kwargs:
         """
-        secho(
+        click.secho(
             f"Downloading {self.title} (Video). This may take a while.",
             fg="blue",
         )
@@ -949,7 +944,7 @@ class YoutubeVideo(Media):
         :type youtube_video_downloads_folder: str
         :param kwargs:
         """
-        secho(f"Downloading url {self.id}", fg="blue")
+        click.secho(f"Downloading url {self.id}", fg="blue")
         filename_formatter = "%(track_number)s.%(track)s.%(container)s"
         filename = os.path.join(parent_folder, filename_formatter)
 
@@ -969,7 +964,7 @@ class YoutubeVideo(Media):
         )
 
         if download_youtube_videos:
-            secho("Downloading video stream", fg="blue")
+            click.secho("Downloading video stream", fg="blue")
             pv = subprocess.Popen(
                 [
                     "youtube-dl",
@@ -1107,18 +1102,18 @@ class Tracklist(list):
                 except (KeyboardInterrupt, SystemExit):
                     executor.shutdown()
                     click.echo("Aborted! May take some time to shutdown.")
-                    raise click.Abort
+                    exit()
 
         else:
             for item in self:
                 if self.client.source != "soundcloud":
                     # soundcloud only gets metadata after `target` is called
                     # message will be printed in `target`
-                    secho(f'\nDownloading "{item!s}"', bold=True, fg="green")
+                    click.secho(f'\nDownloading "{item!s}"', bold=True, fg="green")
                 try:
                     target(item, **kwargs)
                 except ItemExists:
-                    secho(f"{item!s} exists. Skipping.", fg="yellow")
+                    click.secho(f"{item!s} exists. Skipping.", fg="yellow")
                 except NonStreamable as e:
                     e.print(item)
                     failed_downloads.append((item.client.source, item.type, item.id))
@@ -1264,7 +1259,7 @@ class Tracklist(list):
 
         :rtype: str
         """
-        secho(
+        click.secho(
             f"\n\nDownloading {self.title} ({self.__class__.__name__})\n",
             fg="magenta",
             bold=True,
@@ -1422,7 +1417,7 @@ class Album(Tracklist, Media):
         self.download_message()
 
         # choose optimal cover size and download it
-        secho("Downloading cover art", bold=True)
+        click.secho("Downloading cover art", bold=True)
         cover_path = os.path.join(gettempdir(), f"cover_{hash(self)}.jpg")
         embed_cover_size = kwargs.get("embed_cover_size", "large")
 
@@ -1446,7 +1441,7 @@ class Album(Tracklist, Media):
 
         cover_size = os.path.getsize(cover_path)
         if cover_size > FLAC_MAX_BLOCKSIZE:  # 16.77 MB
-            secho(
+            click.secho(
                 "Downgrading embedded cover size, too large ({cover_size}).",
                 fg="bright_yellow",
             )
@@ -1473,7 +1468,7 @@ class Album(Tracklist, Media):
             and kwargs.get("download_booklets", True)
             and not any(f.endswith(".pdf") for f in os.listdir(self.folder))
         ):
-            secho("\nDownloading booklets", bold=True)
+            click.secho("\nDownloading booklets", bold=True)
             for item in self.booklets:
                 Booklet(item).download(parent_folder=self.folder)
 
@@ -1783,9 +1778,9 @@ class Playlist(Tracklist, Media):
         kwargs["parent_folder"] = self.folder
         if self.client.source == "soundcloud":
             item.load_meta()
-            secho(f"Downloading {item!s}", fg="blue")
+            click.secho(f"Downloading {item!s}", fg="blue")
 
-        if playlist_to_album := kwargs.get("set_playlist_to_album", False):
+        if kwargs.get("set_playlist_to_album", False):
             item.meta.album = self.name
             item.meta.albumartist = self.creator
 

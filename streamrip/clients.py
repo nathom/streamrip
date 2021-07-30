@@ -11,8 +11,8 @@ from abc import ABC, abstractmethod
 from pprint import pformat
 from typing import Any, Dict, Generator, Optional, Sequence, Tuple, Union
 
-import click  # type: ignore
-import deezer  # type: ignore
+from click import style, secho
+import deezer
 import requests
 from Cryptodome.Cipher import AES, Blowfish  # type: ignore
 

@@ -4,7 +4,7 @@ import os
 import re
 from pathlib import Path
 
-import click
+from click import style, secho
 
 APPNAME = "streamrip"
 APP_DIR = click.get_app_dir(APPNAME)

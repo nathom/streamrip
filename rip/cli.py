@@ -9,15 +9,31 @@ logging.basicConfig(level="WARNING")
 logger = logging.getLogger("streamrip")
 
 
-@click.group(invoke_without_command=True)
+class SkipArg(click.Group):
+    def parse_args(self, ctx, args):
+        if len(args) == 0:
+            click.echo(self.get_help(ctx))
+            exit()
+
+        if args[0] in self.commands:
+            print('command found')
+            args.insert(0, "")
+        # if args[0] in self.commands:
+        #     if len(args) == 1 or args[1] not in self.commands:
+        #         # This condition needs updating for multiple positional arguments
+        #         args.insert(0, "")
+        super(SkipArg, self).parse_args(ctx, args)
+
+
+# @click.option(
+#     "-u",
+#     "--urls",
+#     metavar="URLS",
+#     help="Url from Qobuz, Tidal, SoundCloud, or Deezer",
+#     multiple=True,
+# )
+@click.group(cls=SkipArg, invoke_without_command=True)
 @click.option("-c", "--convert", metavar="CODEC", help="alac, mp3, flac, or ogg")
-@click.option(
-    "-u",
-    "--urls",
-    metavar="URLS",
-    help="Url from Qobuz, Tidal, SoundCloud, or Deezer",
-    multiple=True,
-)
 @click.option(
     "-q",
     "--quality",
@@ -27,6 +43,7 @@ logger = logging.getLogger("streamrip")
 @click.option("-t", "--text", metavar="PATH", help="Download urls from a text file.")
 @click.option("-nd", "--no-db", is_flag=True, help="Ignore the database.")
 @click.option("--debug", is_flag=True, help="Show debugging logs.")
+@click.argument("URLS", nargs=1)
 @click.version_option(prog_name="rip", version=__version__)
 @click.pass_context
 def cli(ctx, **kwargs):
@@ -54,9 +71,7 @@ def cli(ctx, **kwargs):
     from .constants import CONFIG_DIR
     from .core import RipCore
 
-    logging.basicConfig(level="WARNING")
-    logger = logging.getLogger("streamrip")
-
+    print(kwargs)
     if not os.path.isdir(CONFIG_DIR):
         os.makedirs(CONFIG_DIR, exist_ok=True)
 
@@ -68,7 +83,8 @@ def cli(ctx, **kwargs):
         logger.debug("Starting debug log")
 
     if ctx.invoked_subcommand is None and not ctx.params["urls"]:
-        echo(cli.get_help(ctx))
+        print(dir(cli))
+        click.echo(cli.get_help(ctx))
 
     if ctx.invoked_subcommand not in {
         None,
@@ -90,13 +106,13 @@ def cli(ctx, **kwargs):
         r = requests.get("https://pypi.org/pypi/streamrip/json").json()
         newest = r["info"]["version"]
         if __version__ != newest:
-            secho(
+            click.secho(
                 "A new version of streamrip is available! "
                 "Run `pip3 install streamrip --upgrade` to update.",
                 fg="yellow",
             )
         else:
-            secho("streamrip is up-to-date!", fg="green")
+            click.secho("streamrip is up-to-date!", fg="green")
 
     if kwargs["no_db"]:
         config.session["database"]["enabled"] = False
@@ -108,7 +124,7 @@ def cli(ctx, **kwargs):
     if kwargs["quality"] is not None:
         quality = int(kwargs["quality"])
         if quality not in range(5):
-            secho("Invalid quality", fg="red")
+            click.secho("Invalid quality", fg="red")
             return
 
         config.session["qobuz"]["quality"] = quality
@@ -126,7 +142,7 @@ def cli(ctx, **kwargs):
             logger.debug(f"Handling {kwargs['text']}")
             core.handle_txt(kwargs["text"])
         else:
-            secho(f"Text file {kwargs['text']} does not exist.")
+            click.secho(f"Text file {kwargs['text']} does not exist.")
 
     if ctx.invoked_subcommand is None:
         core.download()
@@ -150,6 +166,7 @@ def filter_discography(ctx, **kwargs):
 
     For basic filtering, use the `--repeats` and `--features` filters.
     """
+    raise Exception
     filters = kwargs.copy()
     filters.pop("urls")
     config.session["filters"] = filters
@@ -206,7 +223,7 @@ def search(ctx, **kwargs):
     if core.interactive_search(query, kwargs["source"], kwargs["type"]):
         core.download()
     else:
-        secho("No items chosen, exiting.", fg="bright_red")
+        click.secho("No items chosen, exiting.", fg="bright_red")
 
 
 @cli.command()
@@ -333,10 +350,10 @@ def config(ctx, **kwargs):
         config.update()
 
     if kwargs["path"]:
-        echo(CONFIG_PATH)
+        click.echo(CONFIG_PATH)
 
     if kwargs["open"]:
-        secho(f"Opening {CONFIG_PATH}", fg="green")
+        click.secho(f"Opening {CONFIG_PATH}", fg="green")
         click.launch(CONFIG_PATH)
 
     if kwargs["open_vim"]:
@@ -347,41 +364,41 @@ def config(ctx, **kwargs):
 
     if kwargs["directory"]:
         config_dir = os.path.dirname(CONFIG_PATH)
-        secho(f"Opening {config_dir}", fg="green")
+        click.secho(f"Opening {config_dir}", fg="green")
         click.launch(config_dir)
 
     if kwargs["qobuz"]:
-        config.file["qobuz"]["email"] = input(style("Qobuz email: ", fg="blue"))
+        config.file["qobuz"]["email"] = input(click.style("Qobuz email: ", fg="blue"))
 
-        secho("Qobuz password (will not show on screen):", fg="blue")
+        click.secho("Qobuz password (will not show on screen):", fg="blue")
         config.file["qobuz"]["password"] = md5(
             getpass(prompt="").encode("utf-8")
         ).hexdigest()
 
         config.save()
-        secho("Qobuz credentials hashed and saved to config.", fg="green")
+        click.secho("Qobuz credentials hashed and saved to config.", fg="green")
 
     if kwargs["tidal"]:
         client = TidalClient()
         client.login()
         config.file["tidal"].update(client.get_tokens())
         config.save()
-        secho("Credentials saved to config.", fg="green")
+        click.secho("Credentials saved to config.", fg="green")
 
     if kwargs["deezer"]:
-        secho(
+        click.secho(
             "If you're not sure how to find the ARL cookie, see the instructions at ",
             italic=True,
             nl=False,
             dim=True,
         )
-        secho(
+        click.secho(
             "https://github.com/nathom/streamrip/wiki/Finding-your-Deezer-ARL-Cookie",
             underline=True,
             italic=True,
             fg="blue",
         )
-        config.file["deezer"]["arl"] = input(style("ARL: ", fg="green"))
+        config.file["deezer"]["arl"] = input(click.style("ARL: ", fg="green"))
         config.save()
 
 
@@ -481,7 +498,7 @@ def convert(ctx, **kwargs):
     elif os.path.isfile(kwargs["path"]):
         codec_map[codec](filename=kwargs["path"], **converter_args).convert()
     else:
-        secho(f"File {kwargs['path']} does not exist.", fg="red")
+        click.secho(f"File {kwargs['path']} does not exist.", fg="red")
 
 
 @cli.command()
@@ -503,7 +520,7 @@ def repair(ctx, **kwargs):
 
 def none_chosen():
     """Print message if nothing was chosen."""
-    secho("No items chosen, exiting.", fg="bright_red")
+    click.secho("No items chosen, exiting.", fg="bright_red")
 
 
 def main():
