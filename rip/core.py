@@ -334,13 +334,13 @@ class RipCore(list):
                 if arguments["conversion"]["enabled"]:
                     item.convert(**arguments["conversion"])
 
-    def scrape(self, featured_list: str):
+    def scrape(self, featured_list: str, max_items: int = 500):
         """Download all of the items in a Qobuz featured list.
 
         :param featured_list: The name of the list. See `rip discover --help`.
         :type featured_list: str
         """
-        self.extend(self.search("qobuz", featured_list, "featured", limit=500))
+        self.extend(self.search("qobuz", featured_list, "featured", limit=max_items))
 
     def get_client(self, source: str) -> Client:
         """Get a client given the source and log in.
@@ -384,7 +384,7 @@ class RipCore(list):
                 self.prompt_creds(client.source)
                 creds = self.config.creds(client.source)
             except MissingCredentials:
-                logger.debug("Credentials are missing. Prompting..", fg="yellow")
+                logger.debug("Credentials are missing. Prompting..")
                 self.prompt_creds(client.source)
                 creds = self.config.creds(client.source)
 
@@ -499,13 +499,15 @@ class RipCore(list):
             """
 
             def try_search(source) -> Optional[Track]:
-                if source == lastfm_fallback_source:
-                    click.secho("using fallback", fg="red")
                 try:
                     query = QUERY_FORMAT[lastfm_source].format(
                         title=title, artist=artist
                     )
-                    return next(self.search(source, query, media_type="track"))
+                    track = next(self.search(source, query, media_type="track"))
+                    # Because the track is searched as a single we need to set
+                    # this manually
+                    track.part_of_tracklist = True
+                    return track
                 except (NoResultsFound, StopIteration):
                     return None
 
