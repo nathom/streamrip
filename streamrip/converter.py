@@ -130,7 +130,7 @@ class Converter:
                 if int(self.bit_depth) == 16:
                     command.extend(["-sample_fmt", "s16"])
                 elif int(self.bit_depth) in (24, 32):
-                    command.extend(["-sample_fmt", "s32"])
+                    command.extend(["-sample_fmt", "s32p"])
                 else:
                     raise ValueError("Bit depth must be 16, 24, or 32")
             elif self.bit_depth is not None:
@@ -138,6 +138,8 @@ class Converter:
 
         # automatically overwrite
         command.extend(["-y", self.tempfile])
+
+        logger.debug(command)
 
         return command
 
