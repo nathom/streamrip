@@ -7,7 +7,7 @@ from pathlib import Path
 from click import style, secho
 
 APPNAME = "streamrip"
-APP_DIR = click.get_app_dir(APPNAME)
+APP_DIR = get_app_dir(APPNAME)
 HOME = Path.home()
 
 LOG_DIR = CACHE_DIR = CONFIG_DIR = APP_DIR

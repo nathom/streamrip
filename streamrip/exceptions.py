@@ -50,7 +50,7 @@ class NonStreamable(Exception):
 
         :param item:
         """
-        click.echo(self.print_msg(item))
+        echo(self.print_msg(item))
 
     def print_msg(self, item) -> str:
         """Return a generic readable message.
@@ -59,12 +59,12 @@ class NonStreamable(Exception):
         :type item: Media
         :rtype: str
         """
-        base_msg = [click.style(f"Unable to stream {item!s}.", fg="yellow")]
+        base_msg = [style(f"Unable to stream {item!s}.", fg="yellow")]
         if self.message:
             base_msg.extend(
                 (
-                    click.style("Message:", fg="yellow"),
-                    click.style(self.message, fg="red"),
+                    style("Message:", fg="yellow"),
+                    style(self.message, fg="red"),
                 )
             )
 

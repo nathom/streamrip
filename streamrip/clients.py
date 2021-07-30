@@ -855,7 +855,7 @@ class TidalClient(Client):
             fg="blue",
         )
         if launch:
-            click.launch(login_link)
+            launch(login_link)
 
         start = time.time()
         elapsed = 0.0

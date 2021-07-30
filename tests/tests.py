@@ -44,14 +44,14 @@ def download_albums():
         procs.append(subprocess.run([*rip_url, url]))
 
     for p in procs:
-        click.echo(p)
+        echo(p)
 
 
 def check_album_dl_success(folder, correct):
     if set(os.listdir(folder)) != set(correct):
-        click.secho(f"Check for {folder} failed!", fg="red")
+        secho(f"Check for {folder} failed!", fg="red")
     else:
-        click.secho(f"Check for {folder} succeeded!", fg="green")
+        secho(f"Check for {folder} succeeded!", fg="green")
 
 
 def main():

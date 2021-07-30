@@ -299,13 +299,13 @@ def decrypt_mqa_file(in_path, out_path, encryption_key):
         from Crypto.Cipher import AES
         from Crypto.Util import Counter
     except (ImportError, ModuleNotFoundError):
-        click.secho(
+        secho(
             "To download this item in MQA, you need to run ",
             fg="yellow",
             nl=False,
         )
-        click.secho("pip3 install pycryptodome --upgrade", fg="blue", nl=False)
-        click.secho(".")
+        secho("pip3 install pycryptodome --upgrade", fg="blue", nl=False)
+        secho(".")
         exit()
 
     # Do not change this
@@ -385,7 +385,7 @@ def decho(message, fg=None):
     :param fg: ANSI color with which to display the message on the
     screen
     """
-    click.secho(message, fg=fg)
+    secho(message, fg=fg)
     logger.debug(message)
 
 
@@ -479,9 +479,9 @@ TQDM_THEMES = {
     "plain": None,
     "dainty": (
         "{desc} |{bar}| "
-        + click.style("{remaining}", fg="magenta")
+        + style("{remaining}", fg="magenta")
         + " left at "
-        + click.style("{rate_fmt}{postfix} ", fg="cyan", bold=True)
+        + style("{rate_fmt}{postfix} ", fg="cyan", bold=True)
     ),
 }
 
