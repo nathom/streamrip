@@ -68,7 +68,7 @@ def cli(ctx, **kwargs):
         logger.debug("Starting debug log")
 
     if ctx.invoked_subcommand is None and not ctx.params["urls"]:
-        click.echo(cli.get_help(ctx))
+        echo(cli.get_help(ctx))
 
     if ctx.invoked_subcommand not in {
         None,
@@ -90,13 +90,13 @@ def cli(ctx, **kwargs):
         r = requests.get("https://pypi.org/pypi/streamrip/json").json()
         newest = r["info"]["version"]
         if __version__ != newest:
-            click.secho(
+            secho(
                 "A new version of streamrip is available! "
                 "Run `pip3 install streamrip --upgrade` to update.",
                 fg="yellow",
             )
         else:
-            click.secho("streamrip is up-to-date!", fg="green")
+            secho("streamrip is up-to-date!", fg="green")
 
     if kwargs["no_db"]:
         config.session["database"]["enabled"] = False
@@ -108,7 +108,7 @@ def cli(ctx, **kwargs):
     if kwargs["quality"] is not None:
         quality = int(kwargs["quality"])
         if quality not in range(5):
-            click.secho("Invalid quality", fg="red")
+            secho("Invalid quality", fg="red")
             return
 
         config.session["qobuz"]["quality"] = quality
@@ -126,7 +126,7 @@ def cli(ctx, **kwargs):
             logger.debug(f"Handling {kwargs['text']}")
             core.handle_txt(kwargs["text"])
         else:
-            click.secho(f"Text file {kwargs['text']} does not exist.")
+            secho(f"Text file {kwargs['text']} does not exist.")
 
     if ctx.invoked_subcommand is None:
         core.download()
@@ -206,7 +206,7 @@ def search(ctx, **kwargs):
     if core.interactive_search(query, kwargs["source"], kwargs["type"]):
         core.download()
     else:
-        click.secho("No items chosen, exiting.", fg="bright_red")
+        secho("No items chosen, exiting.", fg="bright_red")
 
 
 @cli.command()
@@ -333,10 +333,10 @@ def config(ctx, **kwargs):
         config.update()
 
     if kwargs["path"]:
-        click.echo(CONFIG_PATH)
+        echo(CONFIG_PATH)
 
     if kwargs["open"]:
-        click.secho(f"Opening {CONFIG_PATH}", fg="green")
+        secho(f"Opening {CONFIG_PATH}", fg="green")
         click.launch(CONFIG_PATH)
 
     if kwargs["open_vim"]:
@@ -347,41 +347,41 @@ def config(ctx, **kwargs):
 
     if kwargs["directory"]:
         config_dir = os.path.dirname(CONFIG_PATH)
-        click.secho(f"Opening {config_dir}", fg="green")
+        secho(f"Opening {config_dir}", fg="green")
         click.launch(config_dir)
 
     if kwargs["qobuz"]:
-        config.file["qobuz"]["email"] = input(click.style("Qobuz email: ", fg="blue"))
+        config.file["qobuz"]["email"] = input(style("Qobuz email: ", fg="blue"))
 
-        click.secho("Qobuz password (will not show on screen):", fg="blue")
+        secho("Qobuz password (will not show on screen):", fg="blue")
         config.file["qobuz"]["password"] = md5(
             getpass(prompt="").encode("utf-8")
         ).hexdigest()
 
         config.save()
-        click.secho("Qobuz credentials hashed and saved to config.", fg="green")
+        secho("Qobuz credentials hashed and saved to config.", fg="green")
 
     if kwargs["tidal"]:
         client = TidalClient()
         client.login()
         config.file["tidal"].update(client.get_tokens())
         config.save()
-        click.secho("Credentials saved to config.", fg="green")
+        secho("Credentials saved to config.", fg="green")
 
     if kwargs["deezer"]:
-        click.secho(
+        secho(
             "If you're not sure how to find the ARL cookie, see the instructions at ",
             italic=True,
             nl=False,
             dim=True,
         )
-        click.secho(
+        secho(
             "https://github.com/nathom/streamrip/wiki/Finding-your-Deezer-ARL-Cookie",
             underline=True,
             italic=True,
             fg="blue",
         )
-        config.file["deezer"]["arl"] = input(click.style("ARL: ", fg="green"))
+        config.file["deezer"]["arl"] = input(style("ARL: ", fg="green"))
         config.save()
 
 
@@ -481,7 +481,7 @@ def convert(ctx, **kwargs):
     elif os.path.isfile(kwargs["path"]):
         codec_map[codec](filename=kwargs["path"], **converter_args).convert()
     else:
-        click.secho(f"File {kwargs['path']} does not exist.", fg="red")
+        secho(f"File {kwargs['path']} does not exist.", fg="red")
 
 
 @cli.command()
@@ -503,7 +503,7 @@ def repair(ctx, **kwargs):
 
 def none_chosen():
     """Print message if nothing was chosen."""
-    click.secho("No items chosen, exiting.", fg="bright_red")
+    secho("No items chosen, exiting.", fg="bright_red")
 
 
 def main():

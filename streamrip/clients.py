@@ -119,7 +119,7 @@ class QobuzClient(Client):
         :type pwd: str
         :param kwargs: app_id: str, secrets: list, return_secrets: bool
         """
-        click.secho(f"Logging into {self.source}", fg="green")
+        secho(f"Logging into {self.source}", fg="green")
         email: str = kwargs["email"]
         pwd: str = kwargs["pwd"]
         if not email or not pwd:
@@ -130,7 +130,7 @@ class QobuzClient(Client):
             return
 
         if (kwargs.get("app_id") or kwargs.get("secrets")) in (None, [], ""):
-            click.secho("Fetching tokens — this may take a few seconds.", fg="magenta")
+            secho("Fetching tokens — this may take a few seconds.", fg="magenta")
             logger.info("Fetching tokens from Qobuz")
             spoofer = Spoofer()
             kwargs["app_id"] = spoofer.get_app_id()
@@ -766,7 +766,7 @@ class TidalClient(Client):
             self._login_new_user()
 
         self.logged_in = True
-        click.secho("Logged into Tidal", fg="green")
+        secho("Logged into Tidal", fg="green")
 
     def get(self, item_id, media_type):
         """Public method that internally calls _api_get.
@@ -850,7 +850,7 @@ class TidalClient(Client):
         """
         login_link = f"https://{self._get_device_code()}"
 
-        click.secho(
+        secho(
             f"Go to {login_link} to log into Tidal within 5 minutes.",
             fg="blue",
         )

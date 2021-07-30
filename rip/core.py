@@ -162,8 +162,8 @@ class RipCore(list):
         if not parsed and len(self) == 0:
             if "last.fm" in url:
                 message = (
-                    f"For last.fm urls, use the {click.style('lastfm', fg='yellow')} "
-                    f"command. See {click.style('rip lastfm --help', fg='yellow')}."
+                    f"For last.fm urls, use the {style('lastfm', fg='yellow')} "
+                    f"command. See {style('rip lastfm --help', fg='yellow')}."
                 )
             else:
                 message = f"Cannot find urls in text: {url}"
@@ -175,7 +175,7 @@ class RipCore(list):
                 logger.info(
                     f"ID {item_id} already downloaded, use --no-db to override."
                 )
-                click.secho(
+                secho(
                     f"ID {item_id} already downloaded, use --no-db to override.",
                     fg="magenta",
                 )
@@ -248,7 +248,7 @@ class RipCore(list):
             max_items = float("inf")
 
         if self.failed_db.is_dummy:
-            click.secho(
+            secho(
                 "Failed downloads database must be enabled in the config file "
                 "to repair!",
                 fg="red",
@@ -304,7 +304,7 @@ class RipCore(list):
                     item.load_meta(**arguments)
                 except NonStreamable:
                     self.failed_db.add((item.client.source, item.type, item.id))
-                    click.secho(f"{item!s} is not available, skipping.", fg="red")
+                    secho(f"{item!s} is not available, skipping.", fg="red")
                     continue
 
             try:
@@ -321,7 +321,7 @@ class RipCore(list):
                     self.failed_db.add(failed_item_info)
                 continue
             except ItemExists as e:
-                click.secho(f'"{e!s}" already exists. Skipping.', fg="yellow")
+                secho(f'"{e!s}" already exists. Skipping.', fg="yellow")
                 continue
 
             if hasattr(item, "id"):
@@ -366,13 +366,13 @@ class RipCore(list):
         creds = self.config.creds(client.source)
         if client.source == "deezer" and creds["arl"] == "":
             if self.config.session["deezer"]["deezloader_warnings"]:
-                click.secho(
+                secho(
                     "Falling back to Deezloader (max 320kbps MP3). If you have a subscription, run ",
                     nl=False,
                     fg="yellow",
                 )
-                click.secho("rip config --deezer ", nl=False, bold=True)
-                click.secho("to download FLAC files.\n\n", fg="yellow")
+                secho("rip config --deezer ", nl=False, bold=True)
+                secho("to download FLAC files.\n\n", fg="yellow")
             raise DeezloaderFallback
 
         while True:
@@ -380,7 +380,7 @@ class RipCore(list):
                 client.login(**creds)
                 break
             except AuthenticationError:
-                click.secho("Invalid credentials, try again.", fg="yellow")
+                secho("Invalid credentials, try again.", fg="yellow")
                 self.prompt_creds(client.source)
                 creds = self.config.creds(client.source)
             except MissingCredentials:
@@ -419,7 +419,7 @@ class RipCore(list):
 
         interpreter_urls = QOBUZ_INTERPRETER_URL_REGEX.findall(url)
         if interpreter_urls:
-            click.secho(
+            secho(
                 "Extracting IDs from Qobuz interpreter urls. Use urls "
                 "that include the artist ID for faster preprocessing.",
                 fg="yellow",
@@ -432,7 +432,7 @@ class RipCore(list):
 
         dynamic_urls = DEEZER_DYNAMIC_LINK_REGEX.findall(url)
         if dynamic_urls:
-            click.secho(
+            secho(
                 "Extracting IDs from Deezer dynamic link. Use urls "
                 "of the form https://www.deezer.com/{country}/{type}/{id} for "
                 "faster processing.",
@@ -524,7 +524,7 @@ class RipCore(list):
             return True
 
         for purl in lastfm_urls:
-            click.secho(f"Fetching playlist at {purl}", fg="blue")
+            secho(f"Fetching playlist at {purl}", fg="blue")
             title, queries = self.get_lastfm_playlist(purl)
 
             pl = Playlist(client=self.get_client(lastfm_source), name=title)
@@ -550,7 +550,7 @@ class RipCore(list):
             pl.loaded = True
 
             if tracks_not_found > 0:
-                click.secho(f"{tracks_not_found} tracks not found.", fg="yellow")
+                secho(f"{tracks_not_found} tracks not found.", fg="yellow")
             self.append(pl)
 
     def handle_txt(self, filepath: Union[str, os.PathLike]):
@@ -815,9 +815,9 @@ class RipCore(list):
         :type source: str
         """
         if source == "qobuz":
-            click.secho("Enter Qobuz email:", fg="green")
+            secho("Enter Qobuz email:", fg="green")
             self.config.file[source]["email"] = input()
-            click.secho(
+            secho(
                 "Enter Qobuz password (will not show on screen):",
                 fg="green",
             )
@@ -826,27 +826,27 @@ class RipCore(list):
             ).hexdigest()
 
             self.config.save()
-            click.secho(
+            secho(
                 f'Credentials saved to config file at "{self.config._path}"',
                 fg="green",
             )
         elif source == "deezer":
-            click.secho(
+            secho(
                 "If you're not sure how to find the ARL cookie, see the instructions at ",
                 italic=True,
                 nl=False,
                 dim=True,
             )
-            click.secho(
+            secho(
                 "https://github.com/nathom/streamrip/wiki/Finding-your-Deezer-ARL-Cookie",
                 underline=True,
                 italic=True,
                 fg="blue",
             )
 
-            self.config.file["deezer"]["arl"] = input(click.style("ARL: ", fg="green"))
+            self.config.file["deezer"]["arl"] = input(style("ARL: ", fg="green"))
             self.config.save()
-            click.secho(
+            secho(
                 f'Credentials saved to config file at "{self.config._path}"',
                 fg="green",
             )
@@ -854,19 +854,19 @@ class RipCore(list):
             raise Exception
 
     def _config_updating_message(self):
-        click.secho(
+        secho(
             "Updating config file... Some settings may be lost. Please run the "
             "command again.",
             fg="magenta",
         )
 
     def _config_corrupted_message(self, err: Exception):
-        click.secho(
+        secho(
             "There was a problem with your config file. This happens "
             "sometimes after updates. Run ",
             nl=False,
             fg="red",
         )
-        click.secho("rip config --reset ", fg="yellow", nl=False)
-        click.secho("to reset it. You will need to log in again.", fg="red")
-        click.secho(str(err), fg="red")
+        secho("rip config --reset ", fg="yellow", nl=False)
+        secho("to reset it. You will need to log in again.", fg="red")
+        secho(str(err), fg="red")

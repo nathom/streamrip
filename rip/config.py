@@ -56,7 +56,7 @@ class Config:
         if os.path.isfile(self._path):
             self.load()
             if self.file["misc"]["version"] != self.defaults["misc"]["version"]:
-                click.secho(
+                secho(
                     "Updating config file to new version. Some settings may be lost.",
                     fg="yellow",
                 )
