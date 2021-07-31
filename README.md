@@ -3,8 +3,9 @@
 [![Downloads](https://static.pepy.tech/personalized-badge/streamrip?period=total&units=international_system&left_color=black&right_color=green&left_text=Downloads)](https://pepy.tech/project/streamrip)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/python/black)
 
-
 A scriptable stream downloader for Qobuz, Tidal, Deezer and SoundCloud.
+
+![Streamrip downloading an album](https://github.com/nathom/streamrip/blob/dev/demo/download_album.png?raw=true)
 
 
 ## Features
@@ -25,6 +26,14 @@ First, ensure [Python](https://www.python.org/downloads/) (version 3.8 or greate
 pip3 install streamrip --upgrade
 ```
 
+When you type
+
+```bash
+rip
+```
+
+it should show the main help page.
+
 If you would like to use `streamrip`'s conversion capabilities, download TIDAL videos, or download music from SoundCloud, install [ffmpeg](https://ffmpeg.org/download.html). To download music from YouTube, install [youtube-dl](https://github.com/ytdl-org/youtube-dl#installation).
 
 
@@ -35,25 +44,26 @@ If you would like to use `streamrip`'s conversion capabilities, download TIDAL v
 Download an album from Qobuz
 
 ```bash
-rip -u https://open.qobuz.com/album/0060253780968
+rip url https://www.qobuz.com/us-en/album/rumours-fleetwood-mac/0603497941032
 ```
 
 Download multiple albums from Qobuz
+
 ```bash
-rip -u https://www.qobuz.com/us-en/album/back-in-black-ac-dc/0886444889841 -u https://www.qobuz.com/us-en/album/blue-train-john-coltrane/0060253764852
+rip url https://www.qobuz.com/us-en/album/back-in-black-ac-dc/0886444889841 https://www.qobuz.com/us-en/album/blue-train-john-coltrane/0060253764852
 ```
 
-![Streamrip downloading an album](https://github.com/nathom/streamrip/blob/main/demo/download_url.png?raw=true)
+
 
 Download the album and convert it to `mp3`
 
 ```bash
-rip --convert mp3 -u https://open.qobuz.com/album/0060253780968
+rip url --convert mp3 https://open.qobuz.com/album/0060253780968
 ```
 
 
 
-To set the quality, use the `--quality` option to `0, 1, 2, 3, 4`:
+To set the maximum quality, use the `--max-quality` option to `0, 1, 2, 3, 4`:
 
 | Quality ID | Audio Quality         | Available Sources                            |
 | ---------- | --------------------- | -------------------------------------------- |
@@ -65,33 +75,23 @@ To set the quality, use the `--quality` option to `0, 1, 2, 3, 4`:
 
 
 
-
-
 ```bash
-rip --quality 3 https://tidal.com/browse/album/147569387
+rip url --max-quality 3 https://tidal.com/browse/album/147569387
 ```
 
 Search for albums matching `lil uzi vert` on SoundCloud
 
 ```bash
-rip search -s soundcloud 'lil uzi vert'
+rip search --source soundcloud 'lil uzi vert'
 ```
 
-![streamrip interactive search](https://github.com/nathom/streamrip/blob/main/demo/interactive_search.png?raw=true)
+![streamrip interactive search](https://github.com/nathom/streamrip/blob/dev/demo/album_search.png?raw=true)
 
-Search for *Rumours* on Tidal, download it, convert it to `ALAC`
+Search for *Rumours* on Tidal, and download it
 
 ```bash
-rip -c alac search 'fleetwood mac rumours'
+rip search 'fleetwood mac rumours'
 ```
-
-Qobuz discographies can be filtered using the `filter` subcommand
-
-```bash
-rip filter --repeats --features 'https://open.qobuz.com/artist/22195'
-```
-
-
 
 Want to find some new music? Use the `discover` command (only on Qobuz)
 
@@ -99,27 +99,31 @@ Want to find some new music? Use the `discover` command (only on Qobuz)
 rip discover --list 'best-sellers'
 ```
 
-> Avaiable options for `--list`:
->
-> - most-streamed
-> - recent-releases
-> - best-sellers
-> - press-awards
-> - ideal-discography
-> - editor-picks
-> - most-featured
-> - qobuzissims
-> - new-releases
-> - new-releases-full
-> - harmonia-mundi
-> - universal-classic
-> - universal-jazz
-> - universal-jeunesse
-> - universal-chanson
+Download a last.fm playlist using the lastfm command
+
+```
+rip lastfm https://www.last.fm/user/nathan3895/playlists/12126195
+```
+
+For extreme customization, see the config file
+
+```
+rip config --open
+```
+
+
+
+If you're confused about anything, see the help pages. The main help pages can be accessed by typing `rip` by itself in the command line. The help pages for each command can be accessed with the `-h` flag. For example, to see the help page for the `url` command, type
+
+```
+rip url -h
+```
+
+![example_help_page.png](https://github.com/nathom/streamrip/blob/dev/demo/example_help_page.png?raw=true)
 
 ## Other information
 
-For more in-depth information about `streamrip`, see the [wiki](https://github.com/nathom/streamrip/wiki/).
+For more in-depth information about `streamrip`, see the help pages and the [wiki](https://github.com/nathom/streamrip/wiki/).
 
 
 ## Contributions
