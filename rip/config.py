@@ -64,6 +64,7 @@ class Config:
                 self.load()
         else:
             logger.debug("Creating toml config file at '%s'", self._path)
+            os.makedirs(os.path.dirname(self._path), exist_ok=True)
             shutil.copy(self.default_config_path, self._path)
             self.load()
             self.file["downloads"]["folder"] = DOWNLOADS_DIR
