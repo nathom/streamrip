@@ -276,13 +276,23 @@ class ConfigCommand(Command):
             self.line("<info>Credentials saved to config.</info>")
 
         if self.option("deezer"):
+            from streamrip.clients import DeezerClient
+            from streamrip.exceptions import AuthenticationError
+
             self.line(
                 "Follow the instructions at <url>https://github.com"
                 "/nathom/streamrip/wiki/Finding-your-Deezer-ARL-Cookie</url>"
             )
 
-            config.file["deezer"]["arl"] = self.ask("Paste your ARL here: ")
-            config.save()
+            given_arl = self.ask("Paste your ARL here: ").strip()
+            self.line("<comment>Validating arl...</comment>")
+            try:
+                DeezerClient().login(arl=given_arl)
+                config.file["deezer"]["arl"] = given_arl
+                config.save()
+                self.line("<b>Sucessfully logged in!</b>")
+            except AuthenticationError:
+                self.line("<error>Could not log in. Double check your ARL</error>")
 
 
 class ConvertCommand(Command):
