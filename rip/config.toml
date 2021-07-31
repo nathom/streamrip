@@ -155,8 +155,5 @@ fallback_source = "deezer"
 progress_bar = "dainty"
 
 [misc]
-# Check whether a newer version of streamrip is available when starting up
-check_for_updates = true
-
 # Metadata to identify this config file. Do not change.
 version = "0.8"
