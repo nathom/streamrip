@@ -12,7 +12,7 @@ from pprint import pformat
 from typing import Any, Dict, Generator, Optional, Sequence, Tuple, Union
 
 import deezer
-from click import secho
+from click import launch, secho
 from Cryptodome.Cipher import AES
 
 from .constants import (
@@ -807,7 +807,7 @@ class TidalClient(Client):
 
     # ------------ Utilities to login -------------
 
-    def _login_new_user(self, launch: bool = True):
+    def _login_new_user(self, launch_url: bool = True):
         """Create app url where the user can log in.
 
         :param launch: Launch the browser.
@@ -819,7 +819,7 @@ class TidalClient(Client):
             f"Go to {login_link} to log into Tidal within 5 minutes.",
             fg="blue",
         )
-        if launch:
+        if launch_url:
             launch(login_link)
 
         start = time.time()
