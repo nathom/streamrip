@@ -442,6 +442,13 @@ class Application(BaseApplication):
 
         return default_globals
 
+    def render_error(self, error, io):
+        super().render_error(error, io)
+        io.write_line(
+            "\n<error>If this was unexpected, please open a <path>Bug Report</path> at </error>"
+            "<url>https://github.com/nathom/streamrip/issues/new/choose</url>"
+        )
+
 
 def clean_options(*opts):
     for opt in opts:
