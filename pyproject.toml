@@ -29,9 +29,9 @@ click = "^8.0.1"
 tqdm = "^4.61.1"
 tomlkit = "^0.7.2"
 pathvalidate = "^2.4.1"
-simple-term-menu = {version = "^1.2.1", platform = 'linux or darwin'}
+simple-term-menu = {version = "^1.2.1", platform = 'darwin|linux'}
 pick = {version = "^1.0.0", platform = 'win32 or cygwin'}
-windows-curses = {version = "^2.2.0", platform = 'win32 or cygwin'}
+windows-curses = {version = "^2.2.0", platform = 'win32|cygwin'}
 Pillow = "^8.3.0"
 deezer-py = "^1.0.4"
 pycryptodomex = "^3.10.1"
