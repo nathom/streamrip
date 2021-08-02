@@ -1409,9 +1409,18 @@ class Album(Tracklist, Media):
         self.folder_format = kwargs.get("folder_format", FOLDER_FORMAT)
         self.quality = min(kwargs.get("quality", 3), self.client.max_quality)
 
-        self.folder = self._get_formatted_folder(
-            kwargs.get("parent_folder", "StreamripDownloads"), self.quality
-        )
+        self.container = get_container(self.quality, self.client.source)
+        # necessary to format the folder
+        if self.container in ("AAC", "MP3"):
+            # lossy codecs don't have these metrics
+            self.bit_depth = self.sampling_rate = None
+
+        parent_folder = kwargs.get("parent_folder", "StreamripDownloads")
+        if self.folder_format:
+            self.folder = self._get_formatted_folder(parent_folder, self.quality)
+        else:
+            self.folder = parent_folder
+
         os.makedirs(self.folder, exist_ok=True)
 
         self.download_message()
@@ -1483,7 +1492,11 @@ class Album(Tracklist, Media):
         :rtype: bool
         """
         logger.debug("Downloading track to %s", self.folder)
-        if self.disctotal > 1 and isinstance(item, Track):
+        if (
+            self.disctotal > 1
+            and isinstance(item, Track)
+            and kwargs.get("folder_format")
+        ):
             disc_folder = os.path.join(self.folder, f"Disc {item.meta.discnumber}")
             kwargs["parent_folder"] = disc_folder
         else:
@@ -1566,7 +1579,7 @@ class Album(Tracklist, Media):
         logger.debug("Formatter: %s", fmt)
         return fmt
 
-    def _get_formatted_folder(self, parent_folder: str, quality: int) -> str:
+    def _get_formatted_folder(self, parent_folder: str) -> str:
         """Generate the folder name for this album.
 
         :param parent_folder:
@@ -1575,11 +1588,6 @@ class Album(Tracklist, Media):
         :type quality: int
         :rtype: str
         """
-        # necessary to format the folder
-        self.container = get_container(quality, self.client.source)
-        if self.container in ("AAC", "MP3"):
-            # lossy codecs don't have these metrics
-            self.bit_depth = self.sampling_rate = None
 
         formatted_folder = clean_format(self.folder_format, self._get_formatter())
 
@@ -1764,8 +1772,11 @@ class Playlist(Tracklist, Media):
         logger.debug(f"Loaded {len(self)} tracks from playlist {self.name}")
 
     def _prepare_download(self, parent_folder: str = "StreamripDownloads", **kwargs):
-        fname = sanitize_filename(self.name)
-        self.folder = os.path.join(parent_folder, fname)
+        if kwargs.get("folder_format"):
+            fname = sanitize_filename(self.name)
+            self.folder = os.path.join(parent_folder, fname)
+        else:
+            self.folder = parent_folder
 
         # Used for safe concurrency with tracknumbers instead of an object
         # level that stores an index
@@ -1953,8 +1964,11 @@ class Artist(Tracklist, Media):
         :param kwargs:
         :rtype: Iterable
         """
-        folder = sanitize_filename(self.name)
-        self.folder = os.path.join(parent_folder, folder)
+        if kwargs.get("folder_format"):
+            folder = sanitize_filename(self.name)
+            self.folder = os.path.join(parent_folder, folder)
+        else:
+            self.folder = parent_folder
 
         logger.debug("Artist folder: %s", folder)
         logger.debug(f"Length of tracklist {len(self)}")
