@@ -286,13 +286,25 @@ class ConfigCommand(Command):
 
             given_arl = self.ask("Paste your ARL here: ").strip()
             self.line("<comment>Validating arl...</comment>")
+
             try:
                 DeezerClient().login(arl=given_arl)
                 config.file["deezer"]["arl"] = given_arl
                 config.save()
                 self.line("<b>Sucessfully logged in!</b>")
+
             except AuthenticationError:
                 self.line("<error>Could not log in. Double check your ARL</error>")
+
+        if self.option("qobuz"):
+            import hashlib
+            import getpass
+
+            config.file["qobuz"]["email"] = self.ask("Qobuz email:")
+            config.file["qobuz"]["password"] = hashlib.md5(
+                getpass.getpass("Qobuz password (won't show on screen): ").encode()
+            ).hexdigest()
+            config.save()
 
 
 class ConvertCommand(Command):
@@ -422,7 +434,12 @@ class Application(BaseApplication):
 
     def _run(self, io):
         if io.is_debug():
+            from .constants import CONFIG_DIR
+
             logger.setLevel(logging.DEBUG)
+            fh = logging.FileHandler(os.path.join(CONFIG_DIR, "streamrip.log"))
+            fh.setLevel(logging.DEBUG)
+            logger.addHandler(fh)
 
         super()._run(io)
 
