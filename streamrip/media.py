@@ -1417,7 +1417,7 @@ class Album(Tracklist, Media):
 
         parent_folder = kwargs.get("parent_folder", "StreamripDownloads")
         if self.folder_format:
-            self.folder = self._get_formatted_folder(parent_folder, self.quality)
+            self.folder = self._get_formatted_folder(parent_folder)
         else:
             self.folder = parent_folder
 
