@@ -118,6 +118,7 @@ class QobuzClient(Client):
         :type pwd: str
         :param kwargs: app_id: str, secrets: list, return_secrets: bool
         """
+        # TODO: make this faster
         secho(f"Logging into {self.source}", fg="green")
         email: str = kwargs["email"]
         pwd: str = kwargs["pwd"]
@@ -128,7 +129,7 @@ class QobuzClient(Client):
             logger.debug("Already logged in")
             return
 
-        if (kwargs.get("app_id") or kwargs.get("secrets")) in (None, [], ""):
+        if not (kwargs.get("app_id") or kwargs.get("secrets")):
             secho("Fetching tokens — this may take a few seconds.", fg="magenta")
             logger.info("Fetching tokens from Qobuz")
             spoofer = Spoofer()

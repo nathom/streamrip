@@ -157,6 +157,3 @@ progress_bar = "dainty"
 [misc]
 # Metadata to identify this config file. Do not change.
 version = "1.2"
-# Keep a file containing all of the debug logs for every use of streamrip
-# in the config directory
-log_file = false
