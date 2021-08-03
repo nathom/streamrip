@@ -58,7 +58,7 @@ rip url https://www.qobuz.com/us-en/album/back-in-black-ac-dc/0886444889841 http
 Download the album and convert it to `mp3`
 
 ```bash
-rip url --convert mp3 https://open.qobuz.com/album/0060253780968
+rip url --codec mp3 https://open.qobuz.com/album/0060253780968
 ```
 
 
