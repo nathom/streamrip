@@ -488,6 +488,14 @@ class RipCore(list):
             self._config_corrupted_message(err)
             exit()
 
+        # Do not include tracks that have (re)mix, live, karaoke in their titles
+        # within parentheses or brackets
+        # This will match somthing like "Test (Person Remix]" though, so its not perfect
+        banned_words_plain = re.compile(r"(?i)(?:(?:re)?mix|live|karaoke)")
+        banned_words = re.compile(
+            rf"(?i)[\(\[][^\)\]]*?(?:(?:re)?mix|live|karaoke)[^\)\]]*[\]\)]"
+        )
+
         def search_query(title, artist, playlist) -> bool:
             """Search for a query and add the first result to playlist.
 
@@ -503,7 +511,16 @@ class RipCore(list):
                     query = QUERY_FORMAT[lastfm_source].format(
                         title=title, artist=artist
                     )
-                    track = next(self.search(source, query, media_type="track"))
+                    query_is_clean = banned_words_plain.search(query) is None
+
+                    search_results = self.search(source, query, media_type="track")
+                    track = next(search_results)
+
+                    if query_is_clean:
+                        while banned_words.search(track["title"]) is not None:
+                            logger.debug("Track title banned for query=%s", query)
+                            track = next(search_results)
+
                     # Because the track is searched as a single we need to set
                     # this manually
                     track.part_of_tracklist = True
