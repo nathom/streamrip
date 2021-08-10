@@ -253,7 +253,7 @@ class Track(Media):
 
         self.path = os.path.join(gettempdir(), f"{hash(self.id)}_{self.quality}.tmp")
 
-    def download(
+    def download(  # noqa
         self,
         quality: int = 3,
         parent_folder: str = "StreamripDownloads",
@@ -549,7 +549,7 @@ class Track(Media):
             cover_url=cover_url,
         )
 
-    def tag(
+    def tag(  # noqa
         self,
         album_meta: dict = None,
         cover: Union[Picture, APIC, MP4Cover] = None,
@@ -1888,7 +1888,7 @@ class Artist(Tracklist, Media):
     >>> artist.download()
     """
 
-    downloaded_ids: set = set()
+    downloaded_ids: set
 
     def __init__(self, client: Client, **kwargs):
         """Create a new Artist object.
@@ -1899,6 +1899,7 @@ class Artist(Tracklist, Media):
         :param kwargs:
         """
         self.client = client
+        self.downloaded_ids = set()
 
         for k, v in kwargs.items():
             setattr(self, k, v)
@@ -2008,10 +2009,14 @@ class Artist(Tracklist, Media):
 
         kwargs.pop("parent_folder")
         # always an Album
-        item.download(
-            parent_folder=self.folder,
-            **kwargs,
-        )
+        try:
+            item.download(
+                parent_folder=self.folder,
+                **kwargs,
+            )
+        except PartialFailure:
+            pass
+
         self.downloaded_ids.update(item.downloaded_ids)
 
     @property
