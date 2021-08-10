@@ -148,6 +148,10 @@ If you're new to Git, follow these steps to open your first Pull Request (PR):
 
 Please document any functions or obscure lines of code.
 
+### The Wiki
+
+To help out `streamrip` users that may be having trouble, consider contributing some information to the wiki. 
+Nothing is too obvious and everything is appreciated.
 
 ## Acknowledgements
 
