@@ -534,7 +534,7 @@ class DeezerClient(Client):
         dl_info["fallback_id"] = safe_get(track_info, "FALLBACK", "SNG_ID")
 
         format_info = get_quality(quality, "deezer")
-        assert isinstance(format_info, tuple)
+        assert isinstance(format_info, tuple)  # for typing
         format_no, format_str = format_info
 
         dl_info["size_to_quality"] = {

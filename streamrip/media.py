@@ -1561,6 +1561,8 @@ class Album(Tracklist, Media):
             )
             if stat1 is not None and stat2 is not None
         )
+        logger.debug("Sampling rate, bit depth = %s", stats)
+
         if not stats:
             stats = (None, None)
 
