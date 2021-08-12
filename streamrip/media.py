@@ -1426,26 +1426,27 @@ class Album(Tracklist, Media):
         self.download_message()
 
         # choose optimal cover size and download it
-        secho("Downloading cover art", bold=True)
         cover_path = os.path.join(gettempdir(), f"cover_{hash(self)}.jpg")
         embed_cover_size = kwargs.get("embed_cover_size", "large")
+        secho(f"Downloading {embed_cover_size} cover art", bold=True)
 
         assert (
             embed_cover_size in self.cover_urls
         ), f"Invalid cover size. Must be in {self.cover_urls.keys()}"
 
         embed_cover_url = self.cover_urls[embed_cover_size]
+        logger.debug("Chosen cover url: %s", embed_cover_url)
         if not os.path.exists(cover_path):
-            cover_url = (
-                embed_cover_url
-                if embed_cover_url is None
-                else tuple(filter(None, self.cover_urls.values()))[0]
-            )
+            if embed_cover_url is None:
+                embed_cover_url = next(filter(None, self.cover_urls.values()))
 
-            _cover_download(cover_url, cover_path)
+            logger.debug("Downloading cover from url %s", embed_cover_url)
+
+            _cover_download(embed_cover_url, cover_path)
 
         hires_cov_path = os.path.join(self.folder, "cover.jpg")
         if kwargs.get("keep_hires_cover", True) and not os.path.exists(hires_cov_path):
+            logger.debug("Downloading hires cover")
             _cover_download(self.cover_urls["original"], hires_cov_path)
 
         cover_size = os.path.getsize(cover_path)
@@ -1464,6 +1465,7 @@ class Album(Tracklist, Media):
         )
 
         if kwargs.get("embed_cover", True):  # embed by default
+            logger.debug("Getting cover_obj from %s", cover_path)
             # container generated when formatting folder name
             self.cover_obj = self.get_cover_obj(
                 cover_path, self.container, self.client.source

@@ -219,7 +219,7 @@ class RipCore(list):
             "parent_folder": session["downloads"]["folder"],
             "folder_format": filepaths["folder_format"],
             "track_format": filepaths["track_format"],
-            "embed_cover": session["artwork"]["embed"],
+            "embed_cover": artwork["embed"],
             "embed_cover_size": artwork["size"],
             "keep_hires_cover": artwork["keep_hires_cover"],
             "set_playlist_to_album": session["metadata"]["set_playlist_to_album"],
