@@ -46,6 +46,7 @@ class DownloadCommand(Command):
 
         # Use a thread so that it doesn't slow down startup
         update_check = threading.Thread(target=is_outdated, daemon=True)
+        update_check.start()
 
         config = Config()
         path, codec, quality, no_db = clean_options(
@@ -83,16 +84,12 @@ class DownloadCommand(Command):
         elif not urls and path is None:
             self.line("<error>Must pass arguments. See </><cmd>rip url -h</cmd>.")
 
-        try:
-            update_check.join()
-            if outdated:
-                self.line(
-                    "<info>A new version of streamrip is available! Run</info> "
-                    "<cmd>pip3 install streamrip --upgrade to update</cmd>"
-                )
-        except RuntimeError as e:
-            logger.debug("Update check error: %s", e)
-            pass
+        update_check.join()
+        if outdated:
+            self.line(
+                "<info>A new version of streamrip is available! Run</info> "
+                "<cmd>pip3 install streamrip --upgrade to update</cmd>"
+            )
 
         return 0
 

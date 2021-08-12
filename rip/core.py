@@ -8,6 +8,7 @@ import re
 from getpass import getpass
 from hashlib import md5
 from string import Formatter
+import threading
 from typing import Dict, Generator, List, Optional, Tuple, Type, Union
 
 import requests
@@ -385,8 +386,15 @@ class RipCore(list):
                 creds = self.config.creds(client.source)
             except MissingCredentials:
                 logger.debug("Credentials are missing. Prompting..")
+                get_tokens = threading.Thread(
+                    target=client._get_app_id_and_secrets, daemon=True
+                )
+                get_tokens.start()
+
                 self.prompt_creds(client.source)
                 creds = self.config.creds(client.source)
+
+                get_tokens.join()
 
         if (
             client.source == "qobuz"
