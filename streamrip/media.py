@@ -1890,7 +1890,7 @@ class Artist(Tracklist, Media):
     >>> artist.download()
     """
 
-    downloaded_ids: set
+    downloaded_ids: set = set()
 
     def __init__(self, client: Client, **kwargs):
         """Create a new Artist object.
