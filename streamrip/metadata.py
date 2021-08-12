@@ -347,7 +347,7 @@ class TrackMetadata:
                 genres: Iterable = re.findall(r"([^\u2192\/]+)", "/".join(self._genres))
                 genres = set(genres)
             elif self.__source == "deezer":
-                genres = ", ".join(g["name"] for g in self._genres)
+                genres = (g["name"] for g in self._genres)
 
             return ", ".join(genres)
 
