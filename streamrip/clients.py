@@ -529,7 +529,7 @@ class DeezerClient(Client):
         dl_info: Dict[str, Any] = {"quality": quality}
 
         track_info = self.client.gw.get_track(meta_id)
-        logger.debug("Track info: %s", pformat(track_info))
+        logger.debug("Track info: %s", track_info)
 
         dl_info["fallback_id"] = safe_get(track_info, "FALLBACK", "SNG_ID")
 
@@ -553,7 +553,7 @@ class DeezerClient(Client):
             )
 
         dl_info["url"] = url
-        logger.debug(pformat(dl_info))
+        logger.debug("dl_info %s", dl_info)
         return dl_info
 
     def _get_encrypted_file_url(
@@ -989,8 +989,14 @@ class TidalClient(Client):
 
             item["tracks"] = [item["item"] for item in resp["items"]]
         elif media_type == "artist":
-            resp = self._api_request(f"{url}/albums")
-            item["albums"] = resp["items"]
+            logger.debug("filtering eps")
+            album_resp = self._api_request(f"{url}/albums")
+            ep_resp = self._api_request(
+                f"{url}/albums", params={"filter": "EPSANDSINGLES"}
+            )
+
+            item["albums"] = album_resp["items"]
+            item["albums"].extend(ep_resp["items"])
 
         return item
 
