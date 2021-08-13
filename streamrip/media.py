@@ -783,6 +783,8 @@ class Track(Media):
 class Video(Media):
     """Only for Tidal."""
 
+    downloaded_ids: set = set()
+
     def __init__(self, client: Client, id: str, **kwargs):
         """Initialize a Video object.
 
