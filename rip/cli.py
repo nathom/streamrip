@@ -44,6 +44,7 @@ class DownloadCommand(Command):
 
     def handle(self):
         global outdated
+        global newest_version
 
         # Use a thread so that it doesn't slow down startup
         update_check = threading.Thread(target=is_outdated, daemon=True)
@@ -102,7 +103,7 @@ class DownloadCommand(Command):
             )
 
             md_header = re.compile(r"#\s+(.+)")
-            bullet_point = re.compile(r"-\s*(.+)")
+            bullet_point = re.compile(r"-\s+(.+)")
             code = re.compile(r"`([^`]+)`")
             issue_reference = re.compile(r"(#\d+)")
 

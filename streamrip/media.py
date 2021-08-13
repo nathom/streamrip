@@ -466,7 +466,7 @@ class Track(Media):
     def download_cover(self, width=999999, height=999999):
         """Download the cover art, if cover_url is given."""
         self.cover_path = os.path.join(gettempdir(), f"cover{hash(self.cover_url)}.jpg")
-        logger.debug(f"Downloading cover from {self.cover_url}")
+        logger.debug("Downloading cover from %s", self.cover_url)
 
         if not os.path.exists(self.cover_path):
             _cover_download(self.cover_url, self.cover_path)
@@ -1193,7 +1193,7 @@ class Tracklist(list):
                     kwargs["sampling_rate"],
                 )
             else:
-                logger.debug(f"Downsampling to {sr/1000}kHz")
+                logger.debug("Downsampling to %skHz", sr / 1000)
 
         for track in self:
             track.convert(codec, **kwargs)
@@ -1430,7 +1430,7 @@ class Album(Tracklist, Media):
         # choose optimal cover size and download it
         cover_path = os.path.join(gettempdir(), f"cover_{hash(self)}.jpg")
         embed_cover_size = kwargs.get("embed_cover_size", "large")
-        secho(f"Downloading {embed_cover_size} cover art", bold=True)
+        secho(f"Downloading cover art ({embed_cover_size})", bold=True)
 
         assert (
             embed_cover_size in self.cover_urls
@@ -1775,7 +1775,7 @@ class Playlist(Tracklist, Media):
                     )
                 )
 
-        logger.debug(f"Loaded {len(self)} tracks from playlist {self.name}")
+        logger.debug("Loaded %d tracks from playlist %s", len(self), self.name)
 
     def _prepare_download(self, parent_folder: str = "StreamripDownloads", **kwargs):
         if kwargs.get("folder_format"):
@@ -1978,8 +1978,8 @@ class Artist(Tracklist, Media):
             self.folder = parent_folder
 
         logger.debug("Artist folder: %s", folder)
-        logger.debug(f"Length of tracklist {len(self)}")
-        logger.debug(f"Filters: {filters}")
+        logger.debug("Length of tracklist %d", len(self))
+        logger.debug("Filters: %s", filters)
 
         final: Iterable
         if "repeats" in filters:

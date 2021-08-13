@@ -459,7 +459,7 @@ class RipCore(list):
             for item, url in zip(soundcloud_items, soundcloud_urls)
         )
 
-        logger.debug(f"Parsed urls: {parsed}")
+        logger.debug("Parsed urls: %s", parsed)
 
         return parsed
 
@@ -501,7 +501,7 @@ class RipCore(list):
         # This will match somthing like "Test (Person Remix]" though, so its not perfect
         banned_words_plain = re.compile(r"(?i)(?:(?:re)?mix|live|karaoke)")
         banned_words = re.compile(
-            rf"(?i)[\(\[][^\)\]]*?(?:(?:re)?mix|live|karaoke)[^\)\]]*[\]\)]"
+            r"(?i)[\(\[][^\)\]]*?(?:(?:re)?mix|live|karaoke)[^\)\]]*[\]\)]"
         )
 
         def search_query(title, artist, playlist) -> bool:

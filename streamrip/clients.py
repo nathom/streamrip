@@ -681,7 +681,7 @@ class DeezloaderClient(Client):
         """
         quality = min(DeezloaderClient.max_quality, quality)
         url = f"{DEEZER_DL}/{get_quality(quality, 'deezloader')}/{DEEZER_BASE}/track/{meta_id}"
-        logger.debug(f"Download url {url}")
+        logger.debug("Download url %s", url)
         return {"url": url}
 
 
