@@ -253,7 +253,7 @@ class Track(Media):
 
         self.path = os.path.join(gettempdir(), f"{hash(self.id)}_{self.quality}.tmp")
 
-    def download(
+    def download(  # noqa
         self,
         quality: int = 3,
         parent_folder: str = "StreamripDownloads",
@@ -466,7 +466,7 @@ class Track(Media):
     def download_cover(self, width=999999, height=999999):
         """Download the cover art, if cover_url is given."""
         self.cover_path = os.path.join(gettempdir(), f"cover{hash(self.cover_url)}.jpg")
-        logger.debug(f"Downloading cover from {self.cover_url}")
+        logger.debug("Downloading cover from %s", self.cover_url)
 
         if not os.path.exists(self.cover_path):
             _cover_download(self.cover_url, self.cover_path)
@@ -549,7 +549,7 @@ class Track(Media):
             cover_url=cover_url,
         )
 
-    def tag(
+    def tag(  # noqa
         self,
         album_meta: dict = None,
         cover: Union[Picture, APIC, MP4Cover] = None,
@@ -782,6 +782,8 @@ class Track(Media):
 
 class Video(Media):
     """Only for Tidal."""
+
+    downloaded_ids: set = set()
 
     def __init__(self, client: Client, id: str, **kwargs):
         """Initialize a Video object.
@@ -1191,7 +1193,7 @@ class Tracklist(list):
                     kwargs["sampling_rate"],
                 )
             else:
-                logger.debug(f"Downsampling to {sr/1000}kHz")
+                logger.debug("Downsampling to %skHz", sr / 1000)
 
         for track in self:
             track.convert(codec, **kwargs)
@@ -1426,26 +1428,27 @@ class Album(Tracklist, Media):
         self.download_message()
 
         # choose optimal cover size and download it
-        secho("Downloading cover art", bold=True)
         cover_path = os.path.join(gettempdir(), f"cover_{hash(self)}.jpg")
         embed_cover_size = kwargs.get("embed_cover_size", "large")
+        secho(f"Downloading cover art ({embed_cover_size})", bold=True)
 
         assert (
             embed_cover_size in self.cover_urls
         ), f"Invalid cover size. Must be in {self.cover_urls.keys()}"
 
         embed_cover_url = self.cover_urls[embed_cover_size]
+        logger.debug("Chosen cover url: %s", embed_cover_url)
         if not os.path.exists(cover_path):
-            cover_url = (
-                embed_cover_url
-                if embed_cover_url is None
-                else tuple(filter(None, self.cover_urls.values()))[0]
-            )
+            if embed_cover_url is None:
+                embed_cover_url = next(filter(None, self.cover_urls.values()))
 
-            _cover_download(cover_url, cover_path)
+            logger.debug("Downloading cover from url %s", embed_cover_url)
+
+            _cover_download(embed_cover_url, cover_path)
 
         hires_cov_path = os.path.join(self.folder, "cover.jpg")
         if kwargs.get("keep_hires_cover", True) and not os.path.exists(hires_cov_path):
+            logger.debug("Downloading hires cover")
             _cover_download(self.cover_urls["original"], hires_cov_path)
 
         cover_size = os.path.getsize(cover_path)
@@ -1464,6 +1467,7 @@ class Album(Tracklist, Media):
         )
 
         if kwargs.get("embed_cover", True):  # embed by default
+            logger.debug("Getting cover_obj from %s", cover_path)
             # container generated when formatting folder name
             self.cover_obj = self.get_cover_obj(
                 cover_path, self.container, self.client.source
@@ -1561,6 +1565,8 @@ class Album(Tracklist, Media):
             )
             if stat1 is not None and stat2 is not None
         )
+        logger.debug("Sampling rate, bit depth = %s", stats)
+
         if not stats:
             stats = (None, None)
 
@@ -1769,7 +1775,7 @@ class Playlist(Tracklist, Media):
                     )
                 )
 
-        logger.debug(f"Loaded {len(self)} tracks from playlist {self.name}")
+        logger.debug("Loaded %d tracks from playlist %s", len(self), self.name)
 
     def _prepare_download(self, parent_folder: str = "StreamripDownloads", **kwargs):
         if kwargs.get("folder_format"):
@@ -1899,6 +1905,7 @@ class Artist(Tracklist, Media):
         :param kwargs:
         """
         self.client = client
+        self.downloaded_ids = set()
 
         for k, v in kwargs.items():
             setattr(self, k, v)
@@ -1971,8 +1978,8 @@ class Artist(Tracklist, Media):
             self.folder = parent_folder
 
         logger.debug("Artist folder: %s", folder)
-        logger.debug(f"Length of tracklist {len(self)}")
-        logger.debug(f"Filters: {filters}")
+        logger.debug("Length of tracklist %d", len(self))
+        logger.debug("Filters: %s", filters)
 
         final: Iterable
         if "repeats" in filters:
@@ -2008,10 +2015,14 @@ class Artist(Tracklist, Media):
 
         kwargs.pop("parent_folder")
         # always an Album
-        item.download(
-            parent_folder=self.folder,
-            **kwargs,
-        )
+        try:
+            item.download(
+                parent_folder=self.folder,
+                **kwargs,
+            )
+        except PartialFailure:
+            pass
+
         self.downloaded_ids.update(item.downloaded_ids)
 
     @property

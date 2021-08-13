@@ -180,6 +180,11 @@ __QUALITY_MAP: Dict[str, Dict[int, Union[int, str, Tuple[int, str]]]] = {
         2: "LOSSLESS",  # CD Quality
         3: "HI_RES",  # MQA
     },
+    "deezloader": {
+        0: 128,
+        1: 320,
+        2: 1411,
+    },
 }
 
 

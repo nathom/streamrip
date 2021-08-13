@@ -6,6 +6,7 @@ Credits to Dash for this tool.
 import base64
 import re
 from collections import OrderedDict
+from typing import List
 
 import requests
 
@@ -50,7 +51,7 @@ class Spoofer:
 
         raise Exception("Could not find app id.")
 
-    def get_secrets(self):
+    def get_secrets(self) -> List[str]:
         """Get secrets."""
         seed_matches = re.finditer(self.seed_timezone_regex, self.bundle)
         secrets = OrderedDict()
@@ -81,6 +82,6 @@ class Spoofer:
                 "".join(secrets[secret_pair])[:-44]
             ).decode("utf-8")
 
-        vals = list(secrets.values())
+        vals: List[str] = list(secrets.values())
         vals.remove("")
         return vals

@@ -45,7 +45,7 @@ class Database:
             )
             command = f"CREATE TABLE {self.name} ({params})"
 
-            logger.debug(f"executing {command}")
+            logger.debug("executing %s", command)
 
             conn.execute(command)
 

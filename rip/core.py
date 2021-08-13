@@ -8,6 +8,7 @@ import re
 from getpass import getpass
 from hashlib import md5
 from string import Formatter
+import threading
 from typing import Dict, Generator, List, Optional, Tuple, Type, Union
 
 import requests
@@ -219,7 +220,7 @@ class RipCore(list):
             "parent_folder": session["downloads"]["folder"],
             "folder_format": filepaths["folder_format"],
             "track_format": filepaths["track_format"],
-            "embed_cover": session["artwork"]["embed"],
+            "embed_cover": artwork["embed"],
             "embed_cover_size": artwork["size"],
             "keep_hires_cover": artwork["keep_hires_cover"],
             "set_playlist_to_album": session["metadata"]["set_playlist_to_album"],
@@ -367,7 +368,7 @@ class RipCore(list):
         if client.source == "deezer" and creds["arl"] == "":
             if self.config.session["deezer"]["deezloader_warnings"]:
                 secho(
-                    "Falling back to Deezloader (max 320kbps MP3). If you have a subscription, run ",
+                    "Falling back to Deezloader (unstable). If you have a subscription, run ",
                     nl=False,
                     fg="yellow",
                 )
@@ -385,8 +386,15 @@ class RipCore(list):
                 creds = self.config.creds(client.source)
             except MissingCredentials:
                 logger.debug("Credentials are missing. Prompting..")
+                get_tokens = threading.Thread(
+                    target=client._get_app_id_and_secrets, daemon=True
+                )
+                get_tokens.start()
+
                 self.prompt_creds(client.source)
                 creds = self.config.creds(client.source)
+
+                get_tokens.join()
 
         if (
             client.source == "qobuz"
@@ -451,7 +459,7 @@ class RipCore(list):
             for item, url in zip(soundcloud_items, soundcloud_urls)
         )
 
-        logger.debug(f"Parsed urls: {parsed}")
+        logger.debug("Parsed urls: %s", parsed)
 
         return parsed
 
@@ -493,7 +501,7 @@ class RipCore(list):
         # This will match somthing like "Test (Person Remix]" though, so its not perfect
         banned_words_plain = re.compile(r"(?i)(?:(?:re)?mix|live|karaoke)")
         banned_words = re.compile(
-            rf"(?i)[\(\[][^\)\]]*?(?:(?:re)?mix|live|karaoke)[^\)\]]*[\]\)]"
+            r"(?i)[\(\[][^\)\]]*?(?:(?:re)?mix|live|karaoke)[^\)\]]*[\]\)]"
         )
 
         def search_query(title, artist, playlist) -> bool:

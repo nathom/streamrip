@@ -8,7 +8,7 @@ import logging
 import re
 import time
 from abc import ABC, abstractmethod
-from pprint import pformat
+import concurrent.futures
 from typing import Any, Dict, Generator, Optional, Sequence, Tuple, Union
 
 import deezer
@@ -129,23 +129,17 @@ class QobuzClient(Client):
             logger.debug("Already logged in")
             return
 
-        if not (kwargs.get("app_id") or kwargs.get("secrets")):
-            secho("Fetching tokens — this may take a few seconds.", fg="magenta")
-            logger.info("Fetching tokens from Qobuz")
-            spoofer = Spoofer()
-            kwargs["app_id"] = spoofer.get_app_id()
-            kwargs["secrets"] = spoofer.get_secrets()
-
-        self.app_id = str(kwargs["app_id"])  # Ensure it is a string
-        self.secrets = kwargs["secrets"]
-
-        self.session = gen_threadsafe_session(
-            headers={"User-Agent": AGENT, "X-App-Id": self.app_id}
-        )
+        if not kwargs.get("app_id") or not kwargs.get("secrets"):
+            self._get_app_id_and_secrets()  # can be async
+        else:
+            self.app_id, self.secrets = str(kwargs["app_id"]), kwargs["secrets"]
+            self.session = gen_threadsafe_session(
+                headers={"User-Agent": AGENT, "X-App-Id": self.app_id}
+            )
+            self._validate_secrets()
 
         self._api_login(email, pwd)
         logger.debug("Logged into Qobuz")
-        self._validate_secrets()
         logger.debug("Qobuz client is ready to use")
 
         self.logged_in = True
@@ -218,6 +212,18 @@ class QobuzClient(Client):
 
     # ---------- Private Methods ---------------
 
+    def _get_app_id_and_secrets(self):
+        if not hasattr(self, "app_id") or not hasattr(self, "secrets"):
+            spoofer = Spoofer()
+            self.app_id, self.secrets = str(spoofer.get_app_id()), spoofer.get_secrets()
+
+        if not hasattr(self, "sec"):
+            if not hasattr(self, "session"):
+                self.session = gen_threadsafe_session(
+                    headers={"User-Agent": AGENT, "X-App-Id": self.app_id}
+                )
+            self._validate_secrets()
+
     def _gen_pages(self, epoint: str, params: dict) -> Generator:
         """When there are multiple pages of results, this yields them.
 
@@ -249,11 +255,17 @@ class QobuzClient(Client):
 
     def _validate_secrets(self):
         """Check if the secrets are usable."""
-        for secret in self.secrets:
-            if self._test_secret(secret):
-                self.sec = secret
-                logger.debug("Working secret and app_id: %s - %s", secret, self.app_id)
-                break
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            futures = [
+                executor.submit(self._test_secret, secret) for secret in self.secrets
+            ]
+
+            for future in concurrent.futures.as_completed(futures):
+                result = future.result()
+                if result is not None:
+                    self.sec = result
+                    break
+
         if not hasattr(self, "sec"):
             raise InvalidAppSecretError(f"Invalid secrets: {self.secrets}")
 
@@ -386,7 +398,7 @@ class QobuzClient(Client):
         else:
             raise InvalidAppSecretError("Cannot find app secret")
 
-        quality = int(get_quality(quality, self.source))
+        quality = int(get_quality(quality, self.source))  # type: ignore
         r_sig = f"trackgetFileUrlformat_id{quality}intentstreamtrack_id{track_id}{unix_ts}{secret}"
         logger.debug("Raw request signature: %s", r_sig)
         r_sig_hashed = hashlib.md5(r_sig.encode("utf-8")).hexdigest()
@@ -423,7 +435,7 @@ class QobuzClient(Client):
             logger.error("Problem getting JSON. Status code: %s", r.status_code)
             raise
 
-    def _test_secret(self, secret: str) -> bool:
+    def _test_secret(self, secret: str) -> Optional[str]:
         """Test the authenticity of a secret.
 
         :param secret:
@@ -432,10 +444,10 @@ class QobuzClient(Client):
         """
         try:
             self._api_get_file_url("19512574", sec=secret)
-            return True
+            return secret
         except InvalidAppSecretError as error:
             logger.debug("Test for %s secret didn't work: %s", secret, error)
-            return False
+            return None
 
 
 class DeezerClient(Client):
@@ -529,12 +541,12 @@ class DeezerClient(Client):
         dl_info: Dict[str, Any] = {"quality": quality}
 
         track_info = self.client.gw.get_track(meta_id)
-        logger.debug("Track info: %s", pformat(track_info))
+        logger.debug("Track info: %s", track_info)
 
         dl_info["fallback_id"] = safe_get(track_info, "FALLBACK", "SNG_ID")
 
         format_info = get_quality(quality, "deezer")
-        assert isinstance(format_info, tuple)
+        assert isinstance(format_info, tuple)  # for typing
         format_no, format_str = format_info
 
         dl_info["size_to_quality"] = {
@@ -553,7 +565,7 @@ class DeezerClient(Client):
             )
 
         dl_info["url"] = url
-        logger.debug(pformat(dl_info))
+        logger.debug("dl_info %s", dl_info)
         return dl_info
 
     def _get_encrypted_file_url(
@@ -602,7 +614,7 @@ class DeezloaderClient(Client):
     """DeezloaderClient."""
 
     source = "deezer"
-    max_quality = 1
+    max_quality = 2
 
     def __init__(self):
         """Create a DeezloaderClient."""
@@ -659,7 +671,7 @@ class DeezloaderClient(Client):
         return item
 
     @staticmethod
-    def get_file_url(meta_id: Union[str, int], quality: int = 6):
+    def get_file_url(meta_id: Union[str, int], quality: int = 2):
         """Get downloadable url for a track.
 
         :param meta_id: The track ID.
@@ -667,9 +679,9 @@ class DeezloaderClient(Client):
         :param quality:
         :type quality: int
         """
-        quality = min(DEEZER_MAX_Q, quality)
-        url = f"{DEEZER_DL}/{get_quality(quality, 'deezer')}/{DEEZER_BASE}/track/{meta_id}"
-        logger.debug(f"Download url {url}")
+        quality = min(DeezloaderClient.max_quality, quality)
+        url = f"{DEEZER_DL}/{get_quality(quality, 'deezloader')}/{DEEZER_BASE}/track/{meta_id}"
+        logger.debug("Download url %s", url)
         return {"url": url}
 
 
@@ -989,8 +1001,14 @@ class TidalClient(Client):
 
             item["tracks"] = [item["item"] for item in resp["items"]]
         elif media_type == "artist":
-            resp = self._api_request(f"{url}/albums")
-            item["albums"] = resp["items"]
+            logger.debug("filtering eps")
+            album_resp = self._api_request(f"{url}/albums")
+            ep_resp = self._api_request(
+                f"{url}/albums", params={"filter": "EPSANDSINGLES"}
+            )
+
+            item["albums"] = album_resp["items"]
+            item["albums"].extend(ep_resp["items"])
 
         return item
 

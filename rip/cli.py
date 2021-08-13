@@ -18,6 +18,7 @@ logging.basicConfig(level="WARNING")
 logger = logging.getLogger("streamrip")
 
 outdated = False
+newest_version = __version__
 
 
 class DownloadCommand(Command):
@@ -43,9 +44,11 @@ class DownloadCommand(Command):
 
     def handle(self):
         global outdated
+        global newest_version
 
         # Use a thread so that it doesn't slow down startup
         update_check = threading.Thread(target=is_outdated, daemon=True)
+        update_check.start()
 
         config = Config()
         path, codec, quality, no_db = clean_options(
@@ -83,16 +86,39 @@ class DownloadCommand(Command):
         elif not urls and path is None:
             self.line("<error>Must pass arguments. See </><cmd>rip url -h</cmd>.")
 
-        try:
-            update_check.join()
-            if outdated:
-                self.line(
-                    "<info>A new version of streamrip is available! Run</info> "
-                    "<cmd>pip3 install streamrip --upgrade to update</cmd>"
-                )
-        except RuntimeError as e:
-            logger.debug("Update check error: %s", e)
-            pass
+        update_check.join()
+        if outdated:
+            import subprocess
+            import re
+
+            self.line(
+                f"<info>Updating streamrip to <title>v{newest_version}</title>...</info>\n"
+            )
+
+            # update in background
+            update_p = subprocess.Popen(
+                ["pip3", "install", "streamrip", "--upgrade"],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+            )
+
+            md_header = re.compile(r"#\s+(.+)")
+            bullet_point = re.compile(r"-\s+(.+)")
+            code = re.compile(r"`([^`]+)`")
+            issue_reference = re.compile(r"(#\d+)")
+
+            release_notes = requests.get(
+                "https://api.github.com/repos/nathom/streamrip/releases/latest"
+            ).json()["body"]
+
+            release_notes = md_header.sub(r"<header>\1</header>", release_notes)
+            release_notes = bullet_point.sub(r"<options=bold>•</> \1", release_notes)
+            release_notes = code.sub(r"<cmd>\1</cmd>", release_notes)
+            release_notes = issue_reference.sub(r"<options=bold>\1</>", release_notes)
+
+            self.line(release_notes)
+
+            update_p.wait()
 
         return 0
 
@@ -451,6 +477,7 @@ class Application(BaseApplication):
         formatter.set_style("path", Style("green", options=["bold"]))
         formatter.set_style("cmd", Style("magenta"))
         formatter.set_style("title", Style("yellow", options=["bold"]))
+        formatter.set_style("header", Style("yellow", options=["bold", "underline"]))
         io.output.set_formatter(formatter)
         io.error_output.set_formatter(formatter)
 
@@ -494,8 +521,10 @@ def clean_options(*opts):
 
 def is_outdated():
     global outdated
+    global newest_version
     r = requests.get("https://pypi.org/pypi/streamrip/json").json()
-    outdated = r["info"]["version"] != __version__
+    newest_version = r["info"]["version"]
+    outdated = newest_version != __version__
 
 
 def main():

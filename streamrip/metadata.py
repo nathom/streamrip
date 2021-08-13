@@ -63,6 +63,7 @@ class TrackMetadata:
         :type album: Optional[dict]
         """
         # embedded information
+        # TODO: add this to static attrs
         self.title: str
         self.album: str
         self.albumartist: str
@@ -193,13 +194,14 @@ class TrackMetadata:
             self.albumartist = safe_get(resp, "artist", "name")
             self.label = resp.get("label")
             self.url = resp.get("link")
+            self.explicit = bool(resp.get("parental_warning"))
 
             # not embedded
-            self.explicit = bool(resp.get("parental_warning"))
             self.quality = 2
-            self.bit_depth = None
+            self.bit_depth = 16
+            self.sampling_rate = 44100
+
             self.cover_urls = get_cover_urls(resp, self.__source)
-            self.sampling_rate = None
             self.streamable = True
 
         elif self.__source == "soundcloud":
@@ -345,7 +347,7 @@ class TrackMetadata:
                 genres: Iterable = re.findall(r"([^\u2192\/]+)", "/".join(self._genres))
                 genres = set(genres)
             elif self.__source == "deezer":
-                genres = ", ".join(g["name"] for g in self._genres)
+                genres = (g["name"] for g in self._genres)
 
             return ", ".join(genres)
 
