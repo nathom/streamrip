@@ -368,7 +368,7 @@ class RipCore(list):
         if client.source == "deezer" and creds["arl"] == "":
             if self.config.session["deezer"]["deezloader_warnings"]:
                 secho(
-                    "Falling back to Deezloader (max 320kbps MP3). If you have a subscription, run ",
+                    "Falling back to Deezloader (unstable). If you have a subscription, run ",
                     nl=False,
                     fg="yellow",
                 )

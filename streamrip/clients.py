@@ -614,7 +614,7 @@ class DeezloaderClient(Client):
     """DeezloaderClient."""
 
     source = "deezer"
-    max_quality = 1
+    max_quality = 2
 
     def __init__(self):
         """Create a DeezloaderClient."""
@@ -671,7 +671,7 @@ class DeezloaderClient(Client):
         return item
 
     @staticmethod
-    def get_file_url(meta_id: Union[str, int], quality: int = 6):
+    def get_file_url(meta_id: Union[str, int], quality: int = 2):
         """Get downloadable url for a track.
 
         :param meta_id: The track ID.
@@ -679,8 +679,8 @@ class DeezloaderClient(Client):
         :param quality:
         :type quality: int
         """
-        quality = min(DEEZER_MAX_Q, quality)
-        url = f"{DEEZER_DL}/{get_quality(quality, 'deezer')}/{DEEZER_BASE}/track/{meta_id}"
+        quality = min(DeezloaderClient.max_quality, quality)
+        url = f"{DEEZER_DL}/{get_quality(quality, 'deezloader')}/{DEEZER_BASE}/track/{meta_id}"
         logger.debug(f"Download url {url}")
         return {"url": url}
 
