@@ -50,7 +50,8 @@ token_expiry = ""
 # are automatically limited to quality = 1
 quality = 2
 # An authentication cookie that allows streamrip to use your Deezer account
-# See [ADD LINK] for instructions on how to find this
+# See https://github.com/nathom/streamrip/wiki/Finding-Your-Deezer-ARL-Cookie
+# for instructions on how to find this
 arl = ""
 # This allows for free 320kbps MP3 downloads from Deezer
 # If an arl is provided, deezloader is never used
@@ -156,4 +157,4 @@ progress_bar = "dainty"
 
 [misc]
 # Metadata to identify this config file. Do not change.
-version = "1.2"
+version = "1.3"
