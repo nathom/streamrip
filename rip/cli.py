@@ -35,7 +35,7 @@ class DownloadCommand(Command):
 
     help = (
         "\nDownload <title>Dreams</title> by <title>Fleetwood Mac</title>:\n"
-        "$ <cmd>rip url https://www.deezer.com/en/track/63480987</cmd>\n\n"
+        "$ <cmd>rip url https://www.deezer.com/us/track/67549262</cmd>\n\n"
         "Batch download urls from a text file named <path>urls.txt</path>:\n"
         "$ <cmd>rip url --file urls.txt</cmd>\n\n"
         "For more information on Quality IDs, see\n"

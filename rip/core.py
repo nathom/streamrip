@@ -373,7 +373,7 @@ class RipCore(list):
                     fg="yellow",
                 )
                 secho("rip config --deezer ", nl=False, bold=True)
-                secho("to download FLAC files.\n\n", fg="yellow")
+                secho("to log in.", fg="yellow")
             raise DeezloaderFallback
 
         while True:
