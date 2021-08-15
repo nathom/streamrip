@@ -5,10 +5,10 @@ import html
 import logging
 import os
 import re
+import threading
 from getpass import getpass
 from hashlib import md5
 from string import Formatter
-import threading
 from typing import Dict, Generator, List, Optional, Tuple, Type, Union
 
 import requests
@@ -248,6 +248,7 @@ class RipCore(list):
         if max_items is None:
             max_items = float("inf")
 
+        self.db = db.Downloads(None, dummy=True)
         if self.failed_db.is_dummy:
             secho(
                 "Failed downloads database must be enabled in the config file "
