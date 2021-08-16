@@ -1002,6 +1002,12 @@ class YoutubeVideo(Media):
         """
         pass
 
+    def convert(self, *args, **kwargs):
+        raise NotImplementedError
+
+    def __repr__(self, *args, **kwargs):
+        return f"YoutubeVideo({self.url})"
+
     def __bool__(self):
         """Return True."""
         return True
