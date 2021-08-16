@@ -1131,8 +1131,8 @@ class SoundCloudClient(Client):
             raise Exception
 
         if track["downloadable"] and track["has_downloads_left"]:
-            r = self._get(f"tracks/{track['id']}/download", resp_obj=True)
-            return {"url": r.json()["redirectUri"], "type": "original"}
+            r = self._get(f"tracks/{track['id']}/download")[0]
+            return {"url": r["redirectUri"], "type": "original"}
 
         else:
             url = None
@@ -1166,7 +1166,7 @@ class SoundCloudClient(Client):
         resp, _ = self._get(f"search/{media_type}s", params=params)
         return resp
 
-    def _get(self, path, params=None, no_base=False, resp_obj=False):
+    def _get(self, path, params=None, no_base=False) -> Tuple[dict, int]:
         """Send a request to the SoundCloud API.
 
         :param path:

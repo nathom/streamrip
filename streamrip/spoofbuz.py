@@ -36,6 +36,7 @@ class Spoofer:
             r'<script src="(/resources/\d+\.\d+\.\d+-[a-z]\d{3}/bundle\.js)"></script>',
             login_page,
         )
+        assert bundle_url_match is not None
         bundle_url = bundle_url_match.group(1)
         bundle_req = requests.get("https://play.qobuz.com" + bundle_url)
         self.bundle = bundle_req.text
