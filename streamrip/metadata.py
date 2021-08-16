@@ -49,6 +49,39 @@ class TrackMetadata:
         * disctotal
     """
 
+    title: str
+    albumartist: str
+    composer: Optional[str] = None
+    albumcomposer: Optional[str] = None
+    comment: Optional[str] = None
+    description: Optional[str] = None
+    purchase_date: Optional[str] = None
+    date: Optional[str] = None
+    grouping: Optional[str] = None
+    lyrics: Optional[str] = None
+    encoder: Optional[str] = None
+    compilation: Optional[str] = None
+    cover: Optional[str] = None
+    tracktotal: Optional[int] = None
+    tracknumber: Optional[int] = None
+    discnumber: Optional[int] = None
+    disctotal: Optional[int] = None
+
+    # not included in tags
+    explicit: Optional[bool] = False
+    quality: Optional[int] = None
+    sampling_rate: Optional[int] = None
+    bit_depth: Optional[int] = None
+    booklets = None
+    cover_urls = Optional[OrderedDict]
+    work: Optional[str]
+    id: Optional[str]
+
+    # Internals
+    _artist: Optional[str] = None
+    _copyright: Optional[str] = None
+    _genres: Optional[Iterable] = None
+
     def __init__(
         self,
         track: Optional[Union[TrackMetadata, dict]] = None,
@@ -64,40 +97,6 @@ class TrackMetadata:
         """
         # embedded information
         # TODO: add this to static attrs
-        self.title: str
-        self.album: str
-        self.albumartist: str
-        self.composer: Optional[str] = None
-        self.albumcomposer: Optional[str] = None
-        self.comment: Optional[str] = None
-        self.description: Optional[str] = None
-        self.purchase_date: Optional[str] = None
-        self.date: Optional[str] = None
-        self.grouping: Optional[str] = None
-        self.lyrics: Optional[str] = None
-        self.encoder: Optional[str] = None
-        self.compilation: Optional[str] = None
-        self.cover: Optional[str] = None
-        self.tracktotal: Optional[int] = None
-        self.tracknumber: Optional[int] = None
-        self.discnumber: Optional[int] = None
-        self.disctotal: Optional[int] = None
-
-        # not included in tags
-        self.explicit: Optional[bool] = False
-        self.quality: Optional[int] = None
-        self.sampling_rate: Optional[int] = None
-        self.bit_depth: Optional[int] = None
-        self.booklets = None
-        self.cover_urls = Optional[OrderedDict]
-        self.work: Optional[str]
-        self.id: Optional[str]
-
-        # Internals
-        self._artist: Optional[str] = None
-        self._copyright: Optional[str] = None
-        self._genres: Optional[Iterable] = None
-
         self.__source = source
 
         if isinstance(track, TrackMetadata):
@@ -131,7 +130,7 @@ class TrackMetadata:
             # Tags
             self.album = resp.get("title", "Unknown Album")
             self.tracktotal = resp.get("tracks_count", 1)
-            self.genre = resp.get("genres_list") or resp.get("genre")
+            self.genre = resp.get("genres_list") or resp.get("genre") or []
             self.date = resp.get("release_date_original") or resp.get("release_date")
             self.copyright = resp.get("copyright")
             self.albumartist = safe_get(resp, "artist", "name")
@@ -348,6 +347,8 @@ class TrackMetadata:
                 genres = set(genres)
             elif self.__source == "deezer":
                 genres = (g["name"] for g in self._genres)
+            else:
+                raise Exception
 
             return ", ".join(genres)
 
@@ -384,7 +385,7 @@ class TrackMetadata:
         return None
 
     @copyright.setter
-    def copyright(self, val: str):
+    def copyright(self, val: Optional[str]):
         """Set the internal copyright variable to the given value.
 
         Only formatted when requested.
