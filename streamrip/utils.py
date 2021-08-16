@@ -75,8 +75,19 @@ class DownloadStream:
         )
         self.file_size = int(self.request.headers.get("Content-Length", 0))
 
-        if self.file_size == 0 and not self.url.endswith(".jpg"):
-            raise NonStreamable("File not found.")
+        if self.file_size < 20000 and not self.url.endswith(".jpg"):
+            import json
+
+            try:
+                info = self.request.json()
+                try:
+                    # Usually happens with deezloader downloads
+                    raise NonStreamable(f"{info['error']} -- {info['message']}")
+                except KeyError:
+                    raise NonStreamable(info)
+
+            except json.JSONDecodeError:
+                raise NonStreamable("File not found.")
 
     def __iter__(self) -> Iterator:
         """Iterate through chunks of the stream.
@@ -87,10 +98,11 @@ class DownloadStream:
             assert isinstance(self.id, str), self.id
 
             blowfish_key = self._generate_blowfish_key(self.id)
+            decryptor = self._create_deezer_decryptor(blowfish_key)
             return (
-                (self._decrypt_chunk(blowfish_key, chunk[:2048]) + chunk[2048:])
-                if len(chunk) >= 2048
-                else chunk
+                (decryptor.decrypt(chunk[:2048]) + chunk[2048:])
+                # (self._decrypt_chunk(blowfish_key, chunk[:2048]) + chunk[2048:])
+                if len(chunk) >= 2048 else chunk
                 for chunk in self.request.iter_content(2048 * 3)
             )
 
@@ -107,6 +119,9 @@ class DownloadStream:
         :rtype: int
         """
         return self.file_size
+
+    def _create_deezer_decryptor(self, key) -> Blowfish:
+        return Blowfish.new(key, Blowfish.MODE_CBC, b"\x00\x01\x02\x03\x04\x05\x06\x07")
 
     @staticmethod
     def _generate_blowfish_key(track_id: str):
@@ -131,7 +146,8 @@ class DownloadStream:
         :param data:
         """
         return Blowfish.new(
-            key, Blowfish.MODE_CBC, b"\x00\x01\x02\x03\x04\x05\x06\x07"
+            key,
+            Blowfish.MODE_CBC,
         ).decrypt(data)
 
 
