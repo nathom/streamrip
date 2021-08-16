@@ -7,6 +7,7 @@ import requests
 from cleo.application import Application as BaseApplication
 from cleo.commands.command import Command
 from cleo.formatters.style import Style
+from cleo.helpers import argument, option
 from click import launch
 
 from streamrip import __version__
@@ -88,8 +89,8 @@ class DownloadCommand(Command):
 
         update_check.join()
         if outdated:
-            import subprocess
             import re
+            import subprocess
 
             self.line(
                 f"<info>Updating streamrip to <title>v{newest_version}</title>...</info>\n"
@@ -323,8 +324,8 @@ class ConfigCommand(Command):
                 self.line("<error>Could not log in. Double check your ARL</error>")
 
         if self.option("qobuz"):
-            import hashlib
             import getpass
+            import hashlib
 
             config.file["qobuz"]["email"] = self.ask("Qobuz email:")
             config.file["qobuz"]["password"] = hashlib.md5(
@@ -442,9 +443,65 @@ class RepairCommand(Command):
     help = "\nRetry up to 20 failed downloads\n$ <cmd>rip repair --max-items 20</cmd>\n"
 
     def handle(self):
-        max_items = clean_options(self.option("repair"))
+        max_items = next(clean_options(self.option("max-items")))
         config = Config()
         RipCore(config).repair(max_items=max_items)
+
+
+class DatabaseCommand(Command):
+    """
+    View and manage rip's databases.
+
+    db
+        {name : <cmd>downloads</cmd> or <cmd>failed-downloads</cmd>.}
+        {--l|list : Display the contents of the database.}
+        {--reset : Reset the database.}
+    """
+
+    _table_style = "box-double"
+
+    def handle(self) -> None:
+        from . import db
+        from .config import Config
+
+        config = Config()
+        db_name = self.argument("name").replace("-", "_")
+
+        self._path = config.file["database"][db_name]["path"]
+        self._db = db.CLASS_MAP[db_name](self._path)
+
+        if self.option("list"):
+            getattr(self, f"_render_{db_name}")()
+
+        if self.option("reset"):
+            os.remove(self._path)
+
+    def _render_downloads(self):
+        from cleo.ui.table import Table
+
+        id_table = Table(self._io)
+        id_table.set_style(self._table_style)
+        id_table.set_header_title("IDs")
+        id_table.set_headers(list(self._db.structure.keys()))
+        id_table.add_rows(id for id in iter(self._db) if id[0].isalnum())
+        id_table.render()
+
+        url_table = Table(self._io)
+        url_table.set_style(self._table_style)
+        url_table.set_header_title("URLs")
+        url_table.set_headers(list(self._db.structure.keys()))
+        url_table.add_rows(id for id in iter(self._db) if not id[0].isalnum())
+        url_table.render()
+
+    def _render_failed_downloads(self):
+        from cleo.ui.table import Table
+
+        id_table = Table(self._io)
+        id_table.set_style(self._table_style)
+        id_table.set_header_title("Failed Downloads")
+        id_table.set_headers(["Source", "Media Type", "ID"])
+        id_table.add_rows(iter(self._db))
+        id_table.render()
 
 
 STRING_TO_PRIMITIVE = {
@@ -536,6 +593,7 @@ def main():
     application.add(ConfigCommand())
     application.add(ConvertCommand())
     application.add(RepairCommand())
+    application.add(DatabaseCommand())
     application.run()
 
 
