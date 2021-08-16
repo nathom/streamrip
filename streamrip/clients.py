@@ -2,13 +2,13 @@
 
 import base64
 import binascii
+import concurrent.futures
 import hashlib
 import json
 import logging
 import re
 import time
 from abc import ABC, abstractmethod
-import concurrent.futures
 from typing import Any, Dict, Generator, Optional, Sequence, Tuple, Union
 
 import deezer
@@ -1190,11 +1190,7 @@ class SoundCloudClient(Client):
         else:
             url = f"{SOUNDCLOUD_BASE}/{path}"
 
-        logger.debug("Fetching url %s", url)
-        logger.debug("Parameters: %s", params)
+        logger.debug("Fetching url %s with params %s", url, params)
         r = self.session.get(url, params=params)
-        logger.debug(r.text)
-        if resp_obj:
-            return r
 
         return r.json(), r.status_code
