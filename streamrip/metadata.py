@@ -131,16 +131,25 @@ class TrackMetadata:
             self.album = resp.get("title", "Unknown Album")
             self.tracktotal = resp.get("tracks_count", 1)
             self.genre = resp.get("genres_list") or resp.get("genre") or []
-            self.date = resp.get("release_date_original") or resp.get("release_date")
+            self.date = resp.get("release_date_original") or resp.get(
+                "release_date"
+            )
             self.copyright = resp.get("copyright")
-            self.albumartist = safe_get(resp, "artist", "name")
+
+            if artists := resp.get("artists"):
+                self.albumartist = ", ".join(a["name"] for a in artists)
+            else:
+                self.albumartist = safe_get(resp, "artist", "name")
+
             self.albumcomposer = safe_get(resp, "composer", "name")
             self.label = resp.get("label")
             self.description = resp.get("description")
             self.disctotal = (
                 max(
                     track.get("media_number", 1)
-                    for track in safe_get(resp, "tracks", "items", default=[{}])
+                    for track in safe_get(
+                        resp, "tracks", "items", default=[{}]
+                    )
                 )
                 or 1
             )
@@ -179,14 +188,22 @@ class TrackMetadata:
             self.cover_urls = get_cover_urls(resp, self.__source)
             self.streamable = resp.get("allowStreaming", False)
 
-            if q := resp.get("audioQuality"):  # for album entries in single tracks
+            if q := resp.get(
+                "audioQuality"
+            ):  # for album entries in single tracks
                 self._get_tidal_quality(q)
 
         elif self.__source == "deezer":
             self.album = resp.get("title", "Unknown Album")
-            self.tracktotal = resp.get("track_total", 0) or resp.get("nb_tracks", 0)
+            self.tracktotal = resp.get("track_total", 0) or resp.get(
+                "nb_tracks", 0
+            )
             self.disctotal = (
-                max(track.get("disk_number") for track in resp.get("tracks", [{}])) or 1
+                max(
+                    track.get("disk_number")
+                    for track in resp.get("tracks", [{}])
+                )
+                or 1
             )
             self.genre = safe_get(resp, "genres", "data")
             self.date = resp.get("release_date")
@@ -343,7 +360,9 @@ class TrackMetadata:
 
         if isinstance(self._genres, list):
             if self.__source == "qobuz":
-                genres: Iterable = re.findall(r"([^\u2192\/]+)", "/".join(self._genres))
+                genres: Iterable = re.findall(
+                    r"([^\u2192\/]+)", "/".join(self._genres)
+                )
                 genres = set(genres)
             elif self.__source == "deezer":
                 genres = (g["name"] for g in self._genres)
@@ -377,7 +396,9 @@ class TrackMetadata:
         if hasattr(self, "_copyright"):
             if self._copyright is None:
                 return None
-            copyright: str = re.sub(r"(?i)\(P\)", PHON_COPYRIGHT, self._copyright)
+            copyright: str = re.sub(
+                r"(?i)\(P\)", PHON_COPYRIGHT, self._copyright
+            )
             copyright = re.sub(r"(?i)\(C\)", COPYRIGHT, copyright)
             return copyright
 
@@ -581,7 +602,9 @@ class TrackMetadata:
 
         :rtype: int
         """
-        return sum(hash(v) for v in self.asdict().values() if isinstance(v, Hashable))
+        return sum(
+            hash(v) for v in self.asdict().values() if isinstance(v, Hashable)
+        )
 
     def __repr__(self) -> str:
         """Return the string representation of the metadata object.
