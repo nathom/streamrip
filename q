@@ -1,0 +1,17 @@
+- `title`
+- `albumartist`
+- `composer`
+- `albumcomposer`
+- `comment`
+- `description`
+- `purchase_date`
+- `date`
+- `grouping`
+- `lyrics`
+- `encoder`
+- `compilation`
+- `cover`
+- `tracktotal`
+- `tracknumber`
+- `discnumber`
+- `disctotal`
