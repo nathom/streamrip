@@ -5,7 +5,7 @@ import logging
 import os
 import shutil
 from pprint import pformat
-from typing import Any, Dict
+from typing import Any, Dict, List, Union
 
 import tomlkit
 from click import secho
@@ -31,7 +31,9 @@ class Config:
     values.
     """
 
-    default_config_path = os.path.join(os.path.dirname(__file__), "config.toml")
+    default_config_path = os.path.join(
+        os.path.dirname(__file__), "config.toml"
+    )
 
     with open(default_config_path) as cfg:
         defaults: Dict[str, Any] = tomlkit.parse(cfg.read().strip())
@@ -55,7 +57,10 @@ class Config:
 
         if os.path.isfile(self._path):
             self.load()
-            if self.file["misc"]["version"] != self.defaults["misc"]["version"]:
+            if (
+                self.file["misc"]["version"]
+                != self.defaults["misc"]["version"]
+            ):
                 secho(
                     "Updating config file to new version. Some settings may be lost.",
                     fg="yellow",
@@ -71,20 +76,50 @@ class Config:
 
     def update(self):
         """Reset the config file except for credentials."""
-        self.reset()
         # Save original credentials
-        qobuz_creds = self.file["qobuz"]
-        tidal_creds = self.file["tidal"]
+        cached_info = self._cache_info(
+            [
+                "qobuz",
+                "tidal",
+                "deezer",
+                "downloads.folder",
+                "filepaths.folder_format",
+                "filepaths.track_format",
+            ]
+        )
 
         # Reset and load config file
         shutil.copy(self.default_config_path, self._path)
         self.load()
 
-        # Set credentials and download directory, then save
-        self.file["qobuz"].update(qobuz_creds)
-        self.file["tidal"].update(tidal_creds)
-        self.file["downloads"]["folder"] = DOWNLOADS_DIR
+        self._dump_cached(cached_info)
+
         self.save()
+
+    def _dot_get(self, dot_key: str) -> Union[dict, str]:
+        """Get a key from a toml file using section.key format."""
+        item = self.file
+        for key in dot_key.split("."):
+            item = item[key]
+        return item
+
+    def _dot_set(self, dot_key, val):
+        """Set a key in the toml file using the section.key format."""
+        keys = dot_key.split(".")
+        item = self.file
+        for key in keys[:-1]:  # stop at the last one in case it's an immutable
+            item = item[key]
+
+        item[keys[-1]] = val
+
+    def _cache_info(self, keys: List[str]):
+        """Return a deepcopy of the values from the config to be saved."""
+        return {key: copy.deepcopy(self._dot_get(key)) for key in keys}
+
+    def _dump_cached(self, cached_values):
+        """Set cached values into the current config file."""
+        for k, v in cached_values.items():
+            self._dot_set(k, v)
 
     def save(self):
         """Save the config state to file."""
@@ -111,7 +146,6 @@ class Config:
                     self.session[k] = v
 
         logger.debug("Config loaded")
-        self.__loaded = True
 
     def dump(self, info):
         """Given a state of the config, save it to the file.
@@ -158,6 +192,6 @@ class Config:
 
         raise InvalidSourceError(source)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         """Return a string representation of the config."""
         return f"Config({pformat(self.session)})"
