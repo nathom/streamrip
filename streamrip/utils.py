@@ -82,7 +82,9 @@ class DownloadStream:
                 info = self.request.json()
                 try:
                     # Usually happens with deezloader downloads
-                    raise NonStreamable(f"{info['error']} -- {info['message']}")
+                    raise NonStreamable(
+                        f"{info['error']} -- {info['message']}"
+                    )
                 except KeyError:
                     raise NonStreamable(info)
 
@@ -94,7 +96,10 @@ class DownloadStream:
 
         :rtype: Iterator
         """
-        if self.source == "deezer" and self.is_encrypted.search(self.url) is not None:
+        if (
+            self.source == "deezer"
+            and self.is_encrypted.search(self.url) is not None
+        ):
             assert isinstance(self.id, str), self.id
 
             blowfish_key = self._generate_blowfish_key(self.id)
@@ -121,7 +126,9 @@ class DownloadStream:
         return self.file_size
 
     def _create_deezer_decryptor(self, key) -> Blowfish:
-        return Blowfish.new(key, Blowfish.MODE_CBC, b"\x00\x01\x02\x03\x04\x05\x06\x07")
+        return Blowfish.new(
+            key, Blowfish.MODE_CBC, b"\x00\x01\x02\x03\x04\x05\x06\x07"
+        )
 
     @staticmethod
     def _generate_blowfish_key(track_id: str):
@@ -204,7 +211,9 @@ __QUALITY_MAP: Dict[str, Dict[int, Union[int, str, Tuple[int, str]]]] = {
 }
 
 
-def get_quality(quality_id: int, source: str) -> Union[str, int, Tuple[int, str]]:
+def get_quality(
+    quality_id: int, source: str
+) -> Union[str, int, Tuple[int, str]]:
     """Get the source-specific quality id.
 
     :param quality_id: the universal quality id (0, 1, 2, 4)
@@ -291,7 +300,9 @@ def tidal_cover_url(uuid, size):
     possibles = (80, 160, 320, 640, 1280)
     assert size in possibles, f"size must be in {possibles}"
 
-    return TIDAL_COVER_URL.format(uuid=uuid.replace("-", "/"), height=size, width=size)
+    return TIDAL_COVER_URL.format(
+        uuid=uuid.replace("-", "/"), height=size, width=size
+    )
 
 
 def init_log(path: Optional[str] = None, level: str = "DEBUG"):
@@ -393,7 +404,9 @@ def gen_threadsafe_session(
         headers = {}
 
     session = requests.Session()
-    adapter = requests.adapters.HTTPAdapter(pool_connections=100, pool_maxsize=100)
+    adapter = requests.adapters.HTTPAdapter(
+        pool_connections=100, pool_maxsize=100
+    )
     session.mount("https://", adapter)
     session.headers.update(headers)
     return session

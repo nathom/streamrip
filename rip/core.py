@@ -111,14 +111,18 @@ class RipCore(list):
         else:
             self.config = config
 
-        if (theme := self.config.file["theme"]["progress_bar"]) != TQDM_DEFAULT_THEME:
+        if (
+            theme := self.config.file["theme"]["progress_bar"]
+        ) != TQDM_DEFAULT_THEME:
             set_progress_bar_theme(theme.lower())
 
         def get_db(db_type: str) -> db.Database:
             db_settings = self.config.session["database"]
             db_class = db.CLASS_MAP[db_type]
 
-            if db_settings[db_type]["enabled"] and db_settings.get("enabled", True):
+            if db_settings[db_type]["enabled"] and db_settings.get(
+                "enabled", True
+            ):
                 default_db_path = DB_PATH_MAP[db_type]
                 path = db_settings[db_type]["path"]
 
@@ -212,8 +216,9 @@ class RipCore(list):
         session = self.config.session
         logger.debug(session)
         # So that the dictionary isn't searched for the same keys multiple times
-        artwork, conversion, filepaths = tuple(
-            session[key] for key in ("artwork", "conversion", "filepaths")
+        artwork, conversion, filepaths, metadata = (
+            session[key]
+            for key in ("artwork", "conversion", "filepaths", "metadata")
         )
         concurrency = session["downloads"]["concurrency"]
         return {
@@ -223,12 +228,12 @@ class RipCore(list):
             "embed_cover": artwork["embed"],
             "embed_cover_size": artwork["size"],
             "keep_hires_cover": artwork["keep_hires_cover"],
-            "set_playlist_to_album": session["metadata"]["set_playlist_to_album"],
+            "set_playlist_to_album": metadata["set_playlist_to_album"],
             "stay_temp": conversion["enabled"],
             "conversion": conversion,
             "concurrent_downloads": concurrency["enabled"],
             "max_connections": concurrency["max_connections"],
-            "new_tracknumbers": session["metadata"]["new_playlist_tracknumbers"],
+            "new_tracknumbers": metadata["new_playlist_tracknumbers"],
             "download_videos": session["tidal"]["download_videos"],
             "download_booklets": session["qobuz"]["download_booklets"],
             "download_youtube_videos": session["youtube"]["download_videos"],
@@ -238,6 +243,7 @@ class RipCore(list):
             "add_singles_to_folder": filepaths["add_singles_to_folder"],
             "max_artwork_width": int(artwork["max_width"]),
             "max_artwork_height": int(artwork["max_height"]),
+            "exclude_tags": metadata["exclude"],
         }
 
     def repair(self, max_items=None):
@@ -257,7 +263,9 @@ class RipCore(list):
             )
             exit()
 
-        for counter, (source, media_type, item_id) in enumerate(self.failed_db):
+        for counter, (source, media_type, item_id) in enumerate(
+            self.failed_db
+        ):
             if counter >= max_items:
                 break
 
@@ -280,7 +288,9 @@ class RipCore(list):
 
         logger.debug("Arguments from config: %s", arguments)
 
-        source_subdirs = self.config.session["downloads"]["source_subdirectories"]
+        source_subdirs = self.config.session["downloads"][
+            "source_subdirectories"
+        ]
         for item in self:
             # Item already checked in database in handle_urls
             if source_subdirs:
@@ -292,20 +302,26 @@ class RipCore(list):
                 item.download(**arguments)
                 continue
 
-            arguments["quality"] = self.config.session[item.client.source]["quality"]
+            arguments["quality"] = self.config.session[item.client.source][
+                "quality"
+            ]
             if isinstance(item, Artist):
                 filters_ = tuple(
                     k for k, v in self.config.session["filters"].items() if v
                 )
                 arguments["filters"] = filters_
-                logger.debug("Added filter argument for artist/label: %s", filters_)
+                logger.debug(
+                    "Added filter argument for artist/label: %s", filters_
+                )
 
             if not isinstance(item, Tracklist) or not item.loaded:
                 logger.debug("Loading metadata")
                 try:
                     item.load_meta(**arguments)
                 except NonStreamable:
-                    self.failed_db.add((item.client.source, item.type, item.id))
+                    self.failed_db.add(
+                        (item.client.source, item.type, item.id)
+                    )
                     secho(f"{item!s} is not available, skipping.", fg="red")
                     continue
 
@@ -332,7 +348,7 @@ class RipCore(list):
                     self.db.add(str(item_id))
 
             if isinstance(item, Track):
-                item.tag()
+                item.tag(exclude_tags=arguments["exclude_tags"])
                 if arguments["conversion"]["enabled"]:
                     item.convert(**arguments["conversion"])
 
@@ -342,7 +358,9 @@ class RipCore(list):
         :param featured_list: The name of the list. See `rip discover --help`.
         :type featured_list: str
         """
-        self.extend(self.search("qobuz", featured_list, "featured", limit=max_items))
+        self.extend(
+            self.search("qobuz", featured_list, "featured", limit=max_items)
+        )
 
     def get_client(self, source: str) -> Client:
         """Get a client given the source and log in.
@@ -448,12 +466,15 @@ class RipCore(list):
                 fg="yellow",
             )
             parsed.extend(
-                ("deezer", *extract_deezer_dynamic_link(url)) for url in dynamic_urls
+                ("deezer", *extract_deezer_dynamic_link(url))
+                for url in dynamic_urls
             )
 
         parsed.extend(URL_REGEX.findall(url))  # Qobuz, Tidal, Dezer
         soundcloud_urls = SOUNDCLOUD_URL_REGEX.findall(url)
-        soundcloud_items = [self.clients["soundcloud"].get(u) for u in soundcloud_urls]
+        soundcloud_items = [
+            self.clients["soundcloud"].get(u) for u in soundcloud_urls
+        ]
 
         parsed.extend(
             ("soundcloud", item["kind"], url)
@@ -484,11 +505,15 @@ class RipCore(list):
 
         # For testing:
         # https://www.last.fm/user/nathan3895/playlists/12058911
-        user_regex = re.compile(r"https://www\.last\.fm/user/([^/]+)/playlists/\d+")
+        user_regex = re.compile(
+            r"https://www\.last\.fm/user/([^/]+)/playlists/\d+"
+        )
         lastfm_urls = LASTFM_URL_REGEX.findall(urls)
         try:
             lastfm_source = self.config.session["lastfm"]["source"]
-            lastfm_fallback_source = self.config.session["lastfm"]["fallback_source"]
+            lastfm_fallback_source = self.config.session["lastfm"][
+                "fallback_source"
+            ]
         except KeyError:
             self._config_updating_message()
             self.config.update()
@@ -522,12 +547,16 @@ class RipCore(list):
                     )
                     query_is_clean = banned_words_plain.search(query) is None
 
-                    search_results = self.search(source, query, media_type="track")
+                    search_results = self.search(
+                        source, query, media_type="track"
+                    )
                     track = next(search_results)
 
                     if query_is_clean:
                         while banned_words.search(track["title"]) is not None:
-                            logger.debug("Track title banned for query=%s", query)
+                            logger.debug(
+                                "Track title banned for query=%s", query
+                            )
                             track = next(search_results)
 
                     # Because the track is searched as a single we need to set
@@ -537,7 +566,9 @@ class RipCore(list):
                 except (NoResultsFound, StopIteration):
                     return None
 
-            track = try_search(lastfm_source) or try_search(lastfm_fallback_source)
+            track = try_search(lastfm_source) or try_search(
+                lastfm_fallback_source
+            )
             if track is None:
                 return False
 
@@ -561,7 +592,9 @@ class RipCore(list):
                 pl.creator = creator_match.group(1)
 
             tracks_not_found = 0
-            with concurrent.futures.ThreadPoolExecutor(max_workers=15) as executor:
+            with concurrent.futures.ThreadPoolExecutor(
+                max_workers=15
+            ) as executor:
                 futures = [
                     executor.submit(search_query, title, artist, pl)
                     for title, artist in queries
@@ -639,7 +672,9 @@ class RipCore(list):
         else:
             logger.debug("Not generator")
             items = (
-                results.get("data") or results.get("items") or results.get("collection")
+                results.get("data")
+                or results.get("items")
+                or results.get("collection")
             )
             if items is None:
                 raise NoResultsFound(query)
@@ -679,7 +714,9 @@ class RipCore(list):
             raise NotImplementedError
 
         fields = (fname for _, fname, _, _ in Formatter().parse(fmt) if fname)
-        ret = fmt.format(**{k: media.get(k, default="Unknown") for k in fields})
+        ret = fmt.format(
+            **{k: media.get(k, default="Unknown") for k in fields}
+        )
         return ret
 
     def interactive_search(
@@ -817,7 +854,9 @@ class RipCore(list):
         playlist_title = html.unescape(playlist_title_match.group(1))
 
         if remaining_tracks > 0:
-            with concurrent.futures.ThreadPoolExecutor(max_workers=15) as executor:
+            with concurrent.futures.ThreadPoolExecutor(
+                max_workers=15
+            ) as executor:
                 last_page = int(remaining_tracks // 50) + int(
                     remaining_tracks % 50 != 0
                 )
@@ -872,7 +911,9 @@ class RipCore(list):
                 fg="blue",
             )
 
-            self.config.file["deezer"]["arl"] = input(style("ARL: ", fg="green"))
+            self.config.file["deezer"]["arl"] = input(
+                style("ARL: ", fg="green")
+            )
             self.config.save()
             secho(
                 f'Credentials saved to config file at "{self.config._path}"',
