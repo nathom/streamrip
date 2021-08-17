@@ -1871,7 +1871,10 @@ class Playlist(Tracklist, Media):
 
         item.download(**kwargs)
 
-        item.tag(embed_cover=kwargs.get("embed_cover", True))
+        item.tag(
+            embed_cover=kwargs.get("embed_cover", True),
+            exclude_tags=kwargs.get("exclude_tags"),
+        )
 
         # if playlist_to_album and self.client.source == "deezer":
         #     # Because Deezer tracks come pre-tagged, the `set_playlist_to_album`
