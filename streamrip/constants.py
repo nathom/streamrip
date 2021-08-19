@@ -4,7 +4,9 @@ import mutagen.id3 as id3
 
 AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:83.0) Gecko/20100101 Firefox/83.0"
 
-TIDAL_COVER_URL = "https://resources.tidal.com/images/{uuid}/{width}x{height}.jpg"
+TIDAL_COVER_URL = (
+    "https://resources.tidal.com/images/{uuid}/{width}x{height}.jpg"
+)
 SOUNDCLOUD_CLIENT_ID = "QFciLWLC1GS4P3EZvXIjA3jKhKO5pKB3"
 SOUNDCLOUD_USER_ID = "672320-86895-162383-801513"
 SOUNDCLOUD_APP_VERSION = "1626941202"
@@ -136,9 +138,7 @@ ALBUM_KEYS = (
     "albumcomposer",
 )
 # TODO: rename these to DEFAULT_FOLDER_FORMAT etc
-FOLDER_FORMAT = (
-    "{albumartist} - {title} ({year}) [{container}] [{bit_depth}B-{sampling_rate}kHz]"
-)
+FOLDER_FORMAT = "{albumartist} - {title} ({year}) [{container}] [{bit_depth}B-{sampling_rate}kHz]"
 TRACK_FORMAT = "{tracknumber}. {artist} - {title}"
 
 

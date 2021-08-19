@@ -52,7 +52,9 @@ class Converter:
 
         self.filename = filename
         self.final_fn = f"{os.path.splitext(filename)[0]}.{self.container}"
-        self.tempfile = os.path.join(gettempdir(), os.path.basename(self.final_fn))
+        self.tempfile = os.path.join(
+            gettempdir(), os.path.basename(self.final_fn)
+        )
         self.remove_source = remove_source
         self.sampling_rate = sampling_rate
         self.bit_depth = bit_depth
@@ -117,9 +119,13 @@ class Converter:
         if self.lossless:
             if isinstance(self.sampling_rate, int):
                 sampling_rates = "|".join(
-                    str(rate) for rate in SAMPLING_RATES if rate <= self.sampling_rate
+                    str(rate)
+                    for rate in SAMPLING_RATES
+                    if rate <= self.sampling_rate
                 )
-                command.extend(["-af", f"aformat=sample_rates={sampling_rates}"])
+                command.extend(
+                    ["-af", f"aformat=sample_rates={sampling_rates}"]
+                )
 
             elif self.sampling_rate is not None:
                 raise TypeError(
@@ -134,7 +140,9 @@ class Converter:
                 else:
                     raise ValueError("Bit depth must be 16, 24, or 32")
             elif self.bit_depth is not None:
-                raise TypeError(f"Bit depth must be int, not {type(self.bit_depth)}")
+                raise TypeError(
+                    f"Bit depth must be int, not {type(self.bit_depth)}"
+                )
 
         # automatically overwrite
         command.extend(["-y", self.tempfile])
@@ -199,7 +207,9 @@ class Vorbis(Converter):
     codec_name = "vorbis"
     codec_lib = "libvorbis"
     container = "ogg"
-    default_ffmpeg_arg = "-q:a 6"  # 160, aka the "high" quality profile from Spotify
+    default_ffmpeg_arg = (
+        "-q:a 6"  # 160, aka the "high" quality profile from Spotify
+    )
 
 
 class OPUS(Converter):

@@ -13,7 +13,17 @@ import re
 import shutil
 import subprocess
 from tempfile import gettempdir
-from typing import Any, Dict, Generator, Iterable, List, Optional, Tuple, Union
+from typing import (
+    Any,
+    Dict,
+    Generator,
+    Iterable,
+    List,
+    Optional,
+    Sequence,
+    Tuple,
+    Union,
+)
 
 from click import echo, secho, style
 from mutagen.flac import FLAC, Picture
@@ -56,7 +66,9 @@ logger = logging.getLogger("streamrip")
 
 TYPE_REGEXES = {
     "remaster": re.compile(r"(?i)(re)?master(ed)?"),
-    "extra": re.compile(r"(?i)(anniversary|deluxe|live|collector|demo|expanded)"),
+    "extra": re.compile(
+        r"(?i)(anniversary|deluxe|live|collector|demo|expanded)"
+    ),
 }
 
 
@@ -198,12 +210,15 @@ class Track(Media):
             if source == "qobuz":
                 self.cover_url = self.resp["album"]["image"]["large"]
             elif source == "tidal":
-                self.cover_url = tidal_cover_url(self.resp["album"]["cover"], 320)
+                self.cover_url = tidal_cover_url(
+                    self.resp["album"]["cover"], 320
+                )
             elif source == "deezer":
                 self.cover_url = self.resp["album"]["cover_medium"]
             elif source == "soundcloud":
                 self.cover_url = (
-                    self.resp["artwork_url"] or self.resp["user"].get("avatar_url")
+                    self.resp["artwork_url"]
+                    or self.resp["user"].get("avatar_url")
                 ).replace("large", "t500x500")
             else:
                 raise InvalidSourceError(source)
@@ -251,7 +266,9 @@ class Track(Media):
             except ItemExists as e:
                 logger.debug(e)
 
-        self.path = os.path.join(gettempdir(), f"{hash(self.id)}_{self.quality}.tmp")
+        self.path = os.path.join(
+            gettempdir(), f"{hash(self.id)}_{self.quality}.tmp"
+        )
 
     def download(  # noqa
         self,
@@ -306,9 +323,14 @@ class Track(Media):
             except KeyError as e:
                 if restrictions := dl_info["restrictions"]:
                     # Turn CamelCase code into a readable sentence
-                    words = re.findall(r"([A-Z][a-z]+)", restrictions[0]["code"])
+                    words = re.findall(
+                        r"([A-Z][a-z]+)", restrictions[0]["code"]
+                    )
                     raise NonStreamable(
-                        words[0] + " " + " ".join(map(str.lower, words[1:])) + "."
+                        words[0]
+                        + " "
+                        + " ".join(map(str.lower, words[1:]))
+                        + "."
                     )
 
                 secho(f"Panic: {e} dl_info = {dl_info}", fg="red")
@@ -317,7 +339,9 @@ class Track(Media):
             _quick_download(download_url, self.path, desc=self._progress_desc)
 
         elif isinstance(self.client, DeezloaderClient):
-            _quick_download(dl_info["url"], self.path, desc=self._progress_desc)
+            _quick_download(
+                dl_info["url"], self.path, desc=self._progress_desc
+            )
 
         elif self.client.source == "deezer":
             # We can only find out if the requested quality is available
@@ -437,7 +461,9 @@ class Track(Media):
                 ]
             )
         elif dl_info["type"] == "original":
-            _quick_download(dl_info["url"], self.path, desc=self._progress_desc)
+            _quick_download(
+                dl_info["url"], self.path, desc=self._progress_desc
+            )
 
             # if a wav is returned, convert to flac
             engine = converter.FLAC(self.path)
@@ -465,7 +491,9 @@ class Track(Media):
 
     def download_cover(self, width=999999, height=999999):
         """Download the cover art, if cover_url is given."""
-        self.cover_path = os.path.join(gettempdir(), f"cover{hash(self.cover_url)}.jpg")
+        self.cover_path = os.path.join(
+            gettempdir(), f"cover{hash(self.cover_url)}.jpg"
+        )
         logger.debug("Downloading cover from %s", self.cover_url)
 
         if not os.path.exists(self.cover_path):
@@ -485,9 +513,9 @@ class Track(Media):
         formatter = self.meta.get_formatter(max_quality=self.quality)
         logger.debug("Track meta formatter %s", formatter)
         filename = clean_format(self.file_format, formatter)
-        self.final_path = os.path.join(self.folder, filename)[:250].strip() + ext(
-            self.quality, self.client.source
-        )
+        self.final_path = os.path.join(self.folder, filename)[
+            :250
+        ].strip() + ext(self.quality, self.client.source)
 
         logger.debug("Formatted path: %s", self.final_path)
 
@@ -500,7 +528,9 @@ class Track(Media):
         return self.final_path
 
     @classmethod
-    def from_album_meta(cls, album: TrackMetadata, track: dict, client: Client):
+    def from_album_meta(
+        cls, album: TrackMetadata, track: dict, client: Client
+    ):
         """Return a new Track object initialized with info.
 
         :param album: album metadata returned by API
@@ -510,7 +540,9 @@ class Track(Media):
         :raises: IndexError
         """
         meta = TrackMetadata(album=album, track=track, source=client.source)
-        return cls(client=client, meta=meta, id=track["id"], part_of_tracklist=True)
+        return cls(
+            client=client, meta=meta, id=track["id"], part_of_tracklist=True
+        )
 
     @classmethod
     def from_api(cls, item: dict, client: Client):
@@ -554,6 +586,7 @@ class Track(Media):
         album_meta: dict = None,
         cover: Union[Picture, APIC, MP4Cover] = None,
         embed_cover: bool = True,
+        exclude_tags: Optional[Sequence] = None,
         **kwargs,
     ):
         """Tag the track using the stored metadata.
@@ -569,7 +602,9 @@ class Track(Media):
         :param embed_cover: Embed cover art into file
         :type embed_cover: bool
         """
-        assert isinstance(self.meta, TrackMetadata), "meta must be TrackMetadata"
+        assert isinstance(
+            self.meta, TrackMetadata
+        ), "meta must be TrackMetadata"
         if not self.downloaded:
             logger.info(
                 "Track %s not tagged because it was not downloaded",
@@ -620,7 +655,10 @@ class Track(Media):
                 raise InvalidQuality(f'Invalid quality: "{self.quality}"')
 
         # automatically generate key, value pairs based on container
-        tags = self.meta.tags(self.container)
+        tags = self.meta.tags(
+            self.container,
+            set(exclude_tags) if exclude_tags is not None else None,
+        )
         for k, v in tags:
             logger.debug("Setting %s tag to %s", k, v)
             audio[k] = v
@@ -690,7 +728,9 @@ class Track(Media):
             self.format_final_path()
 
         if not os.path.isfile(self.path):
-            logger.info("File %s does not exist. Skipping conversion.", self.path)
+            logger.info(
+                "File %s does not exist. Skipping conversion.", self.path
+            )
             secho(f"{self!s} does not exist. Skipping conversion.", fg="red")
             return
 
@@ -1093,7 +1133,8 @@ class Tracklist(list):
                 kwargs.get("max_connections", 3)
             ) as executor:
                 future_map = {
-                    executor.submit(target, item, **kwargs): item for item in self
+                    executor.submit(target, item, **kwargs): item
+                    for item in self
                 }
                 try:
                     concurrent.futures.wait(future_map.keys())
@@ -1124,7 +1165,9 @@ class Tracklist(list):
                     secho(f"{item!s} exists. Skipping.", fg="yellow")
                 except NonStreamable as e:
                     e.print(item)
-                    failed_downloads.append((item.client.source, item.type, item.id))
+                    failed_downloads.append(
+                        (item.client.source, item.type, item.id)
+                    )
 
         self.downloaded = True
 
@@ -1453,7 +1496,9 @@ class Album(Tracklist, Media):
             _cover_download(embed_cover_url, cover_path)
 
         hires_cov_path = os.path.join(self.folder, "cover.jpg")
-        if kwargs.get("keep_hires_cover", True) and not os.path.exists(hires_cov_path):
+        if kwargs.get("keep_hires_cover", True) and not os.path.exists(
+            hires_cov_path
+        ):
             logger.debug("Downloading hires cover")
             _cover_download(self.cover_urls["original"], hires_cov_path)
 
@@ -1507,7 +1552,9 @@ class Album(Tracklist, Media):
             and isinstance(item, Track)
             and kwargs.get("folder_format")
         ):
-            disc_folder = os.path.join(self.folder, f"Disc {item.meta.discnumber}")
+            disc_folder = os.path.join(
+                self.folder, f"Disc {item.meta.discnumber}"
+            )
             kwargs["parent_folder"] = disc_folder
         else:
             kwargs["parent_folder"] = self.folder
@@ -1522,6 +1569,7 @@ class Album(Tracklist, Media):
             item.tag(
                 cover=self.cover_obj,
                 embed_cover=kwargs.get("embed_cover", True),
+                exclude_tags=kwargs.get("exclude_tags"),
             )
 
         self.downloaded_ids.add(item.id)
@@ -1601,7 +1649,9 @@ class Album(Tracklist, Media):
         :rtype: str
         """
 
-        formatted_folder = clean_format(self.folder_format, self._get_formatter())
+        formatted_folder = clean_format(
+            self.folder_format, self._get_formatter()
+        )
 
         return os.path.join(parent_folder, formatted_folder)
 
@@ -1719,7 +1769,9 @@ class Playlist(Tracklist, Media):
         if self.client.source == "qobuz":
             self.name = self.meta["name"]
             self.image = self.meta["images"]
-            self.creator = safe_get(self.meta, "owner", "name", default="Qobuz")
+            self.creator = safe_get(
+                self.meta, "owner", "name", default="Qobuz"
+            )
 
             tracklist = self.meta["tracks"]["items"]
 
@@ -1729,7 +1781,9 @@ class Playlist(Tracklist, Media):
         elif self.client.source == "tidal":
             self.name = self.meta["title"]
             self.image = tidal_cover_url(self.meta["image"], 640)
-            self.creator = safe_get(self.meta, "creator", "name", default="TIDAL")
+            self.creator = safe_get(
+                self.meta, "creator", "name", default="TIDAL"
+            )
 
             tracklist = self.meta["tracks"]
 
@@ -1742,7 +1796,9 @@ class Playlist(Tracklist, Media):
         elif self.client.source == "deezer":
             self.name = self.meta["title"]
             self.image = self.meta["picture_big"]
-            self.creator = safe_get(self.meta, "creator", "name", default="Deezer")
+            self.creator = safe_get(
+                self.meta, "creator", "name", default="Deezer"
+            )
 
             tracklist = self.meta["tracks"]
 
@@ -1783,7 +1839,9 @@ class Playlist(Tracklist, Media):
 
         logger.debug("Loaded %d tracks from playlist %s", len(self), self.name)
 
-    def _prepare_download(self, parent_folder: str = "StreamripDownloads", **kwargs):
+    def _prepare_download(
+        self, parent_folder: str = "StreamripDownloads", **kwargs
+    ):
         if kwargs.get("folder_format"):
             fname = sanitize_filename(self.name)
             self.folder = os.path.join(parent_folder, fname)
@@ -1813,7 +1871,10 @@ class Playlist(Tracklist, Media):
 
         item.download(**kwargs)
 
-        item.tag(embed_cover=kwargs.get("embed_cover", True))
+        item.tag(
+            embed_cover=kwargs.get("embed_cover", True),
+            exclude_tags=kwargs.get("exclude_tags"),
+        )
 
         # if playlist_to_album and self.client.source == "deezer":
         #     # Because Deezer tracks come pre-tagged, the `set_playlist_to_album`
@@ -1995,7 +2056,9 @@ class Artist(Tracklist, Media):
             final = self
 
         if isinstance(filters, tuple) and self.client.source == "qobuz":
-            filter_funcs = (getattr(self, f"_{filter_}") for filter_ in filters)
+            filter_funcs = (
+                getattr(self, f"_{filter_}") for filter_ in filters
+            )
             for func in filter_funcs:
                 final = filter(func, final)
 
@@ -2108,7 +2171,10 @@ class Artist(Tracklist, Media):
             best_bd = bit_depth(a["bit_depth"] for a in group)
             best_sr = sampling_rate(a["sampling_rate"] for a in group)
             for album in group:
-                if album["bit_depth"] == best_bd and album["sampling_rate"] == best_sr:
+                if (
+                    album["bit_depth"] == best_bd
+                    and album["sampling_rate"] == best_sr
+                ):
                     yield album
                     break
 

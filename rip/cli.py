@@ -2,6 +2,7 @@ import concurrent.futures
 import logging
 import os
 import threading
+from typing import Optional
 
 import requests
 from cleo.application import Application as BaseApplication
@@ -85,7 +86,9 @@ class DownloadCommand(Command):
         if len(core) > 0:
             core.download()
         elif not urls and path is None:
-            self.line("<error>Must pass arguments. See </><cmd>rip url -h</cmd>.")
+            self.line(
+                "<error>Must pass arguments. See </><cmd>rip url -h</cmd>."
+            )
 
         update_check.join()
         if outdated:
@@ -112,10 +115,16 @@ class DownloadCommand(Command):
                 "https://api.github.com/repos/nathom/streamrip/releases/latest"
             ).json()["body"]
 
-            release_notes = md_header.sub(r"<header>\1</header>", release_notes)
-            release_notes = bullet_point.sub(r"<options=bold>•</> \1", release_notes)
+            release_notes = md_header.sub(
+                r"<header>\1</header>", release_notes
+            )
+            release_notes = bullet_point.sub(
+                r"<options=bold>•</> \1", release_notes
+            )
             release_notes = code.sub(r"<cmd>\1</cmd>", release_notes)
-            release_notes = issue_reference.sub(r"<options=bold>\1</>", release_notes)
+            release_notes = issue_reference.sub(
+                r"<options=bold>\1</>", release_notes
+            )
 
             self.line(release_notes)
 
@@ -145,7 +154,9 @@ class SearchCommand(Command):
 
     def handle(self):
         query = self.argument("query")
-        source, type = clean_options(self.option("source"), self.option("type"))
+        source, type = clean_options(
+            self.option("source"), self.option("type")
+        )
 
         config = Config()
         core = RipCore(config)
@@ -197,7 +208,9 @@ class DiscoverCommand(Command):
         max_items = self.option("max-items")
 
         if chosen_list not in QOBUZ_FEATURED_KEYS:
-            self.line(f'<error>Error: list "{chosen_list}" not available</error>')
+            self.line(
+                f'<error>Error: list "{chosen_list}" not available</error>'
+            )
             self.line(self.help)
             return 1
 
@@ -259,29 +272,34 @@ class ConfigCommand(Command):
         {--qobuz : Set the credentials for Qobuz}
         {--tidal : Log into Tidal}
         {--deezer : Set the Deezer ARL}
+        {--music-app : Configure the config file for usage with the macOS Music App}
         {--reset : Reset the config file}
         {--update : Reset the config file, keeping the credentials}
     """
+
+    _config: Optional[Config]
 
     def handle(self):
         import shutil
 
         from .constants import CONFIG_DIR, CONFIG_PATH
 
-        config = Config()
+        self._config = Config()
 
         if self.option("path"):
             self.line(f"<info>{CONFIG_PATH}</info>")
 
         if self.option("open"):
-            self.line(f"Opening <url>{CONFIG_PATH}</url> in default application")
+            self.line(
+                f"Opening <url>{CONFIG_PATH}</url> in default application"
+            )
             launch(CONFIG_PATH)
 
         if self.option("reset"):
-            config.reset()
+            self._config.reset()
 
         if self.option("update"):
-            config.update()
+            self._config.update()
 
         if self.option("open-vim"):
             if shutil.which("nvim") is not None:
@@ -298,8 +316,8 @@ class ConfigCommand(Command):
 
             client = TidalClient()
             client.login()
-            config.file["tidal"].update(client.get_tokens())
-            config.save()
+            self._config.file["tidal"].update(client.get_tokens())
+            self._config.save()
             self.line("<info>Credentials saved to config.</info>")
 
         if self.option("deezer"):
@@ -316,22 +334,71 @@ class ConfigCommand(Command):
 
             try:
                 DeezerClient().login(arl=given_arl)
-                config.file["deezer"]["arl"] = given_arl
-                config.save()
+                self._config.file["deezer"]["arl"] = given_arl
+                self._config.save()
                 self.line("<b>Sucessfully logged in!</b>")
 
             except AuthenticationError:
-                self.line("<error>Could not log in. Double check your ARL</error>")
+                self.line(
+                    "<error>Could not log in. Double check your ARL</error>"
+                )
 
         if self.option("qobuz"):
             import getpass
             import hashlib
 
-            config.file["qobuz"]["email"] = self.ask("Qobuz email:")
-            config.file["qobuz"]["password"] = hashlib.md5(
-                getpass.getpass("Qobuz password (won't show on screen): ").encode()
+            self._config.file["qobuz"]["email"] = self.ask("Qobuz email:")
+            self._config.file["qobuz"]["password"] = hashlib.md5(
+                getpass.getpass(
+                    "Qobuz password (won't show on screen): "
+                ).encode()
             ).hexdigest()
-            config.save()
+            self._config.save()
+
+        if self.option("music-app"):
+            self._conf_music_app()
+
+    def _conf_music_app(self):
+        import subprocess
+        import xml.etree.ElementTree as ET
+        from pathlib import Path
+        from tempfile import mktemp
+
+        # Find the Music library folder
+        temp_file = mktemp()
+        music_pref_plist = Path(Path.home()) / Path(
+            "Library/Preferences/com.apple.Music.plist"
+        )
+        # copy preferences to tempdir
+        subprocess.run(["cp", music_pref_plist, temp_file])
+        # convert binary to xml for parsing
+        subprocess.run(["plutil", "-convert", "xml1", temp_file])
+        items = iter(ET.parse(temp_file).getroot()[0])
+
+        for item in items:
+            if item.text == "NSNavLastRootDirectory":
+                break
+
+        library_folder = Path(next(items).text)
+        os.remove(temp_file)
+
+        # cp ~/library/preferences/com.apple.music.plist music.plist
+        # plutil -convert xml1 music.plist
+        # cat music.plist | pbcopy
+
+        self._config.file["downloads"]["folder"] = os.path.join(
+            library_folder, "Automatically Add to Music.localized"
+        )
+
+        conversion_config = self._config.file["conversion"]
+        conversion_config["enabled"] = True
+        conversion_config["codec"] = "ALAC"
+        conversion_config["sampling_rate"] = 48000
+        conversion_config["bit_depth"] = 24
+
+        self._config.file["filepaths"]["folder_format"] = ""
+        self._config.file["artwork"]["keep_hires_cover"] = False
+        self._config.save()
 
 
 class ConvertCommand(Command):
@@ -409,7 +476,8 @@ class ConvertCommand(Command):
                     futures.append(
                         executor.submit(
                             ConverterCls(
-                                filename=os.path.join(dirname, file), **converter_args
+                                filename=os.path.join(dirname, file),
+                                **converter_args,
                             ).convert
                         )
                     )
@@ -428,7 +496,8 @@ class ConvertCommand(Command):
             ConverterCls(filename=path, **converter_args).convert()
         else:
             self.line(
-                f'<error>Path <path>"{path}"</path> does not exist.</error>', fg="red"
+                f'<error>Path <path>"{path}"</path> does not exist.</error>',
+                fg="red",
             )
 
 
@@ -534,7 +603,9 @@ class Application(BaseApplication):
         formatter.set_style("path", Style("green", options=["bold"]))
         formatter.set_style("cmd", Style("magenta"))
         formatter.set_style("title", Style("yellow", options=["bold"]))
-        formatter.set_style("header", Style("yellow", options=["bold", "underline"]))
+        formatter.set_style(
+            "header", Style("yellow", options=["bold", "underline"])
+        )
         io.output.set_formatter(formatter)
         io.error_output.set_formatter(formatter)
 

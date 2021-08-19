@@ -458,7 +458,9 @@ class TrackMetadata:
         formatter["sampling_rate"] /= 1000
         return formatter
 
-    def tags(self, container: str = "flac") -> Generator:
+    def tags(
+        self, container: str = "flac", exclude: Optional[set] = None
+    ) -> Generator:
         """Create a generator of key, value pairs for use with mutagen.
 
         The *_KEY dicts are organized in the format:
@@ -480,41 +482,52 @@ class TrackMetadata:
         :type container: str
         :rtype: Generator
         """
+        if exclude is None:
+            exclude = set()
+        logger.debug("Excluded tags: %s", exclude)
+
         container = container.lower()
         if container in ("flac", "vorbis"):
-            return self.__gen_flac_tags()
+            return self.__gen_flac_tags(exclude)
         if container in ("mp3", "id3"):
-            return self.__gen_mp3_tags()
+            return self.__gen_mp3_tags(exclude)
         if container in ("alac", "m4a", "mp4", "aac"):
-            return self.__gen_mp4_tags()
+            return self.__gen_mp4_tags(exclude)
 
         raise InvalidContainerError(f"Invalid container {container}")
 
-    def __gen_flac_tags(self) -> Generator:
+    def __gen_flac_tags(self, exclude: set) -> Generator:
         """Generate key, value pairs to tag FLAC files.
 
         :rtype: Tuple[str, str]
         """
         for k, v in FLAC_KEY.items():
+            logger.debug("attr: %s", k)
+            if k in exclude:
+                continue
+
             tag = getattr(self, k)
             if tag:
-                if k in (
+                if k in {
                     "tracknumber",
                     "discnumber",
                     "tracktotal",
                     "disctotal",
-                ):
+                }:
                     tag = f"{int(tag):02}"
 
                 logger.debug("Adding tag %s: %s", v, tag)
                 yield (v, str(tag))
 
-    def __gen_mp3_tags(self) -> Generator:
+    def __gen_mp3_tags(self, exclude: set) -> Generator:
         """Generate key, value pairs to tag MP3 files.
 
         :rtype: Tuple[str, str]
         """
         for k, v in MP3_KEY.items():
+            if k in exclude:
+                continue
+
             if k == "tracknumber":
                 text = f"{self.tracknumber}/{self.tracktotal}"
             elif k == "discnumber":
@@ -525,12 +538,15 @@ class TrackMetadata:
             if text is not None and v is not None:
                 yield (v.__name__, v(encoding=3, text=text))
 
-    def __gen_mp4_tags(self) -> Generator:
+    def __gen_mp4_tags(self, exclude: set) -> Generator:
         """Generate key, value pairs to tag ALAC or AAC files.
 
         :rtype: Tuple[str, str]
         """
         for k, v in MP4_KEY.items():
+            if k in exclude:
+                continue
+
             if k == "tracknumber":
                 text = [(self.tracknumber, self.tracktotal)]
             elif k == "discnumber":
