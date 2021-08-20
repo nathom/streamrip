@@ -303,8 +303,6 @@ class Track(Media):
             url_id = self.id
 
         try:
-            print(url_id)
-            print(self.quality)
             dl_info = self.client.get_file_url(url_id, self.quality)
         except Exception as e:
             logger.debug(repr(e))

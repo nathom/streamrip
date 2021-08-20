@@ -501,7 +501,6 @@ class DeezerClient(Client):
         try:
             if media_type == "featured":
                 if query:
-                    print(query)
                     search_function = getattr(
                         self.client.api, f"get_editorial_{query}"
                     )

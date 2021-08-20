@@ -26,6 +26,7 @@ from streamrip.clients import (
 from streamrip.constants import MEDIA_TYPES
 from streamrip.exceptions import (
     AuthenticationError,
+    IneligibleError,
     ItemExists,
     MissingCredentials,
     NonStreamable,
@@ -653,7 +654,14 @@ class RipCore(list):
         logger.debug("searching for %s", query)
 
         client = self.get_client(source)
+
+        if isinstance(client, DeezloaderClient) and media_type == "featured":
+            raise IneligibleError(
+                "Must have premium Deezer account to access editorial lists."
+            )
+
         results = client.search(query, media_type)
+
         if media_type == "featured":
             media_type = "album"
 
