@@ -654,6 +654,8 @@ class RipCore(list):
 
         client = self.get_client(source)
         results = client.search(query, media_type)
+        if media_type == "featured":
+            media_type = "album"
 
         if isinstance(results, Generator):  # QobuzClient
             for page in results:
@@ -670,11 +672,11 @@ class RipCore(list):
                     if i >= limit - 1:
                         return
         else:
-            logger.debug("Not generator")
             items = (
                 results.get("data")
                 or results.get("items")
                 or results.get("collection")
+                or results.get("albums", {}).get("data", False)
             )
             if items is None:
                 raise NoResultsFound(query)

@@ -103,12 +103,17 @@ class DownloadStream:
             assert isinstance(self.id, str), self.id
 
             blowfish_key = self._generate_blowfish_key(self.id)
-            decryptor = self._create_deezer_decryptor(blowfish_key)
+            # decryptor = self._create_deezer_decryptor(blowfish_key)
+            CHUNK_SIZE = 2048 * 3
             return (
-                (decryptor.decrypt(chunk[:2048]) + chunk[2048:])
-                # (self._decrypt_chunk(blowfish_key, chunk[:2048]) + chunk[2048:])
-                if len(chunk) >= 2048 else chunk
-                for chunk in self.request.iter_content(2048 * 3)
+                # (decryptor.decrypt(chunk[:2048]) + chunk[2048:])
+                (
+                    self._decrypt_chunk(blowfish_key, chunk[:2048])
+                    + chunk[2048:]
+                )
+                if len(chunk) >= 2048
+                else chunk
+                for chunk in self.request.iter_content(CHUNK_SIZE)
             )
 
         return self.request.iter_content(chunk_size=1024)
@@ -155,6 +160,7 @@ class DownloadStream:
         return Blowfish.new(
             key,
             Blowfish.MODE_CBC,
+            b"\x00\x01\x02\x03\x04\x05\x06\x07",
         ).decrypt(data)
 
 

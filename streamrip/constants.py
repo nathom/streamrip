@@ -152,6 +152,7 @@ TIDAL_Q_MAP = {
 }
 
 DEEZER_MAX_Q = 6
+DEEZER_FEATURED_KEYS = {"releases", "charts", "selection"}
 AVAILABLE_QUALITY_IDS = (0, 1, 2, 3, 4)
 DEEZER_FORMATS = {
     "AAC_64",

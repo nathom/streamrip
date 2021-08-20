@@ -499,7 +499,19 @@ class DeezerClient(Client):
         """
         # TODO: use limit parameter
         try:
-            search_function = getattr(self.client.api, f"search_{media_type}")
+            if media_type == "featured":
+                if query:
+                    print(query)
+                    search_function = getattr(
+                        self.client.api, f"get_editorial_{query}"
+                    )
+                else:
+                    search_function = self.client.api.get_editorial_releases
+
+            else:
+                search_function = getattr(
+                    self.client.api, f"search_{media_type}"
+                )
         except AttributeError:
             raise Exception
 

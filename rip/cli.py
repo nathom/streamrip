@@ -169,11 +169,12 @@ class SearchCommand(Command):
 
 class DiscoverCommand(Command):
     """
-    Browse and download items in interactive mode (Qobuz only).
+    Browse and download items in interactive mode (Qobuz and Deezer only).
 
     discover
-        {--s|scrape : Download all of the items in the list}
+        {--scrape : Download all of the items in the list}
         {--m|max-items=50 : The number of items to fetch}
+        {--s|source=qobuz : The source to download from (<cmd>qobuz</cmd> or <cmd>deezer</cmd>)}
         {list=ideal-discography : The list to fetch}
     """
 
@@ -182,7 +183,7 @@ class DiscoverCommand(Command):
         "$ <cmd>rip discover</cmd>\n\n"
         "Browse the best-sellers list\n"
         "$ <cmd>rip discover best-sellers</cmd>\n\n"
-        "Available options for <info>list</info>:\n\n"
+        "Available options for Qobuz <info>list</info>:\n\n"
         "    • most-streamed\n"
         "    • recent-releases\n"
         "    • best-sellers\n"
@@ -197,21 +198,46 @@ class DiscoverCommand(Command):
         "    • universal-classic\n"
         "    • universal-jazz\n"
         "    • universal-jeunesse\n"
-        "    • universal-chanson\n"
+        "    • universal-chanson\n\n"
+        "Browse the Deezer editorial releases list\n"
+        "$ <cmd>rip discover --source deezer</cmd>\n\n"
+        "Browse the Deezer charts\n"
+        "$ <cmd>rip discover --source deezer charts</cmd>\n\n"
+        "Available options for Deezer <info>list</info>:\n\n"
+        "    • releases\n"
+        "    • charts\n"
+        "    • selection\n"
     )
 
     def handle(self):
-        from streamrip.constants import QOBUZ_FEATURED_KEYS
-
-        chosen_list = self.argument("list")
+        source = self.option("source")
         scrape = self.option("scrape")
+        chosen_list = self.argument("list")
         max_items = self.option("max-items")
 
-        if chosen_list not in QOBUZ_FEATURED_KEYS:
+        if source == "qobuz":
+            from streamrip.constants import QOBUZ_FEATURED_KEYS
+
+            if chosen_list not in QOBUZ_FEATURED_KEYS:
+                self.line(
+                    f'<error>Error: list "{chosen_list}" not available</error>'
+                )
+                self.line(self.help)
+                return 1
+        elif source == "deezer":
+            from streamrip.constants import DEEZER_FEATURED_KEYS
+
+            if chosen_list not in DEEZER_FEATURED_KEYS:
+                self.line(
+                    f'<error>Error: list "{chosen_list}" not available</error>'
+                )
+                self.line(self.help)
+                return 1
+
+        else:
             self.line(
-                f'<error>Error: list "{chosen_list}" not available</error>'
+                "<error>Invalid source. Choose either <cmd>qobuz</cmd> or <cmd>deezer</cmd></error>"
             )
-            self.line(self.help)
             return 1
 
         config = Config()
@@ -223,11 +249,13 @@ class DiscoverCommand(Command):
             return 0
 
         if core.interactive_search(
-            chosen_list, "qobuz", "featured", limit=int(max_items)
+            chosen_list, source, "featured", limit=int(max_items)
         ):
             core.download()
         else:
             self.line("<error>No items chosen, exiting.</error>")
+
+        return 0
 
 
 class LastfmCommand(Command):
