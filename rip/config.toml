@@ -145,6 +145,9 @@ folder_format = "{albumartist} - {title} ({year}) [{container}] [{bit_depth}B-{s
 # Available keys: "tracknumber", "artist", "albumartist", "composer", "title",
 # and "albumcomposer"
 track_format = "{tracknumber}. {artist} - {title}"
+# Only allow printable ASCII characters in filenames.
+restrict_characters = false
+
 
 # Last.fm playlists are downloaded by searching for the titles of the tracks
 [lastfm]
@@ -160,4 +163,4 @@ progress_bar = "dainty"
 
 [misc]
 # Metadata to identify this config file. Do not change.
-version = "1.4"
+version = "1.5"

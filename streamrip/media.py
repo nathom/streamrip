@@ -29,7 +29,7 @@ from click import echo, secho, style
 from mutagen.flac import FLAC, Picture
 from mutagen.id3 import APIC, ID3, ID3NoHeaderError
 from mutagen.mp4 import MP4, MP4Cover
-from pathvalidate import sanitize_filename, sanitize_filepath
+from pathvalidate import sanitize_filepath
 
 from . import converter
 from .clients import Client, DeezloaderClient
@@ -50,6 +50,7 @@ from .exceptions import (
 from .metadata import TrackMetadata
 from .utils import (
     DownloadStream,
+    clean_filename,
     clean_format,
     decrypt_mqa_file,
     downsize_image,
@@ -247,13 +248,16 @@ class Track(Media):
                 clean_format(
                     kwargs.get("folder_format", FOLDER_FORMAT),
                     self.meta.get_album_formatter(self.quality),
+                    restrict=kwargs.get("restrict_filenames", False),
                 ),
             )
 
         self.file_format = kwargs.get("track_format", TRACK_FORMAT)
 
         self.folder = sanitize_filepath(self.folder, platform="auto")
-        self.format_final_path()  # raises: ItemExists
+        self.format_final_path(
+            restrict=kwargs.get("restrict_filenames", False)
+        )  # raises: ItemExists
 
         os.makedirs(self.folder, exist_ok=True)
 
@@ -364,7 +368,9 @@ class Track(Media):
             if self.quality != stream_quality:
                 # The chosen quality is not available
                 self.quality = stream_quality
-                self.format_final_path()  # If the extension is different
+                self.format_final_path(
+                    restrict=kwargs.get("restrict_filenames", False)
+                )  # If the extension is different
 
             with open(self.path, "wb") as file:
                 for chunk in tqdm_stream(stream, desc=self._progress_desc):
@@ -503,16 +509,17 @@ class Track(Media):
             logger.debug("Cover already exists, skipping download")
             raise ItemExists(self.cover_path)
 
-    def format_final_path(self) -> str:
+    def format_final_path(self, restrict: bool = False) -> str:
         """Return the final filepath of the downloaded file.
 
         This uses the `get_formatter` method of TrackMetadata, which returns
         a dict with the keys allowed in formatter strings, and their values in
         the TrackMetadata object.
         """
+        print(f"{restrict=}")
         formatter = self.meta.get_formatter(max_quality=self.quality)
         logger.debug("Track meta formatter %s", formatter)
-        filename = clean_format(self.file_format, formatter)
+        filename = clean_format(self.file_format, formatter, restrict=restrict)
         self.final_path = os.path.join(self.folder, filename)[
             :250
         ].strip() + ext(self.quality, self.client.source)
@@ -725,7 +732,7 @@ class Track(Media):
             exit()
 
         if not hasattr(self, "final_path"):
-            self.format_final_path()
+            self.format_final_path(kwargs.get("restrict_filenames", False))
 
         if not os.path.isfile(self.path):
             logger.info(
@@ -1079,9 +1086,11 @@ class Booklet:
         :type parent_folder: str
         :param kwargs:
         """
-        filepath = os.path.join(
-            parent_folder, f"{sanitize_filename(self.description)}.pdf"
+        fn = clean_filename(
+            self.description, restrict=kwargs.get("restrict_filenames")
         )
+        filepath = os.path.join(parent_folder, f"{fn}.pdf")
+
         _quick_download(self.url, filepath, "Booklet")
 
     def type(self) -> str:
@@ -1468,7 +1477,9 @@ class Album(Tracklist, Media):
 
         parent_folder = kwargs.get("parent_folder", "StreamripDownloads")
         if self.folder_format:
-            self.folder = self._get_formatted_folder(parent_folder)
+            self.folder = self._get_formatted_folder(
+                parent_folder, restrict=kwargs.get("restrict_filenames", False)
+            )
         else:
             self.folder = parent_folder
 
@@ -1639,7 +1650,9 @@ class Album(Tracklist, Media):
         logger.debug("Formatter: %s", fmt)
         return fmt
 
-    def _get_formatted_folder(self, parent_folder: str) -> str:
+    def _get_formatted_folder(
+        self, parent_folder: str, restrict: bool = False
+    ) -> str:
         """Generate the folder name for this album.
 
         :param parent_folder:
@@ -1650,7 +1663,9 @@ class Album(Tracklist, Media):
         """
 
         formatted_folder = clean_format(
-            self.folder_format, self._get_formatter()
+            self.folder_format,
+            self._get_formatter(),
+            restrict=restrict,
         )
 
         return os.path.join(parent_folder, formatted_folder)
@@ -1843,7 +1858,9 @@ class Playlist(Tracklist, Media):
         self, parent_folder: str = "StreamripDownloads", **kwargs
     ):
         if kwargs.get("folder_format"):
-            fname = sanitize_filename(self.name)
+            fname = clean_filename(
+                self.name, kwargs.get("restrict_filenames", False)
+            )
             self.folder = os.path.join(parent_folder, fname)
         else:
             self.folder = parent_folder
@@ -2039,7 +2056,9 @@ class Artist(Tracklist, Media):
         :rtype: Iterable
         """
         if kwargs.get("folder_format"):
-            folder = sanitize_filename(self.name)
+            folder = clean_filename(
+                self.name, kwargs.get("restrict_filenames", False)
+            )
             self.folder = os.path.join(parent_folder, folder)
         else:
             self.folder = parent_folder

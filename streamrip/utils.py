@@ -191,6 +191,17 @@ def safe_get(d: dict, *keys: Hashable, default=None):
     return res
 
 
+def clean_filename(fn: str, restrict=False) -> str:
+    path = sanitize_filename(fn)
+    if restrict:
+        from string import printable
+
+        allowed_chars = set(printable)
+        path = "".join(c for c in path if c in allowed_chars)
+
+    return path
+
+
 __QUALITY_MAP: Dict[str, Dict[int, Union[int, str, Tuple[int, str]]]] = {
     "qobuz": {
         1: 5,
@@ -274,21 +285,24 @@ def get_stats_from_quality(
         raise InvalidQuality(quality_id)
 
 
-def clean_format(formatter: str, format_info):
+def clean_format(formatter: str, format_info, restrict: bool = False):
     """Format track or folder names sanitizing every formatter key.
 
     :param formatter:
     :type formatter: str
     :param kwargs:
     """
-    fmt_keys = [i[1] for i in Formatter().parse(formatter) if i[1] is not None]
+    fmt_keys = filter(None, (i[1] for i in Formatter().parse(formatter)))
+    # fmt_keys = (i[1] for i in Formatter().parse(formatter) if i[1] is not None)
 
     logger.debug("Formatter keys: %s", fmt_keys)
 
     clean_dict = dict()
     for key in fmt_keys:
         if isinstance(format_info.get(key), (str, float)):
-            clean_dict[key] = sanitize_filename(str(format_info[key]))
+            clean_dict[key] = clean_filename(
+                str(format_info[key]), restrict=restrict
+            )
         elif isinstance(format_info.get(key), int):  # track/discnumber
             clean_dict[key] = f"{format_info[key]:02}"
         else:
