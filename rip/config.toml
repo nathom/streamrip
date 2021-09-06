@@ -119,8 +119,9 @@ embed = true
 size = "large"
 # Both of these options limit the size of the embedded artwork. If their values
 # are larger than the actual dimensions of the image, they will be ignored.
-max_width = 999999
-max_height = 999999
+# If either value is -1, the image is left untouched.
+max_width = -1
+max_height = -1
 # Save the cover image at the highest quality as a seperate jpg file
 keep_hires_cover = true
 
@@ -163,4 +164,4 @@ progress_bar = "dainty"
 
 [misc]
 # Metadata to identify this config file. Do not change.
-version = "1.5"
+version = "1.6"

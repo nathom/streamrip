@@ -518,9 +518,15 @@ def downsize_image(filepath: str, width: int, height: int):
     :type height: int
     :raises: ValueError
     """
-    from PIL import Image
+    if width == -1 or height == -1:
+        return
 
-    image = Image.open(filepath)
+    from PIL import Image, UnidentifiedImageError
+
+    try:
+        image = Image.open(filepath)
+    except UnidentifiedImageError:
+        secho("Cover art not found, skipping downsize.", fg="red")
 
     width = min(width, image.width)
     height = min(height, image.height)
