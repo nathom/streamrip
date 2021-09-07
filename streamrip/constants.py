@@ -7,9 +7,12 @@ AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:83.0) Gecko/20100101 Firef
 TIDAL_COVER_URL = (
     "https://resources.tidal.com/images/{uuid}/{width}x{height}.jpg"
 )
-SOUNDCLOUD_CLIENT_ID = "QFciLWLC1GS4P3EZvXIjA3jKhKO5pKB3"
+# Get this from (base64encoded)
+# aHR0cHM6Ly9hLXYyLnNuZGNkbi5jb20vYXNzZXRzLzItYWIxYjg1NjguanM=
+# Don't know if this is a static url yet
+SOUNDCLOUD_CLIENT_ID = "qHsjZaNbdTcABbiIQnVfW07cEPGLNjIh"
 SOUNDCLOUD_USER_ID = "672320-86895-162383-801513"
-SOUNDCLOUD_APP_VERSION = "1626941202"
+SOUNDCLOUD_APP_VERSION = "1630917744"
 
 
 QUALITY_DESC = {

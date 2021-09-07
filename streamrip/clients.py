@@ -1221,7 +1221,14 @@ class SoundCloudClient(Client):
         resp, _ = self._get(f"search/{media_type}s", params=params)
         return resp
 
-    def _get(self, path, params=None, no_base=False) -> Tuple[dict, int]:
+    def _get(
+        self,
+        path,
+        params=None,
+        no_base=False,
+        skip_decode=False,
+        headers=None,
+    ) -> Optional[Tuple[dict, int]]:
         """Send a request to the SoundCloud API.
 
         :param path:
@@ -1246,6 +1253,11 @@ class SoundCloudClient(Client):
             url = f"{SOUNDCLOUD_BASE}/{path}"
 
         logger.debug("Fetching url %s with params %s", url, params)
-        r = self.session.get(url, params=params)
+        r = self.session.get(url, params=params, headers=headers)
+
+        r.raise_for_status()
+
+        if skip_decode:
+            return None
 
         return r.json(), r.status_code

@@ -270,6 +270,7 @@ class TrackMetadata:
             self.tracknumber = 0
             self.tracktotal = 0
             self.quality = 0
+            self.cover_urls = get_cover_urls(track, "soundcloud")
 
         else:
             raise ValueError(self.__source)
