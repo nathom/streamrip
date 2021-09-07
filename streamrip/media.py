@@ -134,6 +134,15 @@ class Media(abc.ABC):
     def downloaded_ids(self, other):
         pass
 
+    @property
+    @abc.abstractmethod
+    def id(self):
+        pass
+
+    @id.setter
+    def id(self, other):
+        pass
+
 
 class Track(Media):
     """Represents a downloadable track.
@@ -207,25 +216,15 @@ class Track(Media):
         self.meta = TrackMetadata(
             track=self.resp, source=source
         )  # meta dict -> TrackMetadata object
-        try:
-            if source == "qobuz":
-                self.cover_url = self.resp["album"]["image"]["large"]
-            elif source == "tidal":
-                self.cover_url = tidal_cover_url(
-                    self.resp["album"]["cover"], 320
-                )
-            elif source == "deezer":
-                self.cover_url = self.resp["album"]["cover_medium"]
-            elif source == "soundcloud":
-                self.cover_url = (
-                    self.resp["artwork_url"]
-                    or self.resp["user"].get("avatar_url")
-                ).replace("large", "t500x500")
-            else:
-                raise InvalidSourceError(source)
-        except KeyError:
-            logger.debug("No cover found")
-            self.cover_url = None
+
+        # Because the cover urls are not parsed when only the track metadata
+        # is loaded, we need to do this ourselves
+
+        # Default to large if chosen size is not available
+        self.cover_url = self.meta.cover_urls.get(
+            kwargs.get("embed_cover_size", "large"),
+            self.meta.cover_urls.get("large"),
+        )
 
     def _prepare_download(self, **kwargs):
         """Do preprocessing before downloading items.
@@ -830,6 +829,7 @@ class Track(Media):
 class Video(Media):
     """Only for Tidal."""
 
+    id = None
     downloaded_ids: set = set()
 
     def __init__(self, client: Client, id: str, **kwargs):
@@ -961,6 +961,8 @@ class Video(Media):
 class YoutubeVideo(Media):
     """Dummy class implemented for consistency with the Media API."""
 
+    id = None
+
     class DummyClient:
         """Used because YouTube downloads use youtube-dl, not a client."""
 
@@ -997,6 +999,7 @@ class YoutubeVideo(Media):
         filename_formatter = "%(track_number)s.%(track)s.%(container)s"
         filename = os.path.join(parent_folder, filename_formatter)
 
+        assert isinstance(self.id, str)
         p = subprocess.Popen(
             [
                 "youtube-dl",
@@ -1063,6 +1066,8 @@ class YoutubeVideo(Media):
 class Booklet:
     """Only for Qobuz."""
 
+    id = None
+
     def __init__(self, resp: dict):
         """Initialize from the `goodies` field of the Qobuz API response.
 
@@ -1114,6 +1119,7 @@ class Tracklist(list):
     the tracklist.
     """
 
+    id = None
     # anything not in parentheses or brackets
     essence_regex = re.compile(r"([^\(]+)(?:\s*[\(\[][^\)][\)\]])*")
 
@@ -1400,7 +1406,7 @@ class Album(Tracklist, Media):
     """
 
     downloaded_ids: set = set()
-    id: str
+    id = None
 
     def __init__(self, client: Client, **kwargs):
         """Create a new Album object.
@@ -1487,45 +1493,15 @@ class Album(Tracklist, Media):
 
         self.download_message()
 
-        # choose optimal cover size and download it
-        cover_path = os.path.join(gettempdir(), f"cover_{hash(self)}.jpg")
-        embed_cover_size = kwargs.get("embed_cover_size", "large")
-        secho(f"Downloading cover art ({embed_cover_size})", bold=True)
-
-        assert (
-            embed_cover_size in self.cover_urls
-        ), f"Invalid cover size. Must be in {self.cover_urls.keys()}"
-
-        embed_cover_url = self.cover_urls[embed_cover_size]
-        logger.debug("Chosen cover url: %s", embed_cover_url)
-        if not os.path.exists(cover_path):
-            if embed_cover_url is None:
-                embed_cover_url = next(filter(None, self.cover_urls.values()))
-
-            logger.debug("Downloading cover from url %s", embed_cover_url)
-
-            _cover_download(embed_cover_url, cover_path)
-
-        hires_cov_path = os.path.join(self.folder, "cover.jpg")
-        if kwargs.get("keep_hires_cover", True) and not os.path.exists(
-            hires_cov_path
-        ):
-            logger.debug("Downloading hires cover")
-            _cover_download(self.cover_urls["original"], hires_cov_path)
-
-        cover_size = os.path.getsize(cover_path)
-        if cover_size > FLAC_MAX_BLOCKSIZE:  # 16.77 MB
-            secho(
-                "Downgrading embedded cover size, too large ({cover_size}).",
-                fg="bright_yellow",
-            )
-            # large is about 600x600px which is guaranteed < 16.7 MB
-            _cover_download(self.cover_urls["large"], cover_path)
-
-        downsize_image(
-            cover_path,
-            kwargs.get("max_artwork_width", 999999),
-            kwargs.get("max_artwork_height", 999999),
+        cover_path = _choose_and_download_cover(
+            self.cover_urls,
+            kwargs.get("embed_cover_size", "large"),
+            self.folder,
+            kwargs.get("keep_hires_cover", True),
+            (
+                kwargs.get("max_artwork_width", 999999),
+                kwargs.get("max_artwork_height", 999999),
+            ),
         )
 
         if kwargs.get("embed_cover", True):  # embed by default
@@ -1978,6 +1954,7 @@ class Artist(Tracklist, Media):
     >>> artist.download()
     """
 
+    id = None
     downloaded_ids: set = set()
 
     def __init__(self, client: Client, **kwargs):
@@ -2277,6 +2254,8 @@ class Artist(Tracklist, Media):
 class Label(Artist):
     """Represents a downloadable Label."""
 
+    id = None
+
     def load_meta(self, **kwargs):
         """Load metadata given an id."""
         assert self.client.source == "qobuz", "Label source must be qobuz"
@@ -2328,3 +2307,51 @@ def _quick_download(url: str, path: str, desc: str = None):
 
 def _cover_download(url: str, path: str):
     _quick_download(url, path, style("Cover", fg="blue"))
+
+
+def _choose_and_download_cover(
+    cover_urls: dict,
+    preferred_size: str,
+    directory: str,
+    keep_hires_cover: bool = True,
+    downsize: Tuple[int, int] = (999999, 999999),
+) -> str:
+    # choose optimal cover size and download it
+    temp_cover_path = os.path.join(
+        gettempdir(), f"cover_{hash(cover_urls.values())}.jpg"
+    )
+    secho(f"Downloading cover art ({preferred_size})", bold=True)
+
+    assert (
+        preferred_size in cover_urls
+    ), f"Invalid cover size. Must be in {cover_urls.keys()}"
+
+    embed_cover_url = cover_urls[preferred_size]
+    logger.debug("Chosen cover url: %s", embed_cover_url)
+    if not os.path.exists(temp_cover_path):
+        # Sometimes a size isn't available. When this is the case, find
+        # the first `not None` url.
+        if embed_cover_url is None:
+            embed_cover_url = next(filter(None, cover_urls.values()))
+
+        logger.debug("Downloading cover from url %s", embed_cover_url)
+
+        _cover_download(embed_cover_url, temp_cover_path)
+
+    hires_cov_path = os.path.join(directory, "cover.jpg")
+    if keep_hires_cover and not os.path.exists(hires_cov_path):
+        logger.debug("Downloading hires cover")
+        _cover_download(cover_urls["original"], hires_cov_path)
+
+    cover_size = os.path.getsize(temp_cover_path)
+    if cover_size > FLAC_MAX_BLOCKSIZE:  # 16.77 MB
+        secho(
+            "Downgrading embedded cover size, too large ({cover_size}).",
+            fg="bright_yellow",
+        )
+        # large is about 600x600px which is guaranteed < 16.7 MB
+        _cover_download(cover_urls["large"], temp_cover_path)
+
+    downsize_image(temp_cover_path, *downsize)
+
+    return temp_cover_path

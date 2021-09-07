@@ -7,7 +7,6 @@ import functools
 import hashlib
 import logging
 import re
-from collections import OrderedDict
 from string import Formatter
 from typing import Dict, Hashable, Iterator, Optional, Tuple, Union
 
@@ -463,7 +462,7 @@ def get_container(quality: int, source: str) -> str:
     return "MP3"
 
 
-def get_cover_urls(resp: dict, source: str) -> dict:
+def get_cover_urls(resp: dict, source: str, is_track: bool = True) -> dict:
     """Parse a response dict containing cover info according to the source.
 
     :param resp:
@@ -472,32 +471,39 @@ def get_cover_urls(resp: dict, source: str) -> dict:
     :type source: str
     :rtype: dict
     """
+
     if source == "qobuz":
-        cover_urls = OrderedDict(resp["image"])
+        cover_urls = resp["image"]
         cover_urls["original"] = cover_urls["large"].replace("600", "org")
         return cover_urls
 
     if source == "tidal":
         uuid = resp["cover"]
-        return OrderedDict(
-            {
-                sk: tidal_cover_url(uuid, size)
-                for sk, size in zip(COVER_SIZES, (160, 320, 640, 1280))
-            }
-        )
+        return {
+            sk: tidal_cover_url(uuid, size)
+            for sk, size in zip(COVER_SIZES, (160, 320, 640, 1280))
+        }
 
     if source == "deezer":
-        cover_urls = OrderedDict(
-            {
-                sk: resp.get(rk)  # size key, resp key
-                for sk, rk in zip(
-                    COVER_SIZES,
-                    ("cover", "cover_medium", "cover_large", "cover_xl"),
-                )
-            }
-        )
+        cover_urls = {
+            sk: resp.get(rk)  # size key, resp key
+            for sk, rk in zip(
+                COVER_SIZES,
+                ("cover", "cover_medium", "cover_large", "cover_xl"),
+            )
+        }
+
         if cover_urls["large"] is None and resp.get("cover_big") is not None:
             cover_urls["large"] = resp["cover_big"]
+
+        return cover_urls
+
+    if source == "soundcloud":
+        cover_url = (
+            resp["artwork_url"] or resp["user"].get("avatar_url")
+        ).replace("large", "t500x500")
+
+        cover_urls = {"large": cover_url}
 
         return cover_urls
 
@@ -527,6 +533,7 @@ def downsize_image(filepath: str, width: int, height: int):
         image = Image.open(filepath)
     except UnidentifiedImageError:
         secho("Cover art not found, skipping downsize.", fg="red")
+        return
 
     width = min(width, image.width)
     height = min(height, image.height)

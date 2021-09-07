@@ -23,6 +23,7 @@ from .utils import get_cover_urls, get_quality_id, safe_get
 logger = logging.getLogger("streamrip")
 
 
+# TODO: remove OrderedDict bc normal dicts are ordered now
 class TrackMetadata:
     """Contains all of the metadata needed to tag the file.
 
