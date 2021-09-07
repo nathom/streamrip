@@ -167,6 +167,7 @@ class TrackMetadata:
             self.sampling_rate = resp.get("maximum_sampling_rate")
             self.quality = get_quality_id(self.bit_depth, self.sampling_rate)
             self.booklets = resp.get("goodies")
+            self.id = resp.get("id")
 
             if self.sampling_rate is not None:
                 self.sampling_rate *= 1000
@@ -188,6 +189,7 @@ class TrackMetadata:
             # 80, 160, 320, 640, 1280
             self.cover_urls = get_cover_urls(resp, self.__source)
             self.streamable = resp.get("allowStreaming", False)
+            self.id = resp.get("id")
 
             if q := resp.get(
                 "audioQuality"
@@ -220,6 +222,7 @@ class TrackMetadata:
 
             self.cover_urls = get_cover_urls(resp, self.__source)
             self.streamable = True
+            self.id = resp.get("id")
 
         elif self.__source == "soundcloud":
             raise NotImplementedError

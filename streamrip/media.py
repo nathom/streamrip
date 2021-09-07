@@ -515,7 +515,6 @@ class Track(Media):
         a dict with the keys allowed in formatter strings, and their values in
         the TrackMetadata object.
         """
-        print(f"{restrict=}")
         formatter = self.meta.get_formatter(max_quality=self.quality)
         logger.debug("Track meta formatter %s", formatter)
         filename = clean_format(self.file_format, formatter, restrict=restrict)

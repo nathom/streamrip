@@ -144,7 +144,7 @@ add_singles_to_folder = false
 # "container", and "albumcomposer"
 folder_format = "{albumartist} - {title} ({year}) [{container}] [{bit_depth}B-{sampling_rate}kHz]"
 # Available keys: "tracknumber", "artist", "albumartist", "composer", "title",
-# and "albumcomposer"
+# "id", and "albumcomposer"
 track_format = "{tracknumber}. {artist} - {title}"
 # Only allow printable ASCII characters in filenames.
 restrict_characters = false

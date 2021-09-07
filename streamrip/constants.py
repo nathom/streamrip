@@ -136,6 +136,7 @@ ALBUM_KEYS = (
     "sampling_rate",
     "container",
     "albumcomposer",
+    "id",
 )
 # TODO: rename these to DEFAULT_FOLDER_FORMAT etc
 FOLDER_FORMAT = "{albumartist} - {title} ({year}) [{container}] [{bit_depth}B-{sampling_rate}kHz]"
