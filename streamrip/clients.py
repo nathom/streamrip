@@ -1082,6 +1082,8 @@ class TidalClient(Client):
     def _get_video_stream_url(self, video_id: str) -> str:
         """Get the HLS video stream url.
 
+        The stream is downloaded using ffmpeg for now.
+
         :param video_id:
         :type video_id: str
         :rtype: str
@@ -1094,18 +1096,20 @@ class TidalClient(Client):
         resp = self._api_request(
             f"videos/{video_id}/playbackinfopostpaywall", params=params
         )
-        stream_url_regex = (
-            r'#EXT-X-STREAM-INF:BANDWIDTH=\d+,AVERAGE-BANDWIDTH=\d+,CODECS="[^"]+"'
-            r",RESOLUTION=\d+x\d+\n(.+)"
-        )
         manifest = json.loads(
             base64.b64decode(resp["manifest"]).decode("utf-8")
         )
         available_urls = self.session.get(manifest["urls"][0])
-        url_info = re.findall(stream_url_regex, available_urls.text)
+        available_urls.encoding = "utf-8"
 
-        # highest resolution is last
-        return url_info[-1]
+        STREAM_URL_REGEX = re.compile(
+            r"#EXT-X-STREAM-INF:BANDWIDTH=\d+,AVERAGE-BANDWIDTH=\d+,CODECS=\"(?!jpeg)[^\"]+\",RESOLUTION=\d+x\d+\n(.+)"
+        )
+
+        # Highest resolution is last
+        *_, last_match = STREAM_URL_REGEX.finditer(available_urls.text)
+
+        return last_match.group(1)
 
     def _api_post(self, url, data, auth=None):
         """Post to the Tidal API.
