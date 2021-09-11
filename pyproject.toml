@@ -37,6 +37,12 @@ deezer-py = "^1.0.4"
 pycryptodomex = "^3.10.1"
 cleo = {version = "1.0.0a3", allow-prereleases = true}
 appdirs = "^1.4.4"
+m3u8 = "^0.9.0"
+aiofiles = "^0.7.0"
+aiohttp = "^3.7.4-post.0"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^6.2.5"
 
 [tool.poetry.urls]
 "Bug Reports" = "https://github.com/nathom/streamrip/issues"
