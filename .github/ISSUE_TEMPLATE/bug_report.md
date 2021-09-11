@@ -15,7 +15,7 @@ A clear and concise description of the behavior.
 **Command used:**
 
 ```bash
-# Type the command that caused the bug here
+Type the command that caused the bug here
 ```
 
 **Expected behavior**
