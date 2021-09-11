@@ -19,3 +19,4 @@ StreamripDownloads
 *.pyc
 *test.py
 /.mypy_cache
+.DS_Store

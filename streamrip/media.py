@@ -39,6 +39,7 @@ from .constants import (
     FOLDER_FORMAT,
     TRACK_FORMAT,
 )
+from .downloadtools import DownloadPool, DownloadStream
 from .exceptions import (
     InvalidQuality,
     InvalidSourceError,
@@ -49,7 +50,6 @@ from .exceptions import (
 )
 from .metadata import TrackMetadata
 from .utils import (
-    DownloadStream,
     clean_filename,
     clean_format,
     decrypt_mqa_file,
@@ -450,21 +450,44 @@ class Track(Media):
         """
         logger.debug("dl_info: %s", dl_info)
         if dl_info["type"] == "mp3":
+            import m3u8
+            import requests
+
+            parsed_m3u = m3u8.loads(requests.get(dl_info["url"]).text)
             self.path += ".mp3"
-            # convert hls stream to mp3
-            subprocess.call(
-                [
-                    "ffmpeg",
-                    "-i",
-                    dl_info["url"],
-                    "-c",
-                    "copy",
-                    "-y",
-                    self.path,
-                    "-loglevel",
-                    "fatal",
-                ]
-            )
+
+            with DownloadPool(
+                segment.uri for segment in parsed_m3u.segments
+            ) as pool:
+                pool.download()
+                subprocess.call(
+                    [
+                        "ffmpeg",
+                        "-i",
+                        f"concat:{'|'.join(pool.files)}",
+                        "-acodec",
+                        "copy",
+                        "-loglevel",
+                        "panic",
+                        self.path,
+                    ]
+                )
+
+            # self.path += ".mp3"
+            # # convert hls stream to mp3
+            # subprocess.call(
+            #     [
+            #         "ffmpeg",
+            #         "-i",
+            #         dl_info["url"],
+            #         "-c",
+            #         "copy",
+            #         "-y",
+            #         self.path,
+            #         "-loglevel",
+            #         "fatal",
+            #     ]
+            # )
         elif dl_info["type"] == "original":
             _quick_download(
                 dl_info["url"], self.path, desc=self._progress_desc
@@ -857,6 +880,9 @@ class Video(Media):
 
         :param kwargs:
         """
+        import m3u8
+        import requests
+
         secho(
             f"Downloading {self.title} (Video). This may take a while.",
             fg="blue",
@@ -864,19 +890,41 @@ class Video(Media):
 
         self.parent_folder = kwargs.get("parent_folder", "StreamripDownloads")
         url = self.client.get_file_url(self.id, video=True)
-        # it's more convenient to have ffmpeg download the hls
-        command = [
-            "ffmpeg",
-            "-i",
-            url,
-            "-c",
-            "copy",
-            "-loglevel",
-            "panic",
-            self.path,
-        ]
-        p = subprocess.Popen(command)
-        p.wait()  # remove this?
+
+        parsed_m3u = m3u8.loads(requests.get(url).text)
+        # Asynchronously download the streams
+        with DownloadPool(
+            segment.uri for segment in parsed_m3u.segments
+        ) as pool:
+            pool.download()
+
+            # Put the filenames in a tempfile that ffmpeg
+            # can read from
+            file_list_path = os.path.join(
+                gettempdir(), "__streamrip_video_files"
+            )
+            with open(file_list_path, "w") as file_list:
+                text = "\n".join(f"file '{path}'" for path in pool.files)
+                file_list.write(text)
+
+            # Use ffmpeg to concat the files
+            p = subprocess.Popen(
+                [
+                    "ffmpeg",
+                    "-f",
+                    "concat",
+                    "-safe",
+                    "0",
+                    "-i",
+                    file_list_path,
+                    "-c",
+                    "copy",
+                    self.path,
+                ]
+            )
+            p.wait()
+
+            os.remove(file_list_path)
 
     def tag(self, *args, **kwargs):
         """Return False.
@@ -1396,12 +1444,11 @@ class Tracklist(list):
 class Album(Tracklist, Media):
     """Represents a downloadable album.
 
-    Usage:
-
     >>> resp = client.get('fleetwood mac rumours', 'album')
     >>> album = Album.from_api(resp['items'][0], client)
     >>> album.load_meta()
     >>> album.download()
+
     """
 
     downloaded_ids: set = set()

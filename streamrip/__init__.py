@@ -2,4 +2,4 @@
 
 __version__ = "1.4"
 
-from . import clients, constants, converter, media
+from . import clients, constants, converter, downloadtools, media
