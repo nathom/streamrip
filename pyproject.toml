@@ -41,9 +41,6 @@ m3u8 = "^0.9.0"
 aiofiles = "^0.7.0"
 aiohttp = "^3.7.4-post.0"
 
-[tool.poetry.group.dev.dependencies]
-pytest = "^6.2.5"
-
 [tool.poetry.urls]
 "Bug Reports" = "https://github.com/nathom/streamrip/issues"
 
