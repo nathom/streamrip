@@ -910,8 +910,8 @@ class Video(Media):
                 file_list.write(text)
 
             # Use ffmpeg to concat the files
-            p = subprocess.Popen(
-                [
+            subprocess.call(
+                (
                     "ffmpeg",
                     "-f",
                     "concat",
@@ -924,9 +924,8 @@ class Video(Media):
                     "-loglevel",
                     "panic",
                     self.path,
-                ]
+                )
             )
-            p.wait()
 
             os.remove(file_list_path)
 
