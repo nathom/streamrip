@@ -482,21 +482,6 @@ class Track(Media):
                     )
                 )
 
-            # self.path += ".mp3"
-            # # convert hls stream to mp3
-            # subprocess.call(
-            #     [
-            #         "ffmpeg",
-            #         "-i",
-            #         dl_info["url"],
-            #         "-c",
-            #         "copy",
-            #         "-y",
-            #         self.path,
-            #         "-loglevel",
-            #         "fatal",
-            #     ]
-            # )
         elif dl_info["type"] == "original":
             _quick_download(
                 dl_info["url"], self.path, desc=self._progress_desc
