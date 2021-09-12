@@ -58,6 +58,7 @@ from .utils import (
     get_container,
     get_cover_urls,
     get_stats_from_quality,
+    get_tqdm_bar,
     safe_get,
     tidal_cover_url,
     tqdm_stream,
@@ -459,9 +460,17 @@ class Track(Media):
             with DownloadPool(
                 segment.uri for segment in parsed_m3u.segments
             ) as pool:
-                pool.download()
+
+                bar = get_tqdm_bar(
+                    len(pool), desc=self._progress_desc, unit="Chunk"
+                )
+
+                def update_tqdm_bar():
+                    bar.update(1)
+
+                pool.download(callback=update_tqdm_bar)
                 subprocess.call(
-                    [
+                    (
                         "ffmpeg",
                         "-i",
                         f"concat:{'|'.join(pool.files)}",
@@ -470,7 +479,7 @@ class Track(Media):
                         "-loglevel",
                         "panic",
                         self.path,
-                    ]
+                    )
                 )
 
             # self.path += ".mp3"
@@ -883,20 +892,28 @@ class Video(Media):
         import m3u8
         import requests
 
-        secho(
-            f"Downloading {self.title} (Video). This may take a while.",
-            fg="blue",
-        )
+        # secho(
+        #     f"Downloading {self.title} (Video). This may take a while.",
+        #     fg="blue",
+        # )
 
         self.parent_folder = kwargs.get("parent_folder", "StreamripDownloads")
         url = self.client.get_file_url(self.id, video=True)
 
         parsed_m3u = m3u8.loads(requests.get(url).text)
         # Asynchronously download the streams
+
         with DownloadPool(
             segment.uri for segment in parsed_m3u.segments
         ) as pool:
-            pool.download()
+            bar = get_tqdm_bar(
+                len(pool), desc="Downloading Video", unit="Chunk"
+            )
+
+            def update_tqdm_bar():
+                bar.update(1)
+
+            pool.download(callback=update_tqdm_bar)
 
             # Put the filenames in a tempfile that ffmpeg
             # can read from
@@ -919,6 +936,8 @@ class Video(Media):
                     file_list_path,
                     "-c",
                     "copy",
+                    "-loglevel",
+                    "panic",
                     self.path,
                 ]
             )

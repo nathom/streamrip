@@ -172,7 +172,6 @@ class DownloadPool:
         # {url: path}
         self._paths: Dict[str, str] = {}
         self.task: Optional[asyncio.Task] = None
-        self.callack = chunk_callback
 
         if tempdir is None:
             tempdir = gettempdir()
@@ -208,7 +207,8 @@ class DownloadPool:
 
         logger.debug("Finished %s", url)
 
-    def download(self):
+    def download(self, callback=None):
+        self.callback = callback
         asyncio.run(self._download_urls())
 
     @property

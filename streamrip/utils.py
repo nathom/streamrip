@@ -439,10 +439,10 @@ def tqdm_stream(iterator, desc: Optional[str] = None) -> Iterator[bytes]:
             yield chunk
 
 
-def get_tqdm_bar(total, desc: Optional[str] = None):
+def get_tqdm_bar(total, desc: Optional[str] = None, unit="B"):
     return tqdm(
         total=total,
-        unit="B",
+        unit=unit,
         unit_scale=True,
         unit_divisor=1024,
         desc=desc,
