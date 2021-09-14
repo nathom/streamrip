@@ -874,6 +874,10 @@ class Video(Media):
 
         :param kwargs:
         """
+
+        if not kwargs.get("download_videos", True):
+            return
+
         import m3u8
         import requests
 
@@ -892,7 +896,7 @@ class Video(Media):
             segment.uri for segment in parsed_m3u.segments
         ) as pool:
             bar = get_tqdm_bar(
-                len(pool), desc="Downloading Video", unit="Chunk"
+                len(pool), desc=self._progress_desc, unit="Chunk"
             )
 
             def update_tqdm_bar():
@@ -965,6 +969,10 @@ class Video(Media):
         :param kwargs:
         """
         pass
+
+    @property
+    def _progress_desc(self) -> str:
+        return style(f"Video {self.tracknumber:02}", fg="blue")
 
     @property
     def path(self) -> str:
@@ -1497,7 +1505,7 @@ class Album(Tracklist, Media):
         if not self.get("streamable", False):
             raise NonStreamable(f"This album is not streamable ({self.id} ID)")
 
-        self._load_tracks(resp)
+        self._load_tracks(resp, kwargs.get("download_videos", True))
         self.loaded = True
 
     @classmethod
@@ -1622,7 +1630,7 @@ class Album(Tracklist, Media):
         meta.id = resp["id"]
         return meta
 
-    def _load_tracks(self, resp):
+    def _load_tracks(self, resp, download_videos: bool = True):
         """Load the tracks into self from an API response.
 
         This uses a classmethod to convert an item into a Track object, which
@@ -1631,7 +1639,8 @@ class Album(Tracklist, Media):
         logging.debug("Loading %d tracks to album", self.tracktotal)
         for track in _get_tracklist(resp, self.client.source):
             if track.get("type") == "Music Video":
-                self.append(Video.from_album_meta(track, self.client))
+                if download_videos:
+                    self.append(Video.from_album_meta(track, self.client))
             else:
                 self.append(
                     Track.from_album_meta(
