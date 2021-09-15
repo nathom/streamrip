@@ -1,5 +1,4 @@
 name: Bug report
-blank_issues_enabled: false
 description: Create a report to help us improve streamrip
 labels: bug
 body:
