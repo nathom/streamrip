@@ -1,6 +1,7 @@
-name: Feature Request
+name: 🚀 Feature Request
 description: Suggest a feature that would improve streamrip
 labels: enhancement
+title: "[FEATURE] <title>"
 body:
   - type: textarea
     validations:

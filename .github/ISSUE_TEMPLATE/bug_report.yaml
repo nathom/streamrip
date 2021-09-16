@@ -1,6 +1,7 @@
-name: Bug report
+name: 🐛 Bug Report
 description: Create a report to help us improve streamrip
 labels: bug
+title: "[BUG] <title>"
 body:
   # types: dropdown, textarea, input
   # - type: dropdown
