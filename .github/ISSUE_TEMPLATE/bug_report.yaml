@@ -30,24 +30,59 @@ body:
         For example:
           `rip url https://example.com`
 
+  - type: markdown
+    attributes:
+      value: "```\n"
+
   - type: textarea
     validations:
       required: true
     attributes:
-      label: Traceback
-      description: If there was any error output, paste it here
+      label: Debug Traceback
+      description: |
+        Run your command, with `-vvv` appended to it, and paste the output here.
+        For example, if the problematic command was `rip url https://example.com`, then
+        you would run `rip url https://example.com -vvv` to get the debug logs.
+        Make sure to check the logs for any personal information such as emails and remove them.
+
+  - type: markdown
+    attributes:
+      value: "```"
 
   - type: textarea
     attributes:
       label: Screenshots and recordings
       description: |
-        If applicable, add screenshots to help explain your problem. You can also record an asciinema session: https://asciinema.org/
+        If applicable, add screenshots to help explain your problem.
+        You can also record an asciinema session: https://asciinema.org/
+
+  - type: markdown
+    attributes:
+      value: "```\n"
+
+  - type: textarea
+    validations:
+      required: true
+    attributes:
+      label: Config File
+      description: |
+        Find the config file using `rip config --open` and paste the contents here. 
+        Make sure you REMOVE YOUR CREDENTIALS!
+
+  - type: markdown
+    attributes:
+      value: "```"
+
   - type: input
     validations:
       required: true
     attributes:
       label: Operating System
-      placeholder: e.g. Windows 10, Ubuntu 20.04, Arch Linux, macOS 10.15...
+      placeholder: e.g. Windows, Linux, macOS...
+
+  - type: markdown
+    attributes:
+      value: "```\n"
 
   - type: input
     validations:
@@ -57,7 +92,15 @@ body:
       description: Run `rip --version` to check.
       placeholder: e.g. 1.5
 
+  - type: markdown
+    attributes:
+      value: "```"
+
   - type: textarea
     attributes:
       label: Additional context
       description: Add any other context about the problem here.
+
+  - type: markdown
+    attributes:
+      value: "Thanks for completing our form!"

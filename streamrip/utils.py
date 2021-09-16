@@ -342,13 +342,24 @@ def get_cover_urls(resp: dict, source: str) -> dict:
         }
 
     if source == "deezer":
+        resp_keys = ("cover", "cover_medium", "cover_large", "cover_xl")
+        resp_keys_fallback = (
+            "picture",
+            "picture_medium",
+            "picture_large",
+            "picture_xl",
+        )
         cover_urls = {
-            sk: resp.get(rk)  # size key, resp key
-            for sk, rk in zip(
+            sk: resp.get(
+                rk, resp.get(rkf)
+            )  # size key, resp key, resp key fallback
+            for sk, rk, rkf in zip(
                 COVER_SIZES,
-                ("cover", "cover_medium", "cover_large", "cover_xl"),
+                resp_keys,
+                resp_keys_fallback,
             )
         }
+        print(cover_urls)
 
         if cover_urls["large"] is None and resp.get("cover_big") is not None:
             cover_urls["large"] = resp["cover_big"]
