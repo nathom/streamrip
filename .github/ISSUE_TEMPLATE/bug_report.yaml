@@ -29,10 +29,7 @@ body:
       placeholder: |
         For example:
           `rip url https://example.com`
-
-  - type: markdown
-    attributes:
-      value: "```\n"
+      render: ""
 
   - type: textarea
     validations:
@@ -44,14 +41,7 @@ body:
         For example, if the problematic command was `rip url https://example.com`, then
         you would run `rip url https://example.com -vvv` to get the debug logs.
         Make sure to check the logs for any personal information such as emails and remove them.
-
-  - type: markdown
-    attributes:
-      value: "```"
-
-  - type: markdown
-    attributes:
-      value: "```toml\n"
+      render: ""
 
   - type: textarea
     validations:
@@ -61,10 +51,7 @@ body:
       description: |
         Find the config file using `rip config --open` and paste the contents here. 
         Make sure you REMOVE YOUR CREDENTIALS!
-
-  - type: markdown
-    attributes:
-      value: "```"
+      render: toml
 
   - type: input
     validations:
@@ -73,10 +60,6 @@ body:
       label: Operating System
       placeholder: e.g. Windows, Linux, macOS...
 
-  - type: markdown
-    attributes:
-      value: "```\n"
-
   - type: input
     validations:
       required: true
@@ -84,10 +67,6 @@ body:
       label: streamrip version
       description: Run `rip --version` to check.
       placeholder: e.g. 1.5
-
-  - type: markdown
-    attributes:
-      value: "```"
 
   - type: textarea
     attributes:
