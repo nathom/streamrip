@@ -68,7 +68,6 @@ body:
       label: streamrip version
       description: Run `rip --version` to check.
       placeholder: e.g. 1.5
-      render: "text"
 
   - type: textarea
     attributes:
