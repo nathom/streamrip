@@ -49,16 +49,9 @@ body:
     attributes:
       value: "```"
 
-  - type: textarea
-    attributes:
-      label: Screenshots and recordings
-      description: |
-        If applicable, add screenshots to help explain your problem.
-        You can also record an asciinema session: https://asciinema.org/
-
   - type: markdown
     attributes:
-      value: "```\n"
+      value: "```toml\n"
 
   - type: textarea
     validations:
@@ -95,6 +88,13 @@ body:
   - type: markdown
     attributes:
       value: "```"
+
+  - type: textarea
+    attributes:
+      label: Screenshots and recordings
+      description: |
+        If applicable, add screenshots to help explain your problem.
+        You can also record an asciinema session: https://asciinema.org/
 
   - type: textarea
     attributes:
