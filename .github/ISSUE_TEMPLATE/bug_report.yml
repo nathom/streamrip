@@ -27,9 +27,7 @@ body:
       label: Command Used
       description: |
         The command that you typed that caused the error
-      placeholder: |
-        For example:
-          `rip url https://example.com`
+      placeholder: e.g. rip url https://example.com
       render: "bash"
 
   - type: textarea
@@ -43,6 +41,10 @@ body:
         you would run `rip url https://example.com -vvv` to get the debug logs.
         Make sure to check the logs for any personal information such as emails and remove them.
       render: "text"
+      placeholder: |
+        DEBUG:streamrip:Config loaded
+        DEBUG:streamrip:Config saved: /Users/username/Library/Application Support/streamrip/config.toml
+        ...
 
   - type: textarea
     validations:
@@ -53,6 +55,13 @@ body:
         Find the config file using `rip config --open` and paste the contents here. 
         Make sure you REMOVE YOUR CREDENTIALS!
       render: toml
+      placeholder: |
+        [downloads]
+        # Folder where tracks are downloaded to
+        folder = "/Users/username/StreamripDownloads"
+        # Put Qobuz albums in a 'Qobuz' folder, Tidal albums in 'Tidal' etc.
+        source_subdirectories = false
+        ...
 
   - type: input
     validations:
