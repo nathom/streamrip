@@ -41,7 +41,7 @@ body:
         you would run `rip url https://example.com -vvv` to get the debug logs.
         Make sure to check the logs for any personal information such as emails and remove them.
       render: "text"
-      placeholder: "DEBUG:streamrip:Config loaded..."
+      placeholder: Logs printed to terminal screen
 
   - type: textarea
     validations:
@@ -52,7 +52,7 @@ body:
         Find the config file using `rip config --open` and paste the contents here. 
         Make sure you REMOVE YOUR CREDENTIALS!
       render: toml
-      placeholder: "[downloads]\n..."
+      placeholder: Contents of config.toml
 
   - type: input
     validations:
