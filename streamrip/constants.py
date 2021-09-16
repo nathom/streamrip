@@ -4,9 +4,7 @@ import mutagen.id3 as id3
 
 AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:83.0) Gecko/20100101 Firefox/83.0"
 
-TIDAL_COVER_URL = (
-    "https://resources.tidal.com/images/{uuid}/{width}x{height}.jpg"
-)
+TIDAL_COVER_URL = "https://resources.tidal.com/images/{uuid}/{width}x{height}.jpg"
 # Get this from (base64encoded)
 # aHR0cHM6Ly9hLXYyLnNuZGNkbi5jb20vYXNzZXRzLzItYWIxYjg1NjguanM=
 # Don't know if this is a static url yet
@@ -142,7 +140,9 @@ ALBUM_KEYS = (
     "id",
 )
 # TODO: rename these to DEFAULT_FOLDER_FORMAT etc
-FOLDER_FORMAT = "{albumartist} - {title} ({year}) [{container}] [{bit_depth}B-{sampling_rate}kHz]"
+FOLDER_FORMAT = (
+    "{albumartist} - {title} ({year}) [{container}] [{bit_depth}B-{sampling_rate}kHz]"
+)
 TRACK_FORMAT = "{tracknumber}. {artist} - {title}"
 
 
