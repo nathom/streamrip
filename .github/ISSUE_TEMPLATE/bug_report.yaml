@@ -29,7 +29,7 @@ body:
       placeholder: |
         For example:
           `rip url https://example.com`
-      render: ""
+      render: "bash"
 
   - type: textarea
     validations:
@@ -41,7 +41,7 @@ body:
         For example, if the problematic command was `rip url https://example.com`, then
         you would run `rip url https://example.com -vvv` to get the debug logs.
         Make sure to check the logs for any personal information such as emails and remove them.
-      render: ""
+      render: "text"
 
   - type: textarea
     validations:
