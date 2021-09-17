@@ -74,9 +74,7 @@ class DownloadStream:
                 info = self.request.json()
                 try:
                     # Usually happens with deezloader downloads
-                    raise NonStreamable(
-                        f"{info['error']} -- {info['message']}"
-                    )
+                    raise NonStreamable(f"{info['error']} - {info['message']}")
                 except KeyError:
                     raise NonStreamable(info)
 
@@ -88,10 +86,7 @@ class DownloadStream:
 
         :rtype: Iterator
         """
-        if (
-            self.source == "deezer"
-            and self.is_encrypted.search(self.url) is not None
-        ):
+        if self.source == "deezer" and self.is_encrypted.search(self.url) is not None:
             assert isinstance(self.id, str), self.id
 
             blowfish_key = self._generate_blowfish_key(self.id)
@@ -99,10 +94,7 @@ class DownloadStream:
             CHUNK_SIZE = 2048 * 3
             return (
                 # (decryptor.decrypt(chunk[:2048]) + chunk[2048:])
-                (
-                    self._decrypt_chunk(blowfish_key, chunk[:2048])
-                    + chunk[2048:]
-                )
+                (self._decrypt_chunk(blowfish_key, chunk[:2048]) + chunk[2048:])
                 if len(chunk) >= 2048
                 else chunk
                 for chunk in self.request.iter_content(CHUNK_SIZE)
@@ -123,9 +115,7 @@ class DownloadStream:
         return self.file_size
 
     def _create_deezer_decryptor(self, key) -> Blowfish:
-        return Blowfish.new(
-            key, Blowfish.MODE_CBC, b"\x00\x01\x02\x03\x04\x05\x06\x07"
-        )
+        return Blowfish.new(key, Blowfish.MODE_CBC, b"\x00\x01\x02\x03\x04\x05\x06\x07")
 
     @staticmethod
     def _generate_blowfish_key(track_id: str):
@@ -178,9 +168,7 @@ class DownloadPool:
         self.tempdir = tempdir
 
     async def getfn(self, url):
-        path = os.path.join(
-            self.tempdir, f"__streamrip_partial_{abs(hash(url))}"
-        )
+        path = os.path.join(self.tempdir, f"__streamrip_partial_{abs(hash(url))}")
         self._paths[url] = path
         return path
 
@@ -195,9 +183,7 @@ class DownloadPool:
     async def _download_url(self, session, url):
         filename = await self.getfn(url)
         logger.debug("Downloading %s", url)
-        async with session.get(url) as response, aiofiles.open(
-            filename, "wb"
-        ) as f:
+        async with session.get(url) as response, aiofiles.open(filename, "wb") as f:
             # without aiofiles  3.6632679780000004s
             # with aiofiles     2.504482839s
             await f.write(await response.content.read())
@@ -215,9 +201,7 @@ class DownloadPool:
     def files(self):
         if len(self._paths) != len(self.urls):
             # Not all of them have downloaded
-            raise Exception(
-                "Must run DownloadPool.download() before accessing files"
-            )
+            raise Exception("Must run DownloadPool.download() before accessing files")
 
         return [
             os.path.join(self.tempdir, self._paths[self.urls[i]])

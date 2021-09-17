@@ -31,9 +31,7 @@ class Config:
     values.
     """
 
-    default_config_path = os.path.join(
-        os.path.dirname(__file__), "config.toml"
-    )
+    default_config_path = os.path.join(os.path.dirname(__file__), "config.toml")
 
     with open(default_config_path) as cfg:
         defaults: Dict[str, Any] = tomlkit.parse(cfg.read().strip())
@@ -57,10 +55,7 @@ class Config:
 
         if os.path.isfile(self._path):
             self.load()
-            if (
-                self.file["misc"]["version"]
-                != self.defaults["misc"]["version"]
-            ):
+            if self.file["misc"]["version"] != self.defaults["misc"]["version"]:
                 secho(
                     "Updating config file to new version. Some settings may be lost.",
                     fg="yellow",

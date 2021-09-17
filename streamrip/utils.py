@@ -84,9 +84,7 @@ __QUALITY_MAP: Dict[str, Dict[int, Union[int, str, Tuple[int, str]]]] = {
 }
 
 
-def get_quality(
-    quality_id: int, source: str
-) -> Union[str, int, Tuple[int, str]]:
+def get_quality(quality_id: int, source: str) -> Union[str, int, Tuple[int, str]]:
     """Get the source-specific quality id.
 
     :param quality_id: the universal quality id (0, 1, 2, 4)
@@ -156,9 +154,7 @@ def clean_format(formatter: str, format_info, restrict: bool = False):
     clean_dict = dict()
     for key in fmt_keys:
         if isinstance(format_info.get(key), (str, float)):
-            clean_dict[key] = clean_filename(
-                str(format_info[key]), restrict=restrict
-            )
+            clean_dict[key] = clean_filename(str(format_info[key]), restrict=restrict)
         elif isinstance(format_info.get(key), int):  # track/discnumber
             clean_dict[key] = f"{format_info[key]:02}"
         else:
@@ -176,9 +172,7 @@ def tidal_cover_url(uuid, size):
     possibles = (80, 160, 320, 640, 1280)
     assert size in possibles, f"size must be in {possibles}"
 
-    return TIDAL_COVER_URL.format(
-        uuid=uuid.replace("-", "/"), height=size, width=size
-    )
+    return TIDAL_COVER_URL.format(uuid=uuid.replace("-", "/"), height=size, width=size)
 
 
 def init_log(path: Optional[str] = None, level: str = "DEBUG"):
@@ -280,9 +274,7 @@ def gen_threadsafe_session(
         headers = {}
 
     session = requests.Session()
-    adapter = requests.adapters.HTTPAdapter(
-        pool_connections=100, pool_maxsize=100
-    )
+    adapter = requests.adapters.HTTPAdapter(pool_connections=100, pool_maxsize=100)
     session.mount("https://", adapter)
     session.headers.update(headers)
     return session
@@ -350,9 +342,7 @@ def get_cover_urls(resp: dict, source: str) -> dict:
             "picture_xl",
         )
         cover_urls = {
-            sk: resp.get(
-                rk, resp.get(rkf)
-            )  # size key, resp key, resp key fallback
+            sk: resp.get(rk, resp.get(rkf))  # size key, resp key, resp key fallback
             for sk, rk, rkf in zip(
                 COVER_SIZES,
                 resp_keys,
@@ -367,9 +357,9 @@ def get_cover_urls(resp: dict, source: str) -> dict:
         return cover_urls
 
     if source == "soundcloud":
-        cover_url = (
-            resp["artwork_url"] or resp["user"].get("avatar_url")
-        ).replace("large", "t500x500")
+        cover_url = (resp["artwork_url"] or resp["user"].get("avatar_url")).replace(
+            "large", "t500x500"
+        )
 
         cover_urls = {"large": cover_url}
 

@@ -86,9 +86,7 @@ class DownloadCommand(Command):
         if len(core) > 0:
             core.download()
         elif not urls and path is None:
-            self.line(
-                "<error>Must pass arguments. See </><cmd>rip url -h</cmd>."
-            )
+            self.line("<error>Must pass arguments. See </><cmd>rip url -h</cmd>.")
 
         update_check.join()
         if outdated:
@@ -115,16 +113,10 @@ class DownloadCommand(Command):
                 "https://api.github.com/repos/nathom/streamrip/releases/latest"
             ).json()["body"]
 
-            release_notes = md_header.sub(
-                r"<header>\1</header>", release_notes
-            )
-            release_notes = bullet_point.sub(
-                r"<options=bold>•</> \1", release_notes
-            )
+            release_notes = md_header.sub(r"<header>\1</header>", release_notes)
+            release_notes = bullet_point.sub(r"<options=bold>•</> \1", release_notes)
             release_notes = code.sub(r"<cmd>\1</cmd>", release_notes)
-            release_notes = issue_reference.sub(
-                r"<options=bold>\1</>", release_notes
-            )
+            release_notes = issue_reference.sub(r"<options=bold>\1</>", release_notes)
 
             self.line(release_notes)
 
@@ -154,9 +146,7 @@ class SearchCommand(Command):
 
     def handle(self):
         query = self.argument("query")
-        source, type = clean_options(
-            self.option("source"), self.option("type")
-        )
+        source, type = clean_options(self.option("source"), self.option("type"))
 
         config = Config()
         core = RipCore(config)
@@ -219,18 +209,14 @@ class DiscoverCommand(Command):
             from streamrip.constants import QOBUZ_FEATURED_KEYS
 
             if chosen_list not in QOBUZ_FEATURED_KEYS:
-                self.line(
-                    f'<error>Error: list "{chosen_list}" not available</error>'
-                )
+                self.line(f'<error>Error: list "{chosen_list}" not available</error>')
                 self.line(self.help)
                 return 1
         elif source == "deezer":
             from streamrip.constants import DEEZER_FEATURED_KEYS
 
             if chosen_list not in DEEZER_FEATURED_KEYS:
-                self.line(
-                    f'<error>Error: list "{chosen_list}" not available</error>'
-                )
+                self.line(f'<error>Error: list "{chosen_list}" not available</error>')
                 self.line(self.help)
                 return 1
 
@@ -318,9 +304,7 @@ class ConfigCommand(Command):
             self.line(f"<info>{CONFIG_PATH}</info>")
 
         if self.option("open"):
-            self.line(
-                f"Opening <url>{CONFIG_PATH}</url> in default application"
-            )
+            self.line(f"Opening <url>{CONFIG_PATH}</url> in default application")
             launch(CONFIG_PATH)
 
         if self.option("reset"):
@@ -367,9 +351,7 @@ class ConfigCommand(Command):
                 self.line("<b>Sucessfully logged in!</b>")
 
             except AuthenticationError:
-                self.line(
-                    "<error>Could not log in. Double check your ARL</error>"
-                )
+                self.line("<error>Could not log in. Double check your ARL</error>")
 
         if self.option("qobuz"):
             import getpass
@@ -377,9 +359,7 @@ class ConfigCommand(Command):
 
             self._config.file["qobuz"]["email"] = self.ask("Qobuz email:")
             self._config.file["qobuz"]["password"] = hashlib.md5(
-                getpass.getpass(
-                    "Qobuz password (won't show on screen): "
-                ).encode()
+                getpass.getpass("Qobuz password (won't show on screen): ").encode()
             ).hexdigest()
             self._config.save()
 
@@ -631,9 +611,7 @@ class Application(BaseApplication):
         formatter.set_style("path", Style("green", options=["bold"]))
         formatter.set_style("cmd", Style("magenta"))
         formatter.set_style("title", Style("yellow", options=["bold"]))
-        formatter.set_style(
-            "header", Style("yellow", options=["bold", "underline"])
-        )
+        formatter.set_style("header", Style("yellow", options=["bold", "underline"]))
         io.output.set_formatter(formatter)
         io.error_output.set_formatter(formatter)
 

@@ -8,10 +8,7 @@ from streamrip.downloadtools import DownloadPool
 def test_downloadpool(tmpdir):
     start = time.perf_counter()
     with DownloadPool(
-        (
-            f"https://pokeapi.co/api/v2/pokemon/{number}"
-            for number in range(1, 151)
-        ),
+        (f"https://pokeapi.co/api/v2/pokemon/{number}" for number in range(1, 151)),
         tempdir=tmpdir,
     ) as pool:
         pool.download()
