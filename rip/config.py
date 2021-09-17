@@ -188,7 +188,11 @@ class Config:
         if source == "deezer":
             return {"arl": self.file["deezer"]["arl"]}
         if source == "soundcloud":
-            return {}
+            soundcloud = self.file["soundcloud"]
+            return {
+                "client_id": soundcloud["client_id"],
+                "app_version": soundcloud["app_version"],
+            }
 
         raise InvalidSourceError(source)
 

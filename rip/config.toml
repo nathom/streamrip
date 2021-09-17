@@ -63,6 +63,9 @@ deezloader_warnings = true
 [soundcloud]
 # Only 0 is available for now
 quality = 0
+# This changes periodically, so it needs to be updated
+client_id = ""
+app_version = ""
 
 [youtube]
 # Only 0 is available for now
@@ -164,4 +167,4 @@ progress_bar = "dainty"
 
 [misc]
 # Metadata to identify this config file. Do not change.
-version = "1.5"
+version = "1.6"

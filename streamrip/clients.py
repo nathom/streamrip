@@ -1127,42 +1127,81 @@ class SoundCloudClient(Client):
 
     source = "soundcloud"
     max_quality = 0
-    logged_in = True
+    logged_in = False
+
+    client_id: str = ""
+    app_version: str = ""
 
     def __init__(self):
         """Create a SoundCloudClient."""
         self.session = gen_threadsafe_session(
             headers={
                 "User-Agent": AGENT,
-                "Host": "api-v2.soundcloud.com",
-                "Origin": "https://soundcloud.com",
-                "Referer": "https://soundcloud.com/",
-                "Sec-Fetch-Dest": "empty",
-                "Sec-Fetch-Mode": "cors",
-                "Sec-Fetch-Site": "same-site",
-                "Sec-GPC": "1",
             }
         )
 
-    def login(self):
-        """Login is not necessary for SoundCloud."""
-        raise NotImplementedError
+    def login(self, **kwargs):
+        self.client_id = kwargs.get("client_id")
+        self.app_version = kwargs.get("app_version")
+        logger.debug("client_id: %s, app_version: %s", self.client_id, self.app_version)
+
+        # if (not self.client_id) or (not self.app_version) or (not self._announce()):
+        if not (self.client_id and self.app_version and self._announce()):
+            logger.debug(
+                "Refreshing client_id=%s and app_version=%s",
+                self.client_id,
+                self.app_version,
+            )
+            self._refresh_tokens()
+
+        self.logged_in = True
+
+    def _announce(self):
+        return self._get("announcements").status_code == 200
+
+    def _refresh_tokens(self):
+        STOCK_URL = "https://soundcloud.com/"
+
+        resp = self.session.get(STOCK_URL)
+        resp.encoding = "utf-8"
+
+        *_, client_id_url_match = re.finditer(
+            r"<script\s+crossorigin\s+src=\"([^\"]+)\"", resp.text
+        )
+        client_id_url = client_id_url_match.group(1)
+
+        self.app_version = re.search(
+            r'<script>window\.__sc_version="(\d+)"</script>', resp.text
+        ).group(1)
+
+        resp2 = self.session.get(client_id_url)
+        self.client_id = re.search(r'client_id:\s*"(\w+)"', resp2.text).group(1)
+
+    def resolve_url(self, url: str) -> dict:
+        resp = self._get(f"resolve?url={url}").json()
+        from pprint import pformat
+
+        logger.debug(pformat(resp))
+        return resp
+
+    def get_tokens(self):
+        return self.client_id, self.app_version
 
     def get(self, id, media_type="track"):
-        """Get metadata for a media type given an id.
+        """Get metadata for a media type given a soundcloud url.
 
         :param id:
         :param media_type:
         """
-        assert media_type in (
+        assert media_type in {
             "track",
             "playlist",
-        ), f"{media_type} not supported"
+        }, f"{media_type} not supported"
 
-        if "http" in str(id):
-            resp, _ = self._get(f"resolve?url={id}")
-        elif media_type == "track":
-            resp, _ = self._get(f"{media_type}s/{id}")
+        if media_type == "track":
+            resp = self._get(f"{media_type}s/{id}")
+            resp.raise_for_status()
+            resp = resp.json()
         else:
             raise Exception(id)
 
@@ -1194,16 +1233,13 @@ class SoundCloudClient(Client):
             url = None
             for tc in track["media"]["transcodings"]:
                 fmt = tc["format"]
-                if (
-                    fmt["protocol"] == "hls"
-                    and fmt["mime_type"] == "audio/mpeg"
-                ):
+                if fmt["protocol"] == "hls" and fmt["mime_type"] == "audio/mpeg":
                     url = tc["url"]
                     break
 
             assert url is not None
 
-            resp, _ = self._get(url, no_base=True)
+            resp = self._get(url, no_base=True).json()
             return {"url": resp["url"], "type": "mp3"}
 
     def search(self, query: str, media_type="album", limit=50, offset=50):
@@ -1222,8 +1258,10 @@ class SoundCloudClient(Client):
             "offset": offset,
             "linked_partitioning": "1",
         }
-        resp, _ = self._get(f"search/{media_type}s", params=params)
-        return resp
+        result = self._get(f"search/{media_type}s", params=params)
+
+        # The response
+        return result.json()
 
     def _get(
         self,
@@ -1232,7 +1270,7 @@ class SoundCloudClient(Client):
         no_base=False,
         skip_decode=False,
         headers=None,
-    ) -> Optional[Tuple[dict, int]]:
+    ):
         """Send a request to the SoundCloud API.
 
         :param path:
@@ -1244,8 +1282,8 @@ class SoundCloudClient(Client):
         """
         param_arg = params
         params = {
-            "client_id": SOUNDCLOUD_CLIENT_ID,
-            "app_version": SOUNDCLOUD_APP_VERSION,
+            "client_id": self.client_id,
+            "app_version": self.app_version,
             "app_locale": "en",
         }
         if param_arg is not None:
@@ -1257,11 +1295,4 @@ class SoundCloudClient(Client):
             url = f"{SOUNDCLOUD_BASE}/{path}"
 
         logger.debug("Fetching url %s with params %s", url, params)
-        r = self.session.get(url, params=params, headers=headers)
-
-        r.raise_for_status()
-
-        if skip_decode:
-            return None
-
-        return r.json(), r.status_code
+        return self.session.get(url, params=params, headers=headers)
