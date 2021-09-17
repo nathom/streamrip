@@ -1020,6 +1020,7 @@ class TidalClient(Client):
             item["albums"] = album_resp["items"]
             item["albums"].extend(ep_resp["items"])
 
+        logger.debug(item)
         return item
 
     def _api_request(self, path: str, params=None) -> dict:
@@ -1036,7 +1037,7 @@ class TidalClient(Client):
         params["countryCode"] = self.country_code
         params["limit"] = 100
         r = self.session.get(f"{TIDAL_BASE}/{path}", params=params)
-        # r.raise_for_status()
+        r.raise_for_status()
         return r.json()
 
     def _get_video_stream_url(self, video_id: str) -> str:
