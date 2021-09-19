@@ -674,8 +674,10 @@ class RipCore(list):
                 or results.get("collection")
                 or results.get("albums", {}).get("data", False)
             )
-            if items is None:
+
+            if not items:
                 raise NoResultsFound(query)
+
             logger.debug("Number of results: %d", len(items))
 
             for i, item in enumerate(items):
