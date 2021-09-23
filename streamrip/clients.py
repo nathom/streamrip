@@ -461,7 +461,7 @@ class DeezerClient(Client):
 
     def __init__(self):
         """Create a DeezerClient."""
-        self.client = deezer.Deezer(accept_language="en-US,en;q=0.5")
+        self.client = deezer.Deezer()
         # self.session = gen_threadsafe_session()
 
         # no login required
