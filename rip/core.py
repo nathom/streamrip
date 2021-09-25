@@ -681,7 +681,7 @@ class RipCore(list):
             logger.debug("Number of results: %d", len(items))
 
             for i, item in enumerate(items):
-                logger.debug(item["title"])
+                logger.debug(item)
                 yield MEDIA_CLASS[media_type].from_api(item, client)  # type: ignore
                 if i >= limit - 1:
                     return
