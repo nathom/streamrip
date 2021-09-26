@@ -21,12 +21,9 @@ from .constants import (
     DEEZER_BASE,
     DEEZER_DL,
     DEEZER_FORMATS,
-    DEEZER_MAX_Q,
     QOBUZ_BASE,
     QOBUZ_FEATURED_KEYS,
-    SOUNDCLOUD_APP_VERSION,
     SOUNDCLOUD_BASE,
-    SOUNDCLOUD_CLIENT_ID,
     SOUNDCLOUD_USER_ID,
     TIDAL_AUTH_URL,
     TIDAL_BASE,
@@ -240,9 +237,7 @@ class QobuzClient(Client):
         :rtype: dict
         """
         page, status_code = self._api_request(epoint, params)
-        logger.debug(
-            "Keys returned from _gen_pages: %s", ", ".join(page.keys())
-        )
+        logger.debug("Keys returned from _gen_pages: %s", ", ".join(page.keys()))
         key = epoint.split("/")[0] + "s"
         total = page.get(key, {})
         total = total.get("total") or total.get("items")
@@ -265,8 +260,7 @@ class QobuzClient(Client):
         """Check if the secrets are usable."""
         with concurrent.futures.ThreadPoolExecutor() as executor:
             futures = [
-                executor.submit(self._test_secret, secret)
-                for secret in self.secrets
+                executor.submit(self._test_secret, secret) for secret in self.secrets
             ]
 
             for future in concurrent.futures.as_completed(futures):
@@ -309,15 +303,11 @@ class QobuzClient(Client):
 
         response, status_code = self._api_request(epoint, params)
         if status_code != 200:
-            raise Exception(
-                f'Error fetching metadata. "{response["message"]}"'
-            )
+            raise Exception(f'Error fetching metadata. "{response["message"]}"')
 
         return response
 
-    def _api_search(
-        self, query: str, media_type: str, limit: int = 500
-    ) -> Generator:
+    def _api_search(self, query: str, media_type: str, limit: int = 500) -> Generator:
         """Send a search request to the API.
 
         :param query:
@@ -369,9 +359,7 @@ class QobuzClient(Client):
         resp, status_code = self._api_request(epoint, params)
 
         if status_code == 401:
-            raise AuthenticationError(
-                f"Invalid credentials from params {params}"
-            )
+            raise AuthenticationError(f"Invalid credentials from params {params}")
         elif status_code == 400:
             logger.debug(resp)
             raise InvalidAppIdError(f"Invalid app id from params {params}")
@@ -379,9 +367,7 @@ class QobuzClient(Client):
             logger.info("Logged in to Qobuz")
 
         if not resp["user"]["credential"]["parameters"]:
-            raise IneligibleError(
-                "Free accounts are not eligible to download tracks."
-            )
+            raise IneligibleError("Free accounts are not eligible to download tracks.")
 
         self.uat = resp["user_auth_token"]
         self.session.headers.update({"X-User-Auth-Token": self.uat})
@@ -430,9 +416,7 @@ class QobuzClient(Client):
         }
         response, status_code = self._api_request("track/getFileUrl", params)
         if status_code == 400:
-            raise InvalidAppSecretError(
-                "Invalid app secret from params %s" % params
-            )
+            raise InvalidAppSecretError("Invalid app secret from params %s" % params)
 
         return response
 
@@ -451,9 +435,7 @@ class QobuzClient(Client):
             logger.debug(r.text)
             return r.json(), r.status_code
         except Exception:
-            logger.error(
-                "Problem getting JSON. Status code: %s", r.status_code
-            )
+            logger.error("Problem getting JSON. Status code: %s", r.status_code)
             raise
 
     def _test_secret(self, secret: str) -> Optional[str]:
@@ -479,15 +461,13 @@ class DeezerClient(Client):
 
     def __init__(self):
         """Create a DeezerClient."""
-        self.client = deezer.Deezer(accept_language="en-US,en;q=0.5")
+        self.client = deezer.Deezer()
         # self.session = gen_threadsafe_session()
 
         # no login required
         self.logged_in = False
 
-    def search(
-        self, query: str, media_type: str = "album", limit: int = 200
-    ) -> dict:
+    def search(self, query: str, media_type: str = "album", limit: int = 200) -> dict:
         """Search API for query.
 
         :param query:
@@ -501,16 +481,12 @@ class DeezerClient(Client):
         try:
             if media_type == "featured":
                 if query:
-                    search_function = getattr(
-                        self.client.api, f"get_editorial_{query}"
-                    )
+                    search_function = getattr(self.client.api, f"get_editorial_{query}")
                 else:
                     search_function = self.client.api.get_editorial_releases
 
             else:
-                search_function = getattr(
-                    self.client.api, f"search_{media_type}"
-                )
+                search_function = getattr(self.client.api, f"search_{media_type}")
         except AttributeError:
             raise Exception
 
@@ -584,9 +560,9 @@ class DeezerClient(Client):
         format_no, format_str = format_info
 
         dl_info["size_to_quality"] = {
-            int(
-                track_info.get(f"FILESIZE_{format}")
-            ): self._quality_id_from_filetype(format)
+            int(track_info.get(f"FILESIZE_{format}")): self._quality_id_from_filetype(
+                format
+            )
             for format in DEEZER_FORMATS
         }
 
@@ -627,9 +603,7 @@ class DeezerClient(Client):
         logger.debug("Info bytes: %s", info_bytes)
         path = self._gen_url_path(info_bytes)
         logger.debug(path)
-        return (
-            f"https://e-cdns-proxy-{track_hash[0]}.dzcdn.net/mobile/1/{path}"
-        )
+        return f"https://e-cdns-proxy-{track_hash[0]}.dzcdn.net/mobile/1/{path}"
 
     def _gen_url_path(self, data):
         return binascii.hexlify(
@@ -659,9 +633,7 @@ class DeezloaderClient(Client):
         # no login required
         self.logged_in = True
 
-    def search(
-        self, query: str, media_type: str = "album", limit: int = 200
-    ) -> dict:
+    def search(self, query: str, media_type: str = "album", limit: int = 200) -> dict:
         """Search API for query.
 
         :param query:
@@ -698,9 +670,7 @@ class DeezloaderClient(Client):
         url = f"{DEEZER_BASE}/{media_type}/{meta_id}"
         item = self.session.get(url).json()
         if media_type in ("album", "playlist"):
-            tracks = self.session.get(
-                f"{url}/tracks", params={"limit": 1000}
-            ).json()
+            tracks = self.session.get(f"{url}/tracks", params={"limit": 1000}).json()
             item["tracks"] = tracks["data"]
             item["track_total"] = len(tracks["data"])
         elif media_type == "artist":
@@ -796,9 +766,7 @@ class TidalClient(Client):
         logger.debug(resp)
         return resp
 
-    def search(
-        self, query: str, media_type: str = "album", limit: int = 100
-    ) -> dict:
+    def search(self, query: str, media_type: str = "album", limit: int = 100) -> dict:
         """Search for a query.
 
         :param query:
@@ -827,19 +795,13 @@ class TidalClient(Client):
             return self._get_video_stream_url(track_id)
 
         params = {
-            "audioquality": get_quality(
-                min(quality, TIDAL_MAX_Q), self.source
-            ),
+            "audioquality": get_quality(min(quality, TIDAL_MAX_Q), self.source),
             "playbackmode": "STREAM",
             "assetpresentation": "FULL",
         }
-        resp = self._api_request(
-            f"tracks/{track_id}/playbackinfopostpaywall", params
-        )
+        resp = self._api_request(f"tracks/{track_id}/playbackinfopostpaywall", params)
         try:
-            manifest = json.loads(
-                base64.b64decode(resp["manifest"]).decode("utf-8")
-            )
+            manifest = json.loads(base64.b64decode(resp["manifest"]).decode("utf-8"))
         except KeyError:
             raise Exception(resp["userMessage"])
 
@@ -1044,9 +1006,7 @@ class TidalClient(Client):
                     offset += 100
                     tracks_left -= 100
                     resp["items"].extend(
-                        self._api_request(f"{url}/items", {"offset": offset})[
-                            "items"
-                        ]
+                        self._api_request(f"{url}/items", {"offset": offset})["items"]
                     )
 
             item["tracks"] = [item["item"] for item in resp["items"]]
@@ -1060,6 +1020,7 @@ class TidalClient(Client):
             item["albums"] = album_resp["items"]
             item["albums"].extend(ep_resp["items"])
 
+        logger.debug(item)
         return item
 
     def _api_request(self, path: str, params=None) -> dict:
@@ -1076,7 +1037,7 @@ class TidalClient(Client):
         params["countryCode"] = self.country_code
         params["limit"] = 100
         r = self.session.get(f"{TIDAL_BASE}/{path}", params=params)
-        # r.raise_for_status()
+        r.raise_for_status()
         return r.json()
 
     def _get_video_stream_url(self, video_id: str) -> str:
@@ -1096,9 +1057,7 @@ class TidalClient(Client):
         resp = self._api_request(
             f"videos/{video_id}/playbackinfopostpaywall", params=params
         )
-        manifest = json.loads(
-            base64.b64decode(resp["manifest"]).decode("utf-8")
-        )
+        manifest = json.loads(base64.b64decode(resp["manifest"]).decode("utf-8"))
         available_urls = self.session.get(manifest["urls"][0])
         available_urls.encoding = "utf-8"
 
@@ -1127,42 +1086,81 @@ class SoundCloudClient(Client):
 
     source = "soundcloud"
     max_quality = 0
-    logged_in = True
+    logged_in = False
+
+    client_id: str = ""
+    app_version: str = ""
 
     def __init__(self):
         """Create a SoundCloudClient."""
         self.session = gen_threadsafe_session(
             headers={
                 "User-Agent": AGENT,
-                "Host": "api-v2.soundcloud.com",
-                "Origin": "https://soundcloud.com",
-                "Referer": "https://soundcloud.com/",
-                "Sec-Fetch-Dest": "empty",
-                "Sec-Fetch-Mode": "cors",
-                "Sec-Fetch-Site": "same-site",
-                "Sec-GPC": "1",
             }
         )
 
-    def login(self):
-        """Login is not necessary for SoundCloud."""
-        raise NotImplementedError
+    def login(self, **kwargs):
+        self.client_id = kwargs.get("client_id")
+        self.app_version = kwargs.get("app_version")
+        logger.debug("client_id: %s, app_version: %s", self.client_id, self.app_version)
+
+        # if (not self.client_id) or (not self.app_version) or (not self._announce()):
+        if not (self.client_id and self.app_version and self._announce()):
+            logger.debug(
+                "Refreshing client_id=%s and app_version=%s",
+                self.client_id,
+                self.app_version,
+            )
+            self._refresh_tokens()
+
+        self.logged_in = True
+
+    def _announce(self):
+        return self._get("announcements").status_code == 200
+
+    def _refresh_tokens(self):
+        STOCK_URL = "https://soundcloud.com/"
+
+        resp = self.session.get(STOCK_URL)
+        resp.encoding = "utf-8"
+
+        *_, client_id_url_match = re.finditer(
+            r"<script\s+crossorigin\s+src=\"([^\"]+)\"", resp.text
+        )
+        client_id_url = client_id_url_match.group(1)
+
+        self.app_version = re.search(
+            r'<script>window\.__sc_version="(\d+)"</script>', resp.text
+        ).group(1)
+
+        resp2 = self.session.get(client_id_url)
+        self.client_id = re.search(r'client_id:\s*"(\w+)"', resp2.text).group(1)
+
+    def resolve_url(self, url: str) -> dict:
+        resp = self._get(f"resolve?url={url}").json()
+        from pprint import pformat
+
+        logger.debug(pformat(resp))
+        return resp
+
+    def get_tokens(self):
+        return self.client_id, self.app_version
 
     def get(self, id, media_type="track"):
-        """Get metadata for a media type given an id.
+        """Get metadata for a media type given a soundcloud url.
 
         :param id:
         :param media_type:
         """
-        assert media_type in (
+        assert media_type in {
             "track",
             "playlist",
-        ), f"{media_type} not supported"
+        }, f"{media_type} not supported"
 
-        if "http" in str(id):
-            resp, _ = self._get(f"resolve?url={id}")
-        elif media_type == "track":
-            resp, _ = self._get(f"{media_type}s/{id}")
+        if media_type == "track":
+            resp = self._get(f"{media_type}s/{id}")
+            resp.raise_for_status()
+            resp = resp.json()
         else:
             raise Exception(id)
 
@@ -1194,16 +1192,13 @@ class SoundCloudClient(Client):
             url = None
             for tc in track["media"]["transcodings"]:
                 fmt = tc["format"]
-                if (
-                    fmt["protocol"] == "hls"
-                    and fmt["mime_type"] == "audio/mpeg"
-                ):
+                if fmt["protocol"] == "hls" and fmt["mime_type"] == "audio/mpeg":
                     url = tc["url"]
                     break
 
             assert url is not None
 
-            resp, _ = self._get(url, no_base=True)
+            resp = self._get(url, no_base=True).json()
             return {"url": resp["url"], "type": "mp3"}
 
     def search(self, query: str, media_type="album", limit=50, offset=50):
@@ -1222,8 +1217,10 @@ class SoundCloudClient(Client):
             "offset": offset,
             "linked_partitioning": "1",
         }
-        resp, _ = self._get(f"search/{media_type}s", params=params)
-        return resp
+        result = self._get(f"search/{media_type}s", params=params)
+
+        # The response
+        return result.json()
 
     def _get(
         self,
@@ -1232,7 +1229,7 @@ class SoundCloudClient(Client):
         no_base=False,
         skip_decode=False,
         headers=None,
-    ) -> Optional[Tuple[dict, int]]:
+    ):
         """Send a request to the SoundCloud API.
 
         :param path:
@@ -1244,8 +1241,8 @@ class SoundCloudClient(Client):
         """
         param_arg = params
         params = {
-            "client_id": SOUNDCLOUD_CLIENT_ID,
-            "app_version": SOUNDCLOUD_APP_VERSION,
+            "client_id": self.client_id,
+            "app_version": self.app_version,
             "app_locale": "en",
         }
         if param_arg is not None:
@@ -1257,11 +1254,4 @@ class SoundCloudClient(Client):
             url = f"{SOUNDCLOUD_BASE}/{path}"
 
         logger.debug("Fetching url %s with params %s", url, params)
-        r = self.session.get(url, params=params, headers=headers)
-
-        r.raise_for_status()
-
-        if skip_decode:
-            return None
-
-        return r.json(), r.status_code
+        return self.session.get(url, params=params, headers=headers)

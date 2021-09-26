@@ -71,15 +71,11 @@ class Database:
 
         with sqlite3.connect(self.path) as conn:
             conditions = " AND ".join(f"{key}=?" for key in items.keys())
-            command = (
-                f"SELECT EXISTS(SELECT 1 FROM {self.name} WHERE {conditions})"
-            )
+            command = f"SELECT EXISTS(SELECT 1 FROM {self.name} WHERE {conditions})"
 
             logger.debug("Executing %s", command)
 
-            return bool(
-                conn.execute(command, tuple(items.values())).fetchone()[0]
-            )
+            return bool(conn.execute(command, tuple(items.values())).fetchone()[0])
 
     def __contains__(self, keys: Union[str, dict]) -> bool:
         """Check whether a key-value pair exists in the database.
@@ -123,9 +119,7 @@ class Database:
 
         params = ", ".join(self.structure.keys())
         question_marks = ", ".join("?" for _ in items)
-        command = (
-            f"INSERT INTO {self.name} ({params}) VALUES ({question_marks})"
-        )
+        command = f"INSERT INTO {self.name} ({params}) VALUES ({question_marks})"
 
         logger.debug("Executing %s", command)
         logger.debug("Items to add: %s", items)
