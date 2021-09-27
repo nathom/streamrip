@@ -286,7 +286,7 @@ class Track(Media):
         :param progress_bar: turn on/off progress bar
         :type progress_bar: bool
         """
-        if not self.part_of_tracklist:
+        if not self.part_of_tracklist and not self.client.source == "soundcloud":
             secho(f"Downloading {self!s}\n", bold=True)
 
         self._prepare_download(
@@ -1858,7 +1858,6 @@ class Playlist(Tracklist, Media):
         kwargs["parent_folder"] = self.folder
         if self.client.source == "soundcloud":
             item.load_meta()
-            secho(f"Downloading {item!s}", fg="blue")
 
         if kwargs.get("set_playlist_to_album", False):
             item.meta.album = self.name

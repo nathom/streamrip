@@ -1157,12 +1157,9 @@ class SoundCloudClient(Client):
             "playlist",
         }, f"{media_type} not supported"
 
-        if media_type == "track":
-            resp = self._get(f"{media_type}s/{id}")
-            resp.raise_for_status()
-            resp = resp.json()
-        else:
-            raise Exception(id)
+        resp = self._get(f"{media_type}s/{id}")
+        resp.raise_for_status()
+        resp = resp.json()
 
         logger.debug(resp)
         return resp
