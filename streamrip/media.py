@@ -1874,17 +1874,6 @@ class Playlist(Tracklist, Media):
             exclude_tags=kwargs.get("exclude_tags"),
         )
 
-        # if playlist_to_album and self.client.source == "deezer":
-        #     # Because Deezer tracks come pre-tagged, the `set_playlist_to_album`
-        #     # option is never set. Here, we manually do this
-        #     from mutagen.flac import FLAC
-
-        #     audio = FLAC(item.path)
-        #     audio["ALBUM"] = self.name
-        #     audio["ALBUMARTIST"] = self.creator
-        #     audio["TRACKNUMBER"] = f"{item['tracknumber']:02}"
-        #     audio.save()
-
         self.downloaded_ids.add(item.id)
 
     @staticmethod
