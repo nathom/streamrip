@@ -23,7 +23,6 @@ from .utils import get_cover_urls, get_quality_id, safe_get
 logger = logging.getLogger("streamrip")
 
 
-# TODO: remove OrderedDict bc normal dicts are ordered now
 class TrackMetadata:
     """Contains all of the metadata needed to tag the file.
 
@@ -50,7 +49,6 @@ class TrackMetadata:
         * disctotal
     """
 
-    title: str
     albumartist: str
     composer: Optional[str] = None
     albumcomposer: Optional[str] = None
@@ -82,6 +80,7 @@ class TrackMetadata:
     _artist: Optional[str] = None
     _copyright: Optional[str] = None
     _genres: Optional[Iterable] = None
+    _title: Optional[str]
 
     def __init__(
         self,
@@ -285,6 +284,24 @@ class TrackMetadata:
         if self.quality >= 2:
             self.bit_depth = 24 if self.get("quality") == 3 else 16
             self.sampling_rate = 44100
+
+    @property
+    def title(self) -> Optional[str]:
+        logger.debug("accessign title")
+        if not hasattr(self, "_title"):
+            logger.debug("no title")
+            return None
+
+        if self.explicit:
+            logger.debug("explicit title")
+            return f"{self._title} (Explicit)"
+
+            logger.debug("non explicit title")
+        return self._title
+
+    @title.setter
+    def title(self, new_title):
+        self._title = new_title
 
     @property
     def album(self) -> str:

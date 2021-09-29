@@ -755,13 +755,14 @@ class Track(Media):
 
         :rtype: str
         """
-        if hasattr(self, "meta"):
+        try:
             _title = self.meta.title
-            if self.meta.explicit:
-                _title = f"{_title} (Explicit)"
-            return _title
-        else:
+        except AttributeError:
             raise Exception("Track must be loaded before accessing title")
+
+        if self.meta.explicit:
+            _title = f"{_title} (Explicit)"
+        return _title
 
     def get(self, *keys, default=None) -> Any:
         """Safe get method that allows for layered access.

@@ -46,6 +46,8 @@ token_expiry = ""
 
 [deezer]
 # 0, 1, or 2
+# This only applies to paid Deezer subscriptions. Those using deezloader
+# are automatically limited to quality = 1
 quality = 2
 # An authentication cookie that allows streamrip to use your Deezer account
 # See https://github.com/nathom/streamrip/wiki/Finding-Your-Deezer-ARL-Cookie
@@ -167,4 +169,4 @@ progress_bar = "dainty"
 
 [misc]
 # Metadata to identify this config file. Do not change.
-version = "1.6"
+version = "1.7"
