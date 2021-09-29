@@ -349,7 +349,6 @@ def get_cover_urls(resp: dict, source: str) -> dict:
                 resp_keys_fallback,
             )
         }
-        print(cover_urls)
 
         if cover_urls["large"] is None and resp.get("cover_big") is not None:
             cover_urls["large"] = resp["cover_big"]

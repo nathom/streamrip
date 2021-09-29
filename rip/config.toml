@@ -46,8 +46,6 @@ token_expiry = ""
 
 [deezer]
 # 0, 1, or 2
-# This only applies to paid Deezer subscriptions. Those using deezloader
-# are automatically limited to quality = 1
 quality = 2
 # An authentication cookie that allows streamrip to use your Deezer account
 # See https://github.com/nathom/streamrip/wiki/Finding-Your-Deezer-ARL-Cookie
@@ -97,6 +95,8 @@ sampling_rate = 48000
 # Only 16 and 24 are available. It is only applied when the bit depth is higher
 # than this value.
 bit_depth = 24
+# Only applicable for lossy codecs
+lossy_bitrate = 320
 
 # Filter a Qobuz artist's discography. Set to 'true' to turn on a filter.
 [filters]

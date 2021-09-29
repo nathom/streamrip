@@ -172,10 +172,27 @@ class LAME(Converter):
     https://trac.ffmpeg.org/wiki/Encode/MP3
     """
 
+    __bitrate_map = {
+        320: "-b:a 320k",
+        245: "-q:a 0",
+        225: "-q:a 1",
+        190: "-q:a 2",
+        175: "-q:a 3",
+        165: "-q:a 4",
+        130: "-q:a 5",
+        115: "-q:a 6",
+        100: "-q:a 7",
+        85: "-q:a 8",
+        65: "-q:a 9",
+    }
+
     codec_name = "lame"
     codec_lib = "libmp3lame"
     container = "mp3"
     default_ffmpeg_arg = "-q:a 0"  # V0
+
+    def get_quality_arg(self, rate):
+        return self.__bitrate_map[rate]
 
 
 class ALAC(Converter):
@@ -201,6 +218,15 @@ class Vorbis(Converter):
     container = "ogg"
     default_ffmpeg_arg = "-q:a 6"  # 160, aka the "high" quality profile from Spotify
 
+    def get_quality_arg(self, rate: int) -> str:
+        arg = "qscale:a %d"
+        if rate <= 128:
+            return arg % (rate / 16 - 4)
+        if rate <= 256:
+            return arg % (rate / 32)
+
+        return arg % (rate / 64 + 4)
+
 
 class OPUS(Converter):
     """Class for libopus.
@@ -216,6 +242,9 @@ class OPUS(Converter):
     container = "opus"
     default_ffmpeg_arg = "-b:a 128k"  # Transparent
 
+    def get_quality_arg(self, rate: int) -> str:
+        pass
+
 
 class AAC(Converter):
     """Class for libfdk_aac converter.
@@ -230,3 +259,6 @@ class AAC(Converter):
     codec_lib = "libfdk_aac"
     container = "m4a"
     default_ffmpeg_arg = "-b:a 256k"
+
+    def get_quality_arg(self, rate: int) -> str:
+        pass
