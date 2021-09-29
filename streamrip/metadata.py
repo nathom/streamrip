@@ -287,16 +287,12 @@ class TrackMetadata:
 
     @property
     def title(self) -> Optional[str]:
-        logger.debug("accessign title")
         if not hasattr(self, "_title"):
-            logger.debug("no title")
             return None
 
         if self.explicit:
-            logger.debug("explicit title")
             return f"{self._title} (Explicit)"
 
-            logger.debug("non explicit title")
         return self._title
 
     @title.setter
