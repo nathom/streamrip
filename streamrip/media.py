@@ -833,15 +833,13 @@ class Video(Media):
         """
         self.id = id
         self.client = client
-        self.title = kwargs.get("title", "MusicVideo")
-        self.explicit = kwargs.get("explicit", False)
-        self.tracknumber = kwargs.get("tracknumber", None)
 
     def load_meta(self, **kwargs):
         """Given an id at contruction, get the metadata of the video."""
         resp = self.client.get(self.id, "video")
         self.title = resp["title"]
         self.explicit = resp["explicit"]
+        self.tracknumber = resp["trackNumber"]
 
     def download(self, **kwargs):
         """Download the Video.
