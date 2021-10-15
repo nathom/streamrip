@@ -1,6 +1,7 @@
-name: Bug report
+name: 🐛 Bug Report
 description: Create a report to help us improve streamrip
 labels: bug
+title: "[BUG] <title>"
 body:
   # types: dropdown, textarea, input
   # - type: dropdown
@@ -26,13 +27,8 @@ body:
       label: Command Used
       description: |
         The command that you typed that caused the error
-      placeholder: |
-        For example:
-          `rip url https://example.com`
-
-  - type: markdown
-    attributes:
-      value: "```\n"
+      placeholder: e.g. rip url https://example.com
+      render: "bash"
 
   - type: textarea
     validations:
@@ -44,14 +40,8 @@ body:
         For example, if the problematic command was `rip url https://example.com`, then
         you would run `rip url https://example.com -vvv` to get the debug logs.
         Make sure to check the logs for any personal information such as emails and remove them.
-
-  - type: markdown
-    attributes:
-      value: "```"
-
-  - type: markdown
-    attributes:
-      value: "```toml\n"
+      render: "text"
+      placeholder: Logs printed to terminal screen
 
   - type: textarea
     validations:
@@ -61,10 +51,8 @@ body:
       description: |
         Find the config file using `rip config --open` and paste the contents here. 
         Make sure you REMOVE YOUR CREDENTIALS!
-
-  - type: markdown
-    attributes:
-      value: "```"
+      render: toml
+      placeholder: Contents of config.toml
 
   - type: input
     validations:
@@ -73,10 +61,6 @@ body:
       label: Operating System
       placeholder: e.g. Windows, Linux, macOS...
 
-  - type: markdown
-    attributes:
-      value: "```\n"
-
   - type: input
     validations:
       required: true
@@ -84,10 +68,6 @@ body:
       label: streamrip version
       description: Run `rip --version` to check.
       placeholder: e.g. 1.5
-
-  - type: markdown
-    attributes:
-      value: "```"
 
   - type: textarea
     attributes:
