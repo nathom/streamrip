@@ -22,7 +22,7 @@ classifiers = [
 rip = "rip.cli:main"
 
 [tool.poetry.dependencies]
-python = "^3.8"
+python = ">=3.8 <4.0"
 requests = "^2.25.1"
 mutagen = "^1.45.1"
 click = "^8.0.1"
