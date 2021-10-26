@@ -36,6 +36,14 @@ it should show the main help page. If you have no idea what these mean, or are h
 
 If you would like to use `streamrip`'s conversion capabilities, download TIDAL videos, or download music from SoundCloud, install [ffmpeg](https://ffmpeg.org/download.html). To download music from YouTube, install [youtube-dl](https://github.com/ytdl-org/youtube-dl#installation).
 
+### Streamrip beta
+
+If you want to get access to the latest and greatest features without waiting for a new release, install
+from the `dev` branch with the following command
+
+```bash
+pip3 install git+https://github.com/nathom/streamrip.git@dev
+```
 
 ## Example Usage
 
