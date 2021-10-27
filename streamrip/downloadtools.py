@@ -5,7 +5,7 @@ import logging
 import os
 import re
 from tempfile import gettempdir
-from typing import Callable, Dict, Generator, Iterator, List, Optional
+from typing import Callable, Dict, Iterator, List, Optional
 
 import aiofiles
 import aiohttp
@@ -151,7 +151,7 @@ class DownloadPool:
 
     def __init__(
         self,
-        urls: Generator,
+        urls: Iterator,
         tempdir: str = None,
         chunk_callback: Optional[Callable] = None,
     ):
