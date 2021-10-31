@@ -1784,7 +1784,9 @@ class Playlist(Tracklist, Media):
 
         elif self.client.source == "tidal":
             self.name = self.meta["title"]
-            self.image = tidal_cover_url(self.meta["image"] or self.meta['squareImage'], 640)
+            self.image = tidal_cover_url(
+                self.meta["image"] or self.meta["squareImage"], 640
+            )
             self.creator = safe_get(self.meta, "creator", "name", default="TIDAL")
 
             tracklist = self.meta["tracks"]
