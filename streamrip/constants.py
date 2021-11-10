@@ -128,6 +128,7 @@ TRACK_KEYS = (
     "composer",
     "title",
     "albumcomposer",
+    "explicit",
 )
 ALBUM_KEYS = (
     "albumartist",

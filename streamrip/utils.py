@@ -149,13 +149,20 @@ def clean_format(formatter: str, format_info, restrict: bool = False):
     fmt_keys = filter(None, (i[1] for i in Formatter().parse(formatter)))
     # fmt_keys = (i[1] for i in Formatter().parse(formatter) if i[1] is not None)
 
-    logger.debug("Formatter keys: %s", fmt_keys)
+    logger.debug("Formatter keys: %s", formatter)
 
-    clean_dict = dict()
+    clean_dict = {}
     for key in fmt_keys:
+        logger.debug(repr(key))
+        logger.debug(format_info.get(key))
         if isinstance(format_info.get(key), (str, float)):
+            logger.debug("1")
             clean_dict[key] = clean_filename(str(format_info[key]), restrict=restrict)
+        elif key == "explicit":
+            logger.debug("3")
+            clean_dict[key] = " (Explicit) " if format_info.get(key, False) else ""
         elif isinstance(format_info.get(key), int):  # track/discnumber
+            logger.debug("2")
             clean_dict[key] = f"{format_info[key]:02}"
         else:
             clean_dict[key] = "Unknown"

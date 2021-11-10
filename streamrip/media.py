@@ -1,9 +1,4 @@
-"""Bases that handle parsing and downloading media.
-
-These are the lower level classes that are handled by Album, Playlist,
-and the other objects. They can also be downloaded individually, for example,
-as a single track.
-"""
+"""Bases that handle parsing and downloading media. """
 
 import abc
 import concurrent.futures

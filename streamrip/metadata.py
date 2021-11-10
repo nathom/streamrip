@@ -67,7 +67,7 @@ class TrackMetadata:
     disctotal: Optional[int] = None
 
     # not included in tags
-    explicit: Optional[bool] = False
+    explicit: bool = False
     quality: Optional[int] = None
     sampling_rate: Optional[int] = None
     bit_depth: Optional[int] = None
@@ -200,7 +200,7 @@ class TrackMetadata:
             self.albumartist = safe_get(resp, "artist", "name")
             self.label = resp.get("label")
             self.url = resp.get("link")
-            self.explicit = bool(resp.get("parental_warning"))
+            self.explicit = resp.get("parental_warning", False)
 
             # not embedded
             self.quality = 2
@@ -290,8 +290,8 @@ class TrackMetadata:
         if not hasattr(self, "_title"):
             return None
 
-        if self.explicit:
-            return f"{self._title} (Explicit)"
+        # if self.explicit:
+        #     return f"{self._title} (Explicit)"
 
         return self._title
 
