@@ -870,7 +870,7 @@ class TidalClient(Client):
         }
         resp = self._api_post(f"{TIDAL_AUTH_URL}/device_authorization", data)
 
-        if "status" in resp and resp["status"] != 200:
+        if resp.get("status", 200) != 200:
             raise Exception(f"Device authorization failed {resp}")
 
         self.device_code = resp["deviceCode"]
