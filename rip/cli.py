@@ -24,16 +24,46 @@ newest_version = __version__
 
 
 class DownloadCommand(Command):
-    """
-    Download items using urls.
+    name = "url"
+    description = "Download items using urls."
 
-    url
-        {--f|file=None : Path to a text file containing urls}
-        {--c|codec=None : Convert the downloaded files to <cmd>ALAC</cmd>, <cmd>FLAC</cmd>, <cmd>MP3</cmd>, <cmd>AAC</cmd>, or <cmd>OGG</cmd>}
-        {--m|max-quality=None : The maximum quality to download. Can be <cmd>0</cmd>, <cmd>1</cmd>, <cmd>2</cmd>, <cmd>3 </cmd>or <cmd>4</cmd>}
-        {--i|ignore-db : Download items even if they have been logged in the database.}
-        {urls?* : One or more Qobuz, Tidal, Deezer, or SoundCloud urls}
-    """
+    arguments = [
+        argument(
+            "urls",
+            "One or more Qobuz, Tidal, Deezer, or SoundCloud urls",
+            optional=False,
+            multiple=True,
+        )
+    ]
+    options = [
+        option(
+            "file",
+            "-f",
+            "Path to a text file containing urls",
+            flag=False,
+            default="None",
+        ),
+        option(
+            "codec",
+            "-c",
+            "Convert the downloaded files to <cmd>ALAC</cmd>, <cmd>FLAC</cmd>, <cmd>MP3</cmd>, <cmd>AAC</cmd>, or <cmd>OGG</cmd>",
+            flag=False,
+            default="None",
+        ),
+        option(
+            "max-quality",
+            "m",
+            "The maximum quality to download. Can be <cmd>0</cmd>, <cmd>1</cmd>, <cmd>2</cmd>, <cmd>3 </cmd>or <cmd>4</cmd>",
+            flag=False,
+            default="None",
+        ),
+        option(
+            "ignore-db",
+            "-i",
+            description="Download items even if they have been logged in the database.",
+        ),
+        option("config.*", description="Change configuration options"),
+    ]
 
     help = (
         "\nDownload <title>Dreams</title> by <title>Fleetwood Mac</title>:\n"
@@ -126,14 +156,32 @@ class DownloadCommand(Command):
 
 
 class SearchCommand(Command):
-    """
-    Search for and download items in interactive mode.
-
-    search
-        {query : The name to search for}
-        {--s|source=qobuz : Qobuz, Tidal, Soundcloud, Deezer, or Deezloader}
-        {--t|type=album : Album, Playlist, Track, or Artist}
-    """
+    name = "search"
+    description = "Search for an item"
+    arguments = [
+        argument(
+            "query",
+            "The name to search for",
+            optional=False,
+            multiple=False,
+        )
+    ]
+    options = [
+        option(
+            "source",
+            "-s",
+            "Qobuz, Tidal, Soundcloud, Deezer, or Deezloader",
+            flag=False,
+            default="qobuz",
+        ),
+        option(
+            "type",
+            "-t",
+            "Album, Playlist, Track, or Artist",
+            flag=False,
+            default="album",
+        ),
+    ]
 
     help = (
         "\nSearch for <title>Rumours</title> by <title>Fleetwood Mac</title>\n"
@@ -158,16 +206,37 @@ class SearchCommand(Command):
 
 
 class DiscoverCommand(Command):
-    """
-    Browse and download items in interactive mode (Qobuz and Deezer only).
-
-    discover
-        {--scrape : Download all of the items in the list}
-        {--m|max-items=50 : The number of items to fetch}
-        {--s|source=qobuz : The source to download from (<cmd>qobuz</cmd> or <cmd>deezer</cmd>)}
-        {list=ideal-discography : The list to fetch}
-    """
-
+    name = "discover"
+    description = "Download items from the charts or a curated playlist"
+    arguments = [
+        argument(
+            "list",
+            "The list to fetch",
+            optional=True,
+            multiple=False,
+            default="ideal-discography",
+        )
+    ]
+    options = [
+        option(
+            "scrape",
+            description="Download all of the items in the list",
+        ),
+        option(
+            "max-items",
+            "-m",
+            description="The number of items to fetch",
+            flag=False,
+            default=50,
+        ),
+        option(
+            "source",
+            "-s",
+            description="The source to download from (<cmd>qobuz</cmd> or <cmd>deezer</cmd>)",
+            flag=False,
+            default="qobuz",
+        ),
+    ]
     help = (
         "\nBrowse the Qobuz ideal-discography list\n"
         "$ <cmd>rip discover</cmd>\n\n"
@@ -245,20 +314,32 @@ class DiscoverCommand(Command):
 
 
 class LastfmCommand(Command):
-    """
-    Search for tracks from a list.fm playlist and download them.
+    name = "lastfm"
+    description = "Search for tracks from a last.fm playlist and download them."
 
-    lastfm
-        {--s|source=qobuz : The source to search for items on}
-        {urls* : Last.fm playlist urls}
-    """
-
+    arguments = [
+        argument(
+            "urls",
+            "Last.fm playlist urls",
+            optional=False,
+            multiple=True,
+        )
+    ]
+    options = [
+        option(
+            "source",
+            "-s",
+            description="The source to search for items on",
+            flag=False,
+            default="qobuz",
+        ),
+    ]
     help = (
         "You can use this command to download Spotify, Apple Music, and YouTube "
         "playlists.\nTo get started, create an account at "
         "<url>https://www.last.fm</url>. Once you have\nreached the home page, "
-        "go to <path>Profile Icon</path> ⟶  <path>View profile</path> ⟶  "
-        "<path>Playlists</path> ⟶  <path>IMPORT</path>\nand paste your url.\n\n"
+        "go to <path>Profile Icon</path> => <path>View profile</path> => "
+        "<path>Playlists</path> => <path>IMPORT</path>\nand paste your url.\n\n"
         "Download the <info>young & free</info> Apple Music playlist (already imported)\n"
         "$ <cmd>rip lastfm https://www.last.fm/user/nathan3895/playlists/12089888</cmd>\n"
     )
@@ -275,6 +356,44 @@ class LastfmCommand(Command):
 
 
 class ConfigCommand(Command):
+    name = "config"
+    description = "Manage the configuration file."
+
+    options = [
+        option(
+            "open",
+            "-o",
+            description="Open the config file in the default application",
+            flag=True,
+        ),
+        option(
+            "open-vim",
+            "-O",
+            description="Open the config file in (neo)vim",
+            flag=True,
+        ),
+        option(
+            "directory",
+            "-d",
+            description="Open the directory that the config file is located in",
+            flag=True,
+        ),
+        option("path", "-p", description="Show the config file's path", flag=True),
+        option("qobuz", description="Set the credentials for Qobuz", flag=True),
+        option("tidal", description="Log into Tidal", flag=True),
+        option("deezer", description="Set the Deezer ARL", flag=True),
+        option(
+            "music-app",
+            description="Configure the config file for usage with the macOS Music App",
+            flag=True,
+        ),
+        option("reset", description="Reset the config file", flag=True),
+        option(
+            "--update",
+            description="Reset the config file, keeping the credentials",
+            flag=True,
+        ),
+    ]
     """
     Manage the configuration file.
 
@@ -410,16 +529,39 @@ class ConfigCommand(Command):
 
 
 class ConvertCommand(Command):
-    """
-    A standalone tool that converts audio files to other codecs en masse.
-
-    convert
-        {--s|sampling-rate=192000 : Downsample the tracks to this rate, in Hz.}
-        {--b|bit-depth=24 : Downsample the tracks to this bit depth.}
-        {--k|keep-source : Keep the original file after conversion.}
-        {codec : <cmd>FLAC</cmd>, <cmd>ALAC</cmd>, <cmd>OPUS</cmd>, <cmd>MP3</cmd>, or <cmd>AAC</cmd>.}
-        {path : The path to the audio file or a directory that contains audio files.}
-    """
+    name = "convert"
+    description = (
+        "A standalone tool that converts audio files to other codecs en masse."
+    )
+    arguments = [
+        argument(
+            "codec",
+            description="<cmd>FLAC</cmd>, <cmd>ALAC</cmd>, <cmd>OPUS</cmd>, <cmd>MP3</cmd>, or <cmd>AAC</cmd>.",
+        ),
+        argument(
+            "path",
+            description="The path to the audio file or a directory that contains audio files.",
+        ),
+    ]
+    options = [
+        option(
+            "sampling-rate",
+            "-s",
+            description="Downsample the tracks to this rate, in Hz.",
+            default=192000,
+            flag=False,
+        ),
+        option(
+            "bit-depth",
+            "-b",
+            description="Downsample the tracks to this bit depth.",
+            default=24,
+            flag=False,
+        ),
+        option(
+            "keep-source", "-k", description="Keep the original file after conversion."
+        ),
+    ]
 
     help = (
         "\nConvert all of the audio files in <path>/my/music</path> to MP3s\n"
@@ -510,12 +652,18 @@ class ConvertCommand(Command):
 
 
 class RepairCommand(Command):
-    """
-    Retry failed downloads.
+    name = "repair"
+    description = "Retry failed downloads."
 
-    repair
-        {--m|max-items=None : The maximum number of tracks to download}
-    """
+    options = [
+        option(
+            "max-items",
+            "-m",
+            flag=False,
+            description="The maximum number of tracks to download}",
+            default="None",
+        )
+    ]
 
     help = "\nRetry up to 20 failed downloads\n$ <cmd>rip repair --max-items 20</cmd>\n"
 
@@ -526,14 +674,18 @@ class RepairCommand(Command):
 
 
 class DatabaseCommand(Command):
-    """
-    View and manage rip's databases.
+    name = "db"
+    description = "View and manage rip's databases."
 
-    db
-        {name : <cmd>downloads</cmd> or <cmd>failed-downloads</cmd>.}
-        {--l|list : Display the contents of the database.}
-        {--reset : Reset the database.}
-    """
+    arguments = [
+        argument(
+            "name", description="<cmd>downloads</cmd> or <cmd>failed-downloads</cmd>."
+        )
+    ]
+    options = [
+        option("list", "-l", description="Display the contents of the database."),
+        option("reset", description="Reset the database."),
+    ]
 
     _table_style = "box-double"
 
@@ -561,14 +713,17 @@ class DatabaseCommand(Command):
         id_table.set_header_title("IDs")
         id_table.set_headers(list(self._db.structure.keys()))
         id_table.add_rows(id for id in iter(self._db) if id[0].isalnum())
-        id_table.render()
+        if id_table._rows:
+            id_table.render()
 
         url_table = Table(self._io)
         url_table.set_style(self._table_style)
         url_table.set_header_title("URLs")
         url_table.set_headers(list(self._db.structure.keys()))
         url_table.add_rows(id for id in iter(self._db) if not id[0].isalnum())
-        url_table.render()
+        # prevent wierd formatting
+        if url_table._rows:
+            url_table.render()
 
     def _render_failed_downloads(self):
         from cleo.ui.table import Table
