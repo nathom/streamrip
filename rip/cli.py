@@ -62,7 +62,8 @@ class DownloadCommand(Command):
             "-i",
             description="Download items even if they have been logged in the database.",
         ),
-        option("config.*", description="Change configuration options"),
+        option("config", description="Path to config file.", flag=False),
+        option("directory", "-d", "Directory to download items into.", flag=False),
     ]
 
     help = (
@@ -82,13 +83,19 @@ class DownloadCommand(Command):
         update_check = threading.Thread(target=is_outdated, daemon=True)
         update_check.start()
 
-        config = Config()
-        path, codec, quality, no_db = clean_options(
+        path, codec, quality, no_db, directory, config = clean_options(
             self.option("file"),
             self.option("codec"),
             self.option("max-quality"),
             self.option("ignore-db"),
+            self.option("directory"),
+            self.option("config"),
         )
+
+        config = Config(config)
+
+        if directory is not None:
+            config.session["downloads"]["folder"] = directory
 
         if no_db:
             config.session["database"]["enabled"] = False
