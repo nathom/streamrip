@@ -567,7 +567,14 @@ class DeezerClient(Client):
         }
 
         token = track_info["TRACK_TOKEN"]
-        url = self.client.get_track_url(token, format_str)
+        try:
+            url = self.client.get_track_url(token, format_str)
+        except deezer.WrongLicence:
+            raise NonStreamable(
+                "The requested quality is not available with your subscription. "
+                "Deezer HiFi is required for quality 2. Otherwise, the maximum "
+                "quality allowed is 1."
+            )
 
         if url is None:
             url = self._get_encrypted_file_url(
