@@ -2,6 +2,7 @@
 
 import abc
 import concurrent.futures
+import hashlib
 import logging
 import os
 import re
@@ -2300,9 +2301,16 @@ def _choose_and_download_cover(
     downsize: Tuple[int, int] = (999999, 999999),
 ) -> str:
     # choose optimal cover size and download it
-    temp_cover_path = os.path.join(
-        gettempdir(), f"cover_{hash(cover_urls.values())}.jpg"
-    )
+
+    def sorted_list(x: Iterable) -> list:
+        xlist = list(x)
+        xlist.sort()
+        return xlist
+
+    hashcode: str = hashlib.md5(str(sorted_list(cover_urls.values())).encode('utf-8', errors='replace')).hexdigest()
+
+    temp_cover_path = os.path.join(gettempdir(), f"cover_{hashcode}.jpg")
+
     secho(f"Downloading cover art ({preferred_size})", bold=True)
 
     assert (
