@@ -982,6 +982,7 @@ class YoutubeVideo(Media):
     """Dummy class implemented for consistency with the Media API."""
 
     id = None
+    downloaded_ids = set()
 
     class DummyClient:
         """Used because YouTube downloads use youtube-dl, not a client."""
@@ -1051,6 +1052,7 @@ class YoutubeVideo(Media):
             )
             pv.wait()
         p.wait()
+        self.downloaded_ids.add(self.id)
 
     def load_meta(self, *args, **kwargs):
         """Return None.
@@ -1075,8 +1077,14 @@ class YoutubeVideo(Media):
     def convert(self, *args, **kwargs):
         raise NotImplementedError
 
+    def type(self):
+        return "youtubevideo"
+
     def __repr__(self, *args, **kwargs):
         return f"YoutubeVideo({self.url})"
+
+    def __str__(self):
+        return repr(self)
 
     def __bool__(self):
         """Return True."""
