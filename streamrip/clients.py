@@ -1189,7 +1189,7 @@ class SoundCloudClient(Client):
             raise Exception
 
         if track["downloadable"] and track["has_downloads_left"]:
-            r = self._get(f"tracks/{track['id']}/download")[0]
+            r = self._get(f"tracks/{track['id']}/download").json()
             return {"url": r["redirectUri"], "type": "original"}
 
         else:
