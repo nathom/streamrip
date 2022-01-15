@@ -2302,12 +2302,17 @@ def _choose_and_download_cover(
 ) -> str:
     # choose optimal cover size and download it
 
-    def sorted_list(x: Iterable) -> list:
-        xlist = list(x)
-        xlist.sort()
-        return xlist
-
-    hashcode: str = hashlib.md5(str(sorted_list(cover_urls.values())).encode('utf-8', errors='replace')).hexdigest()
+    hashcode: str = hashlib.md5(
+        "".join(
+            sorted(
+                map(
+                    str,
+                    cover_urls.values(),
+                )
+            )
+        ).encode("utf-8", errors="ignore")
+    ).hexdigest()
+    # hashcode: str = hashlib.md5(str(sorted_list(cover_urls.values())).encode('utf-8', errors='replace')).hexdigest()
 
     temp_cover_path = os.path.join(gettempdir(), f"cover_{hashcode}.jpg")
 
