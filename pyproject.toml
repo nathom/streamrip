@@ -12,7 +12,7 @@ packages = [
     { include = "streamrip" },
     { include = "rip" },
 ]
-keywords = ["hi-res", "free", "music", "download", "tqdm"]
+keywords = ["hi-res", "free", "music", "download"]
 classifiers = [
     "License :: OSI Approved :: GNU General Public License (GPL)",
     "Operating System :: OS Independent",
@@ -32,7 +32,7 @@ pathvalidate = "^2.4.1"
 simple-term-menu = {version = "^1.2.1", platform = 'darwin|linux'}
 pick = {version = "^1.0.0", platform = 'win32 or cygwin'}
 windows-curses = {version = "^2.2.0", platform = 'win32|cygwin'}
-Pillow = "^8.3.0"
+Pillow = "^9.0.0"
 deezer-py = "1.3.6"
 pycryptodomex = "^3.10.1"
 cleo = {version = "1.0.0a4", allow-prereleases = true}
