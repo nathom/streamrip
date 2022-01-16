@@ -130,6 +130,12 @@ class DownloadCommand(Command):
             import re
             import subprocess
 
+            self.line(
+                "<info>A new version of streamrip <title>v{newest_version}</title>"
+                " is available! Run <cmd>pip3 install streamrip --upgrade</cmd>"
+                " to update.</info>"
+            )
+
             md_header = re.compile(r"#\s+(.+)")
             bullet_point = re.compile(r"-\s+(.+)")
             code = re.compile(r"`([^`]+)`")
