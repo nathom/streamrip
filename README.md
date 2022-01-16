@@ -20,7 +20,7 @@ A scriptable stream downloader for Qobuz, Tidal, Deezer and SoundCloud.
 
 ## Installation
 
-First, ensure [Python](https://www.python.org/downloads/) (version 3.8 or greater) and [pip](https://pip.pypa.io/en/stable/installing/) are installed. Then run the following in the command line:
+First, ensure [Python](https://www.python.org/downloads/) (version 3.8 or greater) and [pip](https://pip.pypa.io/en/stable/installing/) are installed. If you are on Windows, install [Microsoft Visual C++ Tools](https://docs.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist?view=msvc-170). Then run the following in the command line:
 
 ```bash
 pip3 install streamrip --upgrade
@@ -178,3 +178,11 @@ Thanks to Vitiko98, Sorrow446, and DashLt for their contributions to this projec
 
 
 I will not be responsible for how you use `streamrip`. By using `streamrip`, you agree to the terms and conditions of the Qobuz, Tidal, and Deezer APIs.
+
+## Donations/Sponsorship
+
+<a href="https://www.buymeacoffee.com/nathom" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/default-orange.png" alt="Buy Me A Coffee" height="41" width="174"></a>
+
+
+Consider contributing some funds [here](https://www.buymeacoffee.com/nathom), which will go towards holding
+the premium subscriptions that I need to debug and improve streamrip. Thanks for your support!
