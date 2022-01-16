@@ -37,6 +37,7 @@ from .exceptions import (
     InvalidAppSecretError,
     InvalidQuality,
     MissingCredentials,
+    NonStreamable,
 )
 from .spoofbuz import Spoofer
 from .utils import gen_threadsafe_session, get_quality, safe_get
@@ -569,7 +570,7 @@ class DeezerClient(Client):
         token = track_info["TRACK_TOKEN"]
         try:
             url = self.client.get_track_url(token, format_str)
-        except deezer.WrongLicence:
+        except deezer.WrongLicense:
             raise NonStreamable(
                 "The requested quality is not available with your subscription. "
                 "Deezer HiFi is required for quality 2. Otherwise, the maximum "
