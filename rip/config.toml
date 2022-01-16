@@ -169,4 +169,4 @@ progress_bar = "dainty"
 
 [misc]
 # Metadata to identify this config file. Do not change.
-version = "1.9"
+version = "1.9.2"

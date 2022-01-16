@@ -131,9 +131,9 @@ class DownloadCommand(Command):
             import subprocess
 
             self.line(
-                "<info>A new version of streamrip <title>v{newest_version}</title>"
+                f"\n<info>A new version of streamrip <title>v{newest_version}</title>"
                 " is available! Run <cmd>pip3 install streamrip --upgrade</cmd>"
-                " to update.</info>"
+                " to update.</info>\n"
             )
 
             md_header = re.compile(r"#\s+(.+)")
@@ -151,8 +151,6 @@ class DownloadCommand(Command):
             release_notes = issue_reference.sub(r"<options=bold>\1</>", release_notes)
 
             self.line(release_notes)
-
-            update_p.wait()
 
         return 0
 
