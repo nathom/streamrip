@@ -181,5 +181,8 @@ I will not be responsible for how you use `streamrip`. By using `streamrip`, you
 
 ## Donations/Sponsorship
 
+<a href="https://www.buymeacoffee.com/nathom" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/default-orange.png" alt="Buy Me A Coffee" height="41" width="174"></a>
+
+
 Consider contributing some funds [here](https://www.buymeacoffee.com/nathom), which will go towards holding
 the premium subscriptions that I need to debug and improve streamrip. Thanks for your support!
