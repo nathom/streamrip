@@ -130,17 +130,6 @@ class DownloadCommand(Command):
             import re
             import subprocess
 
-            self.line(
-                f"<info>Updating streamrip to <title>v{newest_version}</title>...</info>\n"
-            )
-
-            # update in background
-            update_p = subprocess.Popen(
-                ["pip3", "install", "streamrip", "--upgrade"],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-            )
-
             md_header = re.compile(r"#\s+(.+)")
             bullet_point = re.compile(r"-\s+(.+)")
             code = re.compile(r"`([^`]+)`")
