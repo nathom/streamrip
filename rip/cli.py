@@ -31,7 +31,7 @@ class DownloadCommand(Command):
         argument(
             "urls",
             "One or more Qobuz, Tidal, Deezer, or SoundCloud urls",
-            optional=False,
+            optional=True,
             multiple=True,
         )
     ]
