@@ -178,3 +178,8 @@ Thanks to Vitiko98, Sorrow446, and DashLt for their contributions to this projec
 
 
 I will not be responsible for how you use `streamrip`. By using `streamrip`, you agree to the terms and conditions of the Qobuz, Tidal, and Deezer APIs.
+
+## Donations/Sponsorship
+
+Consider contributing some funds [here](https://www.buymeacoffee.com/nathom), which will go towards holding
+the premium subscriptions that I need to debug and improve streamrip. Thanks for your support!
