@@ -174,8 +174,8 @@ MEDIA_TYPES = {"track", "album", "artist", "label", "playlist", "video"}
 COVER_SIZES = ("thumbnail", "small", "large", "original")
 
 TIDAL_CLIENT_INFO = {
-    "id": "Pzd0ExNVHkyZLiYN",
-    "secret": "W7X6UvBaho+XOi1MUeCX6ewv2zTdSOV3Y7qC3p3675I=",
+    "id": "8SEZWa4J1NVC5U5Y",
+    "secret": "owUYDkxddz+9FpvGX24DlxECNtFEMBxipU0lBfrbq60=",
 }
 
 QOBUZ_BASE = "https://www.qobuz.com/api.json/0.2"
