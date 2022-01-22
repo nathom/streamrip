@@ -1495,7 +1495,11 @@ class Album(Tracklist, Media):
         """
         # Generate the folder name
         self.folder_format = kwargs.get("folder_format", FOLDER_FORMAT)
-        self.quality = min(kwargs.get("quality", 3), self.client.max_quality)
+        self.quality = min(
+            kwargs.get("quality", 3),
+            self.client.max_quality,
+            self.meta.get("quality", 5),
+        )
 
         self.container = get_container(self.quality, self.client.source)
         # necessary to format the folder
@@ -1521,8 +1525,8 @@ class Album(Tracklist, Media):
             self.folder,
             kwargs.get("keep_hires_cover", True),
             (
-                kwargs.get("max_artwork_width", 999999),
-                kwargs.get("max_artwork_height", 999999),
+                kwargs.get("max_artwork_width", 1e9),
+                kwargs.get("max_artwork_height", 1e9),
             ),
         )
 

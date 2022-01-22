@@ -1,4 +1,4 @@
-"""The clients that interact with the service APIs."""
+"""The clients that interact with the streaming service APIs."""
 
 import base64
 import binascii
@@ -116,7 +116,6 @@ class QobuzClient(Client):
         :type pwd: str
         :param kwargs: app_id: str, secrets: list, return_secrets: bool
         """
-        # TODO: make this faster
         secho(f"Logging into {self.source}", fg="green")
         email: str = kwargs["email"]
         pwd: str = kwargs["pwd"]
