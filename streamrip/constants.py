@@ -1,7 +1,8 @@
 """Constants that are kept in one place."""
 
-import mutagen.id3 as id3
 import base64
+
+import mutagen.id3 as id3
 
 AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:83.0) Gecko/20100101 Firefox/83.0"
 
@@ -176,7 +177,9 @@ COVER_SIZES = ("thumbnail", "small", "large", "original")
 
 TIDAL_CLIENT_INFO = {
     "id": base64.b64decode("OFNFWldhNEoxTlZDNVU1WQ==").decode("iso-8859-1"),
-    "secret": base64.b64decode("b3dVWURreGRkeis5RnB2R1gyNERseEVDTnRGRU1CeGlwVTBsQmZyYnE2MD0=").decode("iso-8859-1"),
+    "secret": base64.b64decode(
+        "b3dVWURreGRkeis5RnB2R1gyNERseEVDTnRGRU1CeGlwVTBsQmZyYnE2MD0="
+    ).decode("iso-8859-1"),
 }
 
 QOBUZ_BASE = "https://www.qobuz.com/api.json/0.2"
