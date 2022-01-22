@@ -174,9 +174,6 @@ class RipCore(list):
 
         for source, url_type, item_id in parsed:
             if item_id in self.db:
-                logger.info(
-                    f"ID {item_id} already downloaded, use --ignore-db to override."
-                )
                 secho(
                     f"ID {item_id} already downloaded, use --ignore-db to override.",
                     fg="magenta",
