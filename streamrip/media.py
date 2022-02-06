@@ -439,7 +439,9 @@ class Track(Media):
             import m3u8
             import requests
 
-            parsed_m3u = m3u8.loads(requests.get(dl_info["url"]).text)
+            parsed_m3u = m3u8.loads(
+                requests.get(dl_info["url"]).content.decode("utf-8")
+            )
             self.path += ".mp3"
 
             with DownloadPool(segment.uri for segment in parsed_m3u.segments) as pool:
