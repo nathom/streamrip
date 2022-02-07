@@ -176,9 +176,9 @@ MEDIA_TYPES = {"track", "album", "artist", "label", "playlist", "video"}
 COVER_SIZES = ("thumbnail", "small", "large", "original")
 
 TIDAL_CLIENT_INFO = {
-    "id": base64.b64decode("OFNFWldhNEoxTlZDNVU1WQ==").decode("iso-8859-1"),
+    "id": base64.b64decode("elU0WEhWVmtjMnREUG80dA==").decode("iso-8859-1"),
     "secret": base64.b64decode(
-        "b3dVWURreGRkeis5RnB2R1gyNERseEVDTnRGRU1CeGlwVTBsQmZyYnE2MD0="
+        "VkpLaERGcUpQcXZzUFZOQlY2dWtYVEptd2x2YnR0UDd3bE1scmM3MnNlND0="
     ).decode("iso-8859-1"),
 }
 
