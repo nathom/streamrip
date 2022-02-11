@@ -657,21 +657,21 @@ class Track(Media):
             audio[k] = v
 
         if embed_cover and cover is None:
-            assert hasattr(self, "cover_path")
             cover = Tracklist.get_cover_obj(
                 self.cover_path, self.container, self.client.source
-            )
+            ) if hasattr(self,"cover_path") else None
 
         if isinstance(audio, FLAC):
-            if embed_cover:
+            if embed_cover and cover:
                 audio.add_picture(cover)
             audio.save()
         elif isinstance(audio, ID3):
-            if embed_cover:
+            if embed_cover and cover:
                 audio.add(cover)
             audio.save(self.path, "v2_version=3")
         elif isinstance(audio, MP4):
-            audio["covr"] = [cover]
+            if cover:
+                audio["covr"] = [cover]
             audio.save()
         else:
             raise ValueError(f"Unknown container type: {audio}")
@@ -1528,9 +1528,9 @@ class Album(Tracklist, Media):
                 kwargs.get("max_artwork_width", 1e9),
                 kwargs.get("max_artwork_height", 1e9),
             ),
-        )
+        ) if self.cover_urls else None
 
-        if kwargs.get("embed_cover", True):  # embed by default
+        if cover_path and kwargs.get("embed_cover", True):  # embed by default
             logger.debug("Getting cover_obj from %s", cover_path)
             # container generated when formatting folder name
             self.cover_obj = self.get_cover_obj(
