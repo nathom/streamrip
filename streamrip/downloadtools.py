@@ -186,9 +186,7 @@ class DownloadPool:
         async with session.get(url) as response, aiofiles.open(filename, "wb") as f:
             # without aiofiles     3.6632679780000004s
             # with    aiofiles     2.504482839s
-            content = await response.content.read()
-            print(content)
-            await f.write(content)
+            await f.write(await response.content.read())
 
         if self.callback:
             self.callback()
