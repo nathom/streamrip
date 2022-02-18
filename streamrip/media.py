@@ -1668,6 +1668,8 @@ class Album(Tracklist, Media):
             self._get_formatter(),
             restrict=restrict,
         )
+        if len(formatted_folder) > 120:
+            formatted_folder = f"{formatted_folder[:120]}..."
 
         return os.path.join(parent_folder, formatted_folder)
 
