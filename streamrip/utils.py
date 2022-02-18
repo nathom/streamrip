@@ -178,7 +178,10 @@ def tidal_cover_url(uuid, size):
     """
     possibles = (80, 160, 320, 640, 1280)
     assert size in possibles, f"size must be in {possibles}"
-
+    
+    # A common occurance is a valid size but no uuid
+    if not uuid: 
+        return None
     return TIDAL_COVER_URL.format(uuid=uuid.replace("-", "/"), height=size, width=size)
 
 
@@ -320,6 +323,8 @@ def get_cover_urls(resp: dict, source: str) -> dict:
 
     if source == "tidal":
         uuid = resp["cover"]
+        if not uuid:
+            return None
         return {
             sk: tidal_cover_url(uuid, size)
             for sk, size in zip(COVER_SIZES, (160, 320, 640, 1280))
