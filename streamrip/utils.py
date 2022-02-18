@@ -182,21 +182,6 @@ def tidal_cover_url(uuid, size):
     return TIDAL_COVER_URL.format(uuid=uuid.replace("-", "/"), height=size, width=size)
 
 
-def init_log(path: Optional[str] = None, level: str = "DEBUG"):
-    """Create a log.
-
-    :param path:
-    :type path: Optional[str]
-    :param level:
-    :type level: str
-    :param rotate:
-    :type rotate: str
-    """
-    # path = os.path.join(LOG_DIR, "streamrip.log")
-    level = logging.getLevelName(level)
-    logging.basicConfig(level=level)
-
-
 def decrypt_mqa_file(in_path, out_path, encryption_key):
     """Decrypt an MQA file.
 
