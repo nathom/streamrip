@@ -81,9 +81,9 @@ class Converter:
         self.command = self._gen_command()
         logger.debug("Generated conversion command: %s", self.command)
 
-        process = subprocess.Popen(self.command)
+        process = subprocess.Popen(self.command, stderr=subprocess.PIPE)
         process.wait()
-        if os.path.isfile(self.tempfile):
+        if process.returncode == 0 and os.path.isfile(self.tempfile):
             if self.remove_source:
                 os.remove(self.filename)
                 logger.debug("Source removed: %s", self.filename)
@@ -91,7 +91,7 @@ class Converter:
             shutil.move(self.tempfile, self.final_fn)
             logger.debug("Moved: %s -> %s", self.tempfile, self.final_fn)
         else:
-            raise ConversionError("No file was returned from conversion")
+            raise ConversionError(f"FFmpeg output:\n{process.communicate()[1]}")
 
     def _gen_command(self):
         command = [
