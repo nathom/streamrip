@@ -637,6 +637,7 @@ class ConvertCommand(Command):
                     concurrent.futures.as_completed(futures),
                     total=len(futures),
                     desc="Converting",
+                    unit="track",
                     bar_format=TQDM_BAR_FORMAT,
                 ):
                     # Only show loading bar

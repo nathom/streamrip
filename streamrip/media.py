@@ -659,9 +659,13 @@ class Track(Media):
             audio[k] = v
 
         if embed_cover and cover is None:
-            cover = Tracklist.get_cover_obj(
-                self.cover_path, self.container, self.client.source
-            ) if hasattr(self,"cover_path") else None
+            cover = (
+                Tracklist.get_cover_obj(
+                    self.cover_path, self.container, self.client.source
+                )
+                if hasattr(self, "cover_path")
+                else None
+            )
 
         if isinstance(audio, FLAC):
             if embed_cover and cover:
@@ -1521,16 +1525,20 @@ class Album(Tracklist, Media):
 
         self.download_message()
 
-        cover_path = _choose_and_download_cover(
-            self.cover_urls,
-            kwargs.get("embed_cover_size", "large"),
-            self.folder,
-            kwargs.get("keep_hires_cover", True),
-            (
-                kwargs.get("max_artwork_width", 1e9),
-                kwargs.get("max_artwork_height", 1e9),
-            ),
-        ) if self.cover_urls else None
+        cover_path = (
+            _choose_and_download_cover(
+                self.cover_urls,
+                kwargs.get("embed_cover_size", "large"),
+                self.folder,
+                kwargs.get("keep_hires_cover", True),
+                (
+                    kwargs.get("max_artwork_width", 1e9),
+                    kwargs.get("max_artwork_height", 1e9),
+                ),
+            )
+            if self.cover_urls
+            else None
+        )
 
         if cover_path and kwargs.get("embed_cover", True):  # embed by default
             logger.debug("Getting cover_obj from %s", cover_path)
