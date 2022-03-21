@@ -174,7 +174,12 @@ class TrackMetadata:
             self.date = resp.get("releaseDate")
 
             self.copyright = resp.get("copyright")
-            self.albumartist = safe_get(resp, "artist", "name")
+
+            if artists := resp.get("artists"):
+                self.albumartist = ", ".join(a["name"] for a in artists)
+            else:
+                self.albumartist = safe_get(resp, "artist", "name")
+
             self.disctotal = resp.get("numberOfVolumes", 1)
             self.isrc = resp.get("isrc")
             # label not returned by API
