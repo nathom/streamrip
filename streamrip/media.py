@@ -2366,11 +2366,15 @@ def _choose_and_download_cover(
     cover_size = os.path.getsize(temp_cover_path)
     if cover_size > FLAC_MAX_BLOCKSIZE:  # 16.77 MB
         secho(
-            "Downgrading embedded cover size, too large ({cover_size}).",
+            f"Downgrading embedded cover size, too large ({cover_size}).",
             fg="bright_yellow",
         )
-        # large is about 600x600px which is guaranteed < 16.7 MB
+        # The "large" cover is usually 600x600px, which is less than 16.7 MB 
         _cover_download(cover_urls["large"], temp_cover_path)
+        # If the large cover is still too large, downsize to 600x600px
+        if os.path.getsize(temp_cover_path) > FLAC_MAX_BLOCKSIZE:
+            logger.debug("Large sized cover too large, downsizing to 600x600px")
+            downsize_image(temp_cover_path, 600, 600)
 
     downsize_image(temp_cover_path, *downsize)
 
