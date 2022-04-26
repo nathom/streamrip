@@ -312,7 +312,7 @@ class Track(Media):
             self.bit_depth = dl_info.get("bit_depth")
 
         # --------- Download Track ----------
-        if self.client.source in {"qobuz", "tidal"}:
+        if self.client.source in ("qobuz", "tidal"):
             logger.debug("Downloadable URL found: %s", dl_info.get("url"))
             try:
                 download_url = dl_info["url"]
@@ -1580,8 +1580,7 @@ class Album(Tracklist, Media):
         else:
             kwargs["parent_folder"] = self.folder
 
-        quality = kwargs.get("quality", 3)
-        kwargs.pop("quality")
+        quality = kwargs.pop("quality", 3)
         item.download(quality=min(self.quality, quality), **kwargs)
 
         logger.debug("tagging tracks")
@@ -2369,7 +2368,7 @@ def _choose_and_download_cover(
             f"Downgrading embedded cover size, too large ({cover_size}).",
             fg="bright_yellow",
         )
-        # The "large" cover is usually 600x600px, which is less than 16.7 MB 
+        # The "large" cover is usually 600x600px, which is less than 16.7 MB
         _cover_download(cover_urls["large"], temp_cover_path)
         # If the large cover is still too large, downsize to 600x600px
         if os.path.getsize(temp_cover_path) > FLAC_MAX_BLOCKSIZE:
