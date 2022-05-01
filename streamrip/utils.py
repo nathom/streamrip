@@ -16,6 +16,8 @@ from tqdm import tqdm
 from .constants import COVER_SIZES, TIDAL_COVER_URL
 from .exceptions import InvalidQuality, InvalidSourceError
 
+import re
+
 urllib3.disable_warnings()
 logger = logging.getLogger("streamrip")
 
@@ -150,6 +152,14 @@ def clean_format(formatter: str, format_info, restrict: bool = False):
     # fmt_keys = (i[1] for i in Formatter().parse(formatter) if i[1] is not None)
 
     logger.debug("Formatter keys: %s", formatter)
+
+    artist = format_info["albumartist"]
+    format_info["1stalbumartist"] = "#"
+    if len(artist) > 0:
+        first = artist.upper()
+        first = first[0]
+        first = re.sub("[^A-Z]", "0", first)
+        format_info["1stalbumartist"] = first
 
     clean_dict = {}
     for key in fmt_keys:
