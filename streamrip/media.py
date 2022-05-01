@@ -669,9 +669,14 @@ class Track(Media):
                 audio.add_picture(cover)
             audio.save()
         elif isinstance(audio, ID3):
-            if embed_cover:
-                audio.add(cover)
-            audio.save(self.path, "v2_version=3")
+            try:
+                if embed_cover:
+                    audio.add(cover)
+                audio.save(self.path, "v2_version=3")
+            except TypeError:
+                logger.debug("audio.add(cover) failed")
+                secho("audio.add(cover) failed", fg="magenta")
+
         elif isinstance(audio, MP4):
             audio["covr"] = [cover]
             audio.save()
