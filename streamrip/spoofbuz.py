@@ -28,7 +28,7 @@ class Spoofer:
         self.app_id_regex = (
             r'{app_id:"(?P<app_id>\d{9})",app_secret:"\w{32}",base_port:"80"'
             r',base_url:"https://www\.qobuz\.com",base_method:"/api\.js'
-            r'on/0\.2/"},n\.base_url="https://play\.qobuz\.com"'
+            r'on/0\.2/"},n\.base_url="https://nightly-play\.qobuz\.com"'
         )
         login_page_request = requests.get("https://play.qobuz.com/login")
         login_page = login_page_request.text
