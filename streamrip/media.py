@@ -1516,7 +1516,9 @@ class Album(Tracklist, Media):
         parent_folder = kwargs.get("parent_folder", "StreamripDownloads")
         if self.folder_format:
             self.folder = self._get_formatted_folder(
-                parent_folder, restrict=kwargs.get("restrict_filenames", False)
+                parent_folder,
+                restrict=kwargs.get("restrict_filenames", False),
+                truncate=kwargs.get("truncate_filenames", True),
             )
         else:
             self.folder = parent_folder
@@ -1660,7 +1662,9 @@ class Album(Tracklist, Media):
         logger.debug("Formatter: %s", fmt)
         return fmt
 
-    def _get_formatted_folder(self, parent_folder: str, restrict: bool = False) -> str:
+    def _get_formatted_folder(
+        self, parent_folder: str, restrict: bool = False, truncate: bool = True
+    ) -> str:
         """Generate the folder name for this album.
 
         :param parent_folder:
@@ -1675,8 +1679,8 @@ class Album(Tracklist, Media):
             self._get_formatter(),
             restrict=restrict,
         )
-        if len(formatted_folder) > 120:
-            formatted_folder = f"{formatted_folder[:120]}..."
+        if truncate and len(formatted_folder) > 120:
+            formatted_folder = formatted_folder[:120]
 
         return os.path.join(parent_folder, formatted_folder)
 

@@ -216,6 +216,7 @@ class RipCore(list):
         concurrency = session["downloads"]["concurrency"]
         return {
             "restrict_filenames": filepaths["restrict_characters"],
+            "truncate_filenames": filepaths["truncate"],
             "parent_folder": session["downloads"]["folder"],
             "folder_format": filepaths["folder_format"],
             "track_format": filepaths["track_format"],
