@@ -306,7 +306,7 @@ def get_container(quality: int, source: str) -> str:
     return "MP3"
 
 
-def get_cover_urls(resp: dict, source: str) -> dict:
+def get_cover_urls(resp: dict, source: str) -> Optional[dict]:
     """Parse a response dict containing cover info according to the source.
 
     :param resp:

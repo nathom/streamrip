@@ -1844,13 +1844,13 @@ class Playlist(Tracklist, Media):
                 self.append(Track(self.client, id=track["id"]))
         else:
             for track in tracklist:
-                # TODO: This should be managed with .m3u files and alike. Arbitrary
-                # tracknumber tags might cause conflicts if the playlist files are
-                # inside of a library folder
                 meta = TrackMetadata(track=track, source=self.client.source)
-                cover_url = get_cover_urls(track["album"], self.client.source)[
-                    kwargs.get("embed_cover_size", "large")
-                ]
+                cover_urls = get_cover_urls(track["album"], self.client.source)
+                cover_url = (
+                    cover_urls[kwargs.get("embed_cover_size", "large")]
+                    if cover_urls is not None
+                    else None
+                )
 
                 self.append(
                     Track(
