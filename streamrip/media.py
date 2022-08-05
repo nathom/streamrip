@@ -29,12 +29,7 @@ from pathvalidate import sanitize_filepath
 
 from . import converter
 from .clients import Client, DeezloaderClient
-from .constants import (
-    ALBUM_KEYS,
-    FLAC_MAX_BLOCKSIZE,
-    FOLDER_FORMAT,
-    TRACK_FORMAT,
-)
+from .constants import ALBUM_KEYS, FLAC_MAX_BLOCKSIZE, FOLDER_FORMAT, TRACK_FORMAT
 from .downloadtools import DownloadPool, DownloadStream
 from .exceptions import (
     InvalidQuality,
@@ -1527,7 +1522,7 @@ class Album(Tracklist, Media):
 
         self.download_message()
 
-        cover_path = (
+        cover_path: Optional[str] = (
             _choose_and_download_cover(
                 self.cover_urls,
                 kwargs.get("embed_cover_size", "large"),
@@ -2056,7 +2051,7 @@ class Artist(Tracklist, Media):
         else:
             self.folder = parent_folder
 
-        logger.debug("Artist folder: %s", folder)
+        logger.debug("Artist folder: %s", self.folder)
         logger.debug("Length of tracklist %d", len(self))
         logger.debug("Filters: %s", filters)
 
@@ -2326,7 +2321,7 @@ def _choose_and_download_cover(
     directory: str,
     keep_hires_cover: bool = True,
     downsize: Tuple[int, int] = (999999, 999999),
-) -> str:
+) -> Optional[str]:
     # choose optimal cover size and download it
 
     hashcode: str = hashlib.md5(
@@ -2350,12 +2345,16 @@ def _choose_and_download_cover(
     ), f"Invalid cover size. Must be in {cover_urls.keys()}"
 
     embed_cover_url = cover_urls[preferred_size]
+
     logger.debug("Chosen cover url: %s", embed_cover_url)
     if not os.path.exists(temp_cover_path):
         # Sometimes a size isn't available. When this is the case, find
         # the first `not None` url.
         if embed_cover_url is None:
-            embed_cover_url = next(filter(None, cover_urls.values()))
+            urls = tuple(filter(None, cover_urls.values()))
+            if len(urls) == 0:
+                return None
+            embed_cover_url = urls[0]
 
         logger.debug("Downloading cover from url %s", embed_cover_url)
 
