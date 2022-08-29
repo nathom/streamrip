@@ -33,7 +33,7 @@ class TestAlbum:
         # assert
         assert (
             folder
-            == "Monty Python - The Album Of The Soundtrack Of The Trailer Of The Film Of Monty Python And The Holy Grail (1975) [FLAC] […"
+            == "Monty Python - The Album Of The Soundtrack Of The Trailer Of The Film Of Monty Python And The Holy Grail (1975) [FLAC] ["
         )
 
     def test_get_formatted_folder_path_without_overflow(

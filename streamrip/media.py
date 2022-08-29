@@ -29,7 +29,12 @@ from pathvalidate import sanitize_filepath
 
 from . import converter
 from .clients import Client, DeezloaderClient
-from .constants import ALBUM_KEYS, FLAC_MAX_BLOCKSIZE, FOLDER_FORMAT, TRACK_FORMAT
+from .constants import (
+    ALBUM_KEYS,
+    FLAC_MAX_BLOCKSIZE,
+    FOLDER_FORMAT,
+    TRACK_FORMAT,
+)
 from .downloadtools import DownloadPool, DownloadStream
 from .exceptions import (
     InvalidQuality,
@@ -66,7 +71,7 @@ TYPE_REGEXES = {
 class Media(abc.ABC):
     """An interface for a downloadable item."""
 
-    overflow_char = "…"
+    overflow_char = None
 
     @abc.abstractmethod
     def download(self, **kwargs):
@@ -1676,7 +1681,7 @@ class Album(Tracklist, Media):
             self._get_formatter(),
             restrict=restrict,
         )
-        formatted_folder = f"{formatted_folder[:120]}{self.overflow_char}"
+        formatted_folder = f"{formatted_folder[:120]}{self.overflow_char or ''}"
 
         return os.path.join(parent_folder, formatted_folder)
 
