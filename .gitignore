@@ -17,6 +17,7 @@ StreamripDownloads
 *.mkv
 *.aac
 *.pyc
-*test.py
 /.mypy_cache
 .DS_Store
+.venv
+.vscode

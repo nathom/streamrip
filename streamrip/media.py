@@ -71,6 +71,8 @@ TYPE_REGEXES = {
 class Media(abc.ABC):
     """An interface for a downloadable item."""
 
+    overflow_char = "…"
+
     @abc.abstractmethod
     def download(self, **kwargs):
         """Download the item.
@@ -1676,7 +1678,7 @@ class Album(Tracklist, Media):
             restrict=restrict,
         )
         if len(formatted_folder) > 120:
-            formatted_folder = f"{formatted_folder[:120]}..."
+            formatted_folder = f"{formatted_folder[:120]}{self.overflow_char}"
 
         return os.path.join(parent_folder, formatted_folder)
 
