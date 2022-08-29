@@ -29,12 +29,7 @@ from pathvalidate import sanitize_filepath
 
 from . import converter
 from .clients import Client, DeezloaderClient
-from .constants import (
-    ALBUM_KEYS,
-    FLAC_MAX_BLOCKSIZE,
-    FOLDER_FORMAT,
-    TRACK_FORMAT,
-)
+from .constants import ALBUM_KEYS, FLAC_MAX_BLOCKSIZE, FOLDER_FORMAT, TRACK_FORMAT
 from .downloadtools import DownloadPool, DownloadStream
 from .exceptions import (
     InvalidQuality,
@@ -1518,7 +1513,9 @@ class Album(Tracklist, Media):
         parent_folder = kwargs.get("parent_folder", "StreamripDownloads")
         if self.folder_format:
             self.folder = self._get_formatted_folder(
-                parent_folder, restrict=kwargs.get("restrict_filenames", False)
+                parent_folder,
+                restrict=kwargs.get("restrict_filenames", False),
+                truncate=kwargs.get("truncate_filenames", True),
             )
         else:
             self.folder = parent_folder
@@ -1527,7 +1524,7 @@ class Album(Tracklist, Media):
 
         self.download_message()
 
-        cover_path = (
+        cover_path: Optional[str] = (
             _choose_and_download_cover(
                 self.cover_urls,
                 kwargs.get("embed_cover_size", "large"),
@@ -1662,7 +1659,9 @@ class Album(Tracklist, Media):
         logger.debug("Formatter: %s", fmt)
         return fmt
 
-    def _get_formatted_folder(self, parent_folder: str, restrict: bool = False) -> str:
+    def _get_formatted_folder(
+        self, parent_folder: str, restrict: bool = False, truncate: bool = True
+    ) -> str:
         """Generate the folder name for this album.
 
         :param parent_folder:
@@ -1677,8 +1676,7 @@ class Album(Tracklist, Media):
             self._get_formatter(),
             restrict=restrict,
         )
-        if len(formatted_folder) > 120:
-            formatted_folder = f"{formatted_folder[:120]}{self.overflow_char}"
+        formatted_folder = f"{formatted_folder[:120]}{self.overflow_char}"
 
         return os.path.join(parent_folder, formatted_folder)
 
@@ -1842,13 +1840,13 @@ class Playlist(Tracklist, Media):
                 self.append(Track(self.client, id=track["id"]))
         else:
             for track in tracklist:
-                # TODO: This should be managed with .m3u files and alike. Arbitrary
-                # tracknumber tags might cause conflicts if the playlist files are
-                # inside of a library folder
                 meta = TrackMetadata(track=track, source=self.client.source)
-                cover_url = get_cover_urls(track["album"], self.client.source)[
-                    kwargs.get("embed_cover_size", "large")
-                ]
+                cover_urls = get_cover_urls(track["album"], self.client.source)
+                cover_url = (
+                    cover_urls[kwargs.get("embed_cover_size", "large")]
+                    if cover_urls is not None
+                    else None
+                )
 
                 self.append(
                     Track(
@@ -2054,7 +2052,7 @@ class Artist(Tracklist, Media):
         else:
             self.folder = parent_folder
 
-        logger.debug("Artist folder: %s", folder)
+        logger.debug("Artist folder: %s", self.folder)
         logger.debug("Length of tracklist %d", len(self))
         logger.debug("Filters: %s", filters)
 
@@ -2324,7 +2322,7 @@ def _choose_and_download_cover(
     directory: str,
     keep_hires_cover: bool = True,
     downsize: Tuple[int, int] = (999999, 999999),
-) -> str:
+) -> Optional[str]:
     # choose optimal cover size and download it
 
     hashcode: str = hashlib.md5(
@@ -2348,12 +2346,16 @@ def _choose_and_download_cover(
     ), f"Invalid cover size. Must be in {cover_urls.keys()}"
 
     embed_cover_url = cover_urls[preferred_size]
+
     logger.debug("Chosen cover url: %s", embed_cover_url)
     if not os.path.exists(temp_cover_path):
         # Sometimes a size isn't available. When this is the case, find
         # the first `not None` url.
         if embed_cover_url is None:
-            embed_cover_url = next(filter(None, cover_urls.values()))
+            urls = tuple(filter(None, cover_urls.values()))
+            if len(urls) == 0:
+                return None
+            embed_cover_url = urls[0]
 
         logger.debug("Downloading cover from url %s", embed_cover_url)
 
