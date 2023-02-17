@@ -42,6 +42,7 @@ aiofiles = "^0.7.0"
 aiohttp = "^3.7.4"
 cchardet = "^2.1.7"
 aiodns = "^3.0.0"
+pick = { version = "^1.6.0", platform = 'win32 or cygwin' }
 
 [tool.poetry.urls]
 "Bug Reports" = "https://github.com/nathom/streamrip/issues"
