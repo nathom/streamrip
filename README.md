@@ -101,6 +101,18 @@ Search for *Rumours* on Tidal, and download it
 rip search 'fleetwood mac rumours'
 ```
 
+Search for albums/tracks/artists marked as favorite and download them (only on Qobuz):
+
+```bash
+rip search user-favorites -t=album
+```
+
+Search for albums/tracks/artists marked as favorite and download the first 10 of them (only on Qobuz):
+
+```bash
+rip search user-favorites -t=album --scrape --max-items=10
+```
+
 Want to find some new music? Use the `discover` command (only on Qobuz)
 
 ```bash

@@ -338,13 +338,13 @@ class RipCore(list):
                 if arguments["conversion"]["enabled"]:
                     item.convert(**arguments["conversion"])
 
-    def scrape(self, featured_list: str, max_items: int = 500):
+    def scrape(self, featured_list: str, type: str, limit: int = 500):
         """Download all of the items in a Qobuz featured list.
 
         :param featured_list: The name of the list. See `rip discover --help`.
         :type featured_list: str
         """
-        self.extend(self.search("qobuz", featured_list, "featured", limit=max_items))
+        self.extend(self.search("qobuz", featured_list, type, limit=limit))
 
     def get_client(self, source: str) -> Client:
         """Get a client given the source and log in.

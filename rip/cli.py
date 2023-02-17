@@ -182,6 +182,17 @@ class SearchCommand(Command):
             flag=False,
             default="album",
         ),
+        option(
+            "scrape",
+            description="Download all of the items in the list",
+        ),
+        option(
+            "max-items",
+            "-m",
+            description="The number of items to fetch",
+            flag=False,
+            default=50,
+        ),
     ]
 
     help = (
@@ -195,12 +206,16 @@ class SearchCommand(Command):
 
     def handle(self):
         query = self.argument("query")
-        source, type = clean_options(self.option("source"), self.option("type"))
+        source, type, max_items = clean_options(self.option("source"), self.option("type"), self.option("max-items"))
+        scrape = self.option("scrape")
 
         config = Config()
         core = RipCore(config)
 
-        if core.interactive_search(query, source, type):
+        if scrape:
+            core.scrape(query, type, limit=max_items)
+            core.download()
+        elif core.interactive_search(query, source, type, limit=max_items):
             core.download()
         else:
             self.line("<error>No items chosen, exiting.</error>")
@@ -273,7 +288,7 @@ class DiscoverCommand(Command):
         source = self.option("source")
         scrape = self.option("scrape")
         chosen_list = self.argument("list")
-        max_items = self.option("max-items")
+        max_items = next(self.clean_options(self.option("max-items")))
 
         if source == "qobuz":
             from streamrip.constants import QOBUZ_FEATURED_KEYS
@@ -300,7 +315,7 @@ class DiscoverCommand(Command):
         core = RipCore(config)
 
         if scrape:
-            core.scrape(chosen_list, max_items)
+            core.scrape(chosen_list, "featured", limit=max_items)
             core.download()
             return 0
 
