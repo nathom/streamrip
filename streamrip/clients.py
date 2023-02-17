@@ -239,6 +239,8 @@ class QobuzClient(Client):
         page, status_code = self._api_request(epoint, params)
         logger.debug("Keys returned from _gen_pages: %s", ", ".join(page.keys()))
         key = epoint.split("/")[0] + "s"
+        if key == "favorites":
+            key = params["type"]
         total = page.get(key, {})
         total = total.get("total") or total.get("items")
 
@@ -330,7 +332,7 @@ class QobuzClient(Client):
             epoint = "album/getFeatured"
 
         elif query == "user-favorites":
-            assert query in ("track", "artist", "album")
+            assert media_type in ("track", "artist", "album")
             params.update({"type": f"{media_type}s"})
             epoint = "favorite/getUserFavorites"
 
