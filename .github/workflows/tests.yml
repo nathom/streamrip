@@ -16,7 +16,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
-
+    - name: Install Poetry
+      uses: snok/install-poetry@v1
+      with:
+        version: 1.3.2
     - name: Run Tests
       # add your DEEZER_ARL as secret in https://github.com/your-username/streamrip/settings/secrets/actions
       env:
