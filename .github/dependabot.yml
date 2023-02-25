@@ -1,0 +1,8 @@
+version: 2
+updates:
+  # Enable version updates for pip 
+  - package-ecosystem: "pip"
+    directory: "/"
+    # Check for updates once a week
+    schedule:
+      interval: "weekly"
