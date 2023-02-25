@@ -12,7 +12,7 @@ def test_downloadpool(tmpdir):
         tempdir=tmpdir,
     ) as pool:
         pool.download()
-        assert len(os.listdir(tmpdir)) == 151
+        assert len(os.listdir(tmpdir)) == 150
 
     # the tempfiles should be removed at this point
     assert len(os.listdir(tmpdir)) == 0

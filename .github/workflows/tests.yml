@@ -1,0 +1,31 @@
+# This workflow will upload a Python Package using Twine when a release is created
+# For more information see: https://help.github.com/en/actions/language-and-framework-guides/using-python-with-github-actions#publishing-to-package-registries
+
+# This workflow uses actions that are not certified by GitHub.
+# They are provided by a third-party and are governed by
+# separate terms of service, privacy policy, and support
+# documentation.
+
+name: Tests 
+
+on:
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Run Tests
+      # add your DEEZER_ARL as secret in https://github.com/your-username/streamrip/settings/secrets/actions
+      env:
+        DEEZER_ARL: ${{ secrets.DEEZER_ARL }}
+      run: |
+        poetry install
+
+        if [[ "$DEEZER_ARL" != '' ]]; then
+          echo "$DEEZER_ARL" | poetry run rip config --deezer
+
+          poetry run pytest
+        fi
