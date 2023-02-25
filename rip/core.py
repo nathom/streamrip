@@ -235,8 +235,8 @@ class RipCore(list):
                 "video_downloads_folder"
             ],
             "add_singles_to_folder": filepaths["add_singles_to_folder"],
-            "max_artwork_width": int(artwork["max_width"]),
-            "max_artwork_height": int(artwork["max_height"]),
+            "max_artwork_width": int(artwork["max_width"] or 0),
+            "max_artwork_height": int(artwork["max_height"] or 0),
             "exclude_tags": metadata["exclude"],
         }
 
