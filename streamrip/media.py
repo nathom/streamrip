@@ -255,7 +255,7 @@ class Track(Media):
 
         os.makedirs(self.folder, exist_ok=True)
 
-        if hasattr(self, "cover_url"):
+        if hasattr(self, "cover_url") and self.cover_url is not None:
             try:
                 self.download_cover(
                     width=kwargs.get("max_artwork_width", 999999),
