@@ -306,7 +306,7 @@ def get_container(quality: int, source: str) -> str:
     return "MP3"
 
 
-def get_cover_urls(resp: dict, source: str) -> dict:
+def get_cover_urls(resp: dict, source: str) -> Optional[dict]:
     """Parse a response dict containing cover info according to the source.
 
     :param resp:
@@ -318,7 +318,7 @@ def get_cover_urls(resp: dict, source: str) -> dict:
 
     if source == "qobuz":
         cover_urls = resp["image"]
-        cover_urls["original"] = cover_urls["large"].replace("600", "org")
+        cover_urls["original"] = "org".join(cover_urls["large"].rsplit('600', 1))
         return cover_urls
 
     if source == "tidal":

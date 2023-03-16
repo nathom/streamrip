@@ -153,6 +153,9 @@ folder_format = "{albumartist} - {title} ({year}) [{container}] [{bit_depth}B-{s
 track_format = "{tracknumber}. {artist} - {title}{explicit}"
 # Only allow printable ASCII characters in filenames.
 restrict_characters = false
+# Truncate the filename if it is greater than 120 characters
+# Setting this to false may cause downloads to fail on some systems
+truncate = true
 
 
 # Last.fm playlists are downloaded by searching for the titles of the tracks
@@ -169,4 +172,4 @@ progress_bar = "dainty"
 
 [misc]
 # Metadata to identify this config file. Do not change.
-version = "1.9.2"
+version = "1.9.6"

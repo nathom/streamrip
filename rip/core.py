@@ -216,6 +216,7 @@ class RipCore(list):
         concurrency = session["downloads"]["concurrency"]
         return {
             "restrict_filenames": filepaths["restrict_characters"],
+            "truncate_filenames": filepaths["truncate"],
             "parent_folder": session["downloads"]["folder"],
             "folder_format": filepaths["folder_format"],
             "track_format": filepaths["track_format"],
@@ -312,7 +313,8 @@ class RipCore(list):
             try:
                 item.download(**arguments)
                 for item_id in item.downloaded_ids:
-                    self.db.add([item_id])
+                    # Add items row by row
+                    self.db.add((item_id,))
             except NonStreamable as e:
                 e.print(item)
                 self.failed_db.add((item.client.source, item.type, item.id))
@@ -815,7 +817,7 @@ class RipCore(list):
 
         info = []
         words = re.compile(r"[\w\s]+")
-        title_tags = re.compile('title="([^"]+)"')
+        title_tags = re.compile(r'<a\s+href="[^"]+"\s+title="([^"]+)"')
 
         def essence(s):
             s = re.sub(r"&#\d+;", "", s)  # remove HTML entities
@@ -823,7 +825,7 @@ class RipCore(list):
             return "".join(words.findall(s))
 
         def get_titles(s):
-            titles = title_tags.findall(s)[2:]
+            titles = title_tags.findall(s)  # [2:]
             for i in range(0, len(titles) - 1, 2):
                 info.append((essence(titles[i]), essence(titles[i + 1])))
 
@@ -850,13 +852,14 @@ class RipCore(list):
 
         if remaining_tracks > 0:
             with concurrent.futures.ThreadPoolExecutor(max_workers=15) as executor:
-                last_page = int(remaining_tracks // 50) + int(
-                    remaining_tracks % 50 != 0
+                last_page = (
+                    1 + int(remaining_tracks // 50) + int(remaining_tracks % 50 != 0)
                 )
+                logger.debug("Fetching up to page %d", last_page)
 
                 futures = [
                     executor.submit(requests.get, f"{url}?page={page}")
-                    for page in range(1, last_page + 1)
+                    for page in range(2, last_page + 1)
                 ]
 
             for future in concurrent.futures.as_completed(futures):

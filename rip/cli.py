@@ -20,7 +20,7 @@ logging.basicConfig(level="WARNING")
 logger = logging.getLogger("streamrip")
 
 outdated = False
-newest_version = __version__
+newest_version: Optional[str] = None
 
 
 class DownloadCommand(Command):
@@ -126,6 +126,7 @@ class DownloadCommand(Command):
             self.line("<error>Must pass arguments. See </><cmd>rip url -h</cmd>.")
 
         update_check.join()
+
         if outdated:
             import re
             import subprocess
@@ -814,7 +815,15 @@ def is_outdated():
     global newest_version
     r = requests.get("https://pypi.org/pypi/streamrip/json").json()
     newest_version = r["info"]["version"]
-    outdated = newest_version != __version__
+
+    # Compare versions
+    curr_version_parsed = map(int, __version__.split("."))
+    newest_version_parsed = map(int, newest_version.split("."))
+    outdated = False
+    for c, n in zip(curr_version_parsed, newest_version_parsed):
+        outdated = c < n
+        if c != n:
+            break
 
 
 def main():
