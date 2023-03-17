@@ -43,6 +43,7 @@ from .metadata import TrackMetadata
 from .utils import (
     clean_filename,
     clean_format,
+    concat_audio_files,
     decrypt_mqa_file,
     downsize_image,
     ext,
@@ -429,7 +430,7 @@ class Track(Media):
         :type dl_info: dict
         :rtype: str
         """
-        logger.debug("dl_info: %s", dl_info)
+        # logger.debug("dl_info: %s", dl_info)
         if dl_info["type"] == "mp3":
             import m3u8
             import requests
@@ -447,18 +448,8 @@ class Track(Media):
                     bar.update(1)
 
                 pool.download(callback=update_tqdm_bar)
-                subprocess.call(
-                    (
-                        "ffmpeg",
-                        "-i",
-                        f"concat:{'|'.join(pool.files)}",
-                        "-acodec",
-                        "copy",
-                        "-loglevel",
-                        "panic",
-                        self.path,
-                    )
-                )
+
+                concat_audio_files(pool.files, self.path, "mp3")
 
         elif dl_info["type"] == "original":
             _quick_download(dl_info["url"], self.path, desc=self._progress_desc)

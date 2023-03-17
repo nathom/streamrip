@@ -3,9 +3,14 @@
 from __future__ import annotations
 
 import base64
+import itertools
 import logging
+import os
+import shutil
+import subprocess
+import tempfile
 from string import Formatter
-from typing import Dict, Hashable, Iterator, Optional, Tuple, Union
+from typing import Dict, Hashable, Iterator, List, Optional, Tuple, Union
 
 import requests
 from click import secho, style
@@ -13,11 +18,61 @@ from pathvalidate import sanitize_filename
 from requests.packages import urllib3
 from tqdm import tqdm
 
-from .constants import COVER_SIZES, TIDAL_COVER_URL
-from .exceptions import InvalidQuality, InvalidSourceError
+from .constants import COVER_SIZES, MAX_FILES_OPEN, TIDAL_COVER_URL
+from .exceptions import FfmpegError, InvalidQuality, InvalidSourceError
 
 urllib3.disable_warnings()
 logger = logging.getLogger("streamrip")
+
+
+def concat_audio_files(paths: List[str], out: str, ext: str):
+    logger.debug("Concatenating %d files", len(paths))
+    if len(paths) == 1:
+        shutil.move(paths[0], out)
+        return
+
+    it = iter(paths)
+    num_batches = len(paths) // MAX_FILES_OPEN + (
+        1 if len(paths) % MAX_FILES_OPEN != 0 else 0
+    )
+    logger.debug(
+        "Using %d batches with max file limit of %d", num_batches, MAX_FILES_OPEN
+    )
+    tempdir = tempfile.gettempdir()
+    outpaths = [
+        os.path.join(
+            tempdir, f"__streamrip_ffmpeg_{hash(paths[i*MAX_FILES_OPEN])}.{ext}"
+        )
+        for i in range(num_batches)
+    ]
+
+    for p in outpaths:
+        try:
+            os.remove(p)  # in case of failure
+        except FileNotFoundError:
+            pass
+
+    logger.debug("Batch outfiles: %s", outpaths)
+
+    for i in range(num_batches):
+        logger.debug("Batch %d", i)
+        proc = subprocess.run(
+            (
+                "ffmpeg",
+                "-i",
+                f"concat:{'|'.join(itertools.islice(it, MAX_FILES_OPEN))}",
+                "-acodec",
+                "copy",
+                "-loglevel",
+                "panic",
+                outpaths[i],
+            ),
+            # capture_output=True,
+        )
+        if proc.returncode != 0:
+            raise FfmpegError(proc.stderr)
+
+    concat_audio_files(outpaths, out, ext)
 
 
 def safe_get(d: dict, *keys: Hashable, default=None):
