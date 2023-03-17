@@ -397,21 +397,6 @@ class ConfigCommand(Command):
             flag=True,
         ),
     ]
-    """
-    Manage the configuration file.
-
-    config
-        {--o|open : Open the config file in the default application}
-        {--O|open-vim : Open the config file in (neo)vim}
-        {--d|directory : Open the directory that the config file is located in}
-        {--p|path : Show the config file's path}
-        {--qobuz : Set the credentials for Qobuz}
-        {--tidal : Log into Tidal}
-        {--deezer : Set the Deezer ARL}
-        {--music-app : Configure the config file for usage with the macOS Music App}
-        {--reset : Reset the config file}
-        {--update : Reset the config file, keeping the credentials}
-    """
 
     _config: Config
 
