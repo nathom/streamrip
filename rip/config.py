@@ -5,7 +5,7 @@ import logging
 import os
 import shutil
 from pprint import pformat
-from typing import Any, Dict, List, Union
+from typing import Any, Dict, List, Optional, Union
 
 import tomlkit
 from click import secho
@@ -36,7 +36,7 @@ class Config:
     with open(default_config_path) as cfg:
         defaults: Dict[str, Any] = tomlkit.parse(cfg.read().strip())
 
-    def __init__(self, path: str = None):
+    def __init__(self, path: Optional[str] = None):
         """Create a Config object with state.
 
         A TOML file is created at `path` if there is none.
@@ -133,7 +133,15 @@ class Config:
     def load(self):
         """Load infomation from the config files, making a deepcopy."""
         with open(self._path) as cfg:
-            for k, v in tomlkit.loads(cfg.read().strip()).items():
+            try:
+                toml = tomlkit.loads(cfg.read().strip()).items()
+            except Exception as e:
+                raise Exception(
+                    f"Error parsing config file with error {e}. Make sure you escape "
+                    r'backslashes (\) in Windows paths. Example: "E:\\StreamripDownloads\\" '
+                )
+
+            for k, v in toml:
                 self.file[k] = v
                 if hasattr(v, "copy"):
                     self.session[k] = v.copy()
