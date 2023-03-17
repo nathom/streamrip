@@ -14,7 +14,7 @@ class Database:
     structure: dict
     name: str
 
-    def __init__(self, path, dummy=False):
+    def __init__(self, path: str, dummy: bool = False):
         """Create a Database instance.
 
         :param path: Path to the database file.
@@ -23,13 +23,12 @@ class Database:
         assert self.structure != []
         assert self.name
 
-        if dummy or path is None:
-            self.path = None
-            self.is_dummy = True
-            return
-        self.is_dummy = False
-
         self.path = path
+        self.is_dummy = dummy
+
+        if self.is_dummy:
+            return
+
         if not os.path.exists(self.path):
             self.create()
 

@@ -114,3 +114,7 @@ class PartialFailure(Exception):
         """
         self.failed_items = failed_items
         super().__init__()
+
+
+class FfmpegError(Exception):
+    """Raise if ffmpeg returns nonzero exit code."""

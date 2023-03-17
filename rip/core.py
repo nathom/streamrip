@@ -132,7 +132,7 @@ class RipCore(list):
                     config.file["database"][db_type]["path"] = default_db_path
                     config.save()
             else:
-                database = db_class(None, dummy=True)
+                database = db_class("", dummy=True)
 
             return database
 
@@ -249,7 +249,7 @@ class RipCore(list):
         if max_items is None:
             max_items = float("inf")
 
-        self.db = db.Downloads(None, dummy=True)
+        self.db = db.Downloads("", dummy=True)
         if self.failed_db.is_dummy:
             secho(
                 "Failed downloads database must be enabled in the config file "

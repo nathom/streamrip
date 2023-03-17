@@ -5,7 +5,7 @@ import logging
 import os
 import re
 from tempfile import gettempdir
-from typing import Callable, Dict, Iterator, List, Optional
+from typing import Callable, Dict, Iterable, List, Optional
 
 import aiofiles
 import aiohttp
@@ -81,10 +81,10 @@ class DownloadStream:
             except json.JSONDecodeError:
                 raise NonStreamable("File not found.")
 
-    def __iter__(self) -> Iterator:
+    def __iter__(self) -> Iterable:
         """Iterate through chunks of the stream.
 
-        :rtype: Iterator
+        :rtype: Iterable
         """
         if self.source == "deezer" and self.is_encrypted.search(self.url) is not None:
             assert isinstance(self.id, str), self.id
@@ -151,7 +151,7 @@ class DownloadPool:
 
     def __init__(
         self,
-        urls: Iterator,
+        urls: Iterable,
         tempdir: str = None,
         chunk_callback: Optional[Callable] = None,
     ):

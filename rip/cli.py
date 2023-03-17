@@ -83,15 +83,15 @@ class DownloadCommand(Command):
         update_check = threading.Thread(target=is_outdated, daemon=True)
         update_check.start()
 
-        path, codec, quality, no_db, directory, config = clean_options(
+        path, quality, no_db, directory, config = clean_options(
             self.option("file"),
-            self.option("codec"),
             self.option("max-quality"),
             self.option("ignore-db"),
             self.option("directory"),
             self.option("config"),
         )
 
+        assert isinstance(config, str) or config is None
         config = Config(config)
 
         if directory is not None:
@@ -109,6 +109,7 @@ class DownloadCommand(Command):
         urls = self.argument("urls")
 
         if path is not None:
+            assert isinstance(path, str)
             if os.path.isfile(path):
                 core.handle_txt(path)
             else:
@@ -129,7 +130,6 @@ class DownloadCommand(Command):
 
         if outdated:
             import re
-            import subprocess
 
             self.line(
                 f"\n<info>A new version of streamrip <title>v{newest_version}</title>"
@@ -196,6 +196,8 @@ class SearchCommand(Command):
     def handle(self):
         query = self.argument("query")
         source, type = clean_options(self.option("source"), self.option("type"))
+        assert isinstance(source, str)
+        assert isinstance(type, str)
 
         config = Config()
         core = RipCore(config)
@@ -411,7 +413,7 @@ class ConfigCommand(Command):
         {--update : Reset the config file, keeping the credentials}
     """
 
-    _config: Optional[Config]
+    _config: Config
 
     def handle(self):
         import shutil
@@ -649,7 +651,6 @@ class ConvertCommand(Command):
         else:
             self.line(
                 f'<error>Path <path>"{path}"</path> does not exist.</error>',
-                fg="red",
             )
 
 
@@ -818,6 +819,7 @@ def is_outdated():
 
     # Compare versions
     curr_version_parsed = map(int, __version__.split("."))
+    assert isinstance(newest_version, str)
     newest_version_parsed = map(int, newest_version.split("."))
     outdated = False
     for c, n in zip(curr_version_parsed, newest_version_parsed):

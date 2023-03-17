@@ -191,3 +191,5 @@ DEEZER_BASE = "https://api.deezer.com"
 DEEZER_DL = "http://dz.loaderapp.info/deezer"
 
 SOUNDCLOUD_BASE = "https://api-v2.soundcloud.com"
+
+MAX_FILES_OPEN = 128

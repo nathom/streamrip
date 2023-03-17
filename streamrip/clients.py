@@ -374,7 +374,7 @@ class QobuzClient(Client):
         self.label = resp["user"]["credential"]["parameters"]["short_label"]
 
     def _api_get_file_url(
-        self, track_id: Union[str, int], quality: int = 3, sec: str = None
+        self, track_id: Union[str, int], quality: int = 3, sec: Optional[str] = None
     ) -> dict:
         """Get the file url given a track id.
 
