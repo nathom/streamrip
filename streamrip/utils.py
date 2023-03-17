@@ -373,7 +373,7 @@ def get_cover_urls(resp: dict, source: str) -> Optional[dict]:
 
     if source == "qobuz":
         cover_urls = resp["image"]
-        cover_urls["original"] = cover_urls["large"].replace("600", "org")
+        cover_urls["original"] = "org".join(cover_urls["large"].rsplit('600', 1))
         return cover_urls
 
     if source == "tidal":
