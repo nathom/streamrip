@@ -40,7 +40,6 @@ appdirs = "^1.4.4"
 m3u8 = "^0.9.0"
 aiofiles = "^0.7.0"
 aiohttp = "^3.7.4"
-cchardet = "^2.1.7"
 aiodns = "^3.0.0"
 
 [tool.poetry.urls]
