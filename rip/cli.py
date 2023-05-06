@@ -479,11 +479,18 @@ class ConfigCommand(Command):
             import getpass
             import hashlib
 
-            self._config.file["qobuz"]["email"] = self.ask("Qobuz email:")
-            self._config.file["qobuz"]["password"] = hashlib.md5(
-                getpass.getpass("Qobuz password (won't show on screen): ").encode()
-            ).hexdigest()
-            self._config.save()
+            self._config.file["qobuz"]["use_auth_token"] = self.confirm("Use Qobuz auth token to authenticate?", default=False)
+
+            if self._config.file["qobuz"]["use_auth_token"]:
+                self._config.file["qobuz"]["email_or_userid"] = self.ask("Qobuz user id:")
+                self._config.file["qobuz"]["password_or_token"] = getpass.getpass("Qobuz auth token (won't show on screen): ")
+                self._config.save()
+            else:
+                self._config.file["qobuz"]["email_or_userid"] = self.ask("Qobuz email:")
+                self._config.file["qobuz"]["password_or_token"] = hashlib.md5(
+                    getpass.getpass("Qobuz password (won't show on screen): ").encode()
+                ).hexdigest()
+                self._config.save()
 
         if self.option("music-app"):
             self._conf_music_app()
