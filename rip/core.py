@@ -878,21 +878,37 @@ class RipCore(list):
         :type source: str
         """
         if source == "qobuz":
-            secho("Enter Qobuz email:", fg="green")
-            self.config.file[source]["email"] = input()
-            secho(
-                "Enter Qobuz password (will not show on screen):",
-                fg="green",
-            )
-            self.config.file[source]["password"] = md5(
-                getpass(prompt="").encode("utf-8")
-            ).hexdigest()
+            secho("Use Qobuz auth token to authenticate? (yes/no)", fg="green")
+            use_auth_token = re.match("(?i)^y", input()) is not None
+            
+            self.config.file[source]["use_auth_token"] = use_auth_token
+            
+            if use_auth_token:
+                secho("Enter Qobuz user id:", fg="green")
+                self.config.file[source]["email_or_userid"] = input()
 
-            self.config.save()
-            secho(
-                f'Credentials saved to config file at "{self.config._path}"',
-                fg="green",
-            )
+                secho("Enter Qobuz token (will not show on screen):", fg="green")
+                self.config.file[source]["password_or_token"] = getpass(prompt="")
+
+                self.config.save()
+                secho(
+                    f'Credentials saved to config file at "{self.config._path}"',
+                    fg="green",
+                )
+            else:
+                secho("Enter Qobuz email:", fg="green")
+                self.config.file[source]["email_or_userid"] = input()
+
+                secho("Enter Qobuz password (will not show on screen):", fg="green")
+                self.config.file[source]["password_or_token"] = md5(
+                    getpass(prompt="").encode("utf-8")
+                ).hexdigest()
+
+                self.config.save()
+                secho(
+                    f'Credentials saved to config file at "{self.config._path}"',
+                    fg="green",
+                )
         elif source == "deezer":
             secho(
                 "If you're not sure how to find the ARL cookie, see the instructions at ",

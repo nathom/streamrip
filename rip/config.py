@@ -172,8 +172,9 @@ class Config:
     def qobuz_creds(self):
         """Return a QobuzClient compatible dict of credentials."""
         return {
-            "email": self.file["qobuz"]["email"],
-            "pwd": self.file["qobuz"]["password"],
+            "use_auth_token": self.file["qobuz"]["use_auth_token"],
+            "email_or_userid": self.file["qobuz"]["email_or_userid"],
+            "password_or_token": self.file["qobuz"]["password_or_token"],
             "app_id": self.file["qobuz"]["app_id"],
             "secrets": self.file["qobuz"]["secrets"],
         }
