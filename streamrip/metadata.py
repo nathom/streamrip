@@ -87,6 +87,7 @@ class TrackMetadata:
         track: Optional[Union[TrackMetadata, dict]] = None,
         album: Optional[Union[TrackMetadata, dict]] = None,
         source="qobuz",
+        client=None
     ):
         """Create a TrackMetadata object.
 
@@ -102,7 +103,7 @@ class TrackMetadata:
         if isinstance(track, TrackMetadata):
             self.update(track)
         elif track is not None:
-            self.add_track_meta(track)
+            self.add_track_meta(track, client=client)
 
         if isinstance(album, TrackMetadata):
             self.update(album)
@@ -221,7 +222,7 @@ class TrackMetadata:
         else:
             raise InvalidSourceError(self.__source)
 
-    def add_track_meta(self, track: dict):
+    def add_track_meta(self, track: dict, client):
         """Parse the metadata from a track dict returned by an API.
 
         :param track:
@@ -249,6 +250,7 @@ class TrackMetadata:
             self.tracknumber = track.get("track_position", 1)
             self.discnumber = track.get("disk_number", 1)
             self.artist = safe_get(track, "artist", "name")
+            self.artist = ", ".join([contributor["name"] for contributor in client.client.api.get_track(track["id"])["contributors"]])
 
         elif self.__source == "soundcloud":
             self.title = track["title"].strip()

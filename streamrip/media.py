@@ -524,7 +524,7 @@ class Track(Media):
         :type client: Client
         :raises: IndexError
         """
-        meta = TrackMetadata(album=album, track=track, source=client.source)
+        meta = TrackMetadata(album=album, track=track, source=client.source, client=client)
         return cls(client=client, meta=meta, id=track["id"], part_of_tracklist=True)
 
     @classmethod
