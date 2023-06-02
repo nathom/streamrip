@@ -20,10 +20,10 @@ def extract_interpreter_url(url: str) -> str:
     :type url: str
     :rtype: str
     """
-    urlMatch = interpreter_artist_id_regex.search(url)
-    if urlMatch:
-        return urlMatch.group('artistId')
-    
+    url_match = interpreter_artist_id_regex.search(url)
+    if url_match:
+        return url_match.group("artistId")
+
     session = gen_threadsafe_session({"User-Agent": AGENT})
     r = session.get(url)
     match = interpreter_artist_regex.search(r.text)
