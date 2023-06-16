@@ -205,7 +205,7 @@ class Track(Media):
 
         self.resp = self.client.get(self.id, media_type="track")
         self.meta = TrackMetadata(
-            track=self.resp, source=source
+            track=self.resp, source=source, client=self.client
         )  # meta dict -> TrackMetadata object
 
         # Because the cover urls are not parsed when only the track metadata
@@ -536,7 +536,7 @@ class Track(Media):
         :param client:
         :type client: Client
         """
-        meta = TrackMetadata(track=item, source=client.source)
+        meta = TrackMetadata(track=item, source=client.source, client=client)
         cover_url: Optional[str]
         try:
             if client.source == "qobuz":
@@ -1590,7 +1590,7 @@ class Album(Tracklist, Media):
         :type resp: dict
         :rtype: dict
         """
-        meta = TrackMetadata(album=resp, source=client.source)
+        meta = TrackMetadata(album=resp, source=client.source, client=client)
         meta.id = resp["id"]
         return meta
 
@@ -1830,7 +1830,7 @@ class Playlist(Tracklist, Media):
                 self.append(Track(self.client, id=track["id"]))
         else:
             for track in tracklist:
-                meta = TrackMetadata(track=track, source=self.client.source)
+                meta = TrackMetadata(track=track, source=self.client.source, client=self.client)
                 cover_urls = get_cover_urls(track["album"], self.client.source)
                 cover_url = (
                     cover_urls[kwargs.get("embed_cover_size", "large")]
