@@ -20,9 +20,12 @@ quality = 3
 # This will download booklet pdfs that are included with some albums
 download_booklets = true
 
-email = ""
-# This is an md5 hash of the plaintext password
-password = ""
+# Authenticate to Qobuz using auth token? Value can be true/false only
+use_auth_token = false
+# Enter your userid if the above use_auth_token is set to true, else enter your email
+email_or_userid = ""
+# Enter your auth token if the above use_auth_token is set to true, else enter the md5 hash of your plaintext password
+password_or_token = ""
 # Do not change
 app_id = ""
 # Do not change
@@ -156,7 +159,6 @@ restrict_characters = false
 # Truncate the filename if it is greater than 120 characters
 # Setting this to false may cause downloads to fail on some systems
 truncate = true
-
 
 # Last.fm playlists are downloaded by searching for the titles of the tracks
 [lastfm]
