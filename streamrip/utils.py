@@ -9,6 +9,8 @@ import os
 import shutil
 import subprocess
 import tempfile
+import time
+from multiprocessing import Lock
 from string import Formatter
 from typing import Dict, Hashable, Iterator, List, Optional, Tuple, Union
 
@@ -307,6 +309,56 @@ def ext(quality: int, source: str):
         return ".flac"
 
 
+class SRSession:
+    # requests per minute
+    PERIOD = 60.0
+
+    def __init__(
+        self,
+        headers: Optional[dict] = None,
+        pool_connections: int = 100,
+        pool_maxsize: int = 100,
+        requests_per_min: Optional[int] = None,
+    ):
+
+        if headers is None:
+            headers = {}
+
+        self.session = requests.Session()
+        adapter = requests.adapters.HTTPAdapter(pool_connections, pool_maxsize)
+        self.session.mount("https://", adapter)
+        self.session.headers.update(headers)
+        self.has_rate_limit = requests_per_min is not None
+        self.rpm = requests_per_min
+
+        self.last_minute: float = time.time()
+        self.call_no: int = 0
+        self.rate_limit_lock = Lock() if self.has_rate_limit else None
+
+    def get(self, *args, **kwargs):
+        if self.has_rate_limit:  # only use locks if there is a rate limit
+            assert self.rate_limit_lock is not None
+            assert self.rpm is not None
+            with self.rate_limit_lock:
+                now = time.time()
+                if self.call_no >= self.rpm:
+                    if now - self.last_minute < SRSession.PERIOD:
+                        time.sleep(SRSession.PERIOD - (now - self.last_minute))
+                    self.last_minute = time.time()
+                    self.call_no = 0
+
+                self.call_no += 1
+
+        return self.session.get(*args, **kwargs)
+
+    def update_headers(self, headers: dict):
+        self.session.headers.update(headers)
+
+    # No rate limit on post
+    def post(self, *args, **kwargs) -> requests.Response:
+        self.session.post(*args, **kwargs)
+
+
 def gen_threadsafe_session(
     headers: dict = None, pool_connections: int = 100, pool_maxsize: int = 100
 ) -> requests.Session:
@@ -324,7 +376,7 @@ def gen_threadsafe_session(
         headers = {}
 
     session = requests.Session()
-    adapter = requests.adapters.HTTPAdapter(pool_connections=100, pool_maxsize=100)
+    adapter = requests.adapters.HTTPAdapter(pool_connections, pool_maxsize)
     session.mount("https://", adapter)
     session.headers.update(headers)
     return session
@@ -373,7 +425,7 @@ def get_cover_urls(resp: dict, source: str) -> Optional[dict]:
 
     if source == "qobuz":
         cover_urls = resp["image"]
-        cover_urls["original"] = "org".join(cover_urls["large"].rsplit('600', 1))
+        cover_urls["original"] = "org".join(cover_urls["large"].rsplit("600", 1))
         return cover_urls
 
     if source == "tidal":

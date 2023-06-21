@@ -40,7 +40,7 @@ from .exceptions import (
     NonStreamable,
 )
 from .spoofbuz import Spoofer
-from .utils import gen_threadsafe_session, get_quality, safe_get
+from .utils import SRSession, gen_threadsafe_session, get_quality, safe_get
 
 logger = logging.getLogger("streamrip")
 
@@ -134,7 +134,7 @@ class QobuzClient(Client):
                 str(kwargs["app_id"]),
                 kwargs["secrets"],
             )
-            self.session = gen_threadsafe_session(
+            self.session = SRSession(
                 headers={"User-Agent": AGENT, "X-App-Id": self.app_id}
             )
             self._validate_secrets()
@@ -223,7 +223,7 @@ class QobuzClient(Client):
 
         if not hasattr(self, "sec"):
             if not hasattr(self, "session"):
-                self.session = gen_threadsafe_session(
+                self.session = SRSession(
                     headers={"User-Agent": AGENT, "X-App-Id": self.app_id}
                 )
             self._validate_secrets()
@@ -343,7 +343,9 @@ class QobuzClient(Client):
 
         return self._gen_pages(epoint, params)
 
-    def _api_login(self, use_auth_token: bool, email_or_userid: str, password_or_token: str):
+    def _api_login(
+        self, use_auth_token: bool, email_or_userid: str, password_or_token: str
+    ):
         """Log into the api to get the user authentication token.
 
         :param use_auth_token:
@@ -380,7 +382,7 @@ class QobuzClient(Client):
             raise IneligibleError("Free accounts are not eligible to download tracks.")
 
         self.uat = resp["user_auth_token"]
-        self.session.headers.update({"X-User-Auth-Token": self.uat})
+        self.session.update_headers({"X-User-Auth-Token": self.uat})
         self.label = resp["user"]["credential"]["parameters"]["short_label"]
 
     def _api_get_file_url(
@@ -472,7 +474,6 @@ class DeezerClient(Client):
     def __init__(self):
         """Create a DeezerClient."""
         self.client = deezer.Deezer()
-        # self.session = gen_threadsafe_session()
 
         # no login required
         self.logged_in = False
@@ -645,7 +646,7 @@ class DeezloaderClient(Client):
 
     def __init__(self):
         """Create a DeezloaderClient."""
-        self.session = gen_threadsafe_session()
+        self.session = SRSession()
 
         # no login required
         self.logged_in = True
@@ -735,7 +736,7 @@ class TidalClient(Client):
         self.refresh_token = None
         self.expiry = None
 
-        self.session = gen_threadsafe_session()
+        self.session = SRSession()
 
     def login(
         self,
@@ -994,7 +995,7 @@ class TidalClient(Client):
 
     def _update_authorization(self):
         """Update the requests session headers with the auth token."""
-        self.session.headers.update(self.authorization)
+        self.session.update_headers(self.authorization)
 
     @property
     def authorization(self):
@@ -1094,8 +1095,7 @@ class TidalClient(Client):
         :param data:
         :param auth:
         """
-        r = self.session.post(url, data=data, auth=auth, verify=False).json()
-        return r
+        return self.session.post(url, data=data, auth=auth, verify=False).json()
 
 
 class SoundCloudClient(Client):
@@ -1110,7 +1110,7 @@ class SoundCloudClient(Client):
 
     def __init__(self):
         """Create a SoundCloudClient."""
-        self.session = gen_threadsafe_session(
+        self.session = SRSession(
             headers={
                 "User-Agent": AGENT,
             }
