@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "streamrip"
-version = "1.9.7"
+version = "1.9.8"
 description = "A fast, all-in-one music ripper for Qobuz, Deezer, Tidal, and SoundCloud"
 authors = ["nathom <nathanthomas707@gmail.com>"]
 license = "GPL-3.0-only"
