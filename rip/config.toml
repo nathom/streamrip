@@ -13,6 +13,9 @@ enabled = true
 # If you have very fast internet, you will benefit from a higher value,
 # A value that is too high for your bandwidth may cause slowdowns
 max_connections = 3
+# Max number of API requests to handle per minute
+# Set to -1 for no limit
+requests_per_minute = -1
 
 [qobuz]
 # 1: 320kbps MP3, 2: 16/44.1, 3: 24/<=96, 4: 24/>=96
@@ -174,4 +177,4 @@ progress_bar = "dainty"
 
 [misc]
 # Metadata to identify this config file. Do not change.
-version = "1.9.6"
+version = "1.9.8"

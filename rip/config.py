@@ -185,20 +185,27 @@ class Config:
         :param source:
         :type source: str
         """
+        creds = None
         if source == "qobuz":
-            return self.qobuz_creds
+            creds = self.qobuz_creds
         if source == "tidal":
-            return self.tidal_creds
+            creds = self.tidal_creds
         if source == "deezer":
-            return {"arl": self.file["deezer"]["arl"]}
+            creds = {"arl": self.file["deezer"]["arl"]}
         if source == "soundcloud":
             soundcloud = self.file["soundcloud"]
-            return {
+            creds = {
                 "client_id": soundcloud["client_id"],
                 "app_version": soundcloud["app_version"],
             }
 
-        raise InvalidSourceError(source)
+        if creds is None:
+            raise InvalidSourceError(source)
+
+        rpm = self.file["downloads"]["concurrency"]["requests_per_minute"]
+        if rpm > 0:
+            creds.update({"requests_per_min": rpm})
+        return creds
 
     def __repr__(self) -> str:
         """Return a string representation of the config."""

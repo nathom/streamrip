@@ -128,14 +128,16 @@ class QobuzClient(Client):
             return
 
         if not kwargs.get("app_id") or not kwargs.get("secrets"):
-            self._get_app_id_and_secrets()  # can be async
+            # sets session
+            self._get_app_id_and_secrets(kwargs.get("requests_per_min"))  # can be async
         else:
             self.app_id, self.secrets = (
                 str(kwargs["app_id"]),
                 kwargs["secrets"],
             )
             self.session = SRSession(
-                headers={"User-Agent": AGENT, "X-App-Id": self.app_id}
+                headers={"User-Agent": AGENT, "X-App-Id": self.app_id},
+                requests_per_min=kwargs.get("requests_per_min"),
             )
             self._validate_secrets()
 
@@ -213,7 +215,7 @@ class QobuzClient(Client):
 
     # ---------- Private Methods ---------------
 
-    def _get_app_id_and_secrets(self):
+    def _get_app_id_and_secrets(self, rpm):
         if not hasattr(self, "app_id") or not hasattr(self, "secrets"):
             spoofer = Spoofer()
             self.app_id, self.secrets = (
@@ -224,7 +226,8 @@ class QobuzClient(Client):
         if not hasattr(self, "sec"):
             if not hasattr(self, "session"):
                 self.session = SRSession(
-                    headers={"User-Agent": AGENT, "X-App-Id": self.app_id}
+                    headers={"User-Agent": AGENT, "X-App-Id": self.app_id},
+                    requests_per_min=rpm,
                 )
             self._validate_secrets()
 
@@ -736,8 +739,6 @@ class TidalClient(Client):
         self.refresh_token = None
         self.expiry = None
 
-        self.session = SRSession()
-
     def login(
         self,
         user_id=None,
@@ -745,6 +746,7 @@ class TidalClient(Client):
         access_token=None,
         token_expiry=None,
         refresh_token=None,
+        **kwargs,
     ):
         """Login to Tidal using the browser.
 
@@ -757,6 +759,9 @@ class TidalClient(Client):
         :param token_expiry:
         :param refresh_token:
         """
+        self.session = SRSession(
+            requests_per_min=kwargs.get("requests_per_min"),
+        )
         if access_token:
             self.token_expiry = float(token_expiry)
             self.refresh_token = refresh_token
@@ -1110,13 +1115,14 @@ class SoundCloudClient(Client):
 
     def __init__(self):
         """Create a SoundCloudClient."""
+
+    def login(self, **kwargs):
         self.session = SRSession(
             headers={
                 "User-Agent": AGENT,
-            }
+            },
+            requests_per_min=kwargs.get("requests_per_min"),
         )
-
-    def login(self, **kwargs):
         self.client_id = kwargs.get("client_id")
         self.app_version = kwargs.get("app_version")
         logger.debug("client_id: %s, app_version: %s", self.client_id, self.app_version)
