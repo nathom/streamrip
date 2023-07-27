@@ -1173,6 +1173,9 @@ class Tracklist(list):
                     for future in future_map.keys():
                         try:
                             future.result()
+                        except ItemExists:
+                            item = future_map[future]
+                            secho(f"{item!s} exists. Skipping.", fg="yellow")
                         except NonStreamable as e:
                             item = future_map[future]
                             e.print(item)
