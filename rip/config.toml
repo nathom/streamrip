@@ -4,15 +4,17 @@ folder = ""
 # Put Qobuz albums in a 'Qobuz' folder, Tidal albums in 'Tidal' etc.
 source_subdirectories = false
 
-[downloads.concurrency]
 # Download (and convert) tracks all at once, instead of sequentially. 
 # If you are converting the tracks, or have fast internet, this will 
 # substantially improve processing speed.
-enabled = true
+concurrency = true
 # The maximum number of tracks to download at once
 # If you have very fast internet, you will benefit from a higher value,
 # A value that is too high for your bandwidth may cause slowdowns
 max_connections = 3
+# Max number of API requests to handle per minute
+# Set to -1 for no limit
+requests_per_minute = -1
 
 [qobuz]
 # 1: 320kbps MP3, 2: 16/44.1, 3: 24/<=96, 4: 24/>=96
@@ -20,9 +22,12 @@ quality = 3
 # This will download booklet pdfs that are included with some albums
 download_booklets = true
 
-email = ""
-# This is an md5 hash of the plaintext password
-password = ""
+# Authenticate to Qobuz using auth token? Value can be true/false only
+use_auth_token = false
+# Enter your userid if the above use_auth_token is set to true, else enter your email
+email_or_userid = ""
+# Enter your auth token if the above use_auth_token is set to true, else enter the md5 hash of your plaintext password
+password_or_token = ""
 # Do not change
 app_id = ""
 # Do not change
@@ -76,15 +81,14 @@ download_videos = false
 video_downloads_folder = ""
 
 # This stores a list of item IDs so that repeats are not downloaded.
-[database.downloads]
-enabled = true
-path = ""
+[database]
+downloads_enabled = true
+downloads_path = ""
 
 # If a download fails, the item ID is stored here. Then, `rip repair` can be
 # called to retry the downloads
-[database.failed_downloads]
-enabled = true
-path = ""
+failed_downloads_enabled = true
+failed_downloads_path = ""
 
 # Convert tracks to a codec after downloading them.
 [conversion]
@@ -101,7 +105,7 @@ bit_depth = 24
 lossy_bitrate = 320
 
 # Filter a Qobuz artist's discography. Set to 'true' to turn on a filter.
-[filters]
+[qobuz_filters]
 # Remove Collectors Editions, live recordings, etc.
 extras = false
 # Picks the highest quality out of albums with identical titles.
@@ -157,7 +161,6 @@ restrict_characters = false
 # Setting this to false may cause downloads to fail on some systems
 truncate = true
 
-
 # Last.fm playlists are downloaded by searching for the titles of the tracks
 [lastfm]
 # The source on which to search for the tracks.
@@ -172,4 +175,4 @@ progress_bar = "dainty"
 
 [misc]
 # Metadata to identify this config file. Do not change.
-version = "1.9.6"
+version = "2.0"

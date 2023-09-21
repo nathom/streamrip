@@ -182,6 +182,7 @@ class DownloadsConfig:
     # If you have very fast internet, you will benefit from a higher value,
     # A value that is too high for your bandwidth may cause slowdowns
     max_connections: int
+    requests_per_minute: int
 
 
 @dataclass(slots=True)
@@ -205,6 +206,7 @@ class Config:
 
     qobuz: QobuzConfig
     tidal: TidalConfig
+    deezer: DeezerConfig
     soundcloud: SoundcloudConfig
     youtube: YoutubeConfig
     lastfm: LastFmConfig
@@ -217,6 +219,8 @@ class Config:
     theme: ThemeConfig
     database: DatabaseConfig
 
+    _modified: bool = False
+
     @classmethod
     def from_toml(cls, toml_str: str):
         # TODO: handle the mistake where Windows people forget to escape backslash
@@ -227,6 +231,7 @@ class Config:
         downloads = DownloadsConfig(**toml["downloads"])  # type: ignore
         qobuz = QobuzConfig(**toml["qobuz"])  # type: ignore
         tidal = TidalConfig(**toml["tidal"])  # type: ignore
+        deezer = DeezerConfig(**toml["deezer"])  # type: ignore
         soundcloud = SoundcloudConfig(**toml["soundcloud"])  # type: ignore
         youtube = YoutubeConfig(**toml["youtube"])  # type: ignore
         lastfm = LastFmConfig(**toml["lastfm"])  # type: ignore
@@ -241,6 +246,7 @@ class Config:
             downloads=downloads,
             qobuz=qobuz,
             tidal=tidal,
+            deezer=deezer,
             soundcloud=soundcloud,
             youtube=youtube,
             lastfm=lastfm,
@@ -253,6 +259,9 @@ class Config:
         )
 
     @classmethod
-    def from_defaults(cls):
+    def defaults(cls):
         with open(DEFAULT_CONFIG_PATH) as f:
             return cls.from_toml(f.read())
+
+    def set_modified(self):
+        self._modified = True
