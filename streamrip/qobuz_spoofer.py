@@ -8,10 +8,10 @@ import re
 from collections import OrderedDict
 from typing import List
 
-import requests
+import aiohttp
 
 
-class Spoofer:
+class QobuzSpoofer:
     """Spoofs the information required to stream tracks from Qobuz."""
 
     def __init__(self):
@@ -28,35 +28,35 @@ class Spoofer:
         self.app_id_regex = (
             r'production:{api:{appId:"(?P<app_id>\d{9})",appSecret:"(\w{32})'
         )
-        login_page_request = requests.get("https://play.qobuz.com/login")
-        login_page = login_page_request.text
+        self.session = aiohttp.ClientSession()
+
+    async def get_app_id_and_secrets(self) -> tuple[str, list[str]]:
+        async with self.session.get("https://play.qobuz.com/login") as req:
+            login_page = await req.text()
+
         bundle_url_match = re.search(
             r'<script src="(/resources/\d+\.\d+\.\d+-[a-z]\d{3}/bundle\.js)"></script>',
             login_page,
         )
         assert bundle_url_match is not None
         bundle_url = bundle_url_match.group(1)
-        bundle_req = requests.get("https://play.qobuz.com" + bundle_url)
-        self.bundle = bundle_req.text
 
-    def get_app_id(self) -> str:
-        """Get the app id.
+        async with self.session.get("https://play.qobuz.com" + bundle_url) as req:
+            self.bundle = await req.text()
 
-        :rtype: str
-        """
         match = re.search(self.app_id_regex, self.bundle)
-        if match is not None:
-            return str(match.group("app_id"))
+        if match is None:
+            raise Exception("Could not find app id.")
 
-        raise Exception("Could not find app id.")
+        app_id = str(match.group("app_id"))
 
-    def get_secrets(self) -> List[str]:
-        """Get secrets."""
+        # get secrets
         seed_matches = re.finditer(self.seed_timezone_regex, self.bundle)
         secrets = OrderedDict()
         for match in seed_matches:
             seed, timezone = match.group("seed", "timezone")
             secrets[timezone] = [seed]
+
         """
         The code that follows switches around the first and second timezone.
         Qobuz uses two ternary (a shortened if statement) conditions that
@@ -65,6 +65,7 @@ class Spoofer:
         false. Because of this, we must prioritize the *second* seed/timezone
         pair captured, not the first.
         """
+
         keypairs = list(secrets.items())
         secrets.move_to_end(keypairs[1][0], last=False)
 
@@ -83,4 +84,7 @@ class Spoofer:
 
         vals: List[str] = list(secrets.values())
         vals.remove("")
-        return vals
+
+        secrets_list = vals
+
+        return app_id, secrets_list
