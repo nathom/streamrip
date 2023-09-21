@@ -35,7 +35,7 @@ windows-curses = {version = "^2.2.0", platform = 'win32|cygwin'}
 Pillow = "^9.0.0"
 deezer-py = "1.3.6"
 pycryptodomex = "^3.10.1"
-cleo = "^2.0"
+cleo = {version = "1.0.0a4", allow-prereleases = true}
 appdirs = "^1.4.4"
 m3u8 = "^0.9.0"
 aiofiles = "^0.7.0"
