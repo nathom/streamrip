@@ -1,10 +1,14 @@
 """A config class that manages arguments between the config file and CLI."""
 
+import copy
 import logging
 import os
+from collections import defaultdict
 from dataclasses import dataclass
+from typing import Any
 
-import tomlkit
+from tomlkit.api import dumps, parse
+from tomlkit.toml_document import TOMLDocument
 
 logger = logging.getLogger("streamrip")
 
@@ -201,7 +205,8 @@ class ThemeConfig:
 
 
 @dataclass(slots=True)
-class Config:
+class ConfigData:
+    toml: TOMLDocument
     downloads: DownloadsConfig
 
     qobuz: QobuzConfig
@@ -224,7 +229,7 @@ class Config:
     @classmethod
     def from_toml(cls, toml_str: str):
         # TODO: handle the mistake where Windows people forget to escape backslash
-        toml = tomlkit.parse(toml_str)  # type: ignore
+        toml = parse(toml_str)
         if toml["misc"]["version"] != CURRENT_CONFIG_VERSION:  # type: ignore
             raise Exception("Need to update config")
 
@@ -243,6 +248,7 @@ class Config:
         database = DatabaseConfig(**toml["database"])  # type: ignore
 
         return cls(
+            toml=toml,
             downloads=downloads,
             qobuz=qobuz,
             tidal=tidal,
@@ -265,3 +271,27 @@ class Config:
 
     def set_modified(self):
         self._modified = True
+
+    def modified(self):
+        return self._modified
+
+    def update_toml(self):
+        pass
+
+
+class Config:
+    def __init__(self, path: str):
+        self._path = path
+
+        with open(path) as toml_file:
+            self.file: ConfigData = ConfigData.from_toml(toml_file.read())
+
+        self.session: ConfigData = copy.deepcopy(self.file)
+
+    def save_file(self):
+        if not self.file.modified():
+            return
+
+        with open(self._path, "w") as toml_file:
+            self.file.update_toml()
+            toml_file.write(dumps(self.file.toml))

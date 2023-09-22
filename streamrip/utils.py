@@ -75,33 +75,6 @@ def concat_audio_files(paths: List[str], out: str, ext: str):
     concat_audio_files(outpaths, out, ext)
 
 
-def safe_get(d: dict, *keys: Hashable, default=None):
-    """Traverse dict layers safely.
-
-    Usage:
-        >>> d = {'foo': {'bar': 'baz'}}
-        >>> safe_get(d, 'baz')
-        None
-        >>> safe_get(d, 'foo', 'bar')
-        'baz'
-
-    :param d:
-    :type d: dict
-    :param keys:
-    :type keys: Hashable
-    :param default: the default value to use if a key isn't found
-    """
-    curr = d
-    res = default
-    for key in keys:
-        res = curr.get(key, default)
-        if res == default or not hasattr(res, "__getitem__"):
-            return res
-        else:
-            curr = res
-    return res
-
-
 def clean_filename(fn: str, restrict=False) -> str:
     path = sanitize_filename(fn)
     if restrict:
@@ -373,7 +346,7 @@ def get_cover_urls(resp: dict, source: str) -> Optional[dict]:
 
     if source == "qobuz":
         cover_urls = resp["image"]
-        cover_urls["original"] = "org".join(cover_urls["large"].rsplit('600', 1))
+        cover_urls["original"] = "org".join(cover_urls["large"].rsplit("600", 1))
         return cover_urls
 
     if source == "tidal":

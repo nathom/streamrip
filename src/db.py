@@ -182,6 +182,3 @@ class FailedDownloads(Database):
         "media_type": ["text"],
         "id": ["text", "unique"],
     }
-
-
-CLASS_MAP = {db.name: db for db in (Downloads, FailedDownloads)}

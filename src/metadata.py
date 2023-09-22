@@ -5,7 +5,8 @@ from __future__ import annotations
 import logging
 import re
 from collections import OrderedDict
-from typing import Generator, Hashable, Iterable, Optional, Union
+from dataclasses import dataclass
+from typing import Generator, Hashable, Iterable, Optional, Type, Union
 
 from .constants import (
     ALBUM_KEYS,
@@ -23,7 +24,148 @@ from .utils import get_cover_urls, get_quality_id, safe_get
 logger = logging.getLogger("streamrip")
 
 
+def get_album_track_ids(source: str, resp) -> list[str]:
+    tracklist = resp["tracks"]
+    if source == "qobuz":
+        tracklist = tracklist["items"]
+    return [track["id"] for track in tracklist]
+
+
+@dataclass(slots=True)
+class CoverUrls:
+    thumbnail: Optional[str]
+    small: Optional[str]
+    large: Optional[str]
+    original: Optional[str]
+
+    def largest(self):
+        if self.original is not None:
+            return self.original
+        if self.large is not None:
+            return self.large
+        if self.small is not None:
+            return self.small
+        if self.thumbnail is not None:
+            return self.thumbnail
+
+
+@dataclass(slots=True)
 class TrackMetadata:
+    info: TrackInfo
+
+    title: str
+    album: AlbumMetadata
+    artist: str
+    tracknumber: int
+    discnumber: int
+    composer: Optional[str]
+
+    @classmethod
+    def from_qobuz(cls, album: AlbumMetadata, resp) -> TrackMetadata:
+        raise NotImplemented
+
+    @classmethod
+    def from_deezer(cls, album: AlbumMetadata, resp) -> TrackMetadata:
+        raise NotImplemented
+
+    @classmethod
+    def from_soundcloud(cls, album: AlbumMetadata, resp) -> TrackMetadata:
+        raise NotImplemented
+
+    @classmethod
+    def from_tidal(cls, album: AlbumMetadata, resp) -> TrackMetadata:
+        raise NotImplemented
+
+    @classmethod
+    def from_resp(cls, album: AlbumMetadata, source, resp) -> TrackMetadata:
+        if source == "qobuz":
+            return cls.from_qobuz(album, resp)
+        if source == "tidal":
+            return cls.from_tidal(album, resp)
+        if source == "soundcloud":
+            return cls.from_soundcloud(album, resp)
+        if source == "deezer":
+            return cls.from_deezer(album, resp)
+        raise Exception
+
+
+@dataclass(slots=True)
+class TrackInfo:
+    id: str
+    quality: int
+
+    bit_depth: Optional[int] = None
+    booklets = None
+    explicit: bool = False
+    sampling_rate: Optional[int] = None
+    work: Optional[str] = None
+
+
+@dataclass(slots=True)
+class AlbumMetadata:
+    info: AlbumInfo
+
+    album: str
+    albumartist: str
+    year: str
+    genre: list[str]
+    covers: list[CoverUrls]
+
+    albumcomposer: Optional[str] = None
+    comment: Optional[str] = None
+    compilation: Optional[str] = None
+    copyright: Optional[str] = None
+    cover: Optional[str] = None
+    date: Optional[str] = None
+    description: Optional[str] = None
+    disctotal: Optional[int] = None
+    encoder: Optional[str] = None
+    grouping: Optional[str] = None
+    lyrics: Optional[str] = None
+    purchase_date: Optional[str] = None
+    tracktotal: Optional[int] = None
+
+    @classmethod
+    def from_qobuz(cls, resp) -> AlbumMetadata:
+        raise NotImplemented
+
+    @classmethod
+    def from_deezer(cls, resp) -> AlbumMetadata:
+        raise NotImplemented
+
+    @classmethod
+    def from_soundcloud(cls, resp) -> AlbumMetadata:
+        raise NotImplemented
+
+    @classmethod
+    def from_tidal(cls, resp) -> AlbumMetadata:
+        raise NotImplemented
+
+    @classmethod
+    def from_resp(cls, source, resp) -> AlbumMetadata:
+        if source == "qobuz":
+            return cls.from_qobuz(resp)
+        if source == "tidal":
+            return cls.from_tidal(resp)
+        if source == "soundcloud":
+            return cls.from_soundcloud(resp)
+        if source == "deezer":
+            return cls.from_deezer(resp)
+        raise Exception
+
+
+@dataclass(slots=True)
+class AlbumInfo:
+    id: str
+    quality: int
+    explicit: bool = False
+    sampling_rate: Optional[int] = None
+    bit_depth: Optional[int] = None
+    booklets = None
+    work: Optional[str] = None
+
+
+class TrackMetadata1:
     """Contains all of the metadata needed to tag the file.
 
     Tags contained:

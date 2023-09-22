@@ -15,14 +15,6 @@ import requests
 from click import secho, style
 from tqdm import tqdm
 
-from streamrip.clients import (
-    Client,
-    DeezerClient,
-    DeezloaderClient,
-    QobuzClient,
-    SoundCloudClient,
-    TidalClient,
-)
 from streamrip.constants import MEDIA_TYPES
 from streamrip.exceptions import (
     AuthenticationError,
@@ -47,20 +39,26 @@ from streamrip.media import (
 from streamrip.utils import TQDM_DEFAULT_THEME, set_progress_bar_theme
 
 from . import db
+from .clients import (
+    Client,
+    DeezerClient,
+    DeezloaderClient,
+    QobuzClient,
+    SoundcloudClient,
+    TidalClient,
+)
 from .config import Config
-from .constants import (
-    CONFIG_PATH,
-    DB_PATH,
+from .exceptions import DeezloaderFallback
+from .user_paths import DB_PATH, FAILED_DB_PATH
+from .utils import extract_deezer_dynamic_link, extract_interpreter_url
+from .validation_regexps import (
     DEEZER_DYNAMIC_LINK_REGEX,
-    FAILED_DB_PATH,
     LASTFM_URL_REGEX,
     QOBUZ_INTERPRETER_URL_REGEX,
     SOUNDCLOUD_URL_REGEX,
     URL_REGEX,
     YOUTUBE_URL_REGEX,
 )
-from .exceptions import DeezloaderFallback
-from .utils import extract_deezer_dynamic_link, extract_interpreter_url
 
 logger = logging.getLogger("streamrip")
 
@@ -87,57 +85,33 @@ DB_PATH_MAP = {"downloads": DB_PATH, "failed_downloads": FAILED_DB_PATH}
 
 
 class RipCore(list):
-    """RipCore."""
-
-    clients = {
-        "qobuz": QobuzClient(),
-        "tidal": TidalClient(),
-        "deezer": DeezerClient(),
-        "soundcloud": SoundCloudClient(),
-        "deezloader": DeezloaderClient(),
-    }
-
-    def __init__(
-        self,
-        config: Optional[Config] = None,
-    ):
+    def __init__(self, config: Config):
         """Create a RipCore object.
 
         :param config:
         :type config: Optional[Config]
         """
-        self.config: Config
-        if config is None:
-            self.config = Config(CONFIG_PATH)
-        else:
-            self.config = config
+        self.config = config
+        self.clients: dict[str, Client] = {
+            "qobuz": QobuzClient(config),
+            "tidal": TidalClient(config),
+            "deezer": DeezerClient(config),
+            "soundcloud": SoundcloudClient(config),
+            "deezloader": DeezloaderClient(config),
+        }
 
-        if (theme := self.config.file["theme"]["progress_bar"]) != TQDM_DEFAULT_THEME:
-            set_progress_bar_theme(theme.lower())
+        c = self.config.session
 
-        def get_db(db_type: str) -> db.Database:
-            db_settings = self.config.session["database"]
-            db_class = db.CLASS_MAP[db_type]
+        theme = c.theme.progress_bar
+        set_progress_bar_theme(theme)
 
-            if db_settings[db_type]["enabled"] and db_settings.get("enabled", True):
-                default_db_path = DB_PATH_MAP[db_type]
-                path = db_settings[db_type]["path"]
-
-                if path:
-                    database = db_class(path)
-                else:
-                    database = db_class(default_db_path)
-
-                    assert config is not None
-                    config.file["database"][db_type]["path"] = default_db_path
-                    config.save()
-            else:
-                database = db_class("", dummy=True)
-
-            return database
-
-        self.db = get_db("downloads")
-        self.failed_db = get_db("failed_downloads")
+        self.db = db.Downloads(
+            c.database.downloads_path, dummy=not c.database.downloads_enabled
+        )
+        self.failed = db.FailedDownloads(
+            c.database.failed_downloads_path,
+            dummy=not c.database.failed_downloads_enabled,
+        )
 
     def handle_urls(self, urls):
         """Download a url.
@@ -469,7 +443,7 @@ class RipCore(list):
 
         if soundcloud_urls:
             soundcloud_client = self.get_client("soundcloud")
-            assert isinstance(soundcloud_client, SoundCloudClient)  # for typing
+            assert isinstance(soundcloud_client, SoundcloudClient)  # for typing
 
             # TODO: Make this async
             soundcloud_items = (

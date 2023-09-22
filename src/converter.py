@@ -242,8 +242,8 @@ class OPUS(Converter):
     container = "opus"
     default_ffmpeg_arg = "-b:a 128k"  # Transparent
 
-    def get_quality_arg(self, rate: int) -> str:
-        pass
+    def get_quality_arg(self, _: int) -> str:
+        return ""
 
 
 class AAC(Converter):
@@ -260,5 +260,5 @@ class AAC(Converter):
     container = "m4a"
     default_ffmpeg_arg = "-b:a 256k"
 
-    def get_quality_arg(self, rate: int) -> str:
-        pass
+    def get_quality_arg(self, _: int) -> str:
+        return ""
