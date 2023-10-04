@@ -8,7 +8,7 @@ from typing import AsyncGenerator, Optional
 import aiohttp
 from aiolimiter import AsyncLimiter
 
-from .client import Client
+from .client import DEFAULT_USER_AGENT, Client
 from .config import Config
 from .downloadable import BasicDownloadable, Downloadable
 from .exceptions import (
@@ -23,9 +23,6 @@ from .qobuz_spoofer import QobuzSpoofer
 
 logger = logging.getLogger("streamrip")
 
-DEFAULT_USER_AGENT = (
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:83.0) Gecko/20100101 Firefox/83.0"
-)
 QOBUZ_BASE_URL = "https://www.qobuz.com/api.json/0.2"
 
 QOBUZ_FEATURED_KEYS = {
@@ -54,9 +51,10 @@ class QobuzClient(Client):
     def __init__(self, config: Config):
         self.logged_in = False
         self.config = config
-        self.session = aiohttp.ClientSession(headers={"User-Agent": DEFAULT_USER_AGENT})
-        rate_limit = config.session.downloads.requests_per_minute
-        self.rate_limiter = AsyncLimiter(rate_limit, 60) if rate_limit > 0 else None
+        self.session = self.get_session()
+        self.rate_limiter = self.get_rate_limiter(
+            config.session.downloads.requests_per_minute
+        )
         self.secret: Optional[str] = None
 
     async def login(self):
@@ -185,7 +183,7 @@ class QobuzClient(Client):
                 )
             raise NonStreamable
 
-        return BasicDownloadable(stream_url)
+        return BasicDownloadable(self.session, stream_url)
 
     async def _paginate(self, epoint: str, params: dict) -> AsyncGenerator[dict, None]:
         response = await self._api_request(epoint, params)

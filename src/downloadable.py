@@ -41,7 +41,7 @@ class Downloadable(ABC):
 class BasicDownloadable(Downloadable):
     """Just downloads a URL."""
 
-    def __init__(self, session, url: str):
+    def __init__(self, session: aiohttp.ClientSession, url: str):
         self.session = session
         self.url = url
 
@@ -59,7 +59,7 @@ class DeezerDownloadable(Downloadable):
     def __init__(self, resp: dict):
         self.resp = resp
 
-    async def _download(self, path: str) -> bool:
+    async def _download(self, path: str):
         raise NotImplemented
 
 
@@ -67,7 +67,7 @@ class TidalDownloadable(Downloadable):
     def __init__(self, info: dict):
         self.info = info
 
-    async def _download(self, path: str) -> bool:
+    async def _download(self, path: str):
         raise NotImplemented
 
 
@@ -75,5 +75,5 @@ class SoundcloudDownloadable(Downloadable):
     def __init__(self, info: dict):
         self.info = info
 
-    async def _download(self, path: str) -> bool:
+    async def _download(self, path: str):
         raise NotImplemented

@@ -3,9 +3,7 @@
 import copy
 import logging
 import os
-from collections import defaultdict
 from dataclasses import dataclass
-from typing import Any
 
 from tomlkit.api import dumps, parse
 from tomlkit.toml_document import TOMLDocument
@@ -272,6 +270,7 @@ class ConfigData:
     def set_modified(self):
         self._modified = True
 
+    @property
     def modified(self):
         return self._modified
 
@@ -289,7 +288,7 @@ class Config:
         self.session: ConfigData = copy.deepcopy(self.file)
 
     def save_file(self):
-        if not self.file.modified():
+        if not self.file.modified:
             return
 
         with open(self._path, "w") as toml_file:

@@ -1,11 +1,12 @@
 """The stuff that ties everything together for the CLI to use."""
 
+import asyncio
 import concurrent.futures
 import html
 import logging
 import os
 import re
-import threading
+from abc import ABC, abstractmethod
 from getpass import getpass
 from hashlib import md5
 from string import Formatter
@@ -82,6 +83,101 @@ MEDIA_CLASS: Dict[str, Media] = {
 
 DB_PATH_MAP = {"downloads": DB_PATH, "failed_downloads": FAILED_DB_PATH}
 # ---------------------------------------------- #
+
+
+class CredentialPrompter(ABC):
+    def __init__(self, config: Config):
+        self.config = config
+
+    @abstractmethod
+    def has_creds(self) -> bool:
+        raise NotImplemented
+
+    @abstractmethod
+    def prompt(self):
+        """Prompt for credentials in the appropriate way,
+        and save them to the configuration."""
+        raise NotImplemented
+
+    @abstractmethod
+    def save(self):
+        """Save current config to file"""
+        raise NotImplemented
+
+
+class QobuzPrompter(CredentialPrompter):
+    def has_creds(self) -> bool:
+        c = self.config.session.qobuz
+        return c.email_or_userid != "" and c.password_or_token != ""
+
+    def prompt(self):
+        secho("Enter Qobuz email:", fg="green")
+        email = input()
+        secho(
+            "Enter Qobuz password (will not show on screen):",
+            fg="green",
+        )
+        pwd = md5(getpass(prompt="").encode("utf-8")).hexdigest()
+        secho(
+            f'Credentials saved to config file at "{self.config._path}"',
+            fg="green",
+        )
+        c = self.config.session.qobuz
+        c.use_auth_token = False
+        c.email_or_userid = email
+        c.password_or_token = pwd
+
+    def save(self):
+        c = self.config.session.qobuz
+        cf = self.config.file.qobuz
+        cf.use_auth_token = False
+        cf.email_or_userid = c.email_or_userid
+        cf.password_or_token = c.password_or_token
+        self.config.file.set_modified()
+
+
+class TidalPrompter(CredentialPrompter):
+    def prompt(self):
+        # TODO: needs to be moved from TidalClient to here
+        raise NotImplemented
+
+
+class DeezerPrompter(CredentialPrompter):
+    def has_creds(self):
+        c = self.config.session.deezer
+        return c.arl != ""
+
+    def prompt(self):
+        secho(
+            "If you're not sure how to find the ARL cookie, see the instructions at ",
+            nl=False,
+            dim=True,
+        )
+        secho(
+            "https://github.com/nathom/streamrip/wiki/Finding-your-Deezer-ARL-Cookie",
+            underline=True,
+            fg="blue",
+        )
+
+        c = self.config.session.deezer
+        c.arl = input(style("ARL: ", fg="green"))
+
+    def save(self):
+        c = self.config.session.deezer
+        cf = self.config.file.deezer
+        cf.arl = c.arl
+        self.config.file.set_modified()
+        secho(
+            f'Credentials saved to config file at "{self.config._path}"',
+            fg="green",
+        )
+
+
+PROMPTERS = {
+    "qobuz": QobuzPrompter,
+    "deezer": DeezerPrompter,
+    "tidal": TidalPrompter,
+}
 
 
 class RipCore(list):
@@ -166,7 +262,7 @@ class RipCore(list):
         :param item_id:
         :type item_id: str
         """
-        client = self.get_client(source)
+        client = self.get_client_and_log_in(source)
 
         if media_type not in MEDIA_TYPES:
             if "playlist" in media_type:  # for SoundCloud
@@ -320,7 +416,7 @@ class RipCore(list):
         """
         self.extend(self.search("qobuz", featured_list, "featured", limit=max_items))
 
-    def get_client(self, source: str) -> Client:
+    def get_client_and_log_in(self, source: str) -> Client:
         """Get a client given the source and log in.
 
         :param source:
@@ -336,14 +432,14 @@ class RipCore(list):
 
         return client
 
-    def login(self, client):
+    async def login(self, client):
         """Log into a client, if applicable.
 
         :param client:
         """
-        creds = self.config.creds(client.source)
-        if client.source == "deezer" and creds["arl"] == "":
-            if self.config.session["deezer"]["deezloader_warnings"]:
+        c = self.config.session
+        if client.source == "deezer" and c.deezer.arl == "":
+            if c.deezer.deezloader_warnings:
                 secho(
                     "Falling back to Deezloader (unstable). If you have a subscription, run ",
                     nl=False,
@@ -355,23 +451,18 @@ class RipCore(list):
 
         while True:
             try:
-                client.login(**creds)
+                await client.login()
                 break
             except AuthenticationError:
                 secho("Invalid credentials, try again.", fg="yellow")
-                self.prompt_creds(client.source)
-                creds = self.config.creds(client.source)
+                self.prompt_and_set_credentials(client.source)
             except MissingCredentials:
-                logger.debug("Credentials are missing. Prompting..")
-                get_tokens = threading.Thread(
-                    target=client._get_app_id_and_secrets, daemon=True
-                )
-                get_tokens.start()
-
-                self.prompt_creds(client.source)
-                creds = self.config.creds(client.source)
-
-                get_tokens.join()
+                if client.source == "qobuz":
+                    get_tokens = asyncio.create_task(client._get_app_id_and_secrets())
+                    self.prompt_and_set_credentials(client.source)
+                    await get_tokens
+                else:
+                    self.prompt_and_set_credentials(client.source)
 
         if (
             client.source == "qobuz"
@@ -442,7 +533,7 @@ class RipCore(list):
         soundcloud_urls = SOUNDCLOUD_URL_REGEX.findall(url)
 
         if soundcloud_urls:
-            soundcloud_client = self.get_client("soundcloud")
+            soundcloud_client = self.get_client_and_log_in("soundcloud")
             assert isinstance(soundcloud_client, SoundcloudClient)  # for typing
 
             # TODO: Make this async
@@ -550,7 +641,7 @@ class RipCore(list):
             secho(f"Fetching playlist at {purl}", fg="blue")
             title, queries = self.get_lastfm_playlist(purl)
 
-            pl = Playlist(client=self.get_client(lastfm_source), name=title)
+            pl = Playlist(client=self.get_client_and_log_in(lastfm_source), name=title)
             creator_match = user_regex.search(purl)
             if creator_match is not None:
                 pl.creator = creator_match.group(1)
@@ -614,7 +705,7 @@ class RipCore(list):
         """
         logger.debug("searching for %s", query)
 
-        client = self.get_client(source)
+        client = self.get_client_and_log_in(source)
 
         if isinstance(client, DeezloaderClient) and media_type == "featured":
             raise IneligibleError(
@@ -845,12 +936,25 @@ class RipCore(list):
         path = self.config.session["downloads"]["folder"]
         return os.path.join(path, source.capitalize())
 
-    def prompt_creds(self, source: str):
+    async def prompt_and_set_credentials(self, source: str):
         """Prompt the user for credentials.
 
         :param source:
         :type source: str
         """
+        prompter = PROMPTERS[source]
+        client = self.clients[source]
+        while True:
+            prompter.prompt()
+            try:
+                await client.login()
+                break
+            except AuthenticationError:
+                secho("Invalid credentials, try again.", fg="yellow")
+            except MissingCredentials:
+                secho("Credentials not found, try again.", fg="yellow")
+                self.prompt_and_set_credentials(client.source)
+
         if source == "qobuz":
             secho("Enter Qobuz email:", fg="green")
             self.config.file[source]["email"] = input()
