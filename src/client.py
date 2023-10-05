@@ -57,3 +57,11 @@ class Client(ABC):
 
 class NonStreamable(Exception):
     pass
+
+
+class MissingCredentials(Exception):
+    pass
+
+
+class AuthenticationError(Exception):
+    pass

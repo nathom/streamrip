@@ -3,7 +3,6 @@
 import logging
 import os
 import sqlite3
-from typing import Tuple, Union
 
 logger = logging.getLogger("streamrip")
 
@@ -76,7 +75,7 @@ class Database:
 
             return bool(conn.execute(command, tuple(items.values())).fetchone()[0])
 
-    def __contains__(self, keys: Union[str, dict]) -> bool:
+    def __contains__(self, keys: str | dict) -> bool:
         """Check whether a key-value pair exists in the database.
 
         :param keys: Either a dict with the structure {key: value_to_search_for, ...},
@@ -96,7 +95,7 @@ class Database:
 
         raise TypeError(keys)
 
-    def add(self, items: Union[str, Tuple[str]]):
+    def add(self, items: str | tuple[str]):
         """Add a row to the table.
 
         :param items: Column-name + value. Values must be provided for all cols.

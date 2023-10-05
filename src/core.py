@@ -50,6 +50,7 @@ from .clients import (
 )
 from .config import Config
 from .exceptions import DeezloaderFallback
+from .media import Media
 from .user_paths import DB_PATH, FAILED_DB_PATH
 from .utils import extract_deezer_dynamic_link, extract_interpreter_url
 from .validation_regexps import (
@@ -64,14 +65,6 @@ from .validation_regexps import (
 logger = logging.getLogger("streamrip")
 
 # ---------------- Constants ------------------ #
-Media = Union[
-    Type[Album],
-    Type[Playlist],
-    Type[Artist],
-    Type[Track],
-    Type[Label],
-    Type[Video],
-]
 MEDIA_CLASS: Dict[str, Media] = {
     "album": Album,
     "playlist": Playlist,
@@ -671,7 +664,7 @@ class RipCore(list):
 
             self.append(pl)
 
-    def handle_txt(self, filepath: Union[str, os.PathLike]):
+    def handle_txt(self, filepath: str):
         """
         Handle a text file containing URLs. Lines starting with `#` are ignored.
 
