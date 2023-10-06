@@ -24,7 +24,7 @@ class PendingAlbum(Pending):
     folder: str
 
     async def resolve(self):
-        resp = self.client.get_metadata(id, "album")
+        resp = self.client.get_metadata({"id": self.id}, "album")
         meta = AlbumMetadata.from_resp(self.client.source, resp)
         tracklist = get_album_track_ids(self.client.source, resp)
         album_folder = self._album_folder(self.folder, meta.album)

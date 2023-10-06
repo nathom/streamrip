@@ -147,6 +147,20 @@ class TidalClient(Client):
         c.token_expiry = resp_json["expires_in"] + time.time()
         self._update_authorization_from_config()
 
+    async def _get_device_code(self):
+        """Get the device code that will be used to log in on the browser."""
+        data = {
+            "client_id": CLIENT_ID,
+            "scope": "r_usr+w_usr+w_sub",
+        }
+        _resp = await self._api_post(f"{AUTH_URL}/device_authorization", data)
+        resp = await _resp.json()
+
+        if resp.get("status", 200) != 200:
+            raise Exception(f"Device authorization failed {resp}")
+
+        return resp["verificationUriComplete"]
+
     async def _api_post(self, url, data, auth=None):
         """Post to the Tidal API.
 
