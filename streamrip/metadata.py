@@ -6,6 +6,7 @@ import logging
 import re
 from collections import OrderedDict
 from dataclasses import dataclass
+from string import Formatter
 from typing import Generator, Hashable, Iterable, Optional, Type, Union
 
 from .constants import (
@@ -19,7 +20,7 @@ from .constants import (
     TRACK_KEYS,
 )
 from .exceptions import InvalidContainerError, InvalidSourceError
-from .utils import get_cover_urls, get_quality_id, safe_get
+from .utils import get_cover_urls, get_quality_id
 
 logger = logging.getLogger("streamrip")
 
@@ -81,6 +82,9 @@ class TrackMetadata:
         if source == "deezer":
             return cls.from_deezer(album, resp)
         raise Exception
+
+    def format_track_path(self, formatter: str):
+        pass
 
 
 @dataclass(slots=True)
@@ -219,3 +223,23 @@ class AlbumInfo:
     booklets = None
     work: Optional[str] = None
 
+
+_formatter = Formatter()
+
+
+def keys_in_format_string(s: str):
+    """Returns the items in {} in a format string."""
+    return [f[1] for f in _formatter.parse(s) if f[1] is not None]
+
+
+def safe_get(d: dict, *keys, default=None):
+    """Nested __getitem__ calls with a default value.
+
+    Use to avoid key not found errors.
+    """
+    _d = d
+    for k in keys:
+        _d = _d.get(k, {})
+    if _d == {}:
+        return default
+    return _d

@@ -3,7 +3,7 @@
 import copy
 import logging
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, fields
 
 from tomlkit.api import dumps, parse
 from tomlkit.toml_document import TOMLDocument
@@ -217,10 +217,11 @@ class ConfigData:
     filepaths: FilepathsConfig
     artwork: ArtworkConfig
     metadata: MetadataConfig
-    qobuz_filter: QobuzDiscographyFilterConfig
+    qobuz_filters: QobuzDiscographyFilterConfig
 
     theme: ThemeConfig
     database: DatabaseConfig
+    conversion: ConversionConfig
 
     _modified: bool = False
 
@@ -241,9 +242,10 @@ class ConfigData:
         artwork = ArtworkConfig(**toml["artwork"])  # type: ignore
         filepaths = FilepathsConfig(**toml["filepaths"])  # type: ignore
         metadata = MetadataConfig(**toml["metadata"])  # type: ignore
-        qobuz_filter = QobuzDiscographyFilterConfig(**toml["qobuz_filters"])  # type: ignore
+        qobuz_filters = QobuzDiscographyFilterConfig(**toml["qobuz_filters"])  # type: ignore
         theme = ThemeConfig(**toml["theme"])  # type: ignore
         database = DatabaseConfig(**toml["database"])  # type: ignore
+        conversion = ConversionConfig(**toml["conversion"])  # type: ignore
 
         return cls(
             toml=toml,
@@ -257,9 +259,10 @@ class ConfigData:
             artwork=artwork,
             filepaths=filepaths,
             metadata=metadata,
-            qobuz_filter=qobuz_filter,
+            qobuz_filters=qobuz_filters,
             theme=theme,
             database=database,
+            conversion=conversion,
         )
 
     @classmethod
@@ -275,7 +278,25 @@ class ConfigData:
         return self._modified
 
     def update_toml(self):
-        pass
+        update_toml_section_from_config(self.toml["downloads"], self.downloads)
+        update_toml_section_from_config(self.toml["qobuz"], self.qobuz)
+        update_toml_section_from_config(self.toml["tidal"], self.tidal)
+        update_toml_section_from_config(self.toml["deezer"], self.deezer)
+        update_toml_section_from_config(self.toml["soundcloud"], self.soundcloud)
+        update_toml_section_from_config(self.toml["youtube"], self.youtube)
+        update_toml_section_from_config(self.toml["lastfm"], self.lastfm)
+        update_toml_section_from_config(self.toml["artwork"], self.artwork)
+        update_toml_section_from_config(self.toml["filepaths"], self.filepaths)
+        update_toml_section_from_config(self.toml["metadata"], self.metadata)
+        update_toml_section_from_config(self.toml["qobuz_filters"], self.qobuz_filters)
+        update_toml_section_from_config(self.toml["theme"], self.theme)
+        update_toml_section_from_config(self.toml["database"], self.database)
+        update_toml_section_from_config(self.toml["conversion"], self.conversion)
+
+
+def update_toml_section_from_config(toml_section, config):
+    for field in fields(config):
+        toml_section[field.name] = getattr(config, field.name)
 
 
 class Config:
@@ -294,3 +315,6 @@ class Config:
         with open(self._path, "w") as toml_file:
             self.file.update_toml()
             toml_file.write(dumps(self.file.toml))
+
+    def __del__(self):
+        self.save_file()

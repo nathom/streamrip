@@ -7,15 +7,18 @@ license = "GPL-3.0-only"
 readme = "README.md"
 homepage = "https://github.com/nathom/streamrip"
 repository = "https://github.com/nathom/streamrip"
-include = ["streamrip/config.toml"]
+include = ["src/config.toml"]
 keywords = ["hi-res", "free", "music", "download"]
 classifiers = [
     "License :: OSI Approved :: GNU General Public License (GPL)",
     "Operating System :: OS Independent",
 ]
+packages = [
+    { include = "streamrip" }
+]
 
 [tool.poetry.scripts]
-rip = "src.cli:main"
+rip = "streamrip.cli:main"
 
 [tool.poetry.dependencies]
 python = ">=3.8 <4.0"
@@ -36,6 +39,7 @@ aiofiles = "^0.7"
 aiohttp = "^3.7"
 aiodns = "^3.0.0"
 aiolimiter = "^1.1.0"
+pytest-mock = "^3.11.1"
 
 [tool.poetry.urls]
 "Bug Reports" = "https://github.com/nathom/streamrip/issues"
