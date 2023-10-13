@@ -182,6 +182,12 @@ class SearchCommand(Command):
             flag=False,
             default="album",
         ),
+        option(
+            "first",
+            "-f",
+            "Download the first result immediately",
+            flag=True
+        )
     ]
 
     help = (
@@ -190,18 +196,27 @@ class SearchCommand(Command):
         "Search for <title>444</title> by <title>Jay-Z</title> on TIDAL\n"
         "$ <cmd>rip search --source tidal '444'</cmd>\n\n"
         "Search for <title>Bob Dylan</title> on Deezer\n"
-        "$ <cmd>rip search --type artist --source deezer 'bob dylan'</cmd>\n"
+        "$ <cmd>rip search --type artist --source deezer 'bob dylan'</cmd>\n\n"
+        "Search for <title>Reckoning Night</title> by <title>Sonata Arctica</title> and download the first result\n"
+        "$ <cmd>rip search --first 'sonata arctica reckoning night'</cmd>\n"
     )
 
     def handle(self):
         query = self.argument("query")
-        source, type = clean_options(self.option("source"), self.option("type"))
+        source, type, takeFirst = clean_options(self.option("source"), self.option("type"), self.option("first"))
         assert isinstance(source, str)
         assert isinstance(type, str)
+        assert isinstance(takeFirst, bool)
 
         config = Config()
         core = RipCore(config)
-
+        if takeFirst:
+            if core.quick_search(query,source,type):
+                core.download()
+            else:
+                self.line("<error>No items found, exiting.</error>")
+            return
+        
         if core.interactive_search(query, source, type):
             core.download()
         else:

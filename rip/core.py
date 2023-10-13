@@ -803,6 +803,28 @@ class RipCore(list):
                         self.append(results[i])
                 return True
 
+    def quick_search(
+        self,
+        query: str,
+        source: str = "qobuz",
+        media_type: str = "album"
+    ) -> bool:
+        """Immediately retrieve the first search result
+
+        :param query:
+        :type query: str
+        :param source:
+        :type source: str
+        :param media_type:
+        :type media_type: str
+        """
+        results = tuple(self.search(source, query, media_type, limit=1))
+        if len(results) > 0:
+            self.append(results[0])
+            return True
+        else:
+            return False
+
     def get_lastfm_playlist(self, url: str) -> Tuple[str, list]:
         """From a last.fm url, find the playlist title and tracks.
 
