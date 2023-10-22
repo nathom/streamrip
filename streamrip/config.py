@@ -130,14 +130,15 @@ class ArtworkConfig:
     # The size of the artwork to embed. Options: thumbnail, small, large, original.
     # "original" images can be up to 30MB, and may fail embedding.
     # Using "large" is recommended.
-    size: str
+    embed_size: str
     # Both of these options limit the size of the embedded artwork. If their values
     # are larger than the actual dimensions of the image, they will be ignored.
     # If either value is -1, the image is left untouched.
-    max_width: int
-    max_height: int
+    embed_max_width: int
     # Save the cover image at the highest quality as a seperate jpg file
-    keep_hires_cover: bool
+    save_artwork: bool
+    # If artwork is saved, downscale it to these dimensions, or ignore if -1
+    saved_max_width: int
 
 
 @dataclass(slots=True)
@@ -316,5 +317,6 @@ class Config:
             self.file.update_toml()
             toml_file.write(dumps(self.file.toml))
 
-    def __del__(self):
-        self.save_file()
+    @classmethod
+    def defaults(cls):
+        return cls(DEFAULT_CONFIG_PATH)

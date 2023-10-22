@@ -23,12 +23,12 @@ class TidalClient(Client):
         self.logged_in = False
         self.global_config = config
         self.config = config.session.tidal
-        self.session = self.get_session()
         self.rate_limiter = self.get_rate_limiter(
             config.session.downloads.requests_per_minute
         )
 
     async def login(self):
+        self.session = await self.get_session()
         c = self.config
         if not c.access_token:
             raise Exception("Access token not found in config.")

@@ -5,9 +5,10 @@ from getpass import getpass
 
 from click import launch, secho, style
 
-from .client import AuthenticationError, Client, MissingCredentials
+from .client import Client
 from .config import Config
 from .deezer_client import DeezerClient
+from .exceptions import AuthenticationError, MissingCredentials
 from .qobuz_client import QobuzClient
 from .tidal_client import TidalClient
 

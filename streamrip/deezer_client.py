@@ -4,9 +4,10 @@ import hashlib
 import deezer
 from Cryptodome.Cipher import AES
 
-from .client import AuthenticationError, Client, MissingCredentials, NonStreamable
+from .client import Client
 from .config import Config
 from .downloadable import DeezerDownloadable
+from .exceptions import AuthenticationError, MissingCredentials, NonStreamable
 
 
 class DeezerClient(Client):
@@ -120,7 +121,7 @@ class DeezerClient(Client):
             )
 
         dl_info["url"] = url
-        return DeezerDownloadable(dl_info)
+        return DeezerDownloadable(self.session, dl_info)
 
     def _get_encrypted_file_url(
         self, meta_id: str, track_hash: str, media_version: str

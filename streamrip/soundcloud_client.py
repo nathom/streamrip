@@ -15,12 +15,12 @@ class SoundcloudClient(Client):
     def __init__(self, config: Config):
         self.global_config = config
         self.config = config.session.soundcloud
-        self.session = self.get_session()
         self.rate_limiter = self.get_rate_limiter(
             config.session.downloads.requests_per_minute
         )
 
     async def login(self):
+        self.session = await self.get_session()
         client_id, app_version = self.config.client_id, self.config.app_version
         if not client_id or not app_version or not self._announce():
             client_id, app_version = await self._refresh_tokens()

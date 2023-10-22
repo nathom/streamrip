@@ -28,9 +28,10 @@ class QobuzSpoofer:
         self.app_id_regex = (
             r'production:{api:{appId:"(?P<app_id>\d{9})",appSecret:"(\w{32})'
         )
-        self.session = aiohttp.ClientSession()
+        self.session = None
 
     async def get_app_id_and_secrets(self) -> tuple[str, list[str]]:
+        assert self.session is not None
         async with self.session.get("https://play.qobuz.com/login") as req:
             login_page = await req.text()
 
@@ -88,3 +89,12 @@ class QobuzSpoofer:
         secrets_list = vals
 
         return app_id, secrets_list
+
+    async def __aenter__(self):
+        self.session = aiohttp.ClientSession()
+        return self
+
+    async def __aexit__(self, *_):
+        if self.session is not None:
+            await self.session.close()
+        self.session = None

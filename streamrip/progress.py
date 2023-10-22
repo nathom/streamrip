@@ -1,7 +1,9 @@
 from typing import Optional
 
 from click import style
-from tqdm import tqdm
+from tqdm.asyncio import tqdm
+
+from .config import Config
 
 THEMES = {
     "plain": None,
@@ -14,8 +16,8 @@ THEMES = {
 }
 
 
-def get_progress_bar(total, theme="dainty", desc: Optional[str] = None, unit="B"):
-    theme = THEMES[theme]
+def get_progress_bar(config: Config, total: int, desc: Optional[str], unit="B"):
+    theme = THEMES[config.session.theme.progress_bar]
     return tqdm(
         total=total,
         unit=unit,

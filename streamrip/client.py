@@ -1,5 +1,6 @@
 """The clients that interact with the streaming service APIs."""
 
+import asyncio
 import logging
 from abc import ABC, abstractmethod
 from typing import Optional, Union
@@ -19,22 +20,23 @@ DEFAULT_USER_AGENT = (
 class Client(ABC):
     source: str
     max_quality: int
+    session: aiohttp.ClientSession
 
     @abstractmethod
     async def login(self):
-        raise NotImplemented
+        raise NotImplementedError
 
     @abstractmethod
     async def get_metadata(self, item: dict[str, Union[str, int, float]], media_type):
-        raise NotImplemented
+        raise NotImplementedError
 
     @abstractmethod
     async def search(self, query: str, media_type: str, limit: int = 500):
-        raise NotImplemented
+        raise NotImplementedError
 
     @abstractmethod
     async def get_downloadable(self, item_id: str, quality: int) -> Downloadable:
-        raise NotImplemented
+        raise NotImplementedError
 
     @staticmethod
     def get_rate_limiter(
@@ -47,21 +49,14 @@ class Client(ABC):
         )
 
     @staticmethod
-    def get_session(headers: Optional[dict] = None) -> aiohttp.ClientSession:
+    async def get_session(headers: Optional[dict] = None) -> aiohttp.ClientSession:
         if headers is None:
             headers = {}
         return aiohttp.ClientSession(
             headers={"User-Agent": DEFAULT_USER_AGENT}, **headers
         )
 
-
-class NonStreamable(Exception):
-    pass
-
-
-class MissingCredentials(Exception):
-    pass
-
-
-class AuthenticationError(Exception):
-    pass
+    def __del__(self):
+        # make sure http session is closed by end of program
+        if hasattr(self, "session"):
+            asyncio.run(self.session.close())

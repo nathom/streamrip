@@ -10,7 +10,7 @@ import subprocess
 import tempfile
 import time
 from abc import ABC, abstractmethod
-from typing import Callable, Optional
+from typing import Any, Callable, Optional
 
 import aiofiles
 import aiohttp
@@ -18,7 +18,7 @@ import m3u8
 from Cryptodome.Cipher import Blowfish
 
 from . import converter
-from .client import NonStreamable
+from .exceptions import NonStreamable
 
 
 def generate_temp_path(url: str):
@@ -34,7 +34,7 @@ class Downloadable(ABC):
     chunk_size = 1024
     _size: Optional[int] = None
 
-    async def download(self, path: str, callback: Callable[[int], None]):
+    async def download(self, path: str, callback: Callable[[int], Any]):
         tmp = generate_temp_path(self.url)
         await self._download(tmp, callback)
         shutil.move(tmp, path)
@@ -52,15 +52,17 @@ class Downloadable(ABC):
     async def _download(self, path: str, callback: Callable[[int], None]):
         raise NotImplemented
 
+    def __repr__(self):
+        return f"{self.__class__.__name__}({self.__dict__})"
+
 
 class BasicDownloadable(Downloadable):
     """Just downloads a URL."""
 
-    def __init__(self, session: aiohttp.ClientSession, url: str):
+    def __init__(self, session: aiohttp.ClientSession, url: str, extension: str):
         self.session = session
         self.url = url
-        # TODO: verify that this is correct
-        self.extension = url.split(".")[-1]
+        self.extension = extension
 
     async def _download(self, path: str, callback: Callable[[int], None]):
         async with self.session.get(
@@ -173,7 +175,7 @@ class TidalDownloadable(Downloadable):
             raise NonStreamable(f"Tidal download: dl_info = {info}")
 
         assert isinstance(url, str)
-        self.downloadable = BasicDownloadable(session, url)
+        self.downloadable = BasicDownloadable(session, url, "m4a")
 
     async def _download(self, path: str, callback):
         await self.downloadable._download(path, callback)
@@ -198,7 +200,7 @@ class SoundcloudDownloadable(Downloadable):
             await self._download_original(path, callback)
 
     async def _download_original(self, path: str, callback):
-        downloader = BasicDownloadable(self.session, self.url)
+        downloader = BasicDownloadable(self.session, self.url, "flac")
         await downloader.download(path, callback)
         engine = converter.FLAC(path)
         engine.convert(path)

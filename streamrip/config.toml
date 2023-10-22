@@ -125,14 +125,16 @@ embed = true
 # The size of the artwork to embed. Options: thumbnail, small, large, original.
 # "original" images can be up to 30MB, and may fail embedding. 
 # Using "large" is recommended.
-size = "large"
-# Both of these options limit the size of the embedded artwork. If their values
-# are larger than the actual dimensions of the image, they will be ignored.
-# If either value is -1, the image is left untouched.
-max_width = -1
-max_height = -1
+embed_size = "large"
+# If this is set to a value > 0, max(width, height) of the embedded art will be set to this value in pixels
+# Proportions of the image will remain the same
+embed_max_width = -1
 # Save the cover image at the highest quality as a seperate jpg file
-keep_hires_cover = true
+save_artwork = true
+# If this is set to a value > 0, max(width, height) of the saved art will be set to this value in pixels
+# Proportions of the image will remain the same
+saved_max_width = -1
+
 
 [metadata]
 # Sets the value of the 'ALBUM' field in the metadata to the playlist's name. 
@@ -150,7 +152,7 @@ exclude = []
 # template
 add_singles_to_folder = false
 # Available keys: "albumartist", "title", "year", "bit_depth", "sampling_rate",
-# "container", "id", and "albumcomposer"
+# "id", and "albumcomposer"
 folder_format = "{albumartist} - {title} ({year}) [{container}] [{bit_depth}B-{sampling_rate}kHz]"
 # Available keys: "tracknumber", "artist", "albumartist", "composer", "title",
 # and "albumcomposer"

@@ -5,10 +5,7 @@ import re
 import time
 from typing import AsyncGenerator, Optional
 
-import aiohttp
-from aiolimiter import AsyncLimiter
-
-from .client import DEFAULT_USER_AGENT, Client
+from .client import Client
 from .config import Config
 from .downloadable import BasicDownloadable, Downloadable
 from .exceptions import (
@@ -51,13 +48,13 @@ class QobuzClient(Client):
     def __init__(self, config: Config):
         self.logged_in = False
         self.config = config
-        self.session = self.get_session()
         self.rate_limiter = self.get_rate_limiter(
             config.session.downloads.requests_per_minute
         )
         self.secret: Optional[str] = None
 
     async def login(self):
+        self.session = await self.get_session()
         c = self.config.session.qobuz
         if not c.email_or_userid or not c.password_or_token:
             raise MissingCredentials
@@ -65,11 +62,13 @@ class QobuzClient(Client):
         assert not self.logged_in, "Already logged in"
 
         if not c.app_id or not c.secrets:
+            logger.info("App id/secrets not found, fetching")
             c.app_id, c.secrets = await self._get_app_id_and_secrets()
             # write to file
             self.config.file.qobuz.app_id = c.app_id
             self.config.file.qobuz.secrets = c.secrets
             self.config.file.set_modified()
+        logger.debug(f"Found {c.app_id = } {c.secrets = }")
 
         self.session.headers.update({"X-App-Id": c.app_id})
         self.secret = await self._get_valid_secret(c.secrets)
@@ -87,22 +86,21 @@ class QobuzClient(Client):
                 "app_id": c.app_id,
             }
 
-        resp = await self._api_request("user/login", params)
+        logger.debug("Request params %s", params)
+        status, resp = await self._api_request("user/login", params)
+        logger.debug("Login resp: %s", resp)
 
-        if resp.status == 401:
+        if status == 401:
             raise AuthenticationError(f"Invalid credentials from params {params}")
-        elif resp.status == 400:
-            logger.debug(resp)
+        elif status == 400:
             raise InvalidAppIdError(f"Invalid app id from params {params}")
 
         logger.info("Logged in to Qobuz")
 
-        resp_json = await resp.json()
-
-        if not resp_json["user"]["credential"]["parameters"]:
+        if not resp["user"]["credential"]["parameters"]:
             raise IneligibleError("Free accounts are not eligible to download tracks.")
 
-        uat = resp_json["user_auth_token"]
+        uat = resp["user_auth_token"]
         self.session.headers.update({"X-User-Auth-Token": uat})
         # label = resp_json["user"]["credential"]["parameters"]["short_label"]
 
@@ -131,20 +129,19 @@ class QobuzClient(Client):
 
         epoint = f"{media_type}/get"
 
-        response = await self._api_request(epoint, params)
-        resp_json = await response.json()
+        status, resp = await self._api_request(epoint, params)
 
-        if response.status != 200:
-            raise Exception(f'Error fetching metadata. "{resp_json["message"]}"')
+        if status != 200:
+            raise Exception(f'Error fetching metadata. "{resp["message"]}"')
 
-        return resp_json
+        return resp
 
     async def search(
         self, query: str, media_type: str, limit: int = 500
     ) -> AsyncGenerator:
         params = {
             "query": query,
-            "limit": limit,
+            # "limit": limit,
         }
         # TODO: move featured, favorites, and playlists into _api_get later
         if media_type == "featured":
@@ -164,13 +161,15 @@ class QobuzClient(Client):
         else:
             epoint = f"{media_type}/search"
 
-        return self._paginate(epoint, params)
+        async for status, resp in self._paginate(epoint, params, limit=limit):
+            assert status == 200
+            yield resp
 
     async def get_downloadable(self, item_id: str, quality: int) -> Downloadable:
         assert self.secret is not None and self.logged_in and 1 <= quality <= 4
 
-        resp = await self._request_file_url(item_id, quality, self.secret)
-        resp_json = await resp.json()
+        status, resp_json = await self._request_file_url(item_id, quality, self.secret)
+        assert status == 200
         stream_url = resp_json.get("url")
 
         if stream_url is None:
@@ -183,33 +182,52 @@ class QobuzClient(Client):
                 )
             raise NonStreamable
 
-        return BasicDownloadable(self.session, stream_url)
+        return BasicDownloadable(
+            self.session, stream_url, "flac" if quality > 1 else "mp3"
+        )
 
-    async def _paginate(self, epoint: str, params: dict) -> AsyncGenerator[dict, None]:
-        response = await self._api_request(epoint, params)
-        page = await response.json()
-        logger.debug("Keys returned from _gen_pages: %s", ", ".join(page.keys()))
+    async def _paginate(
+        self, epoint: str, params: dict, limit: Optional[int] = None
+    ) -> AsyncGenerator[tuple[int, dict], None]:
+        """Paginate search results.
+
+        params:
+            limit: If None, all the results are yielded. Otherwise a maximum
+            of `limit` results are yielded.
+
+        returns:
+            Generator that yields (status code, response) tuples
+        """
+        params.update({"limit": limit or 500})
+        status, page = await self._api_request(epoint, params)
+        logger.debug("paginate: initial request made with status %d", status)
+        # albums, tracks, etc.
         key = epoint.split("/")[0] + "s"
-        total = page.get(key, {})
-        total = total.get("total") or total.get("items")
+        items = page.get(key, {})
+        total = items.get("total", 0) or items.get("items", 0)
+        if limit is not None and limit < total:
+            total = limit
+
+        logger.debug("paginate: %d total items requested", total)
 
         if not total:
             logger.debug("Nothing found from %s epoint", epoint)
             return
 
-        limit = page.get(key, {}).get("limit", 500)
-        offset = page.get(key, {}).get("offset", 0)
+        limit = int(page.get(key, {}).get("limit", 500))
+        offset = int(page.get(key, {}).get("offset", 0))
+
+        logger.debug("paginate: from response: limit=%d, offset=%d", limit, offset)
         params.update({"limit": limit})
-        yield page
+        yield status, page
         while (offset + limit) < total:
             offset += limit
             params.update({"offset": offset})
-            response = await self._api_request(epoint, params)
-            yield await response.json()
+            yield await self._api_request(epoint, params)
 
     async def _get_app_id_and_secrets(self) -> tuple[str, list[str]]:
-        spoofer = QobuzSpoofer()
-        return await spoofer.get_app_id_and_secrets()
+        async with QobuzSpoofer() as spoofer:
+            return await spoofer.get_app_id_and_secrets()
 
     async def _get_valid_secret(self, secrets: list[str]) -> str:
         results = await asyncio.gather(
@@ -223,15 +241,18 @@ class QobuzClient(Client):
         return working_secrets[0]
 
     async def _test_secret(self, secret: str) -> Optional[str]:
-        resp = await self._request_file_url("19512574", 1, secret)
-        if resp.status == 400:
+        status, _ = await self._request_file_url("19512574", 4, secret)
+        if status == 400:
             return None
-        resp.raise_for_status()
-        return secret
+        if status == 200:
+            return secret
+        logger.warning("Got status %d when testing secret", status)
+        return None
 
     async def _request_file_url(
         self, track_id: str, quality: int, secret: str
-    ) -> aiohttp.ClientResponse:
+    ) -> tuple[int, dict]:
+        quality = self.get_quality(quality)
         unix_ts = time.time()
         r_sig = f"trackgetFileUrlformat_id{quality}intentstreamtrack_id{track_id}{unix_ts}{secret}"
         logger.debug("Raw request signature: %s", r_sig)
@@ -246,11 +267,24 @@ class QobuzClient(Client):
         }
         return await self._api_request("track/getFileUrl", params)
 
-    async def _api_request(self, epoint: str, params: dict) -> aiohttp.ClientResponse:
+    async def _api_request(self, epoint: str, params: dict) -> tuple[int, dict]:
+        """Make a request to the API.
+        returns: status code, json parsed response
+        """
         url = f"{QOBUZ_BASE_URL}/{epoint}"
+        logger.debug("api_request: endpoint=%s, params=%s", epoint, params)
         if self.rate_limiter is not None:
             async with self.rate_limiter:
-                async with self.session.get(url, params=params) as response:
-                    return response
+                async with self.session.get(
+                    url, params=params, encoding="utf-8"
+                ) as response:
+                    return response.status, await response.json()
+        # return await self.session.get(url, params=params)
         async with self.session.get(url, params=params) as response:
-            return response
+            resp_json = await response.json()
+            return response.status, resp_json
+
+    @staticmethod
+    def get_quality(quality: int):
+        quality_map = (5, 6, 7, 27)
+        return quality_map[quality - 1]

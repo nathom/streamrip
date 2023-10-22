@@ -130,13 +130,13 @@ def test_sample_config_data_fields(sample_config_data):
     assert sample_config_data.conversion == test_config.conversion
 
 
-def test_config_save_file_called_on_del(sample_config, mocker):
-    sample_config.file.set_modified()
-    mockf = mocker.Mock()
-
-    sample_config.save_file = mockf
-    sample_config.__del__()
-    mockf.assert_called_once()
+# def test_config_save_file_called_on_del(sample_config, mocker):
+#     sample_config.file.set_modified()
+#     mockf = mocker.Mock()
+#
+#     sample_config.save_file = mockf
+#     sample_config.__del__()
+#     mockf.assert_called_once()
 
 
 def test_config_update_on_save():
@@ -152,17 +152,17 @@ def test_config_update_on_save():
     assert conf2.session.downloads.folder == "new_folder"
 
 
-def test_config_update_on_del():
-    tmp_config_path = "tests/config2.toml"
-    shutil.copy(SAMPLE_CONFIG, tmp_config_path)
-    conf = Config(tmp_config_path)
-    conf.file.downloads.folder = "new_folder"
-    conf.file.set_modified()
-    del conf
-    conf2 = Config(tmp_config_path)
-    os.remove(tmp_config_path)
-
-    assert conf2.session.downloads.folder == "new_folder"
+# def test_config_update_on_del():
+#     tmp_config_path = "tests/config2.toml"
+#     shutil.copy(SAMPLE_CONFIG, tmp_config_path)
+#     conf = Config(tmp_config_path)
+#     conf.file.downloads.folder = "new_folder"
+#     conf.file.set_modified()
+#     del conf
+#     conf2 = Config(tmp_config_path)
+#     os.remove(tmp_config_path)
+#
+#     assert conf2.session.downloads.folder == "new_folder"
 
 
 def test_config_dont_update_without_set_modified():
