@@ -155,13 +155,13 @@ add_singles_to_folder = false
 # "id", and "albumcomposer"
 folder_format = "{albumartist} - {title} ({year}) [{container}] [{bit_depth}B-{sampling_rate}kHz]"
 # Available keys: "tracknumber", "artist", "albumartist", "composer", "title",
-# and "albumcomposer"
+# and "albumcomposer", "explicit"
 track_format = "{tracknumber}. {artist} - {title}{explicit}"
 # Only allow printable ASCII characters in filenames.
 restrict_characters = false
-# Truncate the filename if it is greater than 120 characters
+# Truncate the filename if it is greater than this number of characters
 # Setting this to false may cause downloads to fail on some systems
-truncate = true
+truncate_to = 120
 
 # Last.fm playlists are downloaded by searching for the titles of the tracks
 [lastfm]

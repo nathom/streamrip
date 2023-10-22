@@ -5,19 +5,7 @@ from __future__ import annotations
 import logging
 import re
 from dataclasses import dataclass
-from string import Formatter
 from typing import Optional, Type, TypeVar
-
-# from .constants import (
-#     ALBUM_KEYS,
-#     COPYRIGHT,
-#     FLAC_KEY,
-#     MP3_KEY,
-#     MP4_KEY,
-#     PHON_COPYRIGHT,
-#     TIDAL_Q_MAP,
-#     TRACK_KEYS,
-# )
 
 logger = logging.getLogger("streamrip")
 
@@ -29,81 +17,85 @@ def get_album_track_ids(source: str, resp) -> list[str]:
     return [track["id"] for track in tracklist]
 
 
-# (url to cover, downloaded path of cover)
-@dataclass(slots=True)
 class Covers:
-    CoverEntry = tuple[str | None, str | None]
-    thumbnail: CoverEntry
-    small: CoverEntry
-    large: CoverEntry
-    original: CoverEntry
+    CoverEntry = tuple[str, str | None, str | None]
+    _covers: list[CoverEntry]
+
+    def __init__(self):
+        # ordered from largest to smallest
+        self._covers = [
+            ("original", None, None),
+            ("large", None, None),
+            ("small", None, None),
+            ("thumbnail", None, None),
+        ]
+
+    def set_cover(self, size: str, url: str | None, path: str | None):
+        i = self._indexof(size)
+        self._covers[i] = (size, url, path)
+
+    def set_cover_url(self, size: str, url: str):
+        self.set_cover(size, url, None)
+
+    @staticmethod
+    def _indexof(size: str) -> int:
+        if size == "original":
+            return 0
+        if size == "large":
+            return 1
+        if size == "small":
+            return 2
+        if size == "thumbnail":
+            return 3
+        raise Exception(f"Invalid {size = }")
 
     def empty(self) -> bool:
-        return all(
-            url is None
-            for url, _ in (self.original, self.large, self.small, self.thumbnail)
-        )
+        return all(url is None for _, url, _ in self._covers)
+
+    def set_largest_path(self, path: str):
+        for size, url, _ in self._covers:
+            if url is not None:
+                self.set_cover(size, url, path)
+                return
+        raise Exception(f"No covers found in {self}")
+
+    def set_path(self, size: str, path: str):
+        i = self._indexof(size)
+        size, url, _ = self._covers[i]
+        self._covers[i] = (size, url, path)
 
     def largest(self) -> CoverEntry:
-        # Return first item with url
-        if self.original[0]:
-            return self.original
+        for s, u, p in self._covers:
+            if u is not None:
+                return (s, u, p)
 
-        if self.large[0]:
-            return self.large
-
-        if self.small[0]:
-            return self.small
-
-        if self.thumbnail[0]:
-            return self.thumbnail
-
-        raise Exception("No covers found")
+        raise Exception(f"No covers found in {self}")
 
     @classmethod
     def from_qobuz(cls, resp):
-        cover_urls = {k: (v, None) for k, v in resp["image"].items()}
-        cover_urls["original"] = ("org".join(cover_urls["large"].rsplit("600", 1)), None)  # type: ignore
-        return cls(**cover_urls)  # type: ignore
+        img = resp["image"]
+
+        c = cls()
+        c.set_cover_url("original", "org".join(img["large"].rsplit("600", 1)))
+        c.set_cover_url("large", img["large"])
+        c.set_cover_url("small", img["small"])
+        c.set_cover_url("thumbnail", img["thumbnail"])
+        return c
 
     def get_size(self, size: str) -> CoverEntry:
-        """Get the cover size, or the largest cover smaller than `size`.
+        i = self._indexof(size)
+        size, url, path = self._covers[i]
+        if url is not None:
+            return (size, url, path)
+        if i + 1 < len(self._covers):
+            for s, u, p in self._covers[i + 1 :]:
+                if u is not None:
+                    return (s, u, p)
+        raise Exception(f"Cover not found for {size = }. Available: {self}")
 
-        Args:
-            size (str):
-
-        Returns:
-            CoverEntry
-
-
-        Raises:
-            Exception: If a suitable cover doesn't exist
-
-        """
-        fallback = False
-        if size == "original":
-            if self.original[0] is not None:
-                return self.original
-            else:
-                fallback = True
-
-        if fallback or size == "large":
-            if self.large[0] is not None:
-                return self.large
-            else:
-                fallback = True
-
-        if fallback or size == "small":
-            if self.small[0] is not None:
-                return self.small
-            else:
-                fallback = True
-
-        # At this point, either size == 'thumbnail' or nothing else was found
-        if self.thumbnail[0] is None:
-            raise Exception(f"No covers found for {size = }. Covers: {self}")
-
-        return self.thumbnail
+    def __repr__(self):
+        covers = "\n".join(map(repr, self._covers))
+        return f"Covers({covers})"
 
 
 COPYRIGHT = "\u2117"
@@ -173,18 +165,20 @@ class TrackMetadata:
             return cls.from_deezer(album, resp)
         raise Exception
 
-    def format_track_path(self, formatter: str) -> str:
+    def format_track_path(self, format_string: str) -> str:
         # Available keys: "tracknumber", "artist", "albumartist", "composer", "title",
-        # and "albumcomposer"
+        # and "explicit", "albumcomposer"
+        none_text = "Unknown"
         info = {
             "title": self.title,
             "tracknumber": self.tracknumber,
             "artist": self.artist,
             "albumartist": self.album.albumartist,
-            "albumcomposer": self.album.albumcomposer or "None",
-            "composer": self.composer or "None",
+            "albumcomposer": self.album.albumcomposer or none_text,
+            "composer": self.composer or none_text,
+            "explicit": " (Explicit) " if self.info.explicit else "",
         }
-        return formatter.format(**info)
+        return format_string.format(**info)
 
 
 @dataclass(slots=True)
@@ -343,14 +337,6 @@ class AlbumInfo:
     bit_depth: Optional[int] = None
     booklets = None
     work: Optional[str] = None
-
-
-_formatter = Formatter()
-
-
-def keys_in_format_string(s: str):
-    """Returns the items in {} in a format string."""
-    return [f[1] for f in _formatter.parse(s) if f[1] is not None]
 
 
 def safe_get(d: dict, *keys, default=None) -> dict | str | int | list | None:

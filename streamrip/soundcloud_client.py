@@ -1,8 +1,9 @@
 import re
 
-from .client import Client, NonStreamable
+from .client import Client
 from .config import Config
 from .downloadable import SoundcloudDownloadable
+from .exceptions import NonStreamable
 
 BASE = "https://api-v2.soundcloud.com"
 SOUNDCLOUD_USER_ID = "672320-86895-162383-801513"
@@ -74,7 +75,7 @@ class SoundcloudClient(Client):
             resp = await self._api_request(f"tracks/{item['id']}/download")
             resp_json = await resp.json()
             return SoundcloudDownloadable(
-                {"url": resp_json["redirectUri"], "type": "original"}
+                self.session, {"url": resp_json["redirectUri"], "type": "original"}
             )
 
         else:
@@ -89,7 +90,9 @@ class SoundcloudClient(Client):
 
             resp = await self._request(url)
             resp_json = await resp.json()
-            return SoundcloudDownloadable({"url": resp_json["url"], "type": "mp3"})
+            return SoundcloudDownloadable(
+                self.session, {"url": resp_json["url"], "type": "mp3"}
+            )
 
     async def search(
         self, query: str, media_type: str, limit: int = 50, offset: int = 0

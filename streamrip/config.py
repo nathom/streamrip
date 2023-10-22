@@ -168,7 +168,7 @@ class FilepathsConfig:
     restrict_characters: bool
     # Truncate the filename if it is greater than 120 characters
     # Setting this to false may cause downloads to fail on some systems
-    truncate: bool
+    truncate_to: int
 
 
 @dataclass(slots=True)
@@ -204,6 +204,11 @@ class ThemeConfig:
 
 
 @dataclass(slots=True)
+class MiscConfig:
+    version: str
+
+
+@dataclass(slots=True)
 class ConfigData:
     toml: TOMLDocument
     downloads: DownloadsConfig
@@ -223,6 +228,8 @@ class ConfigData:
     theme: ThemeConfig
     database: DatabaseConfig
     conversion: ConversionConfig
+
+    misc: MiscConfig
 
     _modified: bool = False
 
@@ -247,6 +254,7 @@ class ConfigData:
         theme = ThemeConfig(**toml["theme"])  # type: ignore
         database = DatabaseConfig(**toml["database"])  # type: ignore
         conversion = ConversionConfig(**toml["conversion"])  # type: ignore
+        misc = MiscConfig(**toml["misc"])  # type: ignore
 
         return cls(
             toml=toml,
@@ -264,6 +272,7 @@ class ConfigData:
             theme=theme,
             database=database,
             conversion=conversion,
+            misc=misc,
         )
 
     @classmethod

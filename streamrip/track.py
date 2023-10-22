@@ -3,10 +3,11 @@ import os
 from dataclasses import dataclass
 
 from . import converter
-from .artwork import downscale_image
+from .artwork import download_artwork
 from .client import Client
 from .config import Config
-from .downloadable import BasicDownloadable, Downloadable
+from .downloadable import Downloadable
+from .filepath_utils import clean_filename
 from .media import Media, Pending
 from .metadata import AlbumMetadata, Covers, TrackMetadata
 from .progress import get_progress_bar
@@ -69,9 +70,17 @@ class Track(Media):
         self.download_path = engine.final_fn  # because the extension changed
 
     def _set_download_path(self):
-        formatter = self.config.session.filepaths.track_format
-        track_path = self.meta.format_track_path(formatter)
-        self.download_path = os.path.join(self.folder, track_path)
+        c = self.config.session.filepaths
+        formatter = c.track_format
+        track_path = clean_filename(
+            self.meta.format_track_path(formatter), restrict=c.restrict_characters
+        )
+        if c.truncate_to > 0 and len(track_path) > c.truncate_to:
+            track_path = track_path[: c.truncate_to]
+
+        self.download_path = os.path.join(
+            self.folder, f"{track_path}.{self.downloadable.extension}"
+        )
 
 
 @dataclass(slots=True)
@@ -127,49 +136,7 @@ class PendingSingle(Pending):
         return os.path.join(parent, meta.format_folder_path(formatter))
 
     async def _download_cover(self, covers: Covers, folder: str) -> str | None:
-        """Download artwork, which may include a seperate file to keep.
-
-        Args:
-            covers (Covers): The set of available covers.
-
-        """
-        c = self.config.session.artwork
-        if not c.save_artwork and not c.embed:
-            # No need to download anything
-            return None
-
-        session = self.client.session
-        downloadables = []
-
-        hires_cover_path = None
-        if c.save_artwork:
-            l_url, _ = covers.largest()
-            assert l_url is not None
-            hires_cover_path = os.path.join(folder, "cover.jpg")
-            downloadables.append(
-                BasicDownloadable(session, l_url, "jpg").download(
-                    hires_cover_path, lambda _: None
-                )
-            )
-
-        embed_cover_path = None
-        if c.embed:
-            embed_url, _ = covers.get_size(c.embed_size)
-            assert embed_url is not None
-            embed_cover_path = os.path.join(folder, "embed_cover.jpg")
-            downloadables.append(
-                BasicDownloadable(session, embed_url, "jpg").download(
-                    embed_cover_path, lambda _: None
-                )
-            )
-        await asyncio.gather(*downloadables)
-
-        if c.embed and c.embed_max_width > 0:
-            assert embed_cover_path is not None
-            downscale_image(embed_cover_path, c.embed_max_width)
-
-        if c.save_artwork and c.saved_max_width > 0:
-            assert hires_cover_path is not None
-            downscale_image(hires_cover_path, c.saved_max_width)
-
-        return embed_cover_path
+        embed_path, _ = await download_artwork(
+            self.client.session, folder, covers, self.config.session.artwork
+        )
+        return embed_path
