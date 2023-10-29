@@ -394,7 +394,6 @@ class RipCore(list):
             https://www.qobuz.com/us-en/type/name/id
             https://open.qobuz.com/type/id
             https://play.qobuz.com/type/id
-
             https://www.deezer.com/us/type/id
             https://tidal.com/browse/type/id
 

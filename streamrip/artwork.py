@@ -22,6 +22,7 @@ async def download_artwork(
         covers (Covers): The set of available covers.
 
     Returns:
+        (path to embed cover, path to hires cover)
         The path of the cover to embed, or None if there either is no artwork available or
         if artwork embedding is turned off.
     """

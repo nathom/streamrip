@@ -8,6 +8,13 @@ from dataclasses import dataclass, fields
 from tomlkit.api import dumps, parse
 from tomlkit.toml_document import TOMLDocument
 
+from .user_paths import (
+    DEFAULT_DOWNLOADS_DB_PATH,
+    DEFAULT_DOWNLOADS_FOLDER,
+    DEFAULT_FAILED_DOWNLOADS_DB_PATH,
+    DEFAULT_YOUTUBE_VIDEO_DOWNLOADS_FOLDER,
+)
+
 logger = logging.getLogger("streamrip")
 
 CURRENT_CONFIG_VERSION = "2.0"
@@ -237,8 +244,10 @@ class ConfigData:
     def from_toml(cls, toml_str: str):
         # TODO: handle the mistake where Windows people forget to escape backslash
         toml = parse(toml_str)
-        if toml["misc"]["version"] != CURRENT_CONFIG_VERSION:  # type: ignore
-            raise Exception("Need to update config")
+        if (v := toml["misc"]["version"]) != CURRENT_CONFIG_VERSION:  # type: ignore
+            raise Exception(
+                f"Need to update config from {v} to {CURRENT_CONFIG_VERSION}"
+            )
 
         downloads = DownloadsConfig(**toml["downloads"])  # type: ignore
         qobuz = QobuzConfig(**toml["qobuz"])  # type: ignore
@@ -310,7 +319,7 @@ def update_toml_section_from_config(toml_section, config):
 
 
 class Config:
-    def __init__(self, path: str):
+    def __init__(self, path: str, /):
         self._path = path
 
         with open(path) as toml_file:
@@ -329,3 +338,24 @@ class Config:
     @classmethod
     def defaults(cls):
         return cls(DEFAULT_CONFIG_PATH)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *_):
+        self.save_file()
+
+
+def set_user_defaults(path: str, /):
+    """Update the TOML file at the path with user-specific default values.
+
+    MUST copy updated blank config to `path` before calling this!
+    """
+    with open(path) as f:
+        toml = parse(f.read())
+    toml["downloads"]["folder"] = DEFAULT_DOWNLOADS_FOLDER  # type: ignore
+    toml["database"]["downloads_path"] = DEFAULT_DOWNLOADS_DB_PATH  # type: ignore
+    toml["database"]["failed_downloads_path"] = DEFAULT_FAILED_DOWNLOADS_DB_PATH  # type: ignore
+    toml["youtube"]["video_downloads_folder"] = DEFAULT_YOUTUBE_VIDEO_DOWNLOADS_FOLDER  # type: ignore
+    with open(path, "w") as f:
+        f.write(dumps(toml))

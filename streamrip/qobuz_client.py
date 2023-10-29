@@ -65,10 +65,11 @@ class QobuzClient(Client):
             logger.info("App id/secrets not found, fetching")
             c.app_id, c.secrets = await self._get_app_id_and_secrets()
             # write to file
-            self.config.file.qobuz.app_id = c.app_id
-            self.config.file.qobuz.secrets = c.secrets
-            self.config.file.set_modified()
-        logger.debug(f"Found {c.app_id = } {c.secrets = }")
+            f = self.config.file
+            f.qobuz.app_id = c.app_id
+            f.qobuz.secrets = c.secrets
+            f.set_modified()
+        logger.info(f"Found {c.app_id = } {c.secrets = }")
 
         self.session.headers.update({"X-App-Id": c.app_id})
         self.secret = await self._get_valid_secret(c.secrets)
@@ -165,9 +166,9 @@ class QobuzClient(Client):
             assert status == 200
             yield resp
 
-    async def get_downloadable(self, item_id: str, quality: int) -> Downloadable:
+    async def get_downloadable(self, item: dict, quality: int) -> Downloadable:
         assert self.secret is not None and self.logged_in and 1 <= quality <= 4
-
+        item_id = item["id"]
         status, resp_json = await self._request_file_url(item_id, quality, self.secret)
         assert status == 200
         stream_url = resp_json.get("url")

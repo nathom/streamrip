@@ -25,7 +25,7 @@ class CredentialPrompter(ABC):
         raise NotImplemented
 
     @abstractmethod
-    def prompt(self):
+    async def prompt_and_login(self):
         """Prompt for credentials in the appropriate way,
         and save them to the configuration."""
         raise NotImplemented
@@ -47,7 +47,7 @@ class QobuzPrompter(CredentialPrompter):
         c = self.config.session.qobuz
         return c.email_or_userid != "" and c.password_or_token != ""
 
-    async def prompt(self):
+    async def prompt_and_login(self):
         if not self.has_creds():
             self._prompt_creds_and_set_session_config()
 
@@ -61,13 +61,12 @@ class QobuzPrompter(CredentialPrompter):
             except MissingCredentials:
                 self._prompt_creds_and_set_session_config()
 
+        secho("Successfully logged in to Qobuz", fg="green")
+
     def _prompt_creds_and_set_session_config(self):
-        secho("Enter Qobuz email:", fg="green")
+        secho("Enter Qobuz email: ", fg="green", nl=False)
         email = input()
-        secho(
-            "Enter Qobuz password (will not show on screen):",
-            fg="green",
-        )
+        secho("Enter Qobuz password (will not show on screen): ", fg="green", nl=False)
         pwd = hashlib.md5(getpass(prompt="").encode("utf-8")).hexdigest()
         secho(
             f'Credentials saved to config file at "{self.config._path}"',
@@ -98,7 +97,7 @@ class TidalPrompter(CredentialPrompter):
     def has_creds(self) -> bool:
         return len(self.config.session.tidal.access_token) > 0
 
-    async def prompt(self):
+    async def prompt_and_login(self):
         device_code = await self.client._get_device_code()
         login_link = f"https://{device_code}"
 
@@ -156,7 +155,7 @@ class DeezerPrompter(CredentialPrompter):
         c = self.config.session.deezer
         return c.arl != ""
 
-    async def prompt(self):
+    async def prompt_and_login(self):
         if not self.has_creds():
             self._prompt_creds_and_set_session_config()
         while True:
@@ -205,7 +204,7 @@ PROMPTERS = {
 }
 
 
-def get_prompter(client: Client, config: Config):
+def get_prompter(client: Client, config: Config) -> CredentialPrompter:
     """Return an instance of a prompter."""
     p, c = PROMPTERS[client.source]
     assert isinstance(client, c)

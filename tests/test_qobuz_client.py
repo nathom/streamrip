@@ -1,7 +1,4 @@
-import asyncio
-import hashlib
 import logging
-import os
 
 import pytest
 from util import afor, arun
@@ -14,21 +11,10 @@ from streamrip.qobuz_client import QobuzClient
 logger = logging.getLogger("streamrip")
 
 
+@pytest.mark.usefixtures("qobuz_client")
 @pytest.fixture
-def config():
-    c = Config.defaults()
-    c.session.qobuz.email_or_userid = os.environ["QOBUZ_EMAIL"]
-    c.session.qobuz.password_or_token = hashlib.md5(
-        os.environ["QOBUZ_PASSWORD"].encode("utf-8")
-    ).hexdigest()
-    return c
-
-
-@pytest.fixture
-def client(config):
-    c = QobuzClient(config)  # type: ignore
-    arun(c.login())
-    return c
+def client(qobuz_client):
+    return qobuz_client
 
 
 def test_client_raises_missing_credentials():

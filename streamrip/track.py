@@ -45,6 +45,9 @@ class Track(Media):
         if self.config.session.conversion.enabled:
             await self._convert()
 
+        # if self.cover_path is not None:
+        #     os.remove(self.cover_path)
+
     async def _tag(self):
         await tag_file(self.download_path, self.meta, self.cover_path)
 
@@ -90,14 +93,14 @@ class PendingTrack(Pending):
     client: Client
     config: Config
     folder: str
-    cover_path: str
+    cover_path: str | None
 
     async def resolve(self) -> Track:
-        resp = await self.client.get_metadata({"id": self.id}, "track")
+        resp = await self.client.get_metadata(self.id, "track")
         meta = TrackMetadata.from_resp(self.album, self.client.source, resp)
         quality = getattr(self.config.session, self.client.source).quality
         assert isinstance(quality, int)
-        downloadable = await self.client.get_downloadable(self.id, quality)
+        downloadable = await self.client.get_downloadable({"id": self.id}, quality)
         return Track(meta, downloadable, self.config, self.folder, self.cover_path)
 
 
@@ -114,18 +117,20 @@ class PendingSingle(Pending):
     config: Config
 
     async def resolve(self) -> Track:
-        resp = await self.client.get_metadata({"id": self.id}, "track")
+        resp = await self.client.get_metadata(self.id, "track")
         album = AlbumMetadata.from_resp(resp["album"], self.client.source)
         meta = TrackMetadata.from_resp(album, self.client.source, resp)
 
         quality = getattr(self.config.session, self.client.source).quality
         assert isinstance(quality, int)
-        folder = self._format_folder(album)
+        folder = os.path.join(
+            self.config.session.downloads.folder, self._format_folder(album)
+        )
         os.makedirs(folder, exist_ok=True)
 
         embedded_cover_path, downloadable = await asyncio.gather(
             self._download_cover(album.covers, folder),
-            self.client.get_downloadable(self.id, quality),
+            self.client.get_downloadable({"id": self.id}, quality),
         )
         return Track(meta, downloadable, self.config, folder, embedded_cover_path)
 

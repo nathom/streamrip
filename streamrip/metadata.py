@@ -1,7 +1,7 @@
 """Manages the information that will be embeded in the audio file."""
-
 from __future__ import annotations
 
+import json
 import logging
 import re
 from dataclasses import dataclass
@@ -114,11 +114,13 @@ class TrackMetadata:
     composer: Optional[str]
 
     @classmethod
-    def from_qobuz(cls, album: AlbumMetadata, resp) -> TrackMetadata:
+    def from_qobuz(cls, album: AlbumMetadata, resp: dict) -> TrackMetadata:
+        with open("tests/qobuz_track_resp.json", "w") as f:
+            json.dump(resp, f)
         title = typed(resp["title"].strip(), str)
 
-        version = resp.get("version")
-        work = resp.get("work")
+        version = typed(resp.get("version"), str | None)
+        work = typed(resp.get("work"), str | None)
         if version is not None and version not in title:
             title = f"{title} ({version})"
         if work is not None and work not in title:
@@ -128,9 +130,20 @@ class TrackMetadata:
         tracknumber = typed(resp.get("track_number", 1), int)
         discnumber = typed(resp.get("media_number", 1), int)
         artist = typed(safe_get(resp, "performer", "name"), str)
-        track_id = typed(resp["id"], str)
+        track_id = str(resp["id"])
+        bit_depth = typed(resp.get("maximum_bit_depth"), int | None)
+        sampling_rate = typed(resp.get("maximum_sampling_rate"), int | float | None)
+        # Is the info included?
+        explicit = False
 
-        info = TrackInfo(id=track_id, quality=album.info.quality)
+        info = TrackInfo(
+            id=track_id,
+            quality=album.info.quality,
+            bit_depth=bit_depth,
+            explicit=explicit,
+            sampling_rate=sampling_rate,
+            work=work,
+        )
         return cls(
             info=info,
             title=title,
@@ -187,7 +200,6 @@ class TrackInfo:
     quality: int
 
     bit_depth: Optional[int] = None
-    booklets = None
     explicit: bool = False
     sampling_rate: Optional[int] = None
     work: Optional[str] = None
@@ -218,28 +230,30 @@ class AlbumMetadata:
 
     def format_folder_path(self, formatter: str) -> str:
         # Available keys: "albumartist", "title", "year", "bit_depth", "sampling_rate",
-        # "id", and "albumcomposer"
-        info = {
+        # "id", and "albumcomposer",
+        none_str = "Unknown"
+        info: dict[str, str | int] = {
             "albumartist": self.albumartist,
-            "albumcomposer": self.albumcomposer or "None",
-            "bit_depth": self.info.bit_depth,
+            "albumcomposer": self.albumcomposer or none_str,
+            "bit_depth": self.info.bit_depth or none_str,
             "id": self.info.id,
-            "sampling_rate": self.info.sampling_rate,
+            "sampling_rate": self.info.sampling_rate or none_str,
             "title": self.album,
             "year": self.year,
+            "container": self.info.container,
         }
         return formatter.format(**info)
 
     @classmethod
-    def from_qobuz(cls, resp) -> AlbumMetadata:
+    def from_qobuz(cls, resp: dict) -> AlbumMetadata:
         album = resp.get("title", "Unknown Album")
         tracktotal = resp.get("tracks_count", 1)
         genre = resp.get("genres_list") or resp.get("genre") or []
         genres = list(set(re.findall(r"([^\u2192\/]+)", "/".join(genre))))
         date = resp.get("release_date_original") or resp.get("release_date")
-        year = date[:4]
+        year = date[:4] if date is not None else "Unknown"
 
-        _copyright = resp.get("copyright")
+        _copyright = resp.get("copyright", "")
         _copyright = re.sub(r"(?i)\(P\)", PHON_COPYRIGHT, _copyright)
         _copyright = re.sub(r"(?i)\(C\)", COPYRIGHT, _copyright)
 
@@ -253,7 +267,7 @@ class AlbumMetadata:
         if isinstance(_label, dict):
             _label = _label["name"]
         label = typed(_label, str | None)
-        description = typed(resp.get("description"), str | None)
+        description = typed(resp.get("description") or None, str | None)
         disctotal = typed(
             max(
                 track.get("media_number", 1)
@@ -270,16 +284,26 @@ class AlbumMetadata:
         streamable = typed(resp.get("streamable", False), bool)
         assert streamable
         bit_depth = typed(resp.get("maximum_bit_depth"), int | None)
-        sampling_rate = typed(resp.get("maximum_sampling_rate"), int | None)
+        sampling_rate = typed(resp.get("maximum_sampling_rate"), int | float | None)
         quality = get_quality_id(bit_depth, sampling_rate)
-        booklets = resp.get("goodies")
-        item_id = resp.get("id")
+        # Make sure it is non-empty list
+        booklets = typed(resp.get("goodies", None) or None, list | None)
+        item_id = str(resp.get("qobuz_id"))
 
-        if sampling_rate is not None:
-            sampling_rate *= 1000
+        if sampling_rate and bit_depth:
+            container = "FLAC"
+        else:
+            container = "MP3"
 
         info = AlbumInfo(
-            item_id, quality, label, explicit, sampling_rate, bit_depth, booklets
+            id=item_id,
+            quality=quality,
+            container=container,
+            label=label,
+            explicit=explicit,
+            sampling_rate=sampling_rate,
+            bit_depth=bit_depth,
+            booklets=booklets,
         )
         return AlbumMetadata(
             info,
@@ -315,7 +339,7 @@ class AlbumMetadata:
         raise NotImplementedError
 
     @classmethod
-    def from_resp(cls, resp, source) -> AlbumMetadata:
+    def from_resp(cls, resp: dict, source: str) -> AlbumMetadata:
         if source == "qobuz":
             return cls.from_qobuz(resp)
         if source == "tidal":
@@ -331,12 +355,12 @@ class AlbumMetadata:
 class AlbumInfo:
     id: str
     quality: int
+    container: str
     label: Optional[str] = None
     explicit: bool = False
     sampling_rate: Optional[int] = None
     bit_depth: Optional[int] = None
-    booklets = None
-    work: Optional[str] = None
+    booklets: list[dict] | None = None
 
 
 def safe_get(d: dict, *keys, default=None) -> dict | str | int | list | None:

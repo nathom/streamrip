@@ -69,7 +69,7 @@ def test_sample_config_data_fields(sample_config_data):
             arl="testarl", quality=2, use_deezloader=True, deezloader_warnings=True
         ),
         soundcloud=SoundcloudConfig(
-            client_id="clientid", app_version="appverison", quality=0
+            client_id="clientid", app_version="appversion", quality=0
         ),
         youtube=YoutubeConfig(
             video_downloads_folder="videodownloadsfolder",
@@ -82,10 +82,14 @@ def test_sample_config_data_fields(sample_config_data):
             folder_format="{albumartist} - {title} ({year}) [{container}] [{bit_depth}B-{sampling_rate}kHz]",
             track_format="{tracknumber}. {artist} - {title}{explicit}",
             restrict_characters=False,
-            truncate=True,
+            truncate_to=200,
         ),
         artwork=ArtworkConfig(
-            embed=True, size="large", max_width=-1, max_height=-1, keep_hires_cover=True
+            embed=True,
+            embed_size="large",
+            embed_max_width=-1,
+            save_artwork=True,
+            saved_max_width=-1,
         ),
         metadata=MetadataConfig(
             set_playlist_to_album=True, new_playlist_tracknumbers=True, exclude=[]
@@ -112,6 +116,7 @@ def test_sample_config_data_fields(sample_config_data):
             bit_depth=24,
             lossy_bitrate=320,
         ),
+        misc=MiscConfig(version="2.0"),
         _modified=False,
     )
     assert sample_config_data.downloads == test_config.downloads

@@ -21,13 +21,14 @@ class Client(ABC):
     source: str
     max_quality: int
     session: aiohttp.ClientSession
+    logged_in: bool
 
     @abstractmethod
     async def login(self):
         raise NotImplementedError
 
     @abstractmethod
-    async def get_metadata(self, item: dict[str, Union[str, int, float]], media_type):
+    async def get_metadata(self, item: str, media_type):
         raise NotImplementedError
 
     @abstractmethod
@@ -35,7 +36,7 @@ class Client(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    async def get_downloadable(self, item_id: str, quality: int) -> Downloadable:
+    async def get_downloadable(self, item: dict, quality: int) -> Downloadable:
         raise NotImplementedError
 
     @staticmethod
@@ -58,5 +59,7 @@ class Client(ABC):
 
     def __del__(self):
         # make sure http session is closed by end of program
-        if hasattr(self, "session"):
-            asyncio.run(self.session.close())
+        # if hasattr(self, "session"):
+        #     loop = asyncio.get_event_loop()
+        #     loop.run_until_complete(self.session.close())
+        pass

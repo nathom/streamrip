@@ -11,6 +11,7 @@ concurrency = true
 # The maximum number of tracks to download at once
 # If you have very fast internet, you will benefit from a higher value,
 # A value that is too high for your bandwidth may cause slowdowns
+# Set to -1 for no limit
 max_connections = 3
 # Max number of API requests to handle per minute
 # Set to -1 for no limit

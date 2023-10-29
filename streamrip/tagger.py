@@ -1,15 +1,17 @@
+import logging
 import os
-from dataclasses import dataclass
 from enum import Enum
-from typing import Generator
 
 import aiofiles
 import mutagen.id3 as id3
 from mutagen.flac import FLAC, Picture
-from mutagen.id3 import APIC, ID3, ID3NoHeaderError
+from mutagen.id3 import APIC  # type: ignore
+from mutagen.id3 import ID3
 from mutagen.mp4 import MP4, MP4Cover
 
-from .metadata import Covers, TrackMetadata
+from .metadata import TrackMetadata
+
+logger = logging.getLogger("streamrip")
 
 FLAC_MAX_BLOCKSIZE = 16777215  # 16.7 MB
 
@@ -29,7 +31,6 @@ MP4_KEYS = (
     "\xa9too",
     "cprt",
     "cpil",
-    "covr",
     "trkn",
     "disk",
     None,
@@ -38,24 +39,23 @@ MP4_KEYS = (
 )
 
 MP3_KEYS = (
-    id3.TIT2,
-    id3.TPE1,
-    id3.TALB,
-    id3.TPE2,
-    id3.TCOM,
-    id3.TYER,
-    id3.COMM,
-    id3.TT1,
-    id3.TT1,
-    id3.GP1,
-    id3.TCON,
-    id3.USLT,
-    id3.TEN,
-    id3.TCOP,
-    id3.TCMP,
-    None,
-    id3.TRCK,
-    id3.TPOS,
+    id3.TIT2,  # type: ignore
+    id3.TPE1,  # type: ignore
+    id3.TALB,  # type: ignore
+    id3.TPE2,  # type: ignore
+    id3.TCOM,  # type: ignore
+    id3.TYER,  # type: ignore
+    id3.COMM,  # type: ignore
+    id3.TT1,  # type: ignore
+    id3.TT1,  # type: ignore
+    id3.GP1,  # type: ignore
+    id3.TCON,  # type: ignore
+    id3.USLT,  # type: ignore
+    id3.TEN,  # type: ignore
+    id3.TCOP,  # type: ignore
+    id3.TCMP,  # type: ignore
+    id3.TRCK,  # type: ignore
+    id3.TPOS,  # type: ignore
     None,
     None,
     None,
@@ -77,7 +77,6 @@ METADATA_TYPES = (
     "encoder",
     "copyright",
     "compilation",
-    "cover",
     "tracknumber",
     "discnumber",
     "tracktotal",
@@ -102,14 +101,11 @@ class Container(Enum):
         elif self == Container.AAC:
             return MP4(path)
         elif self == Container.MP3:
-            try:
-                return ID3(path)
-            except ID3NoHeaderError:
-                return ID3()
+            return ID3(path)
         # unreachable
         return {}
 
-    def get_tag_pairs(self, meta) -> Generator:
+    def get_tag_pairs(self, meta) -> list[tuple]:
         if self == Container.FLAC:
             return self._tag_flac(meta)
         elif self == Container.MP3:
@@ -117,9 +113,10 @@ class Container(Enum):
         elif self == Container.AAC:
             return self._tag_aac(meta)
         # unreachable
-        yield
+        return []
 
-    def _tag_flac(self, meta):
+    def _tag_flac(self, meta) -> list[tuple]:
+        out = []
         for k, v in FLAC_KEY.items():
             tag = self._attr_from_meta(meta, k)
             if tag:
@@ -131,9 +128,11 @@ class Container(Enum):
                 }:
                     tag = f"{int(tag):02}"
 
-                yield (v, str(tag))
+                out.append((v, str(tag)))
+        return out
 
     def _tag_mp3(self, meta):
+        out = []
         for k, v in MP3_KEY.items():
             if k == "tracknumber":
                 text = f"{meta.tracknumber}/{meta.tracktotal}"
@@ -143,9 +142,11 @@ class Container(Enum):
                 text = self._attr_from_meta(meta, k)
 
             if text is not None and v is not None:
-                yield (v.__name__, v(encoding=3, text=text))
+                out.append((v.__name__, v(encoding=3, text=text)))
+        return out
 
     def _tag_aac(self, meta):
+        out = []
         for k, v in MP4_KEY.items():
             if k == "tracknumber":
                 text = [(meta.tracknumber, meta.tracktotal)]
@@ -155,7 +156,8 @@ class Container(Enum):
                 text = self._attr_from_meta(meta, k)
 
             if v is not None and text is not None:
-                yield (v, text)
+                out.append((v, text))
+        return out
 
     def _attr_from_meta(self, meta: TrackMetadata, attr: str) -> str:
         # TODO: verify this works
@@ -172,7 +174,7 @@ class Container(Enum):
         else:
             return str(getattr(meta.album, attr))
 
-    def tag_audio(self, audio, tags):
+    def tag_audio(self, audio, tags: list[tuple]):
         for k, v in tags:
             audio[k] = v
 
@@ -209,7 +211,7 @@ class Container(Enum):
 
 
 async def tag_file(path: str, meta: TrackMetadata, cover_path: str | None):
-    ext = path.split(".")[-1].upper()
+    ext = path.split(".")[-1].lower()
     if ext == "flac":
         container = Container.FLAC
     elif ext == "m4a":
@@ -221,6 +223,7 @@ async def tag_file(path: str, meta: TrackMetadata, cover_path: str | None):
 
     audio = container.get_mutagen_class(path)
     tags = container.get_tag_pairs(meta)
+    logger.debug("Tagging with %s", tags)
     container.tag_audio(audio, tags)
     if cover_path is not None:
         await container.embed_cover(audio, cover_path)

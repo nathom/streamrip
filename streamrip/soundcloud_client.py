@@ -32,40 +32,8 @@ class SoundcloudClient(Client):
         self.config.client_id = c.app_version = app_version
         self.global_config.file.set_modified()
 
-    async def _announce(self):
-        resp = await self._api_request("announcements")
-        return resp.status == 200
-
-    async def _refresh_tokens(self) -> tuple[str, str]:
-        """Return a valid client_id, app_version pair."""
-        STOCK_URL = "https://soundcloud.com/"
-        async with self.session.get(STOCK_URL) as resp:
-            page_text = await resp.text(encoding="utf-8")
-
-        *_, client_id_url_match = re.finditer(
-            r"<script\s+crossorigin\s+src=\"([^\"]+)\"", page_text
-        )
-
-        if client_id_url_match is None:
-            raise Exception("Could not find client ID in %s" % STOCK_URL)
-
-        client_id_url = client_id_url_match.group(1)
-
-        app_version_match = re.search(
-            r'<script>window\.__sc_version="(\d+)"</script>', page_text
-        )
-        if app_version_match is None:
-            raise Exception("Could not find app version in %s" % client_id_url_match)
-        app_version = app_version_match.group(1)
-
-        async with self.session.get(client_id_url) as resp:
-            page_text2 = await resp.text(encoding="utf-8")
-
-        client_id_match = re.search(r'client_id:\s*"(\w+)"', page_text2)
-        assert client_id_match is not None
-        client_id = client_id_match.group(1)
-
-        return client_id, app_version
+    async def get_metadata(self, item_id: str, media_type: str) -> dict:
+        raise NotImplementedError
 
     async def get_downloadable(self, item: dict, _) -> SoundcloudDownloadable:
         if not item["streamable"] or item["policy"] == "BLOCK":
@@ -128,3 +96,38 @@ class SoundcloudClient(Client):
     async def _resolve_url(self, url: str) -> dict:
         resp = await self._api_request(f"resolve?url={url}")
         return await resp.json()
+
+    async def _announce(self):
+        resp = await self._api_request("announcements")
+        return resp.status == 200
+
+    async def _refresh_tokens(self) -> tuple[str, str]:
+        """Return a valid client_id, app_version pair."""
+        STOCK_URL = "https://soundcloud.com/"
+        async with self.session.get(STOCK_URL) as resp:
+            page_text = await resp.text(encoding="utf-8")
+
+        *_, client_id_url_match = re.finditer(
+            r"<script\s+crossorigin\s+src=\"([^\"]+)\"", page_text
+        )
+
+        if client_id_url_match is None:
+            raise Exception("Could not find client ID in %s" % STOCK_URL)
+
+        client_id_url = client_id_url_match.group(1)
+
+        app_version_match = re.search(
+            r'<script>window\.__sc_version="(\d+)"</script>', page_text
+        )
+        if app_version_match is None:
+            raise Exception("Could not find app version in %s" % client_id_url_match)
+        app_version = app_version_match.group(1)
+
+        async with self.session.get(client_id_url) as resp:
+            page_text2 = await resp.text(encoding="utf-8")
+
+        client_id_match = re.search(r'client_id:\s*"(\w+)"', page_text2)
+        assert client_id_match is not None
+        client_id = client_id_match.group(1)
+
+        return client_id, app_version

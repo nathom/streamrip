@@ -503,7 +503,7 @@ rapidfuzz = ">=2.2.0,<3.0.0"
 name = "click"
 version = "8.1.7"
 description = "Composable command line interface toolkit"
-category = "dev"
+category = "main"
 optional = false
 python-versions = ">=3.7"
 files = [
@@ -513,6 +513,24 @@ files = [
 
 [package.dependencies]
 colorama = {version = "*", markers = "platform_system == \"Windows\""}
+
+[[package]]
+name = "click-help-colors"
+version = "0.9.2"
+description = "Colorization of help messages in Click"
+category = "main"
+optional = false
+python-versions = "*"
+files = [
+    {file = "click-help-colors-0.9.2.tar.gz", hash = "sha256:756245e542d29226bb3bc056bfa58886f212ba2b82f4e8cf5fc884176ac96d72"},
+    {file = "click_help_colors-0.9.2-py3-none-any.whl", hash = "sha256:82ef028cb0a332a154fa42fd7cca2c728a019b32bcb5a26bb32367551014a16f"},
+]
+
+[package.dependencies]
+click = ">=7.0,<9"
+
+[package.extras]
+dev = ["pytest"]
 
 [[package]]
 name = "colorama"
@@ -2052,4 +2070,4 @@ testing = ["big-O", "jaraco.functools", "jaraco.itertools", "more-itertools", "p
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.8 <4.0"
-content-hash = "727f56fee96d755d32de2f42404b98d8425382aa5d7eecd67e3c17dea1ffe5e4"
+content-hash = "9d19c6f43db6871829f90cf3a5169172211b5f6df3818993bcaa0a850b42f835"

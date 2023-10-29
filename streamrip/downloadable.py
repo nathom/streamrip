@@ -65,9 +65,7 @@ class BasicDownloadable(Downloadable):
         self.extension = extension
 
     async def _download(self, path: str, callback: Callable[[int], None]):
-        async with self.session.get(
-            self.url, allow_redirects=True, stream=True
-        ) as response:
+        async with self.session.get(self.url, allow_redirects=True) as response:
             response.raise_for_status()
             async with aiofiles.open(path, "wb") as file:
                 async for chunk in response.content.iter_chunked(self.chunk_size):
