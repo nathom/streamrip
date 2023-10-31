@@ -61,8 +61,6 @@ class QobuzPrompter(CredentialPrompter):
             except MissingCredentials:
                 self._prompt_creds_and_set_session_config()
 
-        secho("Successfully logged in to Qobuz", fg="green")
-
     def _prompt_creds_and_set_session_config(self):
         secho("Enter Qobuz email: ", fg="green", nl=False)
         email = input()

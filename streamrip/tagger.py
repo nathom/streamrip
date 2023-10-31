@@ -159,7 +159,7 @@ class Container(Enum):
                 out.append((v, text))
         return out
 
-    def _attr_from_meta(self, meta: TrackMetadata, attr: str) -> str:
+    def _attr_from_meta(self, meta: TrackMetadata, attr: str) -> str | None:
         # TODO: verify this works
         in_trackmetadata = {
             "title",
@@ -170,9 +170,21 @@ class Container(Enum):
             "composer",
         }
         if attr in in_trackmetadata:
-            return str(getattr(meta, attr))
+            if attr == "album":
+                return meta.album.album
+            val = getattr(meta, attr)
+            if val is None:
+                return None
+            return str(val)
         else:
-            return str(getattr(meta.album, attr))
+            if attr == "genre":
+                return meta.album.get_genres()
+            elif attr == "copyright":
+                return meta.album.get_copyright()
+            val = getattr(meta.album, attr)
+            if val is None:
+                return None
+            return str(val)
 
     def tag_audio(self, audio, tags: list[tuple]):
         for k, v in tags:

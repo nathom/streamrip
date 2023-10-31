@@ -15,7 +15,7 @@ concurrency = true
 max_connections = 3
 # Max number of API requests to handle per minute
 # Set to -1 for no limit
-requests_per_minute = -1
+requests_per_minute = 60
 
 [qobuz]
 # 1: 320kbps MP3, 2: 16/44.1, 3: 24/<=96, 4: 24/>=96
@@ -172,9 +172,11 @@ source = "qobuz"
 # on this one.
 fallback_source = "deezer"
 
-[theme]
-# Options: "dainty" or "plain"
-progress_bar = "dainty"
+[cli]
+# Print "Downloading {Album name}" etc. to screen
+text_output = true
+# Show resolve, download progress bars
+progress_bars = true
 
 [misc]
 # Metadata to identify this config file. Do not change.

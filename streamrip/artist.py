@@ -1,6 +1,12 @@
+from .album import Album, PendingAlbum
+from .client import Client
+from .config import Config
+from .media import Media, Pending
+
+
 class Artist(Media):
     name: str
-    albums: list[Album]
+    albums: list[PendingAlbum]
     config: Config
 
 

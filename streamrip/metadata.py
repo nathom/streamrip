@@ -98,8 +98,8 @@ class Covers:
         return f"Covers({covers})"
 
 
-COPYRIGHT = "\u2117"
-PHON_COPYRIGHT = "\u00a9"
+PHON_COPYRIGHT = "\u2117"
+COPYRIGHT = "\u00a9"
 
 
 @dataclass(slots=True)
@@ -201,8 +201,11 @@ class TrackInfo:
 
     bit_depth: Optional[int] = None
     explicit: bool = False
-    sampling_rate: Optional[int] = None
+    sampling_rate: Optional[int | float] = None
     work: Optional[str] = None
+
+
+genre_clean = re.compile(r"([^\u2192\/]+)")
 
 
 @dataclass(slots=True)
@@ -214,25 +217,36 @@ class AlbumMetadata:
     year: str
     genre: list[str]
     covers: Covers
+    tracktotal: int
 
+    disctotal: int = 1
     albumcomposer: Optional[str] = None
     comment: Optional[str] = None
     compilation: Optional[str] = None
     copyright: Optional[str] = None
     date: Optional[str] = None
     description: Optional[str] = None
-    disctotal: Optional[int] = None
     encoder: Optional[str] = None
     grouping: Optional[str] = None
     lyrics: Optional[str] = None
     purchase_date: Optional[str] = None
-    tracktotal: Optional[int] = None
+
+    def get_genres(self) -> str:
+        return ", ".join(self.genre)
+
+    def get_copyright(self) -> str | None:
+        if self.copyright is None:
+            return None
+        # Add special chars
+        _copyright = re.sub(r"(?i)\(P\)", PHON_COPYRIGHT, self.copyright)
+        _copyright = re.sub(r"(?i)\(C\)", COPYRIGHT, _copyright)
+        return _copyright
 
     def format_folder_path(self, formatter: str) -> str:
         # Available keys: "albumartist", "title", "year", "bit_depth", "sampling_rate",
         # "id", and "albumcomposer",
         none_str = "Unknown"
-        info: dict[str, str | int] = {
+        info: dict[str, str | int | float] = {
             "albumartist": self.albumartist,
             "albumcomposer": self.albumcomposer or none_str,
             "bit_depth": self.info.bit_depth or none_str,
@@ -249,13 +263,11 @@ class AlbumMetadata:
         album = resp.get("title", "Unknown Album")
         tracktotal = resp.get("tracks_count", 1)
         genre = resp.get("genres_list") or resp.get("genre") or []
-        genres = list(set(re.findall(r"([^\u2192\/]+)", "/".join(genre))))
+        genres = list(set(genre_clean.findall("/".join(genre))))
         date = resp.get("release_date_original") or resp.get("release_date")
         year = date[:4] if date is not None else "Unknown"
 
         _copyright = resp.get("copyright", "")
-        _copyright = re.sub(r"(?i)\(P\)", PHON_COPYRIGHT, _copyright)
-        _copyright = re.sub(r"(?i)\(C\)", COPYRIGHT, _copyright)
 
         if artists := resp.get("artists"):
             albumartist = ", ".join(a["name"] for a in artists)
@@ -358,7 +370,7 @@ class AlbumInfo:
     container: str
     label: Optional[str] = None
     explicit: bool = False
-    sampling_rate: Optional[int] = None
+    sampling_rate: Optional[int | float] = None
     bit_depth: Optional[int] = None
     booklets: list[dict] | None = None
 

@@ -1,9 +1,9 @@
-from typing import Optional
+from typing import Callable
 
 from click import style
-from tqdm.asyncio import tqdm
+from rich.progress import Progress
 
-from .config import Config
+from .console import console
 
 THEMES = {
     "plain": None,
@@ -16,14 +16,39 @@ THEMES = {
 }
 
 
-def get_progress_bar(config: Config, total: int, desc: Optional[str], unit="B"):
-    theme = THEMES[config.session.theme.progress_bar]
-    return tqdm(
-        total=total,
-        unit=unit,
-        unit_scale=True,
-        unit_divisor=1024,
-        desc=desc,
-        dynamic_ncols=True,
-        bar_format=theme,
-    )
+class ProgressManager:
+    def __init__(self):
+        self.started = False
+        self.progress = Progress(console=console)
+
+    def get_callback(self, total: int, desc: str):
+        if not self.started:
+            self.progress.start()
+            self.started = True
+
+        task = self.progress.add_task(f"[cyan]{desc}", total=total)
+
+        def _callback(x: int):
+            self.progress.update(task, advance=x)
+
+        return _callback
+
+    def cleanup(self):
+        if self.started:
+            self.progress.stop()
+
+
+# global instance
+_p = ProgressManager()
+
+
+def get_progress_callback(
+    enabled: bool, total: int, desc: str
+) -> Callable[[int], None]:
+    if not enabled:
+        return lambda _: None
+    return _p.get_callback(total, desc)
+
+
+def clear_progress():
+    _p.cleanup()

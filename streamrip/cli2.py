@@ -12,14 +12,9 @@ from rich.logging import RichHandler
 from rich.traceback import install
 
 from .config import Config, set_user_defaults
+from .console import console
 from .main import Main
 from .user_paths import BLANK_CONFIG_PATH, CONFIG_PATH
-
-logging.basicConfig(
-    level="DEBUG", format="%(message)s", datefmt="[%X]", handlers=[RichHandler()]
-)
-
-logger = logging.getLogger("streamrip")
 
 
 def echo_i(msg, **kwargs):
@@ -59,12 +54,23 @@ def rip(ctx, config_path, verbose):
     """
     Streamrip: the all in one music downloader.
     """
+    global logger
+    FORMAT = "%(message)s"
+    logging.basicConfig(
+        level="WARNING", format=FORMAT, datefmt="[%X]", handlers=[RichHandler()]
+    )
+    logger = logging.getLogger("streamrip")
     if verbose:
-        install(suppress=[click], show_locals=True, locals_hide_sunder=False)
+        install(
+            console=console,
+            suppress=[click],
+            show_locals=True,
+            locals_hide_sunder=False,
+        )
         logger.setLevel(logging.DEBUG)
         logger.debug("Showing all debug logs")
     else:
-        install(suppress=[click, asyncio], max_frames=1)
+        install(console=console, suppress=[click, asyncio], max_frames=1)
         logger.setLevel(logging.WARNING)
 
     ctx.ensure_object(dict)
@@ -112,8 +118,7 @@ async def file(ctx, path):
     with Config(config_path) as cfg:
         main = Main(cfg)
         with open(path) as f:
-            for u in f:
-                await main.add(u)
+            await asyncio.gather(*[main.add(url) for url in f])
         await main.resolve()
         await main.rip()
 

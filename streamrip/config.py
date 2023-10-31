@@ -205,9 +205,11 @@ class LastFmConfig:
 
 
 @dataclass(slots=True)
-class ThemeConfig:
-    # Options: "dainty" or "plain"
-    progress_bar: str
+class CliConfig:
+    # Print "Downloading {Album name}" etc. to screen
+    text_output: bool
+    # Show resolve, download progress bars
+    progress_bars: bool
 
 
 @dataclass(slots=True)
@@ -232,7 +234,7 @@ class ConfigData:
     metadata: MetadataConfig
     qobuz_filters: QobuzDiscographyFilterConfig
 
-    theme: ThemeConfig
+    cli: CliConfig
     database: DatabaseConfig
     conversion: ConversionConfig
 
@@ -260,7 +262,7 @@ class ConfigData:
         filepaths = FilepathsConfig(**toml["filepaths"])  # type: ignore
         metadata = MetadataConfig(**toml["metadata"])  # type: ignore
         qobuz_filters = QobuzDiscographyFilterConfig(**toml["qobuz_filters"])  # type: ignore
-        theme = ThemeConfig(**toml["theme"])  # type: ignore
+        cli = CliConfig(**toml["cli"])  # type: ignore
         database = DatabaseConfig(**toml["database"])  # type: ignore
         conversion = ConversionConfig(**toml["conversion"])  # type: ignore
         misc = MiscConfig(**toml["misc"])  # type: ignore
@@ -278,7 +280,7 @@ class ConfigData:
             filepaths=filepaths,
             metadata=metadata,
             qobuz_filters=qobuz_filters,
-            theme=theme,
+            cli=cli,
             database=database,
             conversion=conversion,
             misc=misc,
@@ -308,7 +310,7 @@ class ConfigData:
         update_toml_section_from_config(self.toml["filepaths"], self.filepaths)
         update_toml_section_from_config(self.toml["metadata"], self.metadata)
         update_toml_section_from_config(self.toml["qobuz_filters"], self.qobuz_filters)
-        update_toml_section_from_config(self.toml["theme"], self.theme)
+        update_toml_section_from_config(self.toml["cli"], self.cli)
         update_toml_section_from_config(self.toml["database"], self.database)
         update_toml_section_from_config(self.toml["conversion"], self.conversion)
 

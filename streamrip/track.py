@@ -10,7 +10,8 @@ from .downloadable import Downloadable
 from .filepath_utils import clean_filename
 from .media import Media, Pending
 from .metadata import AlbumMetadata, Covers, TrackMetadata
-from .progress import get_progress_bar
+from .progress import get_progress_callback
+from .semaphore import global_download_semaphore
 from .tagger import tag_file
 
 
@@ -31,14 +32,13 @@ class Track(Media):
 
     async def download(self):
         # TODO: progress bar description
-        with get_progress_bar(
-            self.config,
-            await self.downloadable.size(),
-            f"Track {self.meta.tracknumber}",
-        ) as bar:
-            await self.downloadable.download(
-                self.download_path, lambda x: bar.update(x)
+        async with global_download_semaphore(self.config.session.downloads):
+            callback = get_progress_callback(
+                self.config.session.cli.progress_bars,
+                await self.downloadable.size(),
+                f"Track {self.meta.tracknumber}",
             )
+            await self.downloadable.download(self.download_path, callback)
 
     async def postprocess(self):
         await self._tag()
@@ -52,7 +52,7 @@ class Track(Media):
         await tag_file(self.download_path, self.meta, self.cover_path)
 
     async def _convert(self):
-        CONV_CLASS = {
+        CONV_CLASS: dict[str, type[converter.Converter]] = {
             "FLAC": converter.FLAC,
             "ALAC": converter.ALAC,
             "MP3": converter.LAME,
@@ -67,9 +67,10 @@ class Track(Media):
         engine = CONV_CLASS[codec.upper()](
             filename=self.download_path,
             sampling_rate=c.sampling_rate,
+            bit_depth=c.bit_depth,
             remove_source=True,  # always going to delete the old file
         )
-        engine.convert()
+        await engine.convert()
         self.download_path = engine.final_fn  # because the extension changed
 
     def _set_download_path(self):
@@ -93,6 +94,7 @@ class PendingTrack(Pending):
     client: Client
     config: Config
     folder: str
+    # cover_path is None <==> Artwork for this track doesn't exist in API
     cover_path: str | None
 
     async def resolve(self) -> Track:
