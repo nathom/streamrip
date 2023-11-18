@@ -8,8 +8,9 @@ from .client import Client
 from .config import Config
 from .console import console
 from .media import Media, Pending
-from .metadata import AlbumMetadata, get_album_track_ids
-from .track import PendingTrack, Track
+from .metadata import AlbumMetadata
+from .metadata.util import get_album_track_ids
+from .track import PendingTrack
 
 logger = logging.getLogger("streamrip")
 
@@ -25,7 +26,7 @@ class Album(Media):
     async def preprocess(self):
         if self.config.session.cli.text_output:
             console.print(
-                f"[cyan]Downloading {self.meta.album} by {self.meta.albumartist}"
+                f"Downloading [cyan]{self.meta.album}[/cyan] by [cyan]{self.meta.albumartist}[/cyan]"
             )
 
     async def download(self):
@@ -53,11 +54,15 @@ class PendingAlbum(Pending):
         album_folder = self._album_folder(folder, meta)
         os.makedirs(album_folder, exist_ok=True)
         embed_cover, _ = await download_artwork(
-            self.client.session, album_folder, meta.covers, self.config.session.artwork
+            self.client.session,
+            album_folder,
+            meta.covers,
+            self.config.session.artwork,
+            for_playlist=False,
         )
         pending_tracks = [
             PendingTrack(
-                id=id,
+                id,
                 album=meta,
                 client=self.client,
                 config=self.config,

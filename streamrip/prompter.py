@@ -10,6 +10,7 @@ from .config import Config
 from .deezer_client import DeezerClient
 from .exceptions import AuthenticationError, MissingCredentials
 from .qobuz_client import QobuzClient
+from .soundcloud_client import SoundcloudClient
 from .tidal_client import TidalClient
 
 
@@ -195,15 +196,30 @@ class DeezerPrompter(CredentialPrompter):
         return client
 
 
+class SoundcloudPrompter(CredentialPrompter):
+    def has_creds(self) -> bool:
+        return True
+
+    async def prompt_and_login(self):
+        pass
+
+    def save(self):
+        pass
+
+    def type_check_client(self, client) -> SoundcloudClient:
+        assert isinstance(client, SoundcloudClient)
+        return client
+
+
 PROMPTERS = {
-    "qobuz": (QobuzPrompter, QobuzClient),
-    "deezer": (DeezerPrompter, QobuzClient),
-    "tidal": (TidalPrompter, QobuzClient),
+    "qobuz": QobuzPrompter,
+    "deezer": DeezerPrompter,
+    "tidal": TidalPrompter,
+    "soundcloud": SoundcloudPrompter,
 }
 
 
 def get_prompter(client: Client, config: Config) -> CredentialPrompter:
     """Return an instance of a prompter."""
-    p, c = PROMPTERS[client.source]
-    assert isinstance(client, c)
+    p = PROMPTERS[client.source]
     return p(config, client)

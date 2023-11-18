@@ -1,6 +1,7 @@
 import asyncio
 import logging
 
+from .artwork import remove_artwork_tempdirs
 from .client import Client
 from .config import Config
 from .console import console
@@ -8,6 +9,7 @@ from .media import Media, Pending
 from .progress import clear_progress
 from .prompter import get_prompter
 from .qobuz_client import QobuzClient
+from .soundcloud_client import SoundcloudClient
 from .universal_url import parse_url
 
 logger = logging.getLogger("streamrip")
@@ -29,17 +31,17 @@ class Main:
         # -> downloaded audio file
         self.pending: list[Pending] = []
         self.media: list[Media] = []
-
         self.config = config
         self.clients: dict[str, Client] = {
             "qobuz": QobuzClient(config),
             # "tidal": TidalClient(config),
             # "deezer": DeezerClient(config),
-            # "soundcloud": SoundcloudClient(config),
+            "soundcloud": SoundcloudClient(config),
             # "deezloader": DeezloaderClient(config),
         }
 
     async def add(self, url: str):
+        """Add url as a pending item. Do not `asyncio.gather` calls to this!"""
         parsed = parse_url(url)
         if parsed is None:
             raise Exception(f"Unable to parse url {url}")
@@ -60,6 +62,7 @@ class Main:
                 with console.status(f"[cyan]Logging into {source}", spinner="dots"):
                     # Log into client using credentials from config
                     await client.login()
+                # await client.login()
 
         assert client.logged_in
         return client
@@ -76,6 +79,8 @@ class Main:
         await asyncio.gather(*[item.rip() for item in self.media])
 
         for client in self.clients.values():
-            await client.session.close()
+            if hasattr(client, "session"):
+                await client.session.close()
 
         clear_progress()
+        remove_artwork_tempdirs()

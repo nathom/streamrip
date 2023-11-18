@@ -54,6 +54,7 @@ class QobuzClient(Client):
         self.secret: Optional[str] = None
 
     async def login(self):
+        logger.info("Logging into qobuz")
         self.session = await self.get_session()
         c = self.config.session.qobuz
         if not c.email_or_userid or not c.password_or_token:

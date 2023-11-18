@@ -102,7 +102,7 @@ class PendingTrack(Pending):
         meta = TrackMetadata.from_resp(self.album, self.client.source, resp)
         quality = getattr(self.config.session, self.client.source).quality
         assert isinstance(quality, int)
-        downloadable = await self.client.get_downloadable({"id": self.id}, quality)
+        downloadable = await self.client.get_downloadable(self.id, quality)
         return Track(meta, downloadable, self.config, self.folder, self.cover_path)
 
 
@@ -120,7 +120,9 @@ class PendingSingle(Pending):
 
     async def resolve(self) -> Track:
         resp = await self.client.get_metadata(self.id, "track")
-        album = AlbumMetadata.from_resp(resp["album"], self.client.source)
+        # Patch for soundcloud
+        # self.id = resp["id"]
+        album = AlbumMetadata.from_resp(resp, self.client.source)
         meta = TrackMetadata.from_resp(album, self.client.source, resp)
 
         quality = getattr(self.config.session, self.client.source).quality
@@ -132,7 +134,7 @@ class PendingSingle(Pending):
 
         embedded_cover_path, downloadable = await asyncio.gather(
             self._download_cover(album.covers, folder),
-            self.client.get_downloadable({"id": self.id}, quality),
+            self.client.get_downloadable(self.id, quality),
         )
         return Track(meta, downloadable, self.config, folder, embedded_cover_path)
 
@@ -144,6 +146,10 @@ class PendingSingle(Pending):
 
     async def _download_cover(self, covers: Covers, folder: str) -> str | None:
         embed_path, _ = await download_artwork(
-            self.client.session, folder, covers, self.config.session.artwork
+            self.client.session,
+            folder,
+            covers,
+            self.config.session.artwork,
+            for_playlist=False,
         )
         return embed_path

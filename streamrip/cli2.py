@@ -7,8 +7,9 @@ from functools import wraps
 
 import click
 from click import secho
-from click_help_colors import HelpColorsGroup
+from click_help_colors import HelpColorsGroup  # type: ignore
 from rich.logging import RichHandler
+from rich.prompt import Confirm
 from rich.traceback import install
 
 from .config import Config, set_user_defaults
@@ -118,7 +119,8 @@ async def file(ctx, path):
     with Config(config_path) as cfg:
         main = Main(cfg)
         with open(path) as f:
-            await asyncio.gather(*[main.add(url) for url in f])
+            for url in f:
+                await main.add(url)
         await main.resolve()
         await main.rip()
 
@@ -152,13 +154,10 @@ def config_reset(ctx, yes):
     """Reset the config file."""
     config_path = ctx.obj["config_path"]
     if not yes:
-        echo_w(
-            f"Are you sure you want to reset the config file at {config_path}? [y/n] ",
-            nl=False,
-        )
-        result = input()
-        if result.strip() != "y":
-            echo_i("Reset aborted.")
+        if not Confirm.ask(
+            f"Are you sure you want to reset the config file at {config_path}?"
+        ):
+            console.print("[green]Reset aborted")
             return
 
     shutil.copy(BLANK_CONFIG_PATH, config_path)

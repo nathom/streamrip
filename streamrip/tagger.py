@@ -115,7 +115,7 @@ class Container(Enum):
         # unreachable
         return []
 
-    def _tag_flac(self, meta) -> list[tuple]:
+    def _tag_flac(self, meta: TrackMetadata) -> list[tuple]:
         out = []
         for k, v in FLAC_KEY.items():
             tag = self._attr_from_meta(meta, k)
@@ -131,13 +131,13 @@ class Container(Enum):
                 out.append((v, str(tag)))
         return out
 
-    def _tag_mp3(self, meta):
+    def _tag_mp3(self, meta: TrackMetadata):
         out = []
         for k, v in MP3_KEY.items():
             if k == "tracknumber":
-                text = f"{meta.tracknumber}/{meta.tracktotal}"
+                text = f"{meta.tracknumber}/{meta.album.tracktotal}"
             elif k == "discnumber":
-                text = f"{meta.discnumber}/{meta.disctotal}"
+                text = f"{meta.discnumber}/{meta.album.disctotal}"
             else:
                 text = self._attr_from_meta(meta, k)
 
@@ -145,13 +145,13 @@ class Container(Enum):
                 out.append((v.__name__, v(encoding=3, text=text)))
         return out
 
-    def _tag_aac(self, meta):
+    def _tag_aac(self, meta: TrackMetadata):
         out = []
         for k, v in MP4_KEY.items():
             if k == "tracknumber":
-                text = [(meta.tracknumber, meta.tracktotal)]
+                text = [(meta.tracknumber, meta.album.tracktotal)]
             elif k == "discnumber":
-                text = [(meta.discnumber, meta.disctotal)]
+                text = [(meta.discnumber, meta.album.disctotal)]
             else:
                 text = self._attr_from_meta(meta, k)
 

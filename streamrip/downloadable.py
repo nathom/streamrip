@@ -201,7 +201,7 @@ class SoundcloudDownloadable(Downloadable):
         downloader = BasicDownloadable(self.session, self.url, "flac")
         await downloader.download(path, callback)
         engine = converter.FLAC(path)
-        engine.convert(path)
+        await engine.convert(path)
 
     async def _download_mp3(self, path: str, callback):
         async with self.session.get(self.url) as resp:
@@ -229,6 +229,14 @@ class SoundcloudDownloadable(Downloadable):
                 content = await resp.content.read()
                 await file.write(content)
         return tmp
+
+    async def size(self) -> int:
+        async with self.session.get(self.url) as resp:
+            content = await resp.text("utf-8")
+
+        parsed_m3u = m3u8.loads(content)
+        self._size = len(parsed_m3u.segments)
+        return await super().size()
 
 
 def concat_audio_files(paths: list[str], out: str, ext: str, max_files_open=128):
@@ -272,13 +280,15 @@ def concat_audio_files(paths: list[str], out: str, ext: str, max_files_open=128)
                 "-acodec",
                 "copy",
                 "-loglevel",
-                "panic",
+                "warning",
                 outpaths[i],
             ),
-            # capture_output=True,
+            capture_output=True,
         )
         if proc.returncode != 0:
-            raise Exception(f"FFMPEG returned with this error: {proc.stderr}")
+            raise Exception(
+                f"FFMPEG returned with status code {proc.returncode} error: {proc.stderr} output: {proc.stdout}"
+            )
 
     # Recurse on remaining batches
     concat_audio_files(outpaths, out, ext)

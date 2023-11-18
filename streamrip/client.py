@@ -36,7 +36,7 @@ class Client(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    async def get_downloadable(self, item: dict, quality: int) -> Downloadable:
+    async def get_downloadable(self, item: str, quality: int) -> Downloadable:
         raise NotImplementedError
 
     @staticmethod

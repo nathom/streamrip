@@ -3,12 +3,12 @@ from __future__ import annotations
 import re
 from abc import ABC, abstractmethod
 
-from click import secho
-
 from .album import PendingAlbum
 from .client import Client
 from .config import Config
 from .media import Pending
+from .playlist import PendingPlaylist
+from .soundcloud_client import SoundcloudClient
 from .track import PendingSingle
 from .validation_regexps import (
     DEEZER_DYNAMIC_LINK_REGEX,
@@ -100,8 +100,29 @@ class DeezerDynamicURL(URL):
     pass
 
 
-class SoundCloudURL(URL):
-    pass
+class SoundcloudURL(URL):
+    source = "soundcloud"
+
+    def __init__(self, url: str):
+        self.url = url
+
+    async def into_pending(self, client: SoundcloudClient, config: Config) -> Pending:
+        resolved = await client._resolve_url(self.url)
+        media_type = resolved["kind"]
+        item_id = str(resolved["id"])
+        if media_type == "track":
+            return PendingSingle(item_id, client, config)
+        elif media_type == "playlist":
+            return PendingPlaylist(item_id, client, config)
+        else:
+            raise NotImplementedError(media_type)
+
+    @classmethod
+    def from_str(cls, url: str):
+        soundcloud_url = SOUNDCLOUD_URL_REGEX.match(url)
+        if soundcloud_url is None:
+            return None
+        return cls(soundcloud_url.group(0))
 
 
 class LastFmURL(URL):
@@ -109,10 +130,18 @@ class LastFmURL(URL):
 
 
 def parse_url(url: str) -> URL | None:
+    """Return a URL type given a url string.
+
+    Args:
+        url (str): Url to parse
+
+    Returns: A URL type, or None if nothing matched.
+    """
     url = url.strip()
     parsed_urls: list[URL | None] = [
         GenericURL.from_str(url),
         QobuzInterpreterURL.from_str(url),
+        SoundcloudURL.from_str(url),
         # TODO: the rest of the url types
     ]
     return next((u for u in parsed_urls if u is not None), None)
@@ -121,8 +150,9 @@ def parse_url(url: str) -> URL | None:
 # TODO: recycle this class
 class UniversalURL:
     """
-    >>> u = UniversalURL('https://sampleurl.com')
-    >>> pending = await u.into_pending_item()
+    >>> u = UniversalURL.from_str('https://sampleurl.com')
+    >>> if u is not None:
+    >>>     pending = await u.into_pending_item()
     """
 
     source: str
