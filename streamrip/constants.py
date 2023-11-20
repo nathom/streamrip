@@ -162,6 +162,7 @@ DEEZER_MAX_Q = 6
 DEEZER_FEATURED_KEYS = {"releases", "charts", "selection"}
 AVAILABLE_QUALITY_IDS = (0, 1, 2, 3, 4)
 DEEZER_FORMATS = {
+    "MP3_MISC", # personal media
     "AAC_64",
     "MP3_64",
     "MP3_128",

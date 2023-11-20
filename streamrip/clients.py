@@ -560,7 +560,7 @@ class DeezerClient(Client):
         format_no, format_str = format_info
 
         dl_info["size_to_quality"] = {
-            int(track_info.get(f"FILESIZE_{format}")): self._quality_id_from_filetype(
+            int(track_info.get(f"FILESIZE_{format}", 0)): self._quality_id_from_filetype(
                 format
             )
             for format in DEEZER_FORMATS
@@ -620,6 +620,7 @@ class DeezerClient(Client):
     @staticmethod
     def _quality_id_from_filetype(filetype: str) -> Optional[int]:
         return {
+            "MP3_MISC": 0,
             "MP3_128": 0,
             "MP3_256": 0,
             "MP3_320": 1,
