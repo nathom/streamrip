@@ -37,12 +37,13 @@ class NonStreamable(Exception):
     A versatile error that can have many causes.
     """
 
-    def __init__(self, message=None):
+    def __init__(self, message=None, fallback=None):
         """Create a NonStreamable exception.
 
         :param message:
         """
         self.message = message
+        self.fallback = fallback
         super().__init__(self.message)
 
     def print(self, item):

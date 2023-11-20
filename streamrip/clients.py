@@ -575,6 +575,13 @@ class DeezerClient(Client):
                 "Deezer HiFi is required for quality 2. Otherwise, the maximum "
                 "quality allowed is 1."
             )
+        except deezer.WrongGeolocation:
+            # Wrong permission error. Send the fallback info to retry as the
+            # function won't return
+            raise NonStreamable(
+                "You don't have the permission to stream this track. It may be "
+                "a location limitation", fallback=dl_info["fallback_id"]
+            )
 
         if url is None:
             url = self._get_encrypted_file_url(

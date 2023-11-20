@@ -298,6 +298,12 @@ class Track(Media):
         try:
             dl_info = self.client.get_file_url(url_id, self.quality)
         except Exception as e:
+            # Retry with fallback id if provided in the exception
+            if hasattr(e,"fallback") and e.fallback is not None:
+                self.id = e.fallback
+                dl_info = self.client.get_file_url(self.id, self.quality)
+                assert isinstance(dl_info, dict)
+                return self.download(quality, parent_folder, progress_bar, **kwargs)
             logger.debug(repr(e))
             raise NonStreamable(e)
 
