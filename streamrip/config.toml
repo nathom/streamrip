@@ -141,8 +141,9 @@ saved_max_width = -1
 # Sets the value of the 'ALBUM' field in the metadata to the playlist's name. 
 # This is useful if your music library software organizes tracks based on album name.
 set_playlist_to_album = true
-# Replaces the original track's tracknumber with it's position in the playlist
-new_playlist_tracknumbers = true
+# If part of a playlist, sets the `tracknumber` field in the metadata to the track's 
+# position in the playlist instead of its position in its album
+renumber_playlist_tracks = true
 # The following metadata tags won't be applied
 # See https://github.com/nathom/streamrip/wiki/Metadata-Tag-Names for more info
 exclude = []

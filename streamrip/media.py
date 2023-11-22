@@ -27,6 +27,6 @@ class Pending(ABC):
     """A request to download a `Media` whose metadata has not been fetched."""
 
     @abstractmethod
-    async def resolve(self) -> Media:
+    async def resolve(self) -> Media | None:
         """Fetch metadata and resolve into a downloadable `Media` object."""
         raise NotImplemented

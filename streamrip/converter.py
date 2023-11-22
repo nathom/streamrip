@@ -264,3 +264,17 @@ class AAC(Converter):
 
     def get_quality_arg(self, _: int) -> str:
         return ""
+
+
+def get(codec: str) -> type[Converter]:
+    CONV_CLASS = {
+        "FLAC": FLAC,
+        "ALAC": ALAC,
+        "MP3": LAME,
+        "OPUS": OPUS,
+        "OGG": Vorbis,
+        "VORBIS": Vorbis,
+        "AAC": AAC,
+        "M4A": AAC,
+    }
+    return CONV_CLASS[codec.upper()]

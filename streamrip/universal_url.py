@@ -54,6 +54,8 @@ class GenericURL(URL):
             return PendingSingle(item_id, client, config)
         elif media_type == "album":
             return PendingAlbum(item_id, client, config)
+        elif media_type == "playlist":
+            return PendingPlaylist(item_id, client, config)
         else:
             raise NotImplementedError
 

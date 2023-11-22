@@ -1,3 +1,4 @@
+import logging
 from dataclasses import dataclass
 
 from .album_metadata import AlbumMetadata
@@ -7,6 +8,8 @@ from .util import typed
 NON_STREAMABLE = "_non_streamable"
 ORIGINAL_DOWNLOAD = "_original_download"
 NOT_RESOLVED = "_not_resolved"
+
+logger = logging.getLogger("streamrip")
 
 
 def get_soundcloud_id(resp: dict) -> str:
@@ -44,11 +47,19 @@ class PlaylistMetadata:
 
     @classmethod
     def from_qobuz(cls, resp: dict):
-        name = typed(resp["title"], str)
-        tracks = [
-            TrackMetadata.from_qobuz(AlbumMetadata.from_qobuz(track["album"]), track)
-            for track in resp["tracks"]["items"]
-        ]
+        logger.debug(resp)
+        name = typed(resp["name"], str)
+        tracks = []
+
+        for i, track in enumerate(resp["tracks"]["items"]):
+            meta = TrackMetadata.from_qobuz(
+                AlbumMetadata.from_qobuz(track["album"]), track
+            )
+            if meta is None:
+                logger.error(f"Track {i+1} in playlist {name} not available for stream")
+                continue
+            tracks.append(meta)
+
         return cls(name, tracks)
 
     @classmethod

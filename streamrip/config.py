@@ -153,8 +153,9 @@ class MetadataConfig:
     # Sets the value of the 'ALBUM' field in the metadata to the playlist's name.
     # This is useful if your music library software organizes tracks based on album name.
     set_playlist_to_album: bool
-    # Replaces the original track's tracknumber with it's position in the playlist
-    new_playlist_tracknumbers: bool
+    # If part of a playlist, sets the `tracknumber` field in the metadata to the track's
+    # position in the playlist instead of its position in its album
+    renumber_playlist_tracks: bool
     # The following metadata tags won't be applied
     # See https://github.com/nathom/streamrip/wiki/Metadata-Tag-Names for more info
     exclude: list[str]
@@ -313,6 +314,20 @@ class ConfigData:
         update_toml_section_from_config(self.toml["cli"], self.cli)
         update_toml_section_from_config(self.toml["database"], self.database)
         update_toml_section_from_config(self.toml["conversion"], self.conversion)
+
+    def get_source(
+        self, source: str
+    ) -> QobuzConfig | DeezerConfig | SoundcloudConfig | TidalConfig:
+        d = {
+            "qobuz": self.qobuz,
+            "deezer": self.deezer,
+            "soundcloud": self.soundcloud,
+            "tidal": self.tidal,
+        }
+        res = d.get(source)
+        if res is None:
+            raise Exception(f"Invalid source {source}")
+        return res
 
 
 def update_toml_section_from_config(toml_section, config):

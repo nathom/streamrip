@@ -71,7 +71,7 @@ async def download_artwork(
         )
 
     _, embed_url, embed_cover_path = covers.get_size(config.embed_size)
-    if embed_cover_path is None and config.embed:
+    if embed_cover_path is None and embed:
         assert embed_url is not None
         embed_dir = os.path.join(folder, "__artwork")
         os.makedirs(embed_dir, exist_ok=True)
@@ -89,13 +89,13 @@ async def download_artwork(
     await asyncio.gather(*downloadables)
 
     # Update `covers` to reflect the current download state
-    if config.save_artwork:
+    if save_artwork:
         assert saved_cover_path is not None
         covers.set_largest_path(saved_cover_path)
         if config.saved_max_width > 0:
             downscale_image(saved_cover_path, config.saved_max_width)
 
-    if config.embed:
+    if embed:
         assert embed_cover_path is not None
         covers.set_path(config.embed_size, embed_cover_path)
         if config.embed_max_width > 0:

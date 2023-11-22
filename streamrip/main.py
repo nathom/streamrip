@@ -77,7 +77,6 @@ class Main:
 
     async def rip(self):
         await asyncio.gather(*[item.rip() for item in self.media])
-
         for client in self.clients.values():
             if hasattr(client, "session"):
                 await client.session.close()

@@ -92,7 +92,7 @@ def test_sample_config_data_fields(sample_config_data):
             saved_max_width=-1,
         ),
         metadata=MetadataConfig(
-            set_playlist_to_album=True, new_playlist_tracknumbers=True, exclude=[]
+            set_playlist_to_album=True, renumber_playlist_tracks=True, exclude=[]
         ),
         qobuz_filters=QobuzDiscographyFilterConfig(
             extras=False,
@@ -102,7 +102,6 @@ def test_sample_config_data_fields(sample_config_data):
             non_studio_albums=False,
             non_remaster=False,
         ),
-        theme=ThemeConfig(progress_bar="dainty"),
         database=DatabaseConfig(
             downloads_enabled=True,
             downloads_path="downloadspath",
@@ -130,7 +129,6 @@ def test_sample_config_data_fields(sample_config_data):
     assert sample_config_data.filepaths == test_config.filepaths
     assert sample_config_data.metadata == test_config.metadata
     assert sample_config_data.qobuz_filters == test_config.qobuz_filters
-    assert sample_config_data.theme == test_config.theme
     assert sample_config_data.database == test_config.database
     assert sample_config_data.conversion == test_config.conversion
 

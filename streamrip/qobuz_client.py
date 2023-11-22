@@ -167,9 +167,8 @@ class QobuzClient(Client):
             assert status == 200
             yield resp
 
-    async def get_downloadable(self, item: dict, quality: int) -> Downloadable:
+    async def get_downloadable(self, item_id: str, quality: int) -> Downloadable:
         assert self.secret is not None and self.logged_in and 1 <= quality <= 4
-        item_id = item["id"]
         status, resp_json = await self._request_file_url(item_id, quality, self.secret)
         assert status == 200
         stream_url = resp_json.get("url")

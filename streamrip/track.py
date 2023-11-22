@@ -1,4 +1,5 @@
 import asyncio
+import logging
 import os
 from dataclasses import dataclass
 
@@ -7,12 +8,15 @@ from .artwork import download_artwork
 from .client import Client
 from .config import Config
 from .downloadable import Downloadable
+from .exceptions import NonStreamable
 from .filepath_utils import clean_filename
 from .media import Media, Pending
 from .metadata import AlbumMetadata, Covers, TrackMetadata
 from .progress import get_progress_callback
 from .semaphore import global_download_semaphore
 from .tagger import tag_file
+
+logger = logging.getLogger("streamrip")
 
 
 @dataclass(slots=True)
@@ -33,12 +37,12 @@ class Track(Media):
     async def download(self):
         # TODO: progress bar description
         async with global_download_semaphore(self.config.session.downloads):
-            callback = get_progress_callback(
+            with get_progress_callback(
                 self.config.session.cli.progress_bars,
                 await self.downloadable.size(),
                 f"Track {self.meta.tracknumber}",
-            )
-            await self.downloadable.download(self.download_path, callback)
+            ) as callback:
+                await self.downloadable.download(self.download_path, callback)
 
     async def postprocess(self):
         await self._tag()
@@ -52,19 +56,9 @@ class Track(Media):
         await tag_file(self.download_path, self.meta, self.cover_path)
 
     async def _convert(self):
-        CONV_CLASS: dict[str, type[converter.Converter]] = {
-            "FLAC": converter.FLAC,
-            "ALAC": converter.ALAC,
-            "MP3": converter.LAME,
-            "OPUS": converter.OPUS,
-            "OGG": converter.Vorbis,
-            "VORBIS": converter.Vorbis,
-            "AAC": converter.AAC,
-            "M4A": converter.AAC,
-        }
         c = self.config.session.conversion
-        codec = c.codec
-        engine = CONV_CLASS[codec.upper()](
+        engine_class = converter.get(c.codec)
+        engine = engine_class(
             filename=self.download_path,
             sampling_rate=c.sampling_rate,
             bit_depth=c.bit_depth,
@@ -97,9 +91,15 @@ class PendingTrack(Pending):
     # cover_path is None <==> Artwork for this track doesn't exist in API
     cover_path: str | None
 
-    async def resolve(self) -> Track:
+    async def resolve(self) -> Track | None:
         resp = await self.client.get_metadata(self.id, "track")
         meta = TrackMetadata.from_resp(self.album, self.client.source, resp)
+        if meta is None:
+            logger.error(
+                f"Track {self.id} not available for stream on {self.client.source}"
+            )
+            return None
+
         quality = getattr(self.config.session, self.client.source).quality
         assert isinstance(quality, int)
         downloadable = await self.client.get_downloadable(self.id, quality)
@@ -118,12 +118,16 @@ class PendingSingle(Pending):
     client: Client
     config: Config
 
-    async def resolve(self) -> Track:
+    async def resolve(self) -> Track | None:
         resp = await self.client.get_metadata(self.id, "track")
         # Patch for soundcloud
         # self.id = resp["id"]
-        album = AlbumMetadata.from_resp(resp, self.client.source)
+        album = AlbumMetadata.from_track_resp(resp, self.client.source)
         meta = TrackMetadata.from_resp(album, self.client.source, resp)
+
+        if meta is None:
+            logger.error(f"Cannot stream track ({self.id}) on {self.client.source}")
+            return None
 
         quality = getattr(self.config.session, self.client.source).quality
         assert isinstance(quality, int)

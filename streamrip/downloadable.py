@@ -42,6 +42,7 @@ class Downloadable(ABC):
     async def size(self) -> int:
         if self._size is not None:
             return self._size
+
         async with self.session.head(self.url) as response:
             response.raise_for_status()
             content_length = response.headers.get("Content-Length", 0)
@@ -231,11 +232,12 @@ class SoundcloudDownloadable(Downloadable):
         return tmp
 
     async def size(self) -> int:
-        async with self.session.get(self.url) as resp:
-            content = await resp.text("utf-8")
+        if self.file_type == "mp3":
+            async with self.session.get(self.url) as resp:
+                content = await resp.text("utf-8")
 
-        parsed_m3u = m3u8.loads(content)
-        self._size = len(parsed_m3u.segments)
+            parsed_m3u = m3u8.loads(content)
+            self._size = len(parsed_m3u.segments)
         return await super().size()
 
 

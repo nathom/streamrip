@@ -5,6 +5,7 @@ import re
 from dataclasses import dataclass
 from typing import Optional
 
+from ..exceptions import NonStreamable
 from .covers import Covers
 from .util import get_quality_id, safe_get, typed
 
@@ -114,8 +115,11 @@ class AlbumMetadata:
         # Non-embedded information
         # version = resp.get("version")
         cover_urls = Covers.from_qobuz(resp)
-        streamable = typed(resp.get("streamable", False), bool)
-        assert streamable
+        # streamable = typed(resp.get("streamable", False), bool)
+        #
+        # if not streamable:
+        #     raise NonStreamable(resp)
+
         bit_depth = typed(resp.get("maximum_bit_depth"), int | None)
         sampling_rate = typed(resp.get("maximum_sampling_rate"), int | float | None)
         quality = get_quality_id(bit_depth, sampling_rate)
@@ -166,7 +170,6 @@ class AlbumMetadata:
     @classmethod
     def from_soundcloud(cls, resp) -> AlbumMetadata:
         track = resp
-        logger.debug(track)
         track_id = track["id"]
         bit_depth, sampling_rate = None, None
         explicit = typed(
@@ -227,7 +230,7 @@ class AlbumMetadata:
         raise NotImplementedError
 
     @classmethod
-    def from_resp(cls, resp: dict, source: str) -> AlbumMetadata:
+    def from_track_resp(cls, resp: dict, source: str) -> AlbumMetadata:
         if source == "qobuz":
             return cls.from_qobuz(resp["album"])
         if source == "tidal":
@@ -236,4 +239,16 @@ class AlbumMetadata:
             return cls.from_soundcloud(resp)
         if source == "deezer":
             return cls.from_deezer(resp["album"])
+        raise Exception("Invalid source")
+
+    @classmethod
+    def from_album_resp(cls, resp: dict, source: str) -> AlbumMetadata:
+        if source == "qobuz":
+            return cls.from_qobuz(resp)
+        if source == "tidal":
+            return cls.from_tidal(resp)
+        if source == "soundcloud":
+            return cls.from_soundcloud(resp)
+        if source == "deezer":
+            return cls.from_deezer(resp)
         raise Exception("Invalid source")

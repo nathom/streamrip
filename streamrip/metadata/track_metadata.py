@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Optional
 
+from ..exceptions import NonStreamable
 from .album_metadata import AlbumMetadata
 from .util import safe_get, typed
 
@@ -30,8 +31,13 @@ class TrackMetadata:
     composer: str | None
 
     @classmethod
-    def from_qobuz(cls, album: AlbumMetadata, resp: dict) -> TrackMetadata:
+    def from_qobuz(cls, album: AlbumMetadata, resp: dict) -> TrackMetadata | None:
         title = typed(resp["title"].strip(), str)
+        streamable = typed(resp.get("streamable", False), bool)
+
+        if not streamable:
+            return None
+
         version = typed(resp.get("version"), str | None)
         work = typed(resp.get("work"), str | None)
         if version is not None and version not in title:
@@ -114,7 +120,7 @@ class TrackMetadata:
         raise NotImplemented
 
     @classmethod
-    def from_resp(cls, album: AlbumMetadata, source, resp) -> TrackMetadata:
+    def from_resp(cls, album: AlbumMetadata, source, resp) -> TrackMetadata | None:
         if source == "qobuz":
             return cls.from_qobuz(album, resp)
         if source == "tidal":

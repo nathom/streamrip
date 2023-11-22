@@ -7,7 +7,7 @@ from streamrip.config import *
 @pytest.fixture
 def toml():
     with open("streamrip/config.toml") as f:
-        t = tomlkit.parse(f.read())
+        t = tomlkit.parse(f.read())  # type: ignore
     return t
 
 

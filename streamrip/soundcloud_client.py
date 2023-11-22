@@ -57,7 +57,9 @@ class SoundcloudClient(Client):
             API response.
         """
         if media_type == "track":
-            return await self._get_track(item_id)
+            # parse custom id that we injected
+            _item_id, _ = item_id.split("|")
+            return await self._get_track(_item_id)
         elif media_type == "playlist":
             return await self._get_playlist(item_id)
         else:
@@ -143,8 +145,10 @@ class SoundcloudClient(Client):
         # if download_url == '_non_streamable' then we raise an exception
 
         infos: list[str] = item_info.split("|")
+        logger.debug(f"{infos=}")
         assert len(infos) == 2, infos
         item_id, download_info = infos
+        assert re.match(r"\d+", item_id) is not None
 
         if download_info == self.NON_STREAMABLE:
             raise NonStreamable(item_info)

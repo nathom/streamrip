@@ -3,10 +3,11 @@ import logging
 import os
 from dataclasses import dataclass
 
+from . import progress
 from .artwork import download_artwork
 from .client import Client
 from .config import Config
-from .console import console
+from .exceptions import NonStreamable
 from .media import Media, Pending
 from .metadata import AlbumMetadata
 from .metadata.util import get_album_track_ids
@@ -24,20 +25,19 @@ class Album(Media):
     folder: str
 
     async def preprocess(self):
-        if self.config.session.cli.text_output:
-            console.print(
-                f"Downloading [cyan]{self.meta.album}[/cyan] by [cyan]{self.meta.albumartist}[/cyan]"
-            )
+        progress.add_title(self.meta.album)
 
     async def download(self):
-        async def _resolve_and_download(pending):
+        async def _resolve_and_download(pending: Pending):
             track = await pending.resolve()
+            if track is None:
+                return
             await track.rip()
 
         await asyncio.gather(*[_resolve_and_download(p) for p in self.tracks])
 
     async def postprocess(self):
-        pass
+        progress.remove_title(self.meta.album)
 
 
 @dataclass(slots=True)
@@ -46,9 +46,17 @@ class PendingAlbum(Pending):
     client: Client
     config: Config
 
-    async def resolve(self):
+    async def resolve(self) -> Album | None:
         resp = await self.client.get_metadata(self.id, "album")
-        meta = AlbumMetadata.from_resp(resp, self.client.source)
+
+        try:
+            meta = AlbumMetadata.from_album_resp(resp, self.client.source)
+        except NonStreamable:
+            logger.error(
+                f"Album {self.id} not available to stream on {self.client.source}"
+            )
+            return None
+
         tracklist = get_album_track_ids(self.client.source, resp)
         folder = self.config.session.downloads.folder
         album_folder = self._album_folder(folder, meta)
