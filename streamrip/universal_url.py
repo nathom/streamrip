@@ -4,8 +4,10 @@ import re
 from abc import ABC, abstractmethod
 
 from .album import PendingAlbum
+from .artist import PendingArtist
 from .client import Client
 from .config import Config
+from .label import PendingLabel
 from .media import Pending
 from .playlist import PendingPlaylist
 from .soundcloud_client import SoundcloudClient
@@ -56,6 +58,10 @@ class GenericURL(URL):
             return PendingAlbum(item_id, client, config)
         elif media_type == "playlist":
             return PendingPlaylist(item_id, client, config)
+        elif media_type == "artist":
+            return PendingArtist(item_id, client, config)
+        elif media_type == "label":
+            return PendingLabel(item_id, client, config)
         else:
             raise NotImplementedError
 
@@ -73,8 +79,7 @@ class QobuzInterpreterURL(URL):
     async def into_pending(self, client: Client, config: Config) -> Pending:
         url = self.match.group(0)
         artist_id = await self.extract_interpreter_url(url, client)
-        raise NotImplementedError
-        # return PendingArtist()
+        return PendingArtist(artist_id, client, config)
 
     @staticmethod
     async def extract_interpreter_url(url: str, client: Client) -> str:
@@ -147,66 +152,3 @@ def parse_url(url: str) -> URL | None:
         # TODO: the rest of the url types
     ]
     return next((u for u in parsed_urls if u is not None), None)
-
-
-# TODO: recycle this class
-class UniversalURL:
-    """
-    >>> u = UniversalURL.from_str('https://sampleurl.com')
-    >>> if u is not None:
-    >>>     pending = await u.into_pending_item()
-    """
-
-    source: str
-    media_type: str | None
-    match: re.Match | None
-
-    def __init__(self, url: str):
-        url = url.strip()
-        qobuz_interpreter_url = QOBUZ_INTERPRETER_URL_REGEX.match(url)
-        if qobuz_interpreter_url is not None:
-            self.source = "qobuz"
-            self.media_type = "artist"
-            self.url_type = "interpreter"
-            self.match = qobuz_interpreter_url
-            return
-
-        deezer_dynamic_url = DEEZER_DYNAMIC_LINK_REGEX.match(url)
-        if deezer_dynamic_url is not None:
-            self.match = deezer_dynamic_url
-            self.source = "deezer"
-            self.media_type = None
-            self.url_type = "deezer_dynamic"
-            return
-
-        soundcloud_url = SOUNDCLOUD_URL_REGEX.match(url)
-        if soundcloud_url is not None:
-            self.match = soundcloud_url
-            self.source = "soundcloud"
-            self.media_type = None
-            self.url_type = "soundcloud"
-            return
-
-        generic_url = URL_REGEX.match(url)
-        if generic_url is not None:
-            self.match = generic_url
-            self.source = self.match.group(1)
-            self.media_type = self.match.group(2)
-            self.url_type = "generic"
-
-    async def into_pending_item(self, client: Client, config: Config) -> Pending | None:
-        if self.url_type == "generic":
-            assert self.match is not None
-            item_id = self.match.group(3)
-            assert isinstance(item_id, str)
-            assert client.source == self.source
-
-            if self.media_type == "track":
-                return PendingSingle(item_id, client, config)
-            elif self.media_type == "album":
-                return PendingAlbum(item_id, client, config)
-            else:
-                raise NotImplementedError
-
-        else:
-            raise NotImplementedError

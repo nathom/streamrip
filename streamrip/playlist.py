@@ -27,10 +27,12 @@ class PendingPlaylistTrack(Pending):
     async def resolve(self) -> Track | None:
         resp = await self.client.get_metadata(self.id, "track")
 
-        album = AlbumMetadata.from_resp(resp, self.client.source)
+        album = AlbumMetadata.from_track_resp(resp, self.client.source)
         meta = TrackMetadata.from_resp(album, self.client.source, resp)
         if meta is None:
-            logger.error(f"Cannot stream track ({self.id}) on {self.client.source}")
+            logger.error(
+                f"Track ({self.id}) not available for stream on {self.client.source}"
+            )
             return None
 
         c = self.config.session.metadata

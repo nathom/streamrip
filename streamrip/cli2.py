@@ -45,20 +45,34 @@ def coro(f):
 )
 @click.version_option(version="2.0")
 @click.option(
-    "-c", "--config-path", default=CONFIG_PATH, help="Path to the configuration file"
+    "--config-path", default=CONFIG_PATH, help="Path to the configuration file"
+)
+@click.option("-f", "--folder", help="The folder to download items into.")
+@click.option(
+    "-ndb",
+    "--no-db",
+    help="Download items even if they have been logged in the database",
+    default=False,
+    is_flag=True,
+)
+@click.option("-q", "--quality", help="The maximum quality allowed to download")
+@click.option(
+    "-c",
+    "--convert",
+    help="Convert the downloaded files to an audio codec (ALAC, FLAC, MP3, AAC, or OGG)",
 )
 @click.option(
     "-v", "--verbose", help="Enable verbose output (debug mode)", is_flag=True
 )
 @click.pass_context
-def rip(ctx, config_path, verbose):
+def rip(ctx, config_path, folder, no_db, quality, convert, verbose):
     """
     Streamrip: the all in one music downloader.
     """
+    print(ctx, config_path, folder, no_db, quality, convert, verbose)
     global logger
-    FORMAT = "%(message)s"
     logging.basicConfig(
-        level="WARNING", format=FORMAT, datefmt="[%X]", handlers=[RichHandler()]
+        level="WARNING", format="%(message)s", datefmt="[%X]", handlers=[RichHandler()]
     )
     logger = logging.getLogger("streamrip")
     if verbose:
@@ -74,14 +88,29 @@ def rip(ctx, config_path, verbose):
         install(console=console, suppress=[click, asyncio], max_frames=1)
         logger.setLevel(logging.WARNING)
 
-    ctx.ensure_object(dict)
     if not os.path.isfile(config_path):
         echo_i(f"No file found at {config_path}, creating default config.")
         shutil.copy(BLANK_CONFIG_PATH, config_path)
         set_user_defaults(config_path)
 
-    ctx.obj["config_path"] = config_path
-    ctx.obj["verbose"] = verbose
+    # pass to subcommands
+    ctx.ensure_object(dict)
+
+    c = Config(config_path)
+    # set session config values to command line args
+    if folder is not None:
+        c.session.downloads.folder = folder
+    c.session.database.downloads_enabled = not no_db
+    c.session.qobuz.quality = quality
+    c.session.tidal.quality = quality
+    c.session.deezer.quality = quality
+    c.session.soundcloud.quality = quality
+    if convert is not None:
+        c.session.conversion.enabled = True
+        assert convert.upper() in ("ALAC", "FLAC", "OGG", "MP3", "AAC")
+        c.session.conversion.codec = convert.upper()
+
+    ctx.obj["config"] = c
 
 
 @rip.command()
@@ -95,8 +124,7 @@ async def url(ctx, urls):
 
         rip url TODO: find url
     """
-    config_path = ctx.obj["config_path"]
-    with Config(config_path) as cfg:
+    with ctx.obj["config"] as cfg:
         main = Main(cfg)
         for u in urls:
             await main.add(u)
@@ -115,8 +143,7 @@ async def file(ctx, path):
 
         rip file urls.txt
     """
-    config_path = ctx.obj["config_path"]
-    with Config(config_path) as cfg:
+    with ctx.obj["config"] as cfg:
         main = Main(cfg)
         with open(path) as f:
             for url in f:

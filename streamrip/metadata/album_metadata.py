@@ -5,7 +5,6 @@ import re
 from dataclasses import dataclass
 from typing import Optional
 
-from ..exceptions import NonStreamable
 from .covers import Covers
 from .util import get_quality_id, safe_get, typed
 

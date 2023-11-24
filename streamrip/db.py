@@ -3,39 +3,52 @@
 import logging
 import os
 import sqlite3
+from abc import ABC, abstractmethod
 
 logger = logging.getLogger("streamrip")
 
+# apologies to anyone reading this file
 
-class Database:
+
+class Database(ABC):
+    @abstractmethod
+    def create(self):
+        pass
+
+    @abstractmethod
+    def contains(self, **items) -> bool:
+        pass
+
+    @abstractmethod
+    def add(self, kvs):
+        pass
+
+    @abstractmethod
+    def remove(self, kvs):
+        pass
+
+
+class DatabaseBase(Database):
     """A wrapper for an sqlite database."""
 
     structure: dict
     name: str
 
-    def __init__(self, path: str, dummy: bool = False):
+    def __init__(self, path: str):
         """Create a Database instance.
 
         :param path: Path to the database file.
-        :param dummy: Make the database empty.
         """
-        assert self.structure != []
+        assert self.structure != {}
         assert self.name
 
         self.path = path
-        self.is_dummy = dummy
-
-        if self.is_dummy:
-            return
 
         if not os.path.exists(self.path):
             self.create()
 
     def create(self):
         """Create a database."""
-        if self.is_dummy:
-            return
-
         with sqlite3.connect(self.path) as conn:
             params = ", ".join(
                 f"{key} {' '.join(map(str.upper, props))} NOT NULL"
@@ -57,8 +70,6 @@ class Database:
         :param items: a dict of column-name + expected value
         :rtype: bool
         """
-        if self.is_dummy:
-            return False
 
         allowed_keys = set(self.structure.keys())
         assert all(
@@ -75,43 +86,12 @@ class Database:
 
             return bool(conn.execute(command, tuple(items.values())).fetchone()[0])
 
-    def __contains__(self, keys: str | dict) -> bool:
-        """Check whether a key-value pair exists in the database.
-
-        :param keys: Either a dict with the structure {key: value_to_search_for, ...},
-        or if there is only one key in the table, value_to_search_for can be
-        passed in by itself.
-        :type keys: Union[str, dict]
-        :rtype: bool
-        """
-        if isinstance(keys, dict):
-            return self.contains(**keys)
-
-        if isinstance(keys, str) and len(self.structure) == 1:
-            only_key = tuple(self.structure.keys())[0]
-            query = {only_key: keys}
-            logger.debug("Searching for %s in database", query)
-            return self.contains(**query)
-
-        raise TypeError(keys)
-
-    def add(self, items: str | tuple[str]):
+    def add(self, items: tuple[str]):
         """Add a row to the table.
 
         :param items: Column-name + value. Values must be provided for all cols.
         :type items: Tuple[str]
         """
-        if self.is_dummy:
-            return
-
-        if isinstance(items, str):
-            if len(self.structure) == 1:
-                items = (items,)
-            else:
-                raise TypeError(
-                    "Only tables with 1 column can have string inputs. Use a list "
-                    "where len(list) == len(structure)."
-                )
 
         assert len(items) == len(self.structure)
 
@@ -136,9 +116,6 @@ class Database:
 
         :param items:
         """
-        # not in use currently
-        if self.is_dummy:
-            return
 
         conditions = " AND ".join(f"{key}=?" for key in items.keys())
         command = f"DELETE FROM {self.name} WHERE {conditions}"
@@ -149,9 +126,6 @@ class Database:
 
     def __iter__(self):
         """Iterate through the rows of the table."""
-        if self.is_dummy:
-            return ()
-
         with sqlite3.connect(self.path) as conn:
             return conn.execute(f"SELECT * FROM {self.name}")
 
@@ -163,7 +137,21 @@ class Database:
             pass
 
 
-class Downloads(Database):
+class Dummy(Database):
+    def create(self):
+        pass
+
+    def contains(self):
+        return False
+
+    def add(self):
+        pass
+
+    def remove(self):
+        pass
+
+
+class Downloads(DatabaseBase):
     """A table that stores the downloaded IDs."""
 
     name = "downloads"
@@ -172,7 +160,7 @@ class Downloads(Database):
     }
 
 
-class FailedDownloads(Database):
+class FailedDownloads(DatabaseBase):
     """A table that stores information about failed downloads."""
 
     name = "failed_downloads"

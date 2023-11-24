@@ -4,6 +4,7 @@ from typing import Callable
 from rich.console import Group
 from rich.live import Live
 from rich.progress import Progress
+from rich.rule import Rule
 from rich.text import Text
 
 from .console import console
@@ -38,18 +39,20 @@ class ProgressManager:
             self.live.stop()
 
     def add_title(self, title: str):
-        self.task_titles.append(title)
+        self.task_titles.append(title.strip())
 
     def remove_title(self, title: str):
-        self.task_titles.remove(title)
+        self.task_titles.remove(title.strip())
 
-    def get_title_text(self) -> Text:
-        t = self.prefix + Text(", ".join(self.task_titles))
-        t.overflow = "ellipsis"
-        return t
+    def get_title_text(self) -> Rule:
+        titles = ", ".join(self.task_titles[:3])
+        if len(self.task_titles) > 3:
+            titles += "..."
+        t = self.prefix + Text(titles)
+        return Rule(t)
 
 
-@dataclass
+@dataclass(slots=True)
 class Handle:
     update: Callable[[int], None]
     done: Callable[[], None]
@@ -66,18 +69,22 @@ _p = ProgressManager()
 
 
 def get_progress_callback(enabled: bool, total: int, desc: str) -> Handle:
+    global _p
     if not enabled:
         return Handle(lambda _: None, lambda: None)
     return _p.get_callback(total, desc)
 
 
 def add_title(title: str):
+    global _p
     _p.add_title(title)
 
 
 def remove_title(title: str):
+    global _p
     _p.remove_title(title)
 
 
 def clear_progress():
+    global _p
     _p.cleanup()
