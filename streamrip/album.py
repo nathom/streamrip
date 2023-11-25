@@ -7,6 +7,7 @@ from . import progress
 from .artwork import download_artwork
 from .client import Client
 from .config import Config
+from .db import Database
 from .exceptions import NonStreamable
 from .media import Media, Pending
 from .metadata import AlbumMetadata
@@ -23,6 +24,7 @@ class Album(Media):
     config: Config
     # folder where the tracks will be downloaded
     folder: str
+    db: Database
 
     async def preprocess(self):
         progress.add_title(self.meta.album)
@@ -45,6 +47,7 @@ class PendingAlbum(Pending):
     id: str
     client: Client
     config: Config
+    db: Database
 
     async def resolve(self) -> Album | None:
         resp = await self.client.get_metadata(self.id, "album")
@@ -75,12 +78,13 @@ class PendingAlbum(Pending):
                 client=self.client,
                 config=self.config,
                 folder=album_folder,
+                db=self.db,
                 cover_path=embed_cover,
             )
             for id in tracklist
         ]
         logger.debug("Pending tracks: %s", pending_tracks)
-        return Album(meta, pending_tracks, self.config, album_folder)
+        return Album(meta, pending_tracks, self.config, album_folder, self.db)
 
     def _album_folder(self, parent: str, meta: AlbumMetadata) -> str:
         formatter = self.config.session.filepaths.folder_format

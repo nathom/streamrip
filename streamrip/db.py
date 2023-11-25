@@ -4,13 +4,12 @@ import logging
 import os
 import sqlite3
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 
 logger = logging.getLogger("streamrip")
 
-# apologies to anyone reading this file
 
-
-class Database(ABC):
+class DatabaseInterface(ABC):
     @abstractmethod
     def create(self):
         pass
@@ -27,8 +26,31 @@ class Database(ABC):
     def remove(self, kvs):
         pass
 
+    @abstractmethod
+    def all(self) -> list:
+        pass
 
-class DatabaseBase(Database):
+
+class Dummy(DatabaseInterface):
+    """This exists as a mock to use in case databases are disabled."""
+
+    def create(self):
+        pass
+
+    def contains(self, **_):
+        return False
+
+    def add(self, *_):
+        pass
+
+    def remove(self, *_):
+        pass
+
+    def all(self):
+        return []
+
+
+class DatabaseBase(DatabaseInterface):
     """A wrapper for an sqlite database."""
 
     structure: dict
@@ -41,6 +63,7 @@ class DatabaseBase(Database):
         """
         assert self.structure != {}
         assert self.name
+        assert path
 
         self.path = path
 
@@ -124,10 +147,10 @@ class DatabaseBase(Database):
             logger.debug(command)
             conn.execute(command, tuple(items.values()))
 
-    def __iter__(self):
+    def all(self):
         """Iterate through the rows of the table."""
         with sqlite3.connect(self.path) as conn:
-            return conn.execute(f"SELECT * FROM {self.name}")
+            return list(conn.execute(f"SELECT * FROM {self.name}"))
 
     def reset(self):
         """Delete the database file."""
@@ -135,20 +158,6 @@ class DatabaseBase(Database):
             os.remove(self.path)
         except FileNotFoundError:
             pass
-
-
-class Dummy(Database):
-    def create(self):
-        pass
-
-    def contains(self):
-        return False
-
-    def add(self):
-        pass
-
-    def remove(self):
-        pass
 
 
 class Downloads(DatabaseBase):
@@ -160,7 +169,7 @@ class Downloads(DatabaseBase):
     }
 
 
-class FailedDownloads(DatabaseBase):
+class Failed(DatabaseBase):
     """A table that stores information about failed downloads."""
 
     name = "failed_downloads"
@@ -169,3 +178,21 @@ class FailedDownloads(DatabaseBase):
         "media_type": ["text"],
         "id": ["text", "unique"],
     }
+
+
+@dataclass(slots=True)
+class Database:
+    downloads: DatabaseInterface
+    failed: DatabaseInterface
+
+    def downloaded(self, item_id: str) -> bool:
+        return self.downloads.contains(id=item_id)
+
+    def set_downloaded(self, item_id: str):
+        self.downloads.add((item_id,))
+
+    def get_failed_downloads(self) -> list[tuple[str, str, str]]:
+        return self.failed.all()
+
+    def set_failed(self, source: str, media_type: str, id: str):
+        self.failed.add((source, media_type, id))

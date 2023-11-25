@@ -1,6 +1,7 @@
 import asyncio
 import logging
 
+from . import db
 from .artwork import remove_artwork_tempdirs
 from .client import Client
 from .config import Config
@@ -26,9 +27,8 @@ class Main:
     """
 
     def __init__(self, config: Config):
-        # Pipeline:
-        # input URL -> (URL) -> (Pending) -> (Media) -> (Downloadable)
-        # -> downloaded audio file
+        # Data pipeline:
+        # input URL -> (URL) -> (Pending) -> (Media) -> (Downloadable) -> audio file
         self.pending: list[Pending] = []
         self.media: list[Media] = []
         self.config = config
@@ -37,20 +37,55 @@ class Main:
             # "tidal": TidalClient(config),
             # "deezer": DeezerClient(config),
             "soundcloud": SoundcloudClient(config),
-            # "deezloader": DeezloaderClient(config),
         }
 
+        self.database: db.Database
+
+        c = self.config.session.database
+        if c.downloads_enabled:
+            downloads_db = db.Downloads(c.downloads_path)
+        else:
+            downloads_db = db.Dummy()
+
+        if c.failed_downloads_enabled:
+            failed_downloads_db = db.Failed(c.failed_downloads_path)
+        else:
+            failed_downloads_db = db.Dummy()
+
+        self.database = db.Database(downloads_db, failed_downloads_db)
+
     async def add(self, url: str):
-        """Add url as a pending item. Do not `asyncio.gather` calls to this!"""
+        """Add url as a pending item.
+
+        Do not `asyncio.gather` calls to this! Use `add_all` for concurrency.
+        """
         parsed = parse_url(url)
         if parsed is None:
             raise Exception(f"Unable to parse url {url}")
 
         client = await self.get_logged_in_client(parsed.source)
-        self.pending.append(await parsed.into_pending(client, self.config))
+        self.pending.append(
+            await parsed.into_pending(client, self.config, self.database)
+        )
         logger.debug("Added url=%s", url)
 
+    async def add_all(self, urls: list[str]):
+        parsed = [parse_url(url) for url in urls]
+        url_w_client = [
+            (p, await self.get_logged_in_client(p.source))
+            for p in parsed
+            if p is not None
+        ]
+        pendings = await asyncio.gather(
+            *[
+                url.into_pending(client, self.config, self.database)
+                for url, client in url_w_client
+            ]
+        )
+        self.pending.extend(pendings)
+
     async def get_logged_in_client(self, source: str):
+        """Return a functioning client instance for `source`."""
         client = self.clients[source]
         if not client.logged_in:
             prompter = get_prompter(client, self.config)
@@ -81,5 +116,9 @@ class Main:
             if hasattr(client, "session"):
                 await client.session.close()
 
+        # close global progress bar manager
         clear_progress()
+        # We remove artwork tempdirs here because multiple singles
+        # may be able to share downloaded artwork in the same `rip` session
+        # We don't know that a cover will not be used again until end of execution
         remove_artwork_tempdirs()

@@ -7,6 +7,7 @@ from . import progress
 from .artwork import download_artwork
 from .client import Client
 from .config import Config
+from .db import Database
 from .filepath_utils import clean_filename
 from .media import Media, Pending
 from .metadata import AlbumMetadata, Covers, PlaylistMetadata, TrackMetadata
@@ -23,8 +24,12 @@ class PendingPlaylistTrack(Pending):
     folder: str
     playlist_name: str
     position: int
+    db: Database
 
     async def resolve(self) -> Track | None:
+        if self.db.downloaded(self.id):
+            logger.info(f"Track ({self.id}) already logged in database. Skipping.")
+            return None
         resp = await self.client.get_metadata(self.id, "track")
 
         album = AlbumMetadata.from_track_resp(resp, self.client.source)
@@ -33,6 +38,7 @@ class PendingPlaylistTrack(Pending):
             logger.error(
                 f"Track ({self.id}) not available for stream on {self.client.source}"
             )
+            self.db.set_failed(self.client.source, "track", self.id)
             return None
 
         c = self.config.session.metadata
@@ -46,7 +52,9 @@ class PendingPlaylistTrack(Pending):
             self._download_cover(album.covers, self.folder),
             self.client.get_downloadable(self.id, quality),
         )
-        return Track(meta, downloadable, self.config, self.folder, embedded_cover_path)
+        return Track(
+            meta, downloadable, self.config, self.folder, embedded_cover_path, self.db
+        )
 
     async def _download_cover(self, covers: Covers, folder: str) -> str | None:
         embed_path, _ = await download_artwork(
@@ -90,6 +98,7 @@ class PendingPlaylist(Pending):
     id: str
     client: Client
     config: Config
+    db: Database
 
     async def resolve(self) -> Playlist | None:
         resp = await self.client.get_metadata(self.id, "playlist")
@@ -99,7 +108,7 @@ class PendingPlaylist(Pending):
         folder = os.path.join(parent, clean_filename(name))
         tracks = [
             PendingPlaylistTrack(
-                id, self.client, self.config, folder, name, position + 1
+                id, self.client, self.config, folder, name, position + 1, self.db
             )
             for position, id in enumerate(meta.ids())
         ]

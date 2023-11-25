@@ -14,9 +14,11 @@ class ProgressManager:
     def __init__(self):
         self.started = False
         self.progress = Progress(console=console)
-        self.prefix = Text.assemble(("Downloading ", "bold cyan"), overflow="ellipsis")
-        self.live = Live(Group(self.prefix, self.progress), refresh_per_second=10)
         self.task_titles = []
+        self.prefix = Text.assemble(("Downloading ", "bold cyan"), overflow="ellipsis")
+        self.live = Live(
+            Group(self.get_title_text(), self.progress), refresh_per_second=10
+        )
 
     def get_callback(self, total: int, desc: str):
         if not self.started:

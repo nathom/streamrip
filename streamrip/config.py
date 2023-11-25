@@ -2,13 +2,13 @@
 
 import copy
 import logging
-import os
 from dataclasses import dataclass, fields
 
 from tomlkit.api import dumps, parse
 from tomlkit.toml_document import TOMLDocument
 
 from .user_paths import (
+    DEFAULT_CONFIG_PATH,
     DEFAULT_DOWNLOADS_DB_PATH,
     DEFAULT_DOWNLOADS_FOLDER,
     DEFAULT_FAILED_DOWNLOADS_DB_PATH,
@@ -18,8 +18,6 @@ from .user_paths import (
 logger = logging.getLogger("streamrip")
 
 CURRENT_CONFIG_VERSION = "2.0"
-
-DEFAULT_CONFIG_PATH = os.path.join(os.path.dirname(__file__), "config.toml")
 
 
 @dataclass(slots=True)

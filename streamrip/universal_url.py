@@ -7,6 +7,7 @@ from .album import PendingAlbum
 from .artist import PendingArtist
 from .client import Client
 from .config import Config
+from .db import Database
 from .label import PendingLabel
 from .media import Pending
 from .playlist import PendingPlaylist
@@ -23,7 +24,6 @@ from .validation_regexps import (
 
 
 class URL(ABC):
-    match: re.Match
     source: str
 
     def __init__(self, match: re.Match, source: str):
@@ -35,7 +35,9 @@ class URL(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    async def into_pending(self, client: Client, config: Config) -> Pending:
+    async def into_pending(
+        self, client: Client, config: Config, db: Database
+    ) -> Pending:
         raise NotImplementedError
 
 
@@ -48,20 +50,22 @@ class GenericURL(URL):
         source = generic_url.group(1)
         return cls(generic_url, source)
 
-    async def into_pending(self, client: Client, config: Config) -> Pending:
+    async def into_pending(
+        self, client: Client, config: Config, db: Database
+    ) -> Pending:
         source, media_type, item_id = self.match.groups()
         assert client.source == source
 
         if media_type == "track":
-            return PendingSingle(item_id, client, config)
+            return PendingSingle(item_id, client, config, db)
         elif media_type == "album":
-            return PendingAlbum(item_id, client, config)
+            return PendingAlbum(item_id, client, config, db)
         elif media_type == "playlist":
-            return PendingPlaylist(item_id, client, config)
+            return PendingPlaylist(item_id, client, config, db)
         elif media_type == "artist":
-            return PendingArtist(item_id, client, config)
+            return PendingArtist(item_id, client, config, db)
         elif media_type == "label":
-            return PendingLabel(item_id, client, config)
+            return PendingLabel(item_id, client, config, db)
         else:
             raise NotImplementedError
 
@@ -76,10 +80,12 @@ class QobuzInterpreterURL(URL):
             return None
         return cls(qobuz_interpreter_url, "qobuz")
 
-    async def into_pending(self, client: Client, config: Config) -> Pending:
+    async def into_pending(
+        self, client: Client, config: Config, db: Database
+    ) -> Pending:
         url = self.match.group(0)
         artist_id = await self.extract_interpreter_url(url, client)
-        return PendingArtist(artist_id, client, config)
+        return PendingArtist(artist_id, client, config, db)
 
     @staticmethod
     async def extract_interpreter_url(url: str, client: Client) -> str:
@@ -113,14 +119,16 @@ class SoundcloudURL(URL):
     def __init__(self, url: str):
         self.url = url
 
-    async def into_pending(self, client: SoundcloudClient, config: Config) -> Pending:
+    async def into_pending(
+        self, client: SoundcloudClient, config: Config, db: Database
+    ) -> Pending:
         resolved = await client._resolve_url(self.url)
         media_type = resolved["kind"]
         item_id = str(resolved["id"])
         if media_type == "track":
-            return PendingSingle(item_id, client, config)
+            return PendingSingle(item_id, client, config, db)
         elif media_type == "playlist":
-            return PendingPlaylist(item_id, client, config)
+            return PendingPlaylist(item_id, client, config, db)
         else:
             raise NotImplementedError(media_type)
 

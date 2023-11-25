@@ -6,7 +6,6 @@ import subprocess
 from functools import wraps
 
 import click
-from click import secho
 from click_help_colors import HelpColorsGroup  # type: ignore
 from rich.logging import RichHandler
 from rich.prompt import Confirm
@@ -15,19 +14,7 @@ from rich.traceback import install
 from .config import Config, set_user_defaults
 from .console import console
 from .main import Main
-from .user_paths import BLANK_CONFIG_PATH, CONFIG_PATH
-
-
-def echo_i(msg, **kwargs):
-    secho(msg, fg="green", **kwargs)
-
-
-def echo_w(msg, **kwargs):
-    secho(msg, fg="yellow", **kwargs)
-
-
-def echo_e(msg, **kwargs):
-    secho(msg, fg="yellow", **kwargs)
+from .user_paths import BLANK_CONFIG_PATH, DEFAULT_CONFIG_PATH
 
 
 def coro(f):
@@ -45,7 +32,7 @@ def coro(f):
 )
 @click.version_option(version="2.0")
 @click.option(
-    "--config-path", default=CONFIG_PATH, help="Path to the configuration file"
+    "--config-path", default=DEFAULT_CONFIG_PATH, help="Path to the configuration file"
 )
 @click.option("-f", "--folder", help="The folder to download items into.")
 @click.option(
@@ -62,17 +49,19 @@ def coro(f):
     help="Convert the downloaded files to an audio codec (ALAC, FLAC, MP3, AAC, or OGG)",
 )
 @click.option(
+    "--no-progress", help="Do not show progress bars", is_flag=True, default=False
+)
+@click.option(
     "-v", "--verbose", help="Enable verbose output (debug mode)", is_flag=True
 )
 @click.pass_context
-def rip(ctx, config_path, folder, no_db, quality, convert, verbose):
+def rip(ctx, config_path, folder, no_db, quality, convert, no_progress, verbose):
     """
     Streamrip: the all in one music downloader.
     """
-    print(ctx, config_path, folder, no_db, quality, convert, verbose)
     global logger
     logging.basicConfig(
-        level="WARNING", format="%(message)s", datefmt="[%X]", handlers=[RichHandler()]
+        level="INFO", format="%(message)s", datefmt="[%X]", handlers=[RichHandler()]
     )
     logger = logging.getLogger("streamrip")
     if verbose:
@@ -89,7 +78,9 @@ def rip(ctx, config_path, folder, no_db, quality, convert, verbose):
         logger.setLevel(logging.WARNING)
 
     if not os.path.isfile(config_path):
-        echo_i(f"No file found at {config_path}, creating default config.")
+        console.print(
+            f"No file found at [bold cyan]{config_path}[/bold cyan], creating default config."
+        )
         shutil.copy(BLANK_CONFIG_PATH, config_path)
         set_user_defaults(config_path)
 
@@ -98,17 +89,23 @@ def rip(ctx, config_path, folder, no_db, quality, convert, verbose):
 
     c = Config(config_path)
     # set session config values to command line args
+    c.session.database.downloads_enabled = not no_db
     if folder is not None:
         c.session.downloads.folder = folder
-    c.session.database.downloads_enabled = not no_db
-    c.session.qobuz.quality = quality
-    c.session.tidal.quality = quality
-    c.session.deezer.quality = quality
-    c.session.soundcloud.quality = quality
+
+    if quality is not None:
+        c.session.qobuz.quality = quality
+        c.session.tidal.quality = quality
+        c.session.deezer.quality = quality
+        c.session.soundcloud.quality = quality
+
     if convert is not None:
         c.session.conversion.enabled = True
         assert convert.upper() in ("ALAC", "FLAC", "OGG", "MP3", "AAC")
         c.session.conversion.codec = convert.upper()
+
+    if no_progress:
+        c.session.cli.progress_bars = False
 
     ctx.obj["config"] = c
 
@@ -118,16 +115,10 @@ def rip(ctx, config_path, folder, no_db, quality, convert, verbose):
 @click.pass_context
 @coro
 async def url(ctx, urls):
-    """Download content from URLs.
-
-    Example usage:
-
-        rip url TODO: find url
-    """
+    """Download content from URLs."""
     with ctx.obj["config"] as cfg:
         main = Main(cfg)
-        for u in urls:
-            await main.add(u)
+        await main.add_all(urls)
         await main.resolve()
         await main.rip()
 
@@ -146,8 +137,7 @@ async def file(ctx, path):
     with ctx.obj["config"] as cfg:
         main = Main(cfg)
         with open(path) as f:
-            for url in f:
-                await main.add(url)
+            await main.add_all([line for line in f])
         await main.resolve()
         await main.rip()
 
@@ -164,7 +154,7 @@ def config():
 def config_open(ctx, vim):
     """Open the config file in a text editor."""
     config_path = ctx.obj["config_path"]
-    echo_i(f"Opening file at {config_path}")
+    console.log(f"Opening file at [bold cyan]{config_path}")
     if vim:
         if shutil.which("nvim") is not None:
             subprocess.run(["nvim", config_path])
@@ -189,7 +179,7 @@ def config_reset(ctx, yes):
 
     shutil.copy(BLANK_CONFIG_PATH, config_path)
     set_user_defaults(config_path)
-    echo_i(f"Reset the config file at {config_path}!")
+    console.print(f"Reset the config file at [bold cyan]{config_path}!")
 
 
 @rip.command()
@@ -199,14 +189,15 @@ def config_reset(ctx, yes):
 async def search(query, source):
     """
     Search for content using a specific source.
+
     """
-    echo_i(f'Searching for "{query}" in source: {source}')
+    raise NotImplementedError
 
 
 @rip.command()
 @click.argument("url", required=True)
 def lastfm(url):
-    pass
+    raise NotImplementedError
 
 
 if __name__ == "__main__":

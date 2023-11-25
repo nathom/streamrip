@@ -7,8 +7,8 @@ from . import converter
 from .artwork import download_artwork
 from .client import Client
 from .config import Config
+from .db import Database
 from .downloadable import Downloadable
-from .exceptions import NonStreamable
 from .filepath_utils import clean_filename
 from .media import Media, Pending
 from .metadata import AlbumMetadata, Covers, TrackMetadata
@@ -27,6 +27,7 @@ class Track(Media):
     folder: str
     # Is None if a cover doesn't exist for the track
     cover_path: str | None
+    db: Database
     # change?
     download_path: str = ""
 
@@ -45,15 +46,11 @@ class Track(Media):
                 await self.downloadable.download(self.download_path, callback)
 
     async def postprocess(self):
-        await self._tag()
+        await tag_file(self.download_path, self.meta, self.cover_path)
         if self.config.session.conversion.enabled:
             await self._convert()
 
-        # if self.cover_path is not None:
-        #     os.remove(self.cover_path)
-
-    async def _tag(self):
-        await tag_file(self.download_path, self.meta, self.cover_path)
+        self.db.set_downloaded(self.meta.info.id)
 
     async def _convert(self):
         c = self.config.session.conversion
@@ -88,22 +85,30 @@ class PendingTrack(Pending):
     client: Client
     config: Config
     folder: str
+    db: Database
     # cover_path is None <==> Artwork for this track doesn't exist in API
     cover_path: str | None
 
     async def resolve(self) -> Track | None:
-        resp = await self.client.get_metadata(self.id, "track")
-        meta = TrackMetadata.from_resp(self.album, self.client.source, resp)
-        if meta is None:
-            logger.error(
-                f"Track {self.id} not available for stream on {self.client.source}"
+        if self.db.downloaded(self.id):
+            logger.info(
+                f"Skipping track {self.id}. Marked as downloaded in the database."
             )
             return None
 
-        quality = getattr(self.config.session, self.client.source).quality
-        assert isinstance(quality, int)
+        resp = await self.client.get_metadata(self.id, "track")
+        source = self.client.source
+        meta = TrackMetadata.from_resp(self.album, source, resp)
+        if meta is None:
+            logger.error(f"Track {self.id} not available for stream on {source}")
+            self.db.set_failed(source, "track", self.id)
+            return None
+
+        quality = self.config.session.get_source(source).quality
         downloadable = await self.client.get_downloadable(self.id, quality)
-        return Track(meta, downloadable, self.config, self.folder, self.cover_path)
+        return Track(
+            meta, downloadable, self.config, self.folder, self.cover_path, self.db
+        )
 
 
 @dataclass(slots=True)
@@ -117,6 +122,7 @@ class PendingSingle(Pending):
     id: str
     client: Client
     config: Config
+    db: Database
 
     async def resolve(self) -> Track | None:
         resp = await self.client.get_metadata(self.id, "track")
@@ -126,6 +132,7 @@ class PendingSingle(Pending):
         meta = TrackMetadata.from_resp(album, self.client.source, resp)
 
         if meta is None:
+            self.db.set_failed(self.client.source, "track", self.id)
             logger.error(f"Cannot stream track ({self.id}) on {self.client.source}")
             return None
 
@@ -140,7 +147,9 @@ class PendingSingle(Pending):
             self._download_cover(album.covers, folder),
             self.client.get_downloadable(self.id, quality),
         )
-        return Track(meta, downloadable, self.config, folder, embedded_cover_path)
+        return Track(
+            meta, downloadable, self.config, folder, embedded_cover_path, self.db
+        )
 
     def _format_folder(self, meta: AlbumMetadata) -> str:
         c = self.config.session
