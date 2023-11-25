@@ -3,15 +3,15 @@ import logging
 import os
 from dataclasses import dataclass
 
-from . import progress
+from .. import progress
+from ..client import Client
+from ..config import Config
+from ..db import Database
+from ..exceptions import NonStreamable
+from ..metadata import AlbumMetadata
+from ..metadata.util import get_album_track_ids
 from .artwork import download_artwork
-from .client import Client
-from .config import Config
-from .db import Database
-from .exceptions import NonStreamable
 from .media import Media, Pending
-from .metadata import AlbumMetadata
-from .metadata.util import get_album_track_ids
 from .track import PendingTrack
 
 logger = logging.getLogger("streamrip")

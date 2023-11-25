@@ -6,9 +6,9 @@ import shutil
 import aiohttp
 from PIL import Image
 
-from .config import ArtworkConfig
-from .downloadable import BasicDownloadable
-from .metadata import Covers
+from ..client import BasicDownloadable
+from ..config import ArtworkConfig
+from ..metadata import Covers
 
 _artwork_tempdirs: set[str] = set()
 

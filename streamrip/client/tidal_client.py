@@ -1,8 +1,8 @@
 import base64
 import time
 
+from ..config import Config
 from .client import Client
-from .config import Config
 
 BASE = "https://api.tidalhifi.com/v1"
 AUTH_URL = "https://auth.tidal.com/v1/oauth2"

@@ -3,18 +3,16 @@ import logging
 import os
 from dataclasses import dataclass
 
-from . import converter
+from .. import converter
+from ..client import Client, Downloadable
+from ..config import Config
+from ..db import Database
+from ..filepath_utils import clean_filename
+from ..metadata import AlbumMetadata, Covers, TrackMetadata, tag_file
+from ..progress import get_progress_callback
 from .artwork import download_artwork
-from .client import Client
-from .config import Config
-from .db import Database
-from .downloadable import Downloadable
-from .filepath_utils import clean_filename
 from .media import Media, Pending
-from .metadata import AlbumMetadata, Covers, TrackMetadata
-from .progress import get_progress_callback
 from .semaphore import global_download_semaphore
-from .tagger import tag_file
 
 logger = logging.getLogger("streamrip")
 

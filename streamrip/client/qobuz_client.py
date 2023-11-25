@@ -5,10 +5,8 @@ import re
 import time
 from typing import AsyncGenerator, Optional
 
-from .client import Client
-from .config import Config
-from .downloadable import BasicDownloadable, Downloadable
-from .exceptions import (
+from ..config import Config
+from ..exceptions import (
     AuthenticationError,
     IneligibleError,
     InvalidAppIdError,
@@ -16,6 +14,8 @@ from .exceptions import (
     MissingCredentials,
     NonStreamable,
 )
+from .client import Client
+from .downloadable import BasicDownloadable, Downloadable
 from .qobuz_spoofer import QobuzSpoofer
 
 logger = logging.getLogger("streamrip")

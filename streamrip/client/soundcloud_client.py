@@ -3,10 +3,10 @@ import itertools
 import logging
 import re
 
+from ..config import Config
+from ..exceptions import NonStreamable
 from .client import Client
-from .config import Config
 from .downloadable import SoundcloudDownloadable
-from .exceptions import NonStreamable
 
 BASE = "https://api-v2.soundcloud.com"
 SOUNDCLOUD_USER_ID = "672320-86895-162383-801513"

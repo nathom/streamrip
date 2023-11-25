@@ -1,9 +1,9 @@
 import asyncio
 from dataclasses import dataclass
 
+from ..client import Client
+from ..config import Config
 from .album import PendingAlbum
-from .client import Client
-from .config import Config
 from .media import Media
 
 

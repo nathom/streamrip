@@ -1,9 +1,7 @@
 """The clients that interact with the streaming service APIs."""
 
-import asyncio
 import logging
 from abc import ABC, abstractmethod
-from typing import Optional, Union
 
 import aiohttp
 import aiolimiter
@@ -42,7 +40,7 @@ class Client(ABC):
     @staticmethod
     def get_rate_limiter(
         requests_per_min: int,
-    ) -> Optional[aiolimiter.AsyncLimiter]:
+    ) -> aiolimiter.AsyncLimiter | None:
         return (
             aiolimiter.AsyncLimiter(requests_per_min, 60)
             if requests_per_min > 0
@@ -50,7 +48,7 @@ class Client(ABC):
         )
 
     @staticmethod
-    async def get_session(headers: Optional[dict] = None) -> aiohttp.ClientSession:
+    async def get_session(headers: dict | None = None) -> aiohttp.ClientSession:
         if headers is None:
             headers = {}
         return aiohttp.ClientSession(

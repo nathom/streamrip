@@ -1,6 +1,6 @@
 import asyncio
 
-from .config import DownloadsConfig
+from ..config import DownloadsConfig
 
 INF = 9999
 

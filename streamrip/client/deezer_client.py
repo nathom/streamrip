@@ -4,10 +4,10 @@ import hashlib
 import deezer
 from Cryptodome.Cipher import AES
 
+from ..config import Config
+from ..exceptions import AuthenticationError, MissingCredentials, NonStreamable
 from .client import Client
-from .config import Config
 from .downloadable import DeezerDownloadable
-from .exceptions import AuthenticationError, MissingCredentials, NonStreamable
 
 
 class DeezerClient(Client):

@@ -17,8 +17,8 @@ import aiohttp
 import m3u8
 from Cryptodome.Cipher import Blowfish
 
-from . import converter
-from .exceptions import NonStreamable
+from .. import converter
+from ..exceptions import NonStreamable
 
 
 def generate_temp_path(url: str):

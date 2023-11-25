@@ -3,7 +3,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Optional
 
-from ..exceptions import NonStreamable
 from .album_metadata import AlbumMetadata
 from .util import safe_get, typed
 

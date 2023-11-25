@@ -5,6 +5,7 @@ from .artist_metadata import ArtistMetadata
 from .covers import Covers
 from .label_metadata import LabelMetadata
 from .playlist_metadata import PlaylistMetadata
+from .tagger import tag_file
 from .track_metadata import TrackMetadata
 
 __all__ = [
@@ -14,5 +15,6 @@ __all__ = [
     "TrackMetadata",
     "PlaylistMetadata",
     "Covers",
+    "tag_file",
     "util",
 ]

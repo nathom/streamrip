@@ -1,12 +1,12 @@
 from dataclasses import dataclass
 
+from ..client import Client
+from ..config import Config
+from ..db import Database
+from ..metadata import ArtistMetadata
 from .album import PendingAlbum
 from .album_list import AlbumList
-from .client import Client
-from .config import Config
-from .db import Database
 from .media import Pending
-from .metadata import ArtistMetadata
 
 
 class Artist(AlbumList):
