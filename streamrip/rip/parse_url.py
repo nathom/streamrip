@@ -3,27 +3,26 @@ from __future__ import annotations
 import re
 from abc import ABC, abstractmethod
 
-from .album import PendingAlbum
-from .artist import PendingArtist
-from .client import Client
-from .config import Config
-from .db import Database
-from .label import PendingLabel
-from .media import Pending
-from .playlist import PendingPlaylist
-from .soundcloud_client import SoundcloudClient
-from .track import PendingSingle
+from ..client import Client, SoundcloudClient
+from ..config import Config
+from ..db import Database
+from ..media import (
+    Pending,
+    PendingAlbum,
+    PendingArtist,
+    PendingLabel,
+    PendingPlaylist,
+    PendingSingle,
+)
 from .validation_regexps import (
-    DEEZER_DYNAMIC_LINK_REGEX,
-    LASTFM_URL_REGEX,
     QOBUZ_INTERPRETER_URL_REGEX,
     SOUNDCLOUD_URL_REGEX,
     URL_REGEX,
-    YOUTUBE_URL_REGEX,
 )
 
 
 class URL(ABC):
+    match: re.Match
     source: str
 
     def __init__(self, match: re.Match, source: str):

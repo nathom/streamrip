@@ -9,7 +9,7 @@ from mutagen.id3 import APIC  # type: ignore
 from mutagen.id3 import ID3
 from mutagen.mp4 import MP4, MP4Cover
 
-from . import TrackMetadata
+from .track_metadata import TrackMetadata
 
 logger = logging.getLogger("streamrip")
 

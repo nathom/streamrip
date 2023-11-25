@@ -1,17 +1,14 @@
 import asyncio
 import logging
 
-from . import db
-from .artwork import remove_artwork_tempdirs
-from .client import Client
-from .config import Config
-from .console import console
-from .media import Media, Pending
-from .progress import clear_progress
+from .. import db
+from ..client import Client, QobuzClient, SoundcloudClient
+from ..config import Config
+from ..console import console
+from ..media import Media, Pending, remove_artwork_tempdirs
+from ..progress import clear_progress
+from .parse_url import parse_url
 from .prompter import get_prompter
-from .qobuz_client import QobuzClient
-from .soundcloud_client import SoundcloudClient
-from .universal_url import parse_url
 
 logger = logging.getLogger("streamrip")
 

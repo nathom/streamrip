@@ -11,10 +11,10 @@ from rich.logging import RichHandler
 from rich.prompt import Confirm
 from rich.traceback import install
 
-from .config import Config, set_user_defaults
-from .console import console
+from ..config import DEFAULT_CONFIG_PATH, Config, set_user_defaults
+from ..console import console
 from .main import Main
-from .user_paths import BLANK_CONFIG_PATH, DEFAULT_CONFIG_PATH
+from .user_paths import DEFAULT_CONFIG_PATH
 
 
 def coro(f):
@@ -81,7 +81,6 @@ def rip(ctx, config_path, folder, no_db, quality, convert, no_progress, verbose)
         console.print(
             f"No file found at [bold cyan]{config_path}[/bold cyan], creating default config."
         )
-        shutil.copy(BLANK_CONFIG_PATH, config_path)
         set_user_defaults(config_path)
 
     # pass to subcommands
@@ -177,7 +176,6 @@ def config_reset(ctx, yes):
             console.print("[green]Reset aborted")
             return
 
-    shutil.copy(BLANK_CONFIG_PATH, config_path)
     set_user_defaults(config_path)
     console.print(f"Reset the config file at [bold cyan]{config_path}!")
 
@@ -197,6 +195,7 @@ async def search(query, source):
 @rip.command()
 @click.argument("url", required=True)
 def lastfm(url):
+    """Download tracks from a last.fm playlist using a supported source."""
     raise NotImplementedError
 
 

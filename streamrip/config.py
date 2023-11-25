@@ -1,22 +1,19 @@
 """A config class that manages arguments between the config file and CLI."""
-
 import copy
 import logging
+import os
+import shutil
 from dataclasses import dataclass, fields
+from pathlib import Path
 
+import click
 from tomlkit.api import dumps, parse
 from tomlkit.toml_document import TOMLDocument
 
-from .user_paths import (
-    DEFAULT_CONFIG_PATH,
-    DEFAULT_DOWNLOADS_DB_PATH,
-    DEFAULT_DOWNLOADS_FOLDER,
-    DEFAULT_FAILED_DOWNLOADS_DB_PATH,
-    DEFAULT_YOUTUBE_VIDEO_DOWNLOADS_FOLDER,
-)
-
 logger = logging.getLogger("streamrip")
 
+APP_DIR = click.get_app_dir("streamrip", force_posix=True)
+DEFAULT_CONFIG_PATH = os.path.join(APP_DIR, "config.toml")
 CURRENT_CONFIG_VERSION = "2.0"
 
 
@@ -216,6 +213,17 @@ class MiscConfig:
     version: str
 
 
+HOME = Path.home()
+DEFAULT_DOWNLOADS_FOLDER = os.path.join(HOME, "StreamripDownloads")
+DEFAULT_DOWNLOADS_DB_PATH = os.path.join(APP_DIR, "downloads.db")
+DEFAULT_FAILED_DOWNLOADS_DB_PATH = os.path.join(APP_DIR, "failed_downloads.db")
+DEFAULT_YOUTUBE_VIDEO_DOWNLOADS_FOLDER = os.path.join(
+    DEFAULT_DOWNLOADS_FOLDER, "YouTubeVideos"
+)
+BLANK_CONFIG_PATH = os.path.join(os.path.dirname(__file__), "config.toml")
+assert os.path.isfile(BLANK_CONFIG_PATH), "Template config not found"
+
+
 @dataclass(slots=True)
 class ConfigData:
     toml: TOMLDocument
@@ -287,7 +295,7 @@ class ConfigData:
 
     @classmethod
     def defaults(cls):
-        with open(DEFAULT_CONFIG_PATH) as f:
+        with open(BLANK_CONFIG_PATH) as f:
             return cls.from_toml(f.read())
 
     def set_modified(self):
@@ -352,7 +360,7 @@ class Config:
 
     @classmethod
     def defaults(cls):
-        return cls(DEFAULT_CONFIG_PATH)
+        return cls(BLANK_CONFIG_PATH)
 
     def __enter__(self):
         return self
@@ -362,10 +370,9 @@ class Config:
 
 
 def set_user_defaults(path: str, /):
-    """Update the TOML file at the path with user-specific default values.
+    """Update the TOML file at the path with user-specific default values."""
+    shutil.copy(BLANK_CONFIG_PATH, path)
 
-    MUST copy updated blank config to `path` before calling this!
-    """
     with open(path) as f:
         toml = parse(f.read())
     toml["downloads"]["folder"] = DEFAULT_DOWNLOADS_FOLDER  # type: ignore
