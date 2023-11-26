@@ -116,10 +116,10 @@ def rip(ctx, config_path, folder, no_db, quality, convert, no_progress, verbose)
 async def url(ctx, urls):
     """Download content from URLs."""
     with ctx.obj["config"] as cfg:
-        main = Main(cfg)
-        await main.add_all(urls)
-        await main.resolve()
-        await main.rip()
+        async with Main(cfg) as main:
+            await main.add_all(urls)
+            await main.resolve()
+            await main.rip()
 
 
 @rip.command()
@@ -134,11 +134,11 @@ async def file(ctx, path):
         rip file urls.txt
     """
     with ctx.obj["config"] as cfg:
-        main = Main(cfg)
-        with open(path) as f:
-            await main.add_all([line for line in f])
-        await main.resolve()
-        await main.rip()
+        async with Main(cfg) as main:
+            with open(path) as f:
+                await main.add_all([line for line in f])
+            await main.resolve()
+            await main.rip()
 
 
 @rip.group()
@@ -152,7 +152,7 @@ def config():
 @click.pass_context
 def config_open(ctx, vim):
     """Open the config file in a text editor."""
-    config_path = ctx.obj["config_path"]
+    config_path = ctx.obj["config"].path
     console.log(f"Opening file at [bold cyan]{config_path}")
     if vim:
         if shutil.which("nvim") is not None:
@@ -168,7 +168,7 @@ def config_open(ctx, vim):
 @click.pass_context
 def config_reset(ctx, yes):
     """Reset the config file."""
-    config_path = ctx.obj["config_path"]
+    config_path = ctx.obj["config"].path
     if not yes:
         if not Confirm.ask(
             f"Are you sure you want to reset the config file at {config_path}?"
@@ -181,15 +181,33 @@ def config_reset(ctx, yes):
 
 
 @rip.command()
-@click.argument("query", required=True)
+@click.option(
+    "-f",
+    "--first",
+    help="Automatically download the first search result without showing the menu.",
+    is_flag=True,
+)
 @click.argument("source", required=True)
+@click.argument("media-type", required=True)
+@click.argument("query", required=True)
+@click.pass_context
 @coro
-async def search(query, source):
+async def search(ctx, first, source, media_type, query):
     """
     Search for content using a specific source.
 
+    Example:
+
+        rip search qobuz album 'rumours'
     """
-    raise NotImplementedError
+    with ctx.obj["config"] as cfg:
+        async with Main(cfg) as main:
+            if first:
+                await main.search_take_first(source, media_type, query)
+            else:
+                await main.search_interactive(source, media_type, query)
+            await main.resolve()
+            await main.rip()
 
 
 @rip.command()

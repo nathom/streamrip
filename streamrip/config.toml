@@ -178,6 +178,8 @@ fallback_source = "deezer"
 text_output = true
 # Show resolve, download progress bars
 progress_bars = true
+# The maximum number of search results to show in the interactive menu
+max_search_results = 100
 
 [misc]
 # Metadata to identify this config file. Do not change.

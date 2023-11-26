@@ -343,7 +343,7 @@ def update_toml_section_from_config(toml_section, config):
 
 class Config:
     def __init__(self, path: str, /):
-        self._path = path
+        self.path = path
 
         with open(path) as toml_file:
             self.file: ConfigData = ConfigData.from_toml(toml_file.read())
@@ -354,7 +354,7 @@ class Config:
         if not self.file.modified:
             return
 
-        with open(self._path, "w") as toml_file:
+        with open(self.path, "w") as toml_file:
             self.file.update_toml()
             toml_file.write(dumps(self.file.toml))
 

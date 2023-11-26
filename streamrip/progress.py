@@ -16,9 +16,8 @@ class ProgressManager:
         self.progress = Progress(console=console)
         self.task_titles = []
         self.prefix = Text.assemble(("Downloading ", "bold cyan"), overflow="ellipsis")
-        self.live = Live(
-            Group(self.get_title_text(), self.progress), refresh_per_second=10
-        )
+        self._text_cache = self.gen_title_text()
+        self.live = Live(Group(self._text_cache, self.progress), refresh_per_second=10)
 
     def get_callback(self, total: int, desc: str):
         if not self.started:
@@ -42,16 +41,21 @@ class ProgressManager:
 
     def add_title(self, title: str):
         self.task_titles.append(title.strip())
+        self._text_cache = self.gen_title_text()
 
     def remove_title(self, title: str):
         self.task_titles.remove(title.strip())
+        self._text_cache = self.gen_title_text()
 
-    def get_title_text(self) -> Rule:
+    def gen_title_text(self) -> Rule:
         titles = ", ".join(self.task_titles[:3])
         if len(self.task_titles) > 3:
             titles += "..."
         t = self.prefix + Text(titles)
         return Rule(t)
+
+    def get_title_text(self) -> Rule:
+        return self._text_cache
 
 
 @dataclass(slots=True)

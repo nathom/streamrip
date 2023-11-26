@@ -64,7 +64,7 @@ class QobuzPrompter(CredentialPrompter):
         secho("Enter Qobuz password (will not show on screen): ", fg="green", nl=False)
         pwd = hashlib.md5(getpass(prompt="").encode("utf-8")).hexdigest()
         secho(
-            f'Credentials saved to config file at "{self.config._path}"',
+            f'Credentials saved to config file at "{self.config.path}"',
             fg="green",
         )
         c = self.config.session.qobuz
@@ -183,7 +183,7 @@ class DeezerPrompter(CredentialPrompter):
         cf.arl = c.arl
         self.config.file.set_modified()
         secho(
-            f'Credentials saved to config file at "{self.config._path}"',
+            f'Credentials saved to config file at "{self.config.path}"',
             fg="green",
         )
 

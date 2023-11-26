@@ -30,7 +30,7 @@ class Client(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    async def search(self, query: str, media_type: str, limit: int = 500):
+    async def search(self, query: str, media_type: str, limit: int = 500) -> list[dict]:
         raise NotImplementedError
 
     @abstractmethod

@@ -9,7 +9,7 @@ from ..config import Config
 from ..db import Database
 from ..filepath_utils import clean_filename
 from ..metadata import AlbumMetadata, Covers, TrackMetadata, tag_file
-from ..progress import get_progress_callback
+from ..progress import add_title, get_progress_callback, remove_title
 from .artwork import download_artwork
 from .media import Media, Pending
 from .semaphore import global_download_semaphore
@@ -28,10 +28,13 @@ class Track(Media):
     db: Database
     # change?
     download_path: str = ""
+    is_single: bool = False
 
     async def preprocess(self):
         self._set_download_path()
         os.makedirs(self.folder, exist_ok=True)
+        if self.is_single:
+            add_title(self.meta.title)
 
     async def download(self):
         # TODO: progress bar description
@@ -44,6 +47,9 @@ class Track(Media):
                 await self.downloadable.download(self.download_path, callback)
 
     async def postprocess(self):
+        if self.is_single:
+            remove_title(self.meta.title)
+
         await tag_file(self.download_path, self.meta, self.cover_path)
         if self.config.session.conversion.enabled:
             await self._convert()
@@ -146,7 +152,13 @@ class PendingSingle(Pending):
             self.client.get_downloadable(self.id, quality),
         )
         return Track(
-            meta, downloadable, self.config, folder, embedded_cover_path, self.db
+            meta,
+            downloadable,
+            self.config,
+            folder,
+            embedded_cover_path,
+            self.db,
+            is_single=True,
         )
 
     def _format_folder(self, meta: AlbumMetadata) -> str:

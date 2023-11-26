@@ -5,7 +5,7 @@ import logging
 import re
 import time
 from collections import OrderedDict
-from typing import AsyncGenerator, List, Optional
+from typing import List, Optional
 
 import aiohttp
 
@@ -230,34 +230,36 @@ class QobuzClient(Client):
 
         return resp
 
-    async def search(
-        self, query: str, media_type: str, limit: int = 500
-    ) -> AsyncGenerator:
+    async def search(self, media_type: str, query: str, limit: int = 500) -> list[dict]:
+        if media_type not in ("artist", "album", "track", "playlist"):
+            raise Exception(f"{media_type} not available for search on qobuz")
+
         params = {
             "query": query,
             # "limit": limit,
         }
-        # TODO: move featured, favorites, and playlists into _api_get later
-        if media_type == "featured":
-            assert query in QOBUZ_FEATURED_KEYS, f'query "{query}" is invalid.'
-            params.update({"type": query})
-            del params["query"]
-            epoint = "album/getFeatured"
+        epoint = f"{media_type}/search"
 
-        elif query == "user-favorites":
-            assert query in ("track", "artist", "album")
-            params.update({"type": f"{media_type}s"})
-            epoint = "favorite/getUserFavorites"
+        return await self._paginate(epoint, params, limit=limit)
 
-        elif query == "user-playlists":
-            epoint = "playlist/getUserPlaylists"
+    async def get_featured(self, query, limit: int = 500) -> list[dict]:
+        params = {
+            "type": query,
+        }
+        assert query in QOBUZ_FEATURED_KEYS, f'query "{query}" is invalid.'
+        epoint = "album/getFeatured"
+        return await self._paginate(epoint, params, limit=limit)
 
-        else:
-            epoint = f"{media_type}/search"
+    async def get_user_favorites(self, media_type: str, limit: int = 500) -> list[dict]:
+        assert media_type in ("track", "artist", "album")
+        params = {"type": f"{media_type}s"}
+        epoint = "favorite/getUserFavorites"
 
-        async for status, resp in self._paginate(epoint, params, limit=limit):
-            assert status == 200
-            yield resp
+        return await self._paginate(epoint, params, limit=limit)
+
+    async def get_user_playlists(self, limit: int = 500) -> list[dict]:
+        epoint = "playlist/getUserPlaylists"
+        return await self._paginate(epoint, {}, limit=limit)
 
     async def get_downloadable(self, item_id: str, quality: int) -> Downloadable:
         assert self.secret is not None and self.logged_in and 1 <= quality <= 4
@@ -281,7 +283,7 @@ class QobuzClient(Client):
 
     async def _paginate(
         self, epoint: str, params: dict, limit: Optional[int] = None
-    ) -> AsyncGenerator[tuple[int, dict], None]:
+    ) -> list[dict]:
         """Paginate search results.
 
         params:
@@ -293,30 +295,41 @@ class QobuzClient(Client):
         """
         params.update({"limit": limit or 500})
         status, page = await self._api_request(epoint, params)
+        assert status == 200, status
         logger.debug("paginate: initial request made with status %d", status)
         # albums, tracks, etc.
         key = epoint.split("/")[0] + "s"
         items = page.get(key, {})
-        total = items.get("total", 0) or items.get("items", 0)
+        total = items.get("total", 0)
         if limit is not None and limit < total:
             total = limit
 
         logger.debug("paginate: %d total items requested", total)
 
-        if not total:
+        if total == 0:
             logger.debug("Nothing found from %s epoint", epoint)
-            return
+            return []
 
         limit = int(page.get(key, {}).get("limit", 500))
         offset = int(page.get(key, {}).get("offset", 0))
 
         logger.debug("paginate: from response: limit=%d, offset=%d", limit, offset)
         params.update({"limit": limit})
-        yield status, page
+
+        pages = []
+        requests = []
+        assert status == 200, status
+        pages.append(page)
         while (offset + limit) < total:
             offset += limit
             params.update({"offset": offset})
-            yield await self._api_request(epoint, params)
+            requests.append(self._api_request(epoint, params.copy()))
+
+        for status, resp in await asyncio.gather(*requests):
+            assert status == 200
+            pages.append(resp)
+
+        return pages
 
     async def _get_app_id_and_secrets(self) -> tuple[str, list[str]]:
         async with QobuzSpoofer() as spoofer:

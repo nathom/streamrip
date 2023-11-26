@@ -170,8 +170,10 @@ class SoundcloudClient(Client):
         )
 
     async def search(
-        self, query: str, media_type: str, limit: int = 50, offset: int = 0
-    ):
+        self, media_type: str, query: str, limit: int = 50, offset: int = 0
+    ) -> list[dict]:
+        # TODO: implement pagination
+        assert media_type in ("track", "playlist")
         params = {
             "q": query,
             "facet": "genre",
@@ -182,7 +184,7 @@ class SoundcloudClient(Client):
         }
         resp, status = await self._api_request(f"search/{media_type}s", params=params)
         assert status == 200
-        return resp
+        return [resp]
 
     async def _api_request(self, path, params=None, headers=None):
         url = f"{BASE}/{path}"
