@@ -48,7 +48,11 @@ class Converter:
         :param remove_source: Remove the source file after conversion.
         :type remove_source: bool
         """
-        logger.debug(locals())
+
+        if shutil.which("ffmpeg") is None:
+            raise Exception(
+                "Could not find FFMPEG executable. Install it to convert audio files."
+            )
 
         self.filename = filename
         self.final_fn = f"{os.path.splitext(filename)[0]}.{self.container}"
