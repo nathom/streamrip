@@ -226,7 +226,9 @@ class QobuzClient(Client):
         status, resp = await self._api_request(epoint, params)
 
         if status != 200:
-            raise Exception(f'Error fetching metadata. "{resp["message"]}"')
+            raise NonStreamable(
+                f'Error fetching metadata. Message: "{resp["message"]}"'
+            )
 
         return resp
 

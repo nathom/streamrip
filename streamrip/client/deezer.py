@@ -51,7 +51,7 @@ class DeezerClient(Client):
 
         return item
 
-    async def search(self, query: str, media_type: str, limit: int = 200):
+    async def search(self, media_type: str, query: str, limit: int = 200):
         # TODO: use limit parameter
         if media_type == "featured":
             try:

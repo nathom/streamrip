@@ -1,13 +1,17 @@
 import hashlib
+import logging
 import time
 from abc import ABC, abstractmethod
-from getpass import getpass
 
-from click import launch, secho, style
+from click import launch
+from rich.prompt import Prompt
 
 from ..client import Client, DeezerClient, QobuzClient, SoundcloudClient, TidalClient
 from ..config import Config
+from ..console import console
 from ..exceptions import AuthenticationError, MissingCredentials
+
+logger = logging.getLogger("streamrip")
 
 
 class CredentialPrompter(ABC):
@@ -53,19 +57,18 @@ class QobuzPrompter(CredentialPrompter):
                 await self.client.login()
                 break
             except AuthenticationError:
-                secho("Invalid credentials, try again.", fg="yellow")
+                console.print("[yellow]Invalid credentials, try again.")
                 self._prompt_creds_and_set_session_config()
             except MissingCredentials:
                 self._prompt_creds_and_set_session_config()
 
     def _prompt_creds_and_set_session_config(self):
-        secho("Enter Qobuz email: ", fg="green", nl=False)
-        email = input()
-        secho("Enter Qobuz password (will not show on screen): ", fg="green", nl=False)
-        pwd = hashlib.md5(getpass(prompt="").encode("utf-8")).hexdigest()
-        secho(
-            f'Credentials saved to config file at "{self.config.path}"',
-            fg="green",
+        email = Prompt.ask("Enter your Qobuz email")
+        pwd_input = Prompt.ask("Enter your Qobuz password (invisible)", password=True)
+
+        pwd = hashlib.md5(pwd_input.encode("utf-8")).hexdigest()
+        console.print(
+            f"[green]Credentials saved to config file at [bold cyan]{self.config.path}"
         )
         c = self.config.session.qobuz
         c.use_auth_token = False
@@ -96,9 +99,8 @@ class TidalPrompter(CredentialPrompter):
         device_code = await self.client._get_device_code()
         login_link = f"https://{device_code}"
 
-        secho(
-            f"Go to {login_link} to log into Tidal within 5 minutes.",
-            fg="blue",
+        console.print(
+            f"Go to [blue underline]{login_link}[/blue underline] to log into Tidal within 5 minutes.",
         )
         launch(login_link)
 
@@ -158,33 +160,25 @@ class DeezerPrompter(CredentialPrompter):
                 await self.client.login()
                 break
             except AuthenticationError:
-                secho("Invalid arl, try again.", fg="yellow")
+                console.print("[yellow]Invalid arl, try again.")
                 self._prompt_creds_and_set_session_config()
         self.save()
 
     def _prompt_creds_and_set_session_config(self):
-        secho(
+        console.print(
             "If you're not sure how to find the ARL cookie, see the instructions at ",
-            nl=False,
-            dim=True,
+            "[blue underline]https://github.com/nathom/streamrip/wiki/Finding-your-Deezer-ARL-Cookie",
         )
-        secho(
-            "https://github.com/nathom/streamrip/wiki/Finding-your-Deezer-ARL-Cookie",
-            underline=True,
-            fg="blue",
-        )
-
         c = self.config.session.deezer
-        c.arl = input(style("ARL: ", fg="green"))
+        c.arl = Prompt.ask("Enter your [bold]ARL")
 
     def save(self):
         c = self.config.session.deezer
         cf = self.config.file.deezer
         cf.arl = c.arl
         self.config.file.set_modified()
-        secho(
-            f'Credentials saved to config file at "{self.config.path}"',
-            fg="green",
+        console.print(
+            f"[green]Credentials saved to config file at [bold cyan]{self.config.path}",
         )
 
     def type_check_client(self, client) -> DeezerClient:

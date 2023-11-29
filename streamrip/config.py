@@ -12,7 +12,7 @@ from tomlkit.toml_document import TOMLDocument
 
 logger = logging.getLogger("streamrip")
 
-APP_DIR = click.get_app_dir("streamrip", force_posix=True)
+APP_DIR = click.get_app_dir("streamrip")
 DEFAULT_CONFIG_PATH = os.path.join(APP_DIR, "config.toml")
 CURRENT_CONFIG_VERSION = "2.0"
 
@@ -206,6 +206,8 @@ class CliConfig:
     text_output: bool
     # Show resolve, download progress bars
     progress_bars: bool
+    # The maximum number of search results to show in the interactive menu
+    max_search_results: int
 
 
 @dataclass(slots=True)

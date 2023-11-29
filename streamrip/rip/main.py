@@ -6,7 +6,7 @@ from .. import db
 from ..client import Client, QobuzClient, SoundcloudClient
 from ..config import Config
 from ..console import console
-from ..media import Media, Pending, remove_artwork_tempdirs
+from ..media import Media, Pending, PendingLastfmPlaylist, remove_artwork_tempdirs
 from ..metadata import SearchResults
 from ..progress import clear_progress
 from .parse_url import parse_url
@@ -71,26 +71,30 @@ class Main:
     async def add_all(self, urls: list[str]):
         """Add multiple urls concurrently as pending items."""
         parsed = [parse_url(url) for url in urls]
-        url_w_client = []
+        url_client_pairs = []
         for i, p in enumerate(parsed):
             if p is None:
                 console.print(
                     f"[red]Found invalid url [cyan]{urls[i]}[/cyan], skipping."
                 )
                 continue
-            url_w_client.append((p, await self.get_logged_in_client(p.source)))
+            url_client_pairs.append((p, await self.get_logged_in_client(p.source)))
 
         pendings = await asyncio.gather(
             *[
                 url.into_pending(client, self.config, self.database)
-                for url, client in url_w_client
+                for url, client in url_client_pairs
             ]
         )
         self.pending.extend(pendings)
 
     async def get_logged_in_client(self, source: str):
         """Return a functioning client instance for `source`."""
-        client = self.clients[source]
+        client = self.clients.get(source)
+        if client is None:
+            raise Exception(
+                f"No client named {source} available. Only have {self.clients.keys()}"
+            )
         if not client.logged_in:
             prompter = get_prompter(client, self.config)
             if not prompter.has_creds():
@@ -110,7 +114,9 @@ class Main:
         """Resolve all currently pending items."""
         with console.status("Resolving URLs...", spinner="dots"):
             coros = [p.resolve() for p in self.pending]
-            new_media: list[Media] = await asyncio.gather(*coros)
+            new_media: list[Media] = [
+                m for m in await asyncio.gather(*coros) if m is not None
+            ]
 
         self.media.extend(new_media)
         self.pending.clear()
@@ -129,7 +135,7 @@ class Main:
                 return
             search_results = SearchResults.from_pages(source, media_type, pages)
 
-        if os.name == "nt" or True:
+        if os.name == "nt":
             from pick import pick
 
             choices = pick(
@@ -186,6 +192,24 @@ class Main:
         first = search_results.results[0]
         await self.add(f"http://{source}.com/{first.media_type()}/{first.id}")
 
+    async def resolve_lastfm(self, playlist_url: str):
+        """Resolve a last.fm playlist."""
+        c = self.config.session.lastfm
+        client = await self.get_logged_in_client(c.source)
+
+        if len(c.fallback_source) > 0:
+            fallback_client = await self.get_logged_in_client(c.fallback_source)
+        else:
+            fallback_client = None
+
+        pending_playlist = PendingLastfmPlaylist(
+            playlist_url, client, fallback_client, self.config, self.database
+        )
+        playlist = await pending_playlist.resolve()
+
+        if playlist is not None:
+            self.media.append(playlist)
+
     async def __aenter__(self):
         return self
 
@@ -201,3 +225,6 @@ class Main:
         # may be able to share downloaded artwork in the same `rip` session
         # We don't know that a cover will not be used again until end of execution
         remove_artwork_tempdirs()
+
+    async def add_by_id(self, source: str, media_type: str, id: str):
+        await self.add(f"http://{source}.com/{media_type}/{id}")

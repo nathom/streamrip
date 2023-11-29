@@ -81,11 +81,13 @@ download_videos = false
 # The path to download the videos to
 video_downloads_folder = ""
 
-# This stores a list of item IDs so that repeats are not downloaded.
 [database]
+# Create a database that contains all the track IDs downloaded so far
+# Any time a track logged in the database is requested, it is skipped
+# This can be disabled temporarily with the --no-db flag
 downloads_enabled = true
+# Path to the downloads database 
 downloads_path = ""
-
 # If a download fails, the item ID is stored here. Then, `rip repair` can be
 # called to retry the downloads
 failed_downloads_enabled = true
@@ -171,7 +173,7 @@ truncate_to = 120
 source = "qobuz"
 # If no results were found with the primary source, the item is searched for 
 # on this one.
-fallback_source = "deezer"
+fallback_source = ""
 
 [cli]
 # Print "Downloading {Album name}" etc. to screen

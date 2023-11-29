@@ -1,27 +1,16 @@
 import asyncio
+from contextlib import nullcontext
 
 from ..config import DownloadsConfig
 
 INF = 9999
 
 
-class UnlimitedSemaphore:
-    """Can be swapped out for a real semaphore when no semaphore is needed."""
-
-    async def __aenter__(self):
-        return self
-
-    async def __aexit__(self, *_):
-        pass
-
-
-_unlimited = UnlimitedSemaphore()
+_unlimited = nullcontext()
 _global_semaphore: None | tuple[int, asyncio.Semaphore] = None
 
 
-def global_download_semaphore(
-    c: DownloadsConfig,
-) -> UnlimitedSemaphore | asyncio.Semaphore:
+def global_download_semaphore(c: DownloadsConfig) -> asyncio.Semaphore | nullcontext:
     """A global semaphore that limit the number of total tracks being downloaded
     at once.
 

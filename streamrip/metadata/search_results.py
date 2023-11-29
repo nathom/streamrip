@@ -3,7 +3,6 @@ import re
 import textwrap
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from pprint import pprint
 
 
 class Summary(ABC):
