@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Optional
 
+from ..exceptions import NonStreamable
 from .album_metadata import AlbumMetadata
 from .util import safe_get, typed
 
@@ -81,7 +82,33 @@ class TrackMetadata:
 
     @classmethod
     def from_deezer(cls, album: AlbumMetadata, resp) -> TrackMetadata:
-        raise NotImplemented
+        track_id = str(resp["id"])
+        bit_depth = 16
+        sampling_rate = 44.1
+        explicit = typed(resp["explicit_lyrics"], bool)
+        work = None
+        title = typed(resp["title"], str)
+        artist = typed(resp["artist"]["name"], str)
+        tracknumber = typed(resp["track_position"], int)
+        discnumber = typed(resp["disk_number"], int)
+        composer = None
+        info = TrackInfo(
+            id=track_id,
+            quality=album.info.quality,
+            bit_depth=bit_depth,
+            explicit=explicit,
+            sampling_rate=sampling_rate,
+            work=work,
+        )
+        return cls(
+            info=info,
+            title=title,
+            album=album,
+            artist=artist,
+            tracknumber=tracknumber,
+            discnumber=discnumber,
+            composer=composer,
+        )
 
     @classmethod
     def from_soundcloud(cls, album: AlbumMetadata, resp: dict) -> TrackMetadata:

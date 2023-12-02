@@ -76,7 +76,7 @@ def rip(ctx, config_path, folder, no_db, quality, convert, no_progress, verbose)
         logger.debug("Showing all debug logs")
     else:
         install(console=console, suppress=[click, asyncio], max_frames=1)
-        logger.setLevel(logging.WARNING)
+        logger.setLevel(logging.INFO)
 
     if not os.path.isfile(config_path):
         console.print(

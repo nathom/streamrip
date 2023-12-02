@@ -3,7 +3,14 @@ from typing import Callable
 
 from rich.console import Group
 from rich.live import Live
-from rich.progress import Progress
+from rich.progress import (
+    BarColumn,
+    DownloadColumn,
+    Progress,
+    TextColumn,
+    TimeRemainingColumn,
+    TransferSpeedColumn,
+)
 from rich.rule import Rule
 from rich.text import Text
 
@@ -14,6 +21,19 @@ class ProgressManager:
     def __init__(self):
         self.started = False
         self.progress = Progress(console=console)
+        self.progress = Progress(
+            TextColumn("[cyan]{task.description}"),
+            BarColumn(bar_width=None),
+            "[progress.percentage]{task.percentage:>3.1f}%",
+            "•",
+            # DownloadColumn(),
+            # "•",
+            TransferSpeedColumn(),
+            "•",
+            TimeRemainingColumn(),
+            console=console,
+        )
+
         self.task_titles = []
         self.prefix = Text.assemble(("Downloading ", "bold cyan"), overflow="ellipsis")
         self._text_cache = self.gen_title_text()

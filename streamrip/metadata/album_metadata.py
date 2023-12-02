@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import logging
 import re
 from dataclasses import dataclass
@@ -32,14 +33,12 @@ class AlbumInfo:
 @dataclass(slots=True)
 class AlbumMetadata:
     info: AlbumInfo
-
     album: str
     albumartist: str
     year: str
     genre: list[str]
     covers: Covers
     tracktotal: int
-
     disctotal: int = 1
     albumcomposer: Optional[str] = None
     comment: Optional[str] = None
@@ -163,8 +162,65 @@ class AlbumMetadata:
         )
 
     @classmethod
-    def from_deezer(cls, resp) -> AlbumMetadata:
-        raise NotImplementedError
+    def from_deezer(cls, resp: dict) -> AlbumMetadata:
+        album = resp.get("title", "Unknown Album")
+        tracktotal = typed(resp.get("track_total", 0) or resp.get("nb_tracks", 0), int)
+        disctotal = typed(resp["tracks"][-1]["disk_number"], int)
+        genres = [typed(g["name"], str) for g in resp["genres"]["data"]]
+        date = typed(resp["release_date"], str)
+        year = date[:4]
+        _copyright = None
+        description = None
+        albumartist = typed(safe_get(resp, "artist", "name"), str)
+        albumcomposer = None
+        label = resp.get("label")
+        booklets = None
+        # url = resp.get("link")
+        explicit = typed(
+            resp.get("parental_warning", False) or resp.get("explicit_lyrics", False),
+            bool,
+        )
+
+        # not embedded
+        quality = 2
+        bit_depth = 16
+        sampling_rate = 44100
+        container = "FLAC"
+
+        cover_urls = Covers.from_deezer(resp)
+        # streamable = True
+        item_id = str(resp["id"])
+
+        info = AlbumInfo(
+            id=item_id,
+            quality=quality,
+            container=container,
+            label=label,
+            explicit=explicit,
+            sampling_rate=sampling_rate,
+            bit_depth=bit_depth,
+            booklets=booklets,
+        )
+        return AlbumMetadata(
+            info,
+            album,
+            albumartist,
+            year,
+            genre=genres,
+            covers=cover_urls,
+            albumcomposer=albumcomposer,
+            comment=None,
+            compilation=None,
+            copyright=_copyright,
+            date=date,
+            description=description,
+            disctotal=disctotal,
+            encoder=None,
+            grouping=None,
+            lyrics=None,
+            purchase_date=None,
+            tracktotal=tracktotal,
+        )
 
     @classmethod
     def from_soundcloud(cls, resp) -> AlbumMetadata:

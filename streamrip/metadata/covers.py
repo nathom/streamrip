@@ -65,6 +65,16 @@ class Covers:
         return c
 
     @classmethod
+    def from_deezer(cls, resp):
+        c = cls()
+        # c.set_cover_url("original", "org".join(resp["cover_xl"].rsplit("600", 1)))
+        c.set_cover_url("original", resp["cover_xl"])
+        c.set_cover_url("large", resp["cover_big"])
+        c.set_cover_url("small", resp["cover_medium"])
+        c.set_cover_url("thumbnail", resp["cover_small"])
+        return c
+
+    @classmethod
     def from_soundcloud(cls, resp):
         c = cls()
         cover_url = (resp["artwork_url"] or resp["user"].get("avatar_url")).replace(

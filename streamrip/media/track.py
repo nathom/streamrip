@@ -130,6 +130,12 @@ class PendingSingle(Pending):
     db: Database
 
     async def resolve(self) -> Track | None:
+        if self.db.downloaded(self.id):
+            logger.info(
+                f"Skipping track {self.id}. Marked as downloaded in the database."
+            )
+            return None
+
         try:
             resp = await self.client.get_metadata(self.id, "track")
         except NonStreamable as e:

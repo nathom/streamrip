@@ -3,7 +3,7 @@ import logging
 import os
 
 from .. import db
-from ..client import Client, QobuzClient, SoundcloudClient
+from ..client import Client, DeezerClient, QobuzClient, SoundcloudClient
 from ..config import Config
 from ..console import console
 from ..media import Media, Pending, PendingLastfmPlaylist, remove_artwork_tempdirs
@@ -34,7 +34,7 @@ class Main:
         self.clients: dict[str, Client] = {
             "qobuz": QobuzClient(config),
             # "tidal": TidalClient(config),
-            # "deezer": DeezerClient(config),
+            "deezer": DeezerClient(config),
             "soundcloud": SoundcloudClient(config),
         }
 

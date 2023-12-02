@@ -3,13 +3,14 @@ import functools
 import hashlib
 import itertools
 import json
+import logging
 import os
 import re
 import shutil
-import subprocess
 import tempfile
 import time
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 from typing import Any, Callable, Optional
 
 import aiofiles
@@ -20,6 +21,8 @@ from Cryptodome.Cipher import Blowfish
 from .. import converter
 from ..exceptions import NonStreamable
 
+logger = logging.getLogger("streamrip")
+
 
 def generate_temp_path(url: str):
     return os.path.join(
@@ -27,6 +30,7 @@ def generate_temp_path(url: str):
     )
 
 
+@dataclass(slots=True)
 class Downloadable(ABC):
     session: aiohttp.ClientSession
     url: str
@@ -53,9 +57,6 @@ class Downloadable(ABC):
     async def _download(self, path: str, callback: Callable[[int], None]):
         raise NotImplemented
 
-    def __repr__(self):
-        return f"{self.__class__.__name__}({self.__dict__})"
-
 
 class BasicDownloadable(Downloadable):
     """Just downloads a URL."""
@@ -64,6 +65,7 @@ class BasicDownloadable(Downloadable):
         self.session = session
         self.url = url
         self.extension = extension
+        self._size = None
 
     async def _download(self, path: str, callback: Callable[[int], None]):
         async with self.session.get(self.url, allow_redirects=True) as response:
@@ -72,7 +74,7 @@ class BasicDownloadable(Downloadable):
                 async for chunk in response.content.iter_chunked(self.chunk_size):
                     await file.write(chunk)
                     # typically a bar.update()
-                    callback(self.chunk_size)
+                    callback(len(chunk))
 
 
 class DeezerDownloadable(Downloadable):
@@ -80,10 +82,12 @@ class DeezerDownloadable(Downloadable):
     chunk_size = 2048 * 3
 
     def __init__(self, session: aiohttp.ClientSession, info: dict):
+        logger.debug("Deezer info for downloadable: %s", info)
         self.session = session
         self.url = info["url"]
         self.fallback_id = info["fallback_id"]
         self.quality = info["quality"]
+        self._size = int(info["quality_to_size"][self.quality])
         if self.quality <= 1:
             self.extension = "mp3"
         else:
@@ -91,9 +95,8 @@ class DeezerDownloadable(Downloadable):
         self.id = info["id"]
 
     async def _download(self, path: str, callback):
-        async with self.session.get(
-            self.url, allow_redirects=True, stream=True
-        ) as resp:
+        # with requests.Session().get(self.url, allow_redirects=True) as resp:
+        async with self.session.get(self.url, allow_redirects=True) as resp:
             resp.raise_for_status()
             self._size = int(resp.headers.get("Content-Length", 0))
             if self._size < 20000 and not self.url.endswith(".jpg"):
@@ -108,24 +111,45 @@ class DeezerDownloadable(Downloadable):
                 except json.JSONDecodeError:
                     raise NonStreamable("File not found.")
 
-            async with aiofiles.open(path, "wb") as file:
-                if self.is_encrypted.search(self.url) is None:
+            if self.is_encrypted.search(self.url) is None:
+                logger.debug(f"Deezer file at {self.url} not encrypted.")
+                async with aiofiles.open(path, "wb") as file:
                     async for chunk in resp.content.iter_chunked(self.chunk_size):
                         await file.write(chunk)
                         # typically a bar.update()
-                        callback(self.chunk_size)
-                else:
-                    blowfish_key = self._generate_blowfish_key(self.id)
-                    async for chunk in resp.content.iter_chunked(self.chunk_size):
-                        if len(chunk) >= 2048:
-                            decrypted_chunk = (
-                                self._decrypt_chunk(blowfish_key, chunk[:2048])
-                                + chunk[2048:]
-                            )
-                        else:
-                            decrypted_chunk = chunk
-                        await file.write(decrypted_chunk)
-                        callback(self.chunk_size)
+                        callback(len(chunk))
+            else:
+                blowfish_key = self._generate_blowfish_key(self.id)
+                logger.debug(
+                    f"Deezer file (id %s) at %s is encrypted. Decrypting with %s",
+                    self.id,
+                    self.url,
+                    blowfish_key,
+                )
+
+                assert self.chunk_size == 2048 * 3
+
+                # Write data from server to tempfile because there's no
+                # efficient way to guarantee a fixed chunk size for all iterations
+                # in async
+                async with aiofiles.tempfile.TemporaryFile("wb+") as tmp:
+                    async for chunk in resp.content.iter_chunks():
+                        data, _ = chunk
+                        await tmp.write(data)
+                        callback(len(data))
+
+                    await tmp.seek(0)
+                    async with aiofiles.open(path, "wb") as audio:
+                        while chunk := await tmp.read(self.chunk_size):
+                            if len(chunk) >= 2048:
+                                decrypted_chunk = (
+                                    self._decrypt_chunk(blowfish_key, chunk[:2048])
+                                    + chunk[2048:]
+                                )
+                            else:
+                                decrypted_chunk = chunk
+
+                            await audio.write(decrypted_chunk)
 
     @staticmethod
     def _decrypt_chunk(key, data):
@@ -168,7 +192,7 @@ class TidalDownloadable(Downloadable):
                 # Turn CamelCase code into a readable sentence
                 words = re.findall(r"([A-Z][a-z]+)", restrictions[0]["code"])
                 raise NonStreamable(
-                    words[0] + " " + " ".join(map(str.lower, words[1:])) + "."
+                    words[0] + " " + " ".join(map(str.lower, words[1:]))
                 )
 
             raise NonStreamable(f"Tidal download: dl_info = {info}")
@@ -220,7 +244,7 @@ class SoundcloudDownloadable(Downloadable):
             segment_paths.append(await coro)
             callback(1)
 
-        concat_audio_files(segment_paths, path, "mp3")
+        await concat_audio_files(segment_paths, path, "mp3")
 
     async def _download_segment(self, segment_uri: str) -> str:
         tmp = generate_temp_path(segment_uri)
@@ -241,7 +265,7 @@ class SoundcloudDownloadable(Downloadable):
         return await super().size()
 
 
-def concat_audio_files(paths: list[str], out: str, ext: str, max_files_open=128):
+async def concat_audio_files(paths: list[str], out: str, ext: str, max_files_open=128):
     """Concatenate audio files using FFmpeg. Batched by max files open.
 
     Recurses log_{max_file_open}(len(paths)) times.
@@ -273,24 +297,31 @@ def concat_audio_files(paths: list[str], out: str, ext: str, max_files_open=128)
         except FileNotFoundError:
             pass
 
+    proc_futures = []
     for i in range(num_batches):
-        proc = subprocess.run(
-            (
-                "ffmpeg",
-                "-i",
-                f"concat:{'|'.join(itertools.islice(it, max_files_open))}",
-                "-acodec",
-                "copy",
-                "-loglevel",
-                "warning",
-                outpaths[i],
-            ),
-            capture_output=True,
+        command = (
+            "ffmpeg",
+            "-i",
+            f"concat:{'|'.join(itertools.islice(it, max_files_open))}",
+            "-acodec",
+            "copy",
+            "-loglevel",
+            "warning",
+            outpaths[i],
         )
+        fut = asyncio.create_subprocess_exec(*command, stderr=asyncio.subprocess.PIPE)
+        proc_futures.append(fut)
+
+    # Create all processes concurrently
+    processes = await asyncio.gather(*proc_futures)
+
+    # wait for all of them to finish
+    await asyncio.gather(*[p.communicate() for p in processes])
+    for proc in processes:
         if proc.returncode != 0:
             raise Exception(
                 f"FFMPEG returned with status code {proc.returncode} error: {proc.stderr} output: {proc.stdout}"
             )
 
     # Recurse on remaining batches
-    concat_audio_files(outpaths, out, ext)
+    await concat_audio_files(outpaths, out, ext)

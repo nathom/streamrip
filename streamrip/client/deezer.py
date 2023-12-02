@@ -1,5 +1,7 @@
 import binascii
 import hashlib
+import json
+import logging
 
 import deezer
 from Cryptodome.Cipher import AES
@@ -8,6 +10,8 @@ from ..config import Config
 from ..exceptions import AuthenticationError, MissingCredentials, NonStreamable
 from .client import Client
 from .downloadable import DeezerDownloadable
+
+logger = logging.getLogger("streamrip")
 
 
 class DeezerClient(Client):
@@ -21,6 +25,8 @@ class DeezerClient(Client):
         self.config = config.session.deezer
 
     async def login(self):
+        # Used for track downloads
+        self.session = await self.get_session()
         arl = self.config.arl
         if not arl:
             raise MissingCredentials
@@ -29,7 +35,8 @@ class DeezerClient(Client):
             raise AuthenticationError
         self.logged_in = True
 
-    async def get_metadata(self, info: dict, media_type: str) -> dict:
+    async def get_metadata(self, item_id: str, media_type: str) -> dict:
+        # TODO: open asyncio PR to deezer py and integrate
         request_functions = {
             "track": self.client.api.get_track,
             "album": self.client.api.get_album,
@@ -38,17 +45,20 @@ class DeezerClient(Client):
         }
 
         get_item = request_functions[media_type]
-        item = get_item(info["id"])
+        item = get_item(item_id)
         if media_type in ("album", "playlist"):
             tracks = getattr(self.client.api, f"get_{media_type}_tracks")(
-                info["id"], limit=-1
+                item_id, limit=-1
             )
             item["tracks"] = tracks["data"]
             item["track_total"] = len(tracks["data"])
         elif media_type == "artist":
-            albums = self.client.api.get_artist_albums(info["id"])
+            albums = self.client.api.get_artist_albums(item_id)
             item["albums"] = albums["data"]
-
+        elif media_type == "track":
+            # Because they give incomplete information about the album
+            # we need to make another request
+            item["album"] = await self.get_metadata(item["album"]["id"], "album")
         return item
 
     async def search(self, media_type: str, query: str, limit: int = 200):
@@ -71,20 +81,19 @@ class DeezerClient(Client):
         return response
 
     async def get_downloadable(
-        self, info: dict, quality: int = 2
+        self, item_id: str, quality: int = 2
     ) -> DeezerDownloadable:
-        item_id = info["id"]
         # TODO: optimize such that all of the ids are requested at once
         dl_info: dict = {"quality": quality, "id": item_id}
 
         track_info = self.client.gw.get_track(item_id)
 
-        dl_info["fallback_id"] = track_info["FALLBACK"]["SNG_ID"]
+        dl_info["fallback_id"] = track_info.get("FALLBACK", {}).get("SNG_ID")
 
         quality_map = [
-            (9, "MP3_128"),
-            (3, "MP3_320"),
-            (1, "FLAC"),
+            (9, "MP3_128"),  # quality 0
+            (3, "MP3_320"),  # quality 1
+            (1, "FLAC"),  # quality 2
         ]
 
         # available_formats = [
@@ -97,6 +106,10 @@ class DeezerClient(Client):
         # ]
 
         _, format_str = quality_map[quality]
+
+        dl_info["quality_to_size"] = [
+            track_info[f"FILESIZE_{format}"] for _, format in quality_map
+        ]
 
         # dl_info["size_to_quality"] = {
         #     int(track_info.get(f"FILESIZE_{format}")): self._quality_id_from_filetype(
@@ -114,6 +127,10 @@ class DeezerClient(Client):
                 "Deezer HiFi is required for quality 2. Otherwise, the maximum "
                 "quality allowed is 1."
             )
+        except deezer.WrongGeolocation:
+            raise NonStreamable(
+                "The requested track is not available. This may be due to your country/location."
+            )
 
         if url is None:
             url = self._get_encrypted_file_url(
@@ -126,6 +143,7 @@ class DeezerClient(Client):
     def _get_encrypted_file_url(
         self, meta_id: str, track_hash: str, media_version: str
     ):
+        logger.debug("Unable to fetch URL. Trying encryption method.")
         format_number = 1
 
         url_bytes = b"\xa4".join(
