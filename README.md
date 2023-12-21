@@ -1,3 +1,4 @@
+
 ![streamrip](demo/logo.svg)
 
 [![Downloads](https://pepy.tech/badge/streamrip)](https://pepy.tech/project/streamrip)
