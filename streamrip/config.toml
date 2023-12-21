@@ -13,7 +13,7 @@ concurrency = true
 # A value that is too high for your bandwidth may cause slowdowns
 # Set to -1 for no limit
 max_connections = 6
-# Max number of API requests to handle per minute
+# Max number of API requests per source to handle per minute
 # Set to -1 for no limit
 requests_per_minute = 60
 

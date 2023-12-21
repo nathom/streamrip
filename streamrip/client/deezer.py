@@ -16,6 +16,17 @@ logging.captureWarnings(True)
 
 
 class DeezerClient(Client):
+    """Client to handle deezer API. Does not do rate limiting.
+
+    Attributes:
+        global_config: Entire config object
+        client: client from deezer py used for API requests
+        logged_in: True if logged in
+        config: deezer local config
+        session: aiohttp.ClientSession, used only for track downloads not API requests
+
+    """
+
     source = "deezer"
     max_quality = 2
 
@@ -59,7 +70,6 @@ class DeezerClient(Client):
             )
         except Exception as e:
             logger.error("Got exception from deezer API %s", e)
-            # item["album"] = {"readable": False, "tracks": [], "track_total": 0}
             return item
 
         album_metadata["tracks"] = album_tracks["data"]
@@ -131,27 +141,11 @@ class DeezerClient(Client):
             (1, "FLAC"),  # quality 2
         ]
 
-        # available_formats = [
-        #     "AAC_64",
-        #     "MP3_64",
-        #     "MP3_128",
-        #     "MP3_256",
-        #     "MP3_320",
-        #     "FLAC",
-        # ]
-
         _, format_str = quality_map[quality]
 
         dl_info["quality_to_size"] = [
             track_info[f"FILESIZE_{format}"] for _, format in quality_map
         ]
-
-        # dl_info["size_to_quality"] = {
-        #     int(track_info.get(f"FILESIZE_{format}")): self._quality_id_from_filetype(
-        #         format
-        #     )
-        #     for format in available_formats
-        # }
 
         token = track_info["TRACK_TOKEN"]
         try:

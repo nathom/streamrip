@@ -1,5 +1,6 @@
 """The clients that interact with the streaming service APIs."""
 
+import contextlib
 import logging
 from abc import ABC, abstractmethod
 
@@ -40,11 +41,11 @@ class Client(ABC):
     @staticmethod
     def get_rate_limiter(
         requests_per_min: int,
-    ) -> aiolimiter.AsyncLimiter | None:
+    ) -> aiolimiter.AsyncLimiter | contextlib.nullcontext:
         return (
             aiolimiter.AsyncLimiter(requests_per_min, 60)
             if requests_per_min > 0
-            else None
+            else contextlib.nullcontext()
         )
 
     @staticmethod

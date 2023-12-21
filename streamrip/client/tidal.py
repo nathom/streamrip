@@ -1,3 +1,4 @@
+import asyncio
 import base64
 import json
 import logging
@@ -71,10 +72,12 @@ class TidalClient(Client):
         :type media_type: str
         :rtype: dict
         """
+        assert media_type in ("track", "playlist", "album", "artist"), media_type
+
         url = f"{media_type}s/{item_id}"
         item = await self._api_request(url)
         if media_type in ("playlist", "album"):
-            # TODO: move into new method
+            # TODO: move into new method and make concurrent
             resp = await self._api_request(f"{url}/items")
             tracks_left = item["numberOfTracks"]
             if tracks_left > 100:
@@ -90,9 +93,9 @@ class TidalClient(Client):
             item["tracks"] = [item["item"] for item in resp["items"]]
         elif media_type == "artist":
             logger.debug("filtering eps")
-            album_resp = await self._api_request(f"{url}/albums")
-            ep_resp = await self._api_request(
-                f"{url}/albums", params={"filter": "EPSANDSINGLES"}
+            album_resp, ep_resp = await asyncio.gather(
+                self._api_request(f"{url}/albums"),
+                self._api_request(f"{url}/albums", params={"filter": "EPSANDSINGLES"}),
             )
 
             item["albums"] = album_resp["items"]
@@ -295,8 +298,9 @@ class TidalClient(Client):
         :param data:
         :param auth:
         """
-        async with self.session.post(url, data=data, auth=auth) as resp:
-            return await resp.json()
+        async with self.rate_limiter:
+            async with self.session.post(url, data=data, auth=auth) as resp:
+                return await resp.json()
 
     async def _api_request(self, path: str, params=None) -> dict:
         """Handle Tidal API requests.
@@ -312,6 +316,7 @@ class TidalClient(Client):
         params["countryCode"] = self.config.country_code
         params["limit"] = 100
 
-        async with self.session.get(f"{BASE}/{path}", params=params) as resp:
-            resp.raise_for_status()
-            return await resp.json()
+        async with self.rate_limiter:
+            async with self.session.get(f"{BASE}/{path}", params=params) as resp:
+                resp.raise_for_status()
+                return await resp.json()

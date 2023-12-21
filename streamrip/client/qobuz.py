@@ -390,14 +390,9 @@ class QobuzClient(Client):
         """
         url = f"{QOBUZ_BASE_URL}/{epoint}"
         logger.debug("api_request: endpoint=%s, params=%s", epoint, params)
-        if self.rate_limiter is not None:
-            async with self.rate_limiter:
-                async with self.session.get(url, params=params) as response:
-                    return response.status, await response.json()
-        # return await self.session.get(url, params=params)
-        async with self.session.get(url, params=params) as response:
-            resp_json = await response.json()
-            return response.status, resp_json
+        async with self.rate_limiter:
+            async with self.session.get(url, params=params) as response:
+                return response.status, await response.json()
 
     @staticmethod
     def get_quality(quality: int):
