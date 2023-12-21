@@ -65,7 +65,7 @@ class NonStreamable(Exception):
                 (
                     style("Message:", fg="yellow"),
                     style(self.message, fg="red"),
-                )
+                ),
             )
 
         return " ".join(base_msg)

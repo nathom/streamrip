@@ -1,0 +1,103 @@
+{
+  "maximum_bit_depth": 24,
+  "image": {
+    "small": "https://static.qobuz.com/images/covers/32/10/0603497941032_230.jpg",
+    "thumbnail": "https://static.qobuz.com/images/covers/32/10/0603497941032_50.jpg",
+    "large": "https://static.qobuz.com/images/covers/32/10/0603497941032_600.jpg",
+    "back": null
+  },
+  "media_count": 1,
+  "artist": {
+    "image": null,
+    "name": "Fleetwood Mac",
+    "id": 132127,
+    "albums_count": 424,
+    "slug": "fleetwood-mac",
+    "picture": null
+  },
+  "artists": [
+    { "id": 132127, "name": "Fleetwood Mac", "roles": ["main-artist"] }
+  ],
+  "upc": "0603497941032",
+  "released_at": 223858800,
+  "label": {
+    "name": "Rhino - Warner Records",
+    "id": 323970,
+    "albums_count": 3002,
+    "supplier_id": 5,
+    "slug": "rhino-warner-records"
+  },
+  "title": "Rumours",
+  "qobuz_id": 19512572,
+  "version": "2001 Remaster",
+  "url": "https://www.qobuz.com/fr-fr/album/rumours-fleetwood-mac/0603497941032",
+  "duration": 2387,
+  "parental_warning": false,
+  "popularity": 0,
+  "tracks_count": 11,
+  "genre": {
+    "path": [112, 119],
+    "color": "#5eabc1",
+    "name": "Rock",
+    "id": 119,
+    "slug": "rock"
+  },
+  "maximum_channel_count": 2,
+  "id": "0603497941032",
+  "maximum_sampling_rate": 96,
+  "articles": [],
+  "release_date_original": "1977-02-04",
+  "release_date_download": "1977-02-04",
+  "release_date_stream": "1977-02-04",
+  "purchasable": true,
+  "streamable": true,
+  "previewable": true,
+  "sampleable": true,
+  "downloadable": true,
+  "displayable": true,
+  "purchasable_at": 1693551600,
+  "streamable_at": 1690354800,
+  "hires": true,
+  "hires_streamable": true,
+  "awards": [
+    {
+      "name": "The Qobuz Ideal Discography",
+      "slug": "qobuz",
+      "award_slug": "discotheque_ideale",
+      "awarded_at": 1420066800,
+      "award_id": "70",
+      "publication_id": "2",
+      "publication_name": "Qobuz",
+      "publication_slug": "qobuz"
+    }
+  ],
+  "goodies": [],
+  "area": null,
+  "catchline": "",
+  "composer": {
+    "id": 573076,
+    "name": "Various Composers",
+    "slug": "various-composers",
+    "albums_count": 583621,
+    "picture": null,
+    "image": null
+  },
+  "created_at": 0,
+  "genres_list": ["Pop/Rock", "Pop/Rock\u2192Rock"],
+  "period": null,
+  "copyright": "\u00a9 1977 Warner Records Inc. \u2117 1977 Warner Records Inc. Marketed by Rhino Entertainment Company, A Warner Music Group Company.",
+  "is_official": true,
+  "maximum_technical_specifications": "24 bits / 96.0 kHz - Stereo",
+  "product_sales_factors_monthly": 0,
+  "product_sales_factors_weekly": 0,
+  "product_sales_factors_yearly": 0,
+  "product_type": "album",
+  "product_url": "/fr-fr/album/rumours-fleetwood-mac/0603497941032",
+  "recording_information": "",
+  "relative_url": "/album/rumours-fleetwood-mac/0603497941032",
+  "release_tags": ["remaster"],
+  "release_type": "album",
+  "slug": "rumours-fleetwood-mac",
+  "subtitle": "Fleetwood Mac",
+  "description": ""
+}
