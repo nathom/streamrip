@@ -15,6 +15,7 @@ from ..client import Client
 from ..config import Config
 from ..console import console
 from ..db import Database
+from ..exceptions import NonStreamable
 from ..filepath_utils import clean_filename
 from ..metadata import (
     AlbumMetadata,
@@ -47,10 +48,16 @@ class PendingPlaylistTrack(Pending):
         resp = await self.client.get_metadata(self.id, "track")
 
         album = AlbumMetadata.from_track_resp(resp, self.client.source)
+        if album is None:
+            logger.error(
+                f"Track ({self.id}) not available for stream on {self.client.source}",
+            )
+            self.db.set_failed(self.client.source, "track", self.id)
+            return None
         meta = TrackMetadata.from_resp(album, self.client.source, resp)
         if meta is None:
             logger.error(
-                f"Track ({self.id}) not available for stream on {self.client.source}"
+                f"Track ({self.id}) not available for stream on {self.client.source}",
             )
             self.db.set_failed(self.client.source, "track", self.id)
             return None
@@ -62,12 +69,18 @@ class PendingPlaylistTrack(Pending):
             album.album = self.playlist_name
 
         quality = self.config.session.get_source(self.client.source).quality
-        embedded_cover_path, downloadable = await asyncio.gather(
-            self._download_cover(album.covers, self.folder),
-            self.client.get_downloadable(self.id, quality),
-        )
+        try:
+            embedded_cover_path, downloadable = await asyncio.gather(
+                self._download_cover(album.covers, self.folder),
+                self.client.get_downloadable(self.id, quality),
+            )
+        except NonStreamable as e:
+            logger.error("Error fetching download info for track: %s", e)
+            self.db.set_failed(self.client.source, "track", self.id)
+            return None
+
         return Track(
-            meta, downloadable, self.config, self.folder, embedded_cover_path, self.db
+            meta, downloadable, self.config, self.folder, embedded_cover_path, self.db,
         )
 
     async def _download_cover(self, covers: Covers, folder: str) -> str | None:
@@ -132,7 +145,7 @@ class PendingPlaylist(Pending):
         folder = os.path.join(parent, clean_filename(name))
         tracks = [
             PendingPlaylistTrack(
-                id, self.client, self.config, folder, name, position + 1, self.db
+                id, self.client, self.config, folder, name, position + 1, self.db,
             )
             for position, id in enumerate(meta.ids())
         ]
@@ -167,7 +180,7 @@ class PendingLastfmPlaylist(Pending):
     async def resolve(self) -> Playlist | None:
         try:
             playlist_title, titles_artists = await self._parse_lastfm_playlist(
-                self.lastfm_url
+                self.lastfm_url,
             )
         except Exception as e:
             logger.error("Error occured while parsing last.fm page: %s", e)
@@ -212,13 +225,13 @@ class PendingLastfmPlaylist(Pending):
                     playlist_title,
                     pos,
                     self.db,
-                )
+                ),
             )
 
         return Playlist(playlist_title, self.config, self.client, pending_tracks)
 
     async def _make_query(
-        self, query: str, s: Status, callback
+        self, query: str, s: Status, callback,
     ) -> tuple[str | None, bool]:
         """Try searching for `query` with main source. If that fails, try with next source.
 
@@ -248,7 +261,7 @@ class PendingLastfmPlaylist(Pending):
                 s.found += 1
                 return (
                     SearchResults.from_pages(
-                        self.fallback_client.source, "track", pages
+                        self.fallback_client.source, "track", pages,
                     )
                     .results[0]
                     .id
@@ -259,7 +272,7 @@ class PendingLastfmPlaylist(Pending):
         return None, True
 
     async def _parse_lastfm_playlist(
-        self, playlist_url: str
+        self, playlist_url: str,
     ) -> tuple[str, list[tuple[str, str]]]:
         """From a last.fm url, return the playlist title, and a list of
         track titles and artist names.
@@ -276,7 +289,7 @@ class PendingLastfmPlaylist(Pending):
         title_tags = re.compile(r'<a\s+href="[^"]+"\s+title="([^"]+)"')
         re_total_tracks = re.compile(r'data-playlisting-entry-count="(\d+)"')
         re_playlist_title_match = re.compile(
-            r'<h1 class="playlisting-playlist-header-title">([^<]+)</h1>'
+            r'<h1 class="playlisting-playlist-header-title">([^<]+)</h1>',
         )
 
         def find_title_artist_pairs(page_text):
@@ -324,7 +337,7 @@ class PendingLastfmPlaylist(Pending):
         return playlist_title, title_artist_pairs
 
     async def _make_query_mock(
-        self, _: str, s: Status, callback
+        self, _: str, s: Status, callback,
     ) -> tuple[str | None, bool]:
         await asyncio.sleep(random.uniform(1, 20))
         if random.randint(0, 4) >= 1:

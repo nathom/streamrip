@@ -56,7 +56,7 @@ class PendingAlbum(Pending):
             meta = AlbumMetadata.from_album_resp(resp, self.client.source)
         except NonStreamable:
             logger.error(
-                f"Album {self.id} not available to stream on {self.client.source}"
+                f"Album {self.id} not available to stream on {self.client.source}",
             )
             return None
 

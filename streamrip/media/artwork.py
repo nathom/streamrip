@@ -42,12 +42,15 @@ async def download_artwork(
     Hi-res (saved) artworks are kept in `folder` as "cover.jpg".
 
     Args:
+    ----
         session (aiohttp.ClientSession):
         folder (str):
         covers (Covers):
         config (ArtworkConfig):
         for_playlist (bool): Set to disable saved hires covers.
+
     Returns:
+    -------
         (path to embedded artwork, path to hires artwork)
     """
     save_artwork, embed = config.save_artwork, config.embed
@@ -66,8 +69,8 @@ async def download_artwork(
         assert l_url is not None
         downloadables.append(
             BasicDownloadable(session, l_url, "jpg").download(
-                saved_cover_path, lambda _: None
-            )
+                saved_cover_path, lambda _: None,
+            ),
         )
 
     _, embed_url, embed_cover_path = covers.get_size(config.embed_size)
@@ -79,8 +82,8 @@ async def download_artwork(
         embed_cover_path = os.path.join(embed_dir, f"cover{hash(embed_url)}.jpg")
         downloadables.append(
             BasicDownloadable(session, embed_url, "jpg").download(
-                embed_cover_path, lambda _: None
-            )
+                embed_cover_path, lambda _: None,
+            ),
         )
 
     if len(downloadables) == 0:
@@ -108,10 +111,12 @@ def downscale_image(input_image_path: str, max_dimension: int):
     """Downscale an image in place given a maximum allowed dimension.
 
     Args:
+    ----
         input_image_path (str): Path to image
         max_dimension (int): Maximum dimension allowed
 
     Returns:
+    -------
 
 
     """

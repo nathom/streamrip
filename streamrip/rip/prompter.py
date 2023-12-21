@@ -23,22 +23,23 @@ class CredentialPrompter(ABC):
 
     @abstractmethod
     def has_creds(self) -> bool:
-        raise NotImplemented
+        raise NotImplementedError
 
     @abstractmethod
     async def prompt_and_login(self):
         """Prompt for credentials in the appropriate way,
-        and save them to the configuration."""
-        raise NotImplemented
+        and save them to the configuration.
+        """
+        raise NotImplementedError
 
     @abstractmethod
     def save(self):
         """Save current config to file"""
-        raise NotImplemented
+        raise NotImplementedError
 
     @abstractmethod
     def type_check_client(self, client: Client):
-        raise NotImplemented
+        raise NotImplementedError
 
 
 class QobuzPrompter(CredentialPrompter):
@@ -68,7 +69,7 @@ class QobuzPrompter(CredentialPrompter):
 
         pwd = hashlib.md5(pwd_input.encode("utf-8")).hexdigest()
         console.print(
-            f"[green]Credentials saved to config file at [bold cyan]{self.config.path}"
+            f"[green]Credentials saved to config file at [bold cyan]{self.config.path}",
         )
         c = self.config.session.qobuz
         c.use_auth_token = False

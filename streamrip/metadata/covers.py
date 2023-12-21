@@ -78,7 +78,7 @@ class Covers:
     def from_soundcloud(cls, resp):
         c = cls()
         cover_url = (resp["artwork_url"] or resp["user"].get("avatar_url")).replace(
-            "large", "t500x500"
+            "large", "t500x500",
         )
         c.set_cover_url("large", cover_url)
         return c
@@ -118,7 +118,7 @@ class Covers:
         possibles = (80, 160, 320, 640, 1280)
         assert size in possibles, f"size must be in {possibles}"
         return TIDAL_COVER_URL.format(
-            uuid=uuid.replace("-", "/"), height=size, width=size
+            uuid=uuid.replace("-", "/"), height=size, width=size,
         )
 
     def __repr__(self):

@@ -1,6 +1,6 @@
+import asyncio
 import binascii
 import hashlib
-import json
 import logging
 
 import deezer
@@ -12,6 +12,7 @@ from .client import Client
 from .downloadable import DeezerDownloadable
 
 logger = logging.getLogger("streamrip")
+logging.captureWarnings(True)
 
 
 class DeezerClient(Client):
@@ -37,29 +38,61 @@ class DeezerClient(Client):
 
     async def get_metadata(self, item_id: str, media_type: str) -> dict:
         # TODO: open asyncio PR to deezer py and integrate
-        request_functions = {
-            "track": self.client.api.get_track,
-            "album": self.client.api.get_album,
-            "playlist": self.client.api.get_playlist,
-            "artist": self.client.api.get_artist,
-        }
-
-        get_item = request_functions[media_type]
-        item = get_item(item_id)
-        if media_type in ("album", "playlist"):
-            tracks = getattr(self.client.api, f"get_{media_type}_tracks")(
-                item_id, limit=-1
-            )
-            item["tracks"] = tracks["data"]
-            item["track_total"] = len(tracks["data"])
+        if media_type == "track":
+            return await self.get_track(item_id)
+        elif media_type == "album":
+            return await self.get_album(item_id)
+        elif media_type == "playlist":
+            return await self.get_playlist(item_id)
         elif media_type == "artist":
-            albums = self.client.api.get_artist_albums(item_id)
-            item["albums"] = albums["data"]
-        elif media_type == "track":
-            # Because they give incomplete information about the album
-            # we need to make another request
-            item["album"] = await self.get_metadata(item["album"]["id"], "album")
+            return await self.get_artist(item_id)
+        else:
+            raise Exception(f"Media type {media_type} not available on deezer")
+
+    async def get_track(self, item_id: str) -> dict:
+        item = await asyncio.to_thread(self.client.api.get_track, item_id)
+        album_id = item["album"]["id"]
+        try:
+            album_metadata, album_tracks = await asyncio.gather(
+                asyncio.to_thread(self.client.api.get_album, album_id),
+                asyncio.to_thread(self.client.api.get_album_tracks, album_id),
+            )
+        except Exception as e:
+            logger.error("Got exception from deezer API %s", e)
+            # item["album"] = {"readable": False, "tracks": [], "track_total": 0}
+            return item
+
+        album_metadata["tracks"] = album_tracks["data"]
+        album_metadata["track_total"] = len(album_tracks["data"])
+        item["album"] = album_metadata
+
         return item
+
+    async def get_album(self, item_id: str) -> dict:
+        album_metadata, album_tracks = await asyncio.gather(
+            asyncio.to_thread(self.client.api.get_album, item_id),
+            asyncio.to_thread(self.client.api.get_album_tracks, item_id),
+        )
+        album_metadata["tracks"] = album_tracks["data"]
+        album_metadata["track_total"] = len(album_tracks["data"])
+        return album_metadata
+
+    async def get_playlist(self, item_id: str) -> dict:
+        pl_metadata, pl_tracks = await asyncio.gather(
+            asyncio.to_thread(self.client.api.get_playlist, item_id),
+            asyncio.to_thread(self.client.api.get_playlist_tracks, item_id),
+        )
+        pl_metadata["tracks"] = pl_tracks["data"]
+        pl_metadata["track_total"] = len(pl_tracks["data"])
+        return pl_metadata
+
+    async def get_artist(self, item_id: str) -> dict:
+        artist, albums = await asyncio.gather(
+            asyncio.to_thread(self.client.api.get_artist, item_id),
+            asyncio.to_thread(self.client.api.get_artist_albums, item_id),
+        )
+        artist["albums"] = albums["data"]
+        return artist
 
     async def search(self, media_type: str, query: str, limit: int = 200):
         # TODO: use limit parameter
@@ -81,7 +114,7 @@ class DeezerClient(Client):
         return response
 
     async def get_downloadable(
-        self, item_id: str, quality: int = 2
+        self, item_id: str, quality: int = 2,
     ) -> DeezerDownloadable:
         # TODO: optimize such that all of the ids are requested at once
         dl_info: dict = {"quality": quality, "id": item_id}
@@ -120,28 +153,29 @@ class DeezerClient(Client):
 
         token = track_info["TRACK_TOKEN"]
         try:
+            logger.debug("Fetching deezer url with token %s", token)
             url = self.client.get_track_url(token, format_str)
         except deezer.WrongLicense:
             raise NonStreamable(
                 "The requested quality is not available with your subscription. "
                 "Deezer HiFi is required for quality 2. Otherwise, the maximum "
-                "quality allowed is 1."
+                "quality allowed is 1.",
             )
         except deezer.WrongGeolocation:
             raise NonStreamable(
-                "The requested track is not available. This may be due to your country/location."
+                "The requested track is not available. This may be due to your country/location.",
             )
 
         if url is None:
             url = self._get_encrypted_file_url(
-                item_id, track_info["MD5_ORIGIN"], track_info["MEDIA_VERSION"]
+                item_id, track_info["MD5_ORIGIN"], track_info["MEDIA_VERSION"],
             )
 
         dl_info["url"] = url
         return DeezerDownloadable(self.session, dl_info)
 
     def _get_encrypted_file_url(
-        self, meta_id: str, track_hash: str, media_version: str
+        self, meta_id: str, track_hash: str, media_version: str,
     ):
         logger.debug("Unable to fetch URL. Trying encryption method.")
         format_number = 1
@@ -152,7 +186,7 @@ class DeezerClient(Client):
                 str(format_number).encode(),
                 str(meta_id).encode(),
                 str(media_version).encode(),
-            )
+            ),
         )
         url_hash = hashlib.md5(url_bytes).hexdigest()
         info_bytes = bytearray(url_hash.encode())
@@ -164,7 +198,7 @@ class DeezerClient(Client):
         info_bytes.extend(b"." * padding_len)
 
         path = binascii.hexlify(
-            AES.new("jo6aey6haid2Teih".encode(), AES.MODE_ECB).encrypt(info_bytes)
+            AES.new(b"jo6aey6haid2Teih", AES.MODE_ECB).encrypt(info_bytes),
         ).decode("utf-8")
 
         return f"https://e-cdns-proxy-{track_hash[0]}.dzcdn.net/mobile/1/{path}"

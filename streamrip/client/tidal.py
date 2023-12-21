@@ -9,7 +9,7 @@ AUTH_URL = "https://auth.tidal.com/v1/oauth2"
 
 CLIENT_ID = base64.b64decode("elU0WEhWVmtjMnREUG80dA==").decode("iso-8859-1")
 CLIENT_SECRET = base64.b64decode(
-    "VkpLaERGcUpQcXZzUFZOQlY2dWtYVEptd2x2YnR0UDd3bE1scmM3MnNlND0="
+    "VkpLaERGcUpQcXZzUFZOQlY2dWtYVEptd2x2YnR0UDd3bE1scmM3MnNlND0=",
 ).decode("iso-8859-1")
 
 
@@ -24,7 +24,7 @@ class TidalClient(Client):
         self.global_config = config
         self.config = config.session.tidal
         self.rate_limiter = self.get_rate_limiter(
-            config.session.downloads.requests_per_minute
+            config.session.downloads.requests_per_minute,
         )
 
     async def login(self):
@@ -53,7 +53,7 @@ class TidalClient(Client):
         """
         headers = {"authorization": f"Bearer {token}"}  # temporary
         async with self.session.get(
-            "https://api.tidal.com/v1/sessions", headers=headers
+            "https://api.tidal.com/v1/sessions", headers=headers,
         ) as _resp:
             resp = await _resp.json()
 
@@ -85,7 +85,7 @@ class TidalClient(Client):
 
     def _update_authorization_from_config(self):
         self.session.headers.update(
-            {"authorization": f"Bearer {self.config.access_token}"}
+            {"authorization": f"Bearer {self.config.access_token}"},
         )
 
     async def _get_auth_status(self, device_code) -> tuple[int, dict[str, int | str]]:

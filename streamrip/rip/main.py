@@ -64,7 +64,7 @@ class Main:
 
         client = await self.get_logged_in_client(parsed.source)
         self.pending.append(
-            await parsed.into_pending(client, self.config, self.database)
+            await parsed.into_pending(client, self.config, self.database),
         )
         logger.debug("Added url=%s", url)
 
@@ -75,7 +75,7 @@ class Main:
         for i, p in enumerate(parsed):
             if p is None:
                 console.print(
-                    f"[red]Found invalid url [cyan]{urls[i]}[/cyan], skipping."
+                    f"[red]Found invalid url [cyan]{urls[i]}[/cyan], skipping.",
                 )
                 continue
             url_client_pairs.append((p, await self.get_logged_in_client(p.source)))
@@ -84,7 +84,7 @@ class Main:
             *[
                 url.into_pending(client, self.config, self.database)
                 for url, client in url_client_pairs
-            ]
+            ],
         )
         self.pending.extend(pendings)
 
@@ -93,7 +93,7 @@ class Main:
         client = self.clients.get(source)
         if client is None:
             raise Exception(
-                f"No client named {source} available. Only have {self.clients.keys()}"
+                f"No client named {source} available. Only have {self.clients.keys()}",
             )
         if not client.logged_in:
             prompter = get_prompter(client, self.config)
@@ -150,7 +150,7 @@ class Main:
             assert isinstance(choices, list)
 
             await self.add_all(
-                [f"http://{source}.com/{media_type}/{item.id}" for item, i in choices]
+                [f"http://{source}.com/{media_type}/{item.id}" for item, i in choices],
             )
 
         else:
@@ -177,7 +177,7 @@ class Main:
                     [
                         f"http://{source}.com/{item.media_type()}/{item.id}"
                         for item in choices
-                    ]
+                    ],
                 )
 
     async def search_take_first(self, source: str, media_type: str, query: str):
@@ -203,7 +203,7 @@ class Main:
             fallback_client = None
 
         pending_playlist = PendingLastfmPlaylist(
-            playlist_url, client, fallback_client, self.config, self.database
+            playlist_url, client, fallback_client, self.config, self.database,
         )
         playlist = await pending_playlist.resolve()
 

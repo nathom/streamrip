@@ -48,10 +48,9 @@ class Converter:
         :param remove_source: Remove the source file after conversion.
         :type remove_source: bool
         """
-
         if shutil.which("ffmpeg") is None:
             raise Exception(
-                "Could not find FFMPEG executable. Install it to convert audio files."
+                "Could not find FFMPEG executable. Install it to convert audio files.",
             )
 
         self.filename = filename
@@ -86,7 +85,7 @@ class Converter:
         logger.debug("Generated conversion command: %s", self.command)
 
         process = await asyncio.create_subprocess_exec(
-            *self.command, stderr=asyncio.subprocess.PIPE
+            *self.command, stderr=asyncio.subprocess.PIPE,
         )
         out, err = await process.communicate()
         if process.returncode == 0 and os.path.isfile(self.tempfile):
@@ -129,7 +128,7 @@ class Converter:
 
             elif self.sampling_rate is not None:
                 raise TypeError(
-                    f"Sampling rate must be int, not {type(self.sampling_rate)}"
+                    f"Sampling rate must be int, not {type(self.sampling_rate)}",
                 )
 
             if isinstance(self.bit_depth, int):
@@ -154,7 +153,7 @@ class Converter:
         if self.ffmpeg_arg is not None and self.lossless:
             logger.debug(
                 "Lossless codecs don't support extra arguments; "
-                "the extra argument will be ignored"
+                "the extra argument will be ignored",
             )
             self.ffmpeg_arg = self.default_ffmpeg_arg
             return

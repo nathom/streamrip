@@ -43,7 +43,7 @@ def parse_soundcloud_id(item_id: str) -> tuple[str, str]:
 @dataclass(slots=True)
 class PlaylistMetadata:
     name: str
-    tracks: list[TrackMetadata]
+    tracks: list[TrackMetadata] | list[str]
 
     @classmethod
     def from_qobuz(cls, resp: dict):
@@ -53,7 +53,7 @@ class PlaylistMetadata:
 
         for i, track in enumerate(resp["tracks"]["items"]):
             meta = TrackMetadata.from_qobuz(
-                AlbumMetadata.from_qobuz(track["album"]), track
+                AlbumMetadata.from_qobuz(track["album"]), track,
             )
             if meta is None:
                 logger.error(f"Track {i+1} in playlist {name} not available for stream")
@@ -67,6 +67,7 @@ class PlaylistMetadata:
         """Convert a (modified) soundcloud API response to PlaylistMetadata.
 
         Args:
+        ----
             resp (dict): The response, except there should not be any partially resolved items
             in the playlist.
 
@@ -74,6 +75,7 @@ class PlaylistMetadata:
             elements in resp['tracks'] should be replaced with their full metadata.
 
         Returns:
+        -------
             PlaylistMetadata object.
         """
         name = typed(resp["title"], str)
@@ -83,8 +85,19 @@ class PlaylistMetadata:
         ]
         return cls(name, tracks)
 
-    def ids(self):
-        return [track.info.id for track in self.tracks]
+    @classmethod
+    def from_deezer(cls, resp: dict):
+        name = typed(resp["title"], str)
+        tracks = [str(track["id"]) for track in resp["tracks"]]
+        return cls(name, tracks)
+
+    def ids(self) -> list[str]:
+        if len(self.tracks) == 0:
+            return []
+        if isinstance(self.tracks[0], str):
+            return self.tracks  # type: ignore
+
+        return [track.info.id for track in self.tracks]  # type: ignore
 
     @classmethod
     def from_resp(cls, resp: dict, source: str):
@@ -92,5 +105,7 @@ class PlaylistMetadata:
             return cls.from_qobuz(resp)
         elif source == "soundcloud":
             return cls.from_soundcloud(resp)
+        elif source == "deezer":
+            return cls.from_deezer(resp)
         else:
             raise NotImplementedError(source)

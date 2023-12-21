@@ -33,7 +33,7 @@ def coro(f):
 )
 @click.version_option(version="2.0")
 @click.option(
-    "--config-path", default=DEFAULT_CONFIG_PATH, help="Path to the configuration file"
+    "--config-path", default=DEFAULT_CONFIG_PATH, help="Path to the configuration file",
 )
 @click.option("-f", "--folder", help="The folder to download items into.")
 @click.option(
@@ -50,25 +50,26 @@ def coro(f):
     help="Convert the downloaded files to an audio codec (ALAC, FLAC, MP3, AAC, or OGG)",
 )
 @click.option(
-    "--no-progress", help="Do not show progress bars", is_flag=True, default=False
+    "--no-progress", help="Do not show progress bars", is_flag=True, default=False,
 )
 @click.option(
-    "-v", "--verbose", help="Enable verbose output (debug mode)", is_flag=True
+    "-v", "--verbose", help="Enable verbose output (debug mode)", is_flag=True,
 )
 @click.pass_context
 def rip(ctx, config_path, folder, no_db, quality, convert, no_progress, verbose):
-    """
-    Streamrip: the all in one music downloader.
+    """Streamrip: the all in one music downloader.
     """
     global logger
     logging.basicConfig(
-        level="INFO", format="%(message)s", datefmt="[%X]", handlers=[RichHandler()]
+        level="INFO", format="%(message)s", datefmt="[%X]", handlers=[RichHandler()],
     )
     logger = logging.getLogger("streamrip")
     if verbose:
         install(
             console=console,
-            suppress=[click],
+            suppress=[
+                click,
+            ],
             show_locals=True,
             locals_hide_sunder=False,
         )
@@ -80,7 +81,7 @@ def rip(ctx, config_path, folder, no_db, quality, convert, no_progress, verbose)
 
     if not os.path.isfile(config_path):
         console.print(
-            f"No file found at [bold cyan]{config_path}[/bold cyan], creating default config."
+            f"No file found at [bold cyan]{config_path}[/bold cyan], creating default config.",
         )
         set_user_defaults(config_path)
 
@@ -93,7 +94,7 @@ def rip(ctx, config_path, folder, no_db, quality, convert, no_progress, verbose)
     except Exception as e:
         console.print(
             f"Error loading config from [bold cyan]{config_path}[/bold cyan]: {e}\n"
-            "Try running [bold]rip config reset[/bold]"
+            "Try running [bold]rip config reset[/bold]",
         )
         ctx.obj["config"] = None
         return
@@ -182,7 +183,7 @@ def config_reset(ctx, yes):
     config_path = ctx.obj["config_path"]
     if not yes:
         if not Confirm.ask(
-            f"Are you sure you want to reset the config file at {config_path}?"
+            f"Are you sure you want to reset the config file at {config_path}?",
         ):
             console.print("[green]Reset aborted")
             return
@@ -242,7 +243,7 @@ def database_browse(ctx, table):
     else:
         console.print(
             f"[red]Invalid database[/red] [bold]{table}[/bold]. [red]Choose[/red] [bold]downloads "
-            "[red]or[/red] failed[/bold]."
+            "[red]or[/red] failed[/bold].",
         )
 
 
@@ -259,11 +260,10 @@ def database_browse(ctx, table):
 @click.pass_context
 @coro
 async def search(ctx, first, source, media_type, query):
-    """
-    Search for content using a specific source.
+    """Search for content using a specific source.
 
     Example:
-
+    -------
         rip search qobuz album 'rumours'
     """
     with ctx.obj["config"] as cfg:
@@ -288,7 +288,6 @@ async def search(ctx, first, source, media_type, query):
 @coro
 async def lastfm(ctx, source, fallback_source, url):
     """Download tracks from a last.fm playlist using a supported source."""
-
     config = ctx.obj["config"]
     if source is not None:
         config.session.lastfm.source = source

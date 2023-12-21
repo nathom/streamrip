@@ -26,7 +26,7 @@ logger = logging.getLogger("streamrip")
 
 def generate_temp_path(url: str):
     return os.path.join(
-        tempfile.gettempdir(), f"__streamrip_{hash(url)}_{time.time()}.download"
+        tempfile.gettempdir(), f"__streamrip_{hash(url)}_{time.time()}.download",
     )
 
 
@@ -39,9 +39,7 @@ class Downloadable(ABC):
     _size: Optional[int] = None
 
     async def download(self, path: str, callback: Callable[[int], Any]):
-        tmp = generate_temp_path(self.url)
-        await self._download(tmp, callback)
-        shutil.move(tmp, path)
+        await self._download(path, callback)
 
     async def size(self) -> int:
         if self._size is not None:
@@ -55,7 +53,7 @@ class Downloadable(ABC):
 
     @abstractmethod
     async def _download(self, path: str, callback: Callable[[int], None]):
-        raise NotImplemented
+        raise NotImplementedError
 
 
 class BasicDownloadable(Downloadable):
@@ -92,7 +90,7 @@ class DeezerDownloadable(Downloadable):
             self.extension = "mp3"
         else:
             self.extension = "flac"
-        self.id = info["id"]
+        self.id = str(info["id"])
 
     async def _download(self, path: str, callback):
         # with requests.Session().get(self.url, allow_redirects=True) as resp:
@@ -121,7 +119,7 @@ class DeezerDownloadable(Downloadable):
             else:
                 blowfish_key = self._generate_blowfish_key(self.id)
                 logger.debug(
-                    f"Deezer file (id %s) at %s is encrypted. Decrypting with %s",
+                    "Deezer file (id %s) at %s is encrypted. Decrypting with %s",
                     self.id,
                     self.url,
                     blowfish_key,
@@ -182,7 +180,8 @@ class DeezerDownloadable(Downloadable):
 
 class TidalDownloadable(Downloadable):
     """A wrapper around BasicDownloadable that includes Tidal-specific
-    error messages."""
+    error messages.
+    """
 
     def __init__(self, session: aiohttp.ClientSession, info: dict):
         self.session = session
@@ -192,7 +191,7 @@ class TidalDownloadable(Downloadable):
                 # Turn CamelCase code into a readable sentence
                 words = re.findall(r"([A-Z][a-z]+)", restrictions[0]["code"])
                 raise NonStreamable(
-                    words[0] + " " + " ".join(map(str.lower, words[1:]))
+                    words[0] + " " + " ".join(map(str.lower, words[1:])),
                 )
 
             raise NonStreamable(f"Tidal download: dl_info = {info}")
@@ -229,6 +228,7 @@ class SoundcloudDownloadable(Downloadable):
         await engine.convert(path)
 
     async def _download_mp3(self, path: str, callback):
+        # TODO: make progress bar reflect bytes
         async with self.session.get(self.url) as resp:
             content = await resp.text("utf-8")
 
@@ -270,7 +270,6 @@ async def concat_audio_files(paths: list[str], out: str, ext: str, max_files_ope
 
     Recurses log_{max_file_open}(len(paths)) times.
     """
-
     if shutil.which("ffmpeg") is None:
         raise Exception("FFmpeg must be installed.")
 
@@ -286,7 +285,7 @@ async def concat_audio_files(paths: list[str], out: str, ext: str, max_files_ope
     tempdir = tempfile.gettempdir()
     outpaths = [
         os.path.join(
-            tempdir, f"__streamrip_ffmpeg_{hash(paths[i*max_files_open])}.{ext}"
+            tempdir, f"__streamrip_ffmpeg_{hash(paths[i*max_files_open])}.{ext}",
         )
         for i in range(num_batches)
     ]
@@ -320,7 +319,7 @@ async def concat_audio_files(paths: list[str], out: str, ext: str, max_files_ope
     for proc in processes:
         if proc.returncode != 0:
             raise Exception(
-                f"FFMPEG returned with status code {proc.returncode} error: {proc.stderr} output: {proc.stdout}"
+                f"FFMPEG returned with status code {proc.returncode} error: {proc.stderr} output: {proc.stdout}",
             )
 
     # Recurse on remaining batches

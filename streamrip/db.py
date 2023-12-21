@@ -93,7 +93,6 @@ class DatabaseBase(DatabaseInterface):
         :param items: a dict of column-name + expected value
         :rtype: bool
         """
-
         allowed_keys = set(self.structure.keys())
         assert all(
             key in allowed_keys for key in items.keys()
@@ -115,7 +114,6 @@ class DatabaseBase(DatabaseInterface):
         :param items: Column-name + value. Values must be provided for all cols.
         :type items: Tuple[str]
         """
-
         assert len(items) == len(self.structure)
 
         params = ", ".join(self.structure.keys())
@@ -139,7 +137,6 @@ class DatabaseBase(DatabaseInterface):
 
         :param items:
         """
-
         conditions = " AND ".join(f"{key}=?" for key in items.keys())
         command = f"DELETE FROM {self.name} WHERE {conditions}"
 

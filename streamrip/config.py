@@ -220,7 +220,7 @@ DEFAULT_DOWNLOADS_FOLDER = os.path.join(HOME, "StreamripDownloads")
 DEFAULT_DOWNLOADS_DB_PATH = os.path.join(APP_DIR, "downloads.db")
 DEFAULT_FAILED_DOWNLOADS_DB_PATH = os.path.join(APP_DIR, "failed_downloads.db")
 DEFAULT_YOUTUBE_VIDEO_DOWNLOADS_FOLDER = os.path.join(
-    DEFAULT_DOWNLOADS_FOLDER, "YouTubeVideos"
+    DEFAULT_DOWNLOADS_FOLDER, "YouTubeVideos",
 )
 BLANK_CONFIG_PATH = os.path.join(os.path.dirname(__file__), "config.toml")
 assert os.path.isfile(BLANK_CONFIG_PATH), "Template config not found"
@@ -257,7 +257,7 @@ class ConfigData:
         toml = parse(toml_str)
         if (v := toml["misc"]["version"]) != CURRENT_CONFIG_VERSION:  # type: ignore
             raise Exception(
-                f"Need to update config from {v} to {CURRENT_CONFIG_VERSION}"
+                f"Need to update config from {v} to {CURRENT_CONFIG_VERSION}",
             )
 
         downloads = DownloadsConfig(**toml["downloads"])  # type: ignore
@@ -324,7 +324,7 @@ class ConfigData:
         update_toml_section_from_config(self.toml["conversion"], self.conversion)
 
     def get_source(
-        self, source: str
+        self, source: str,
     ) -> QobuzConfig | DeezerConfig | SoundcloudConfig | TidalConfig:
         d = {
             "qobuz": self.qobuz,

@@ -3,10 +3,12 @@ import os
 from enum import Enum
 
 import aiofiles
-import mutagen.id3 as id3
+from mutagen import id3
 from mutagen.flac import FLAC, Picture
-from mutagen.id3 import APIC  # type: ignore
-from mutagen.id3 import ID3
+from mutagen.id3 import (
+    APIC,  # type: ignore
+    ID3,
+)
 from mutagen.mp4 import MP4, MP4Cover
 
 from .track_metadata import TrackMetadata

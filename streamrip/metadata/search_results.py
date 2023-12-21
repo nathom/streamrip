@@ -135,7 +135,7 @@ class AlbumSummary(Summary):
             or "Unknown"
         )
         num_tracks = item.get("tracks_count", 0) or len(
-            item.get("tracks", []) or item.get("items", [])
+            item.get("tracks", []) or item.get("items", []),
         )
 
         date_released = (
@@ -184,7 +184,7 @@ class PlaylistSummary(Summary):
 
     def preview(self) -> str:
         wrapped = "\n".join(
-            textwrap.wrap(self.description, os.get_terminal_size().columns - 4 or 70)
+            textwrap.wrap(self.description, os.get_terminal_size().columns - 4 or 70),
         )
         return f"{self.num_tracks} tracks\n\nDescription:\n{wrapped}\n\nid:{self.id}"
 

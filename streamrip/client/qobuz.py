@@ -104,7 +104,7 @@ class QobuzSpoofer:
         secrets.move_to_end(keypairs[1][0], last=False)
 
         info_extras_regex = self.info_extras_regex.format(
-            timezones="|".join(timezone.capitalize() for timezone in secrets)
+            timezones="|".join(timezone.capitalize() for timezone in secrets),
         )
         info_extras_matches = re.finditer(info_extras_regex, self.bundle)
         for match in info_extras_matches:
@@ -113,7 +113,7 @@ class QobuzSpoofer:
 
         for secret_pair in secrets:
             secrets[secret_pair] = base64.standard_b64decode(
-                "".join(secrets[secret_pair])[:-44]
+                "".join(secrets[secret_pair])[:-44],
             ).decode("utf-8")
 
         vals: List[str] = list(secrets.values())
@@ -141,7 +141,7 @@ class QobuzClient(Client):
         self.logged_in = False
         self.config = config
         self.rate_limiter = self.get_rate_limiter(
-            config.session.downloads.requests_per_minute
+            config.session.downloads.requests_per_minute,
         )
         self.secret: Optional[str] = None
 
@@ -227,7 +227,7 @@ class QobuzClient(Client):
 
         if status != 200:
             raise NonStreamable(
-                f'Error fetching metadata. Message: "{resp["message"]}"'
+                f'Error fetching metadata. Message: "{resp["message"]}"',
             )
 
         return resp
@@ -275,16 +275,16 @@ class QobuzClient(Client):
                 # Turn CamelCase code into a readable sentence
                 words = re.findall(r"([A-Z][a-z]+)", restrictions[0]["code"])
                 raise NonStreamable(
-                    words[0] + " " + " ".join(map(str.lower, words[1:])) + "."
+                    words[0] + " " + " ".join(map(str.lower, words[1:])) + ".",
                 )
             raise NonStreamable
 
         return BasicDownloadable(
-            self.session, stream_url, "flac" if quality > 1 else "mp3"
+            self.session, stream_url, "flac" if quality > 1 else "mp3",
         )
 
     async def _paginate(
-        self, epoint: str, params: dict, limit: Optional[int] = None
+        self, epoint: str, params: dict, limit: Optional[int] = None,
     ) -> list[dict]:
         """Paginate search results.
 
@@ -292,7 +292,8 @@ class QobuzClient(Client):
             limit: If None, all the results are yielded. Otherwise a maximum
             of `limit` results are yielded.
 
-        returns:
+        Returns
+        -------
             Generator that yields (status code, response) tuples
         """
         params.update({"limit": limit or 500})
@@ -339,7 +340,7 @@ class QobuzClient(Client):
 
     async def _get_valid_secret(self, secrets: list[str]) -> str:
         results = await asyncio.gather(
-            *[self._test_secret(secret) for secret in secrets]
+            *[self._test_secret(secret) for secret in secrets],
         )
         working_secrets = [r for r in results if r is not None]
 
@@ -358,7 +359,7 @@ class QobuzClient(Client):
         return None
 
     async def _request_file_url(
-        self, track_id: str, quality: int, secret: str
+        self, track_id: str, quality: int, secret: str,
     ) -> tuple[int, dict]:
         quality = self.get_quality(quality)
         unix_ts = time.time()

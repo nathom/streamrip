@@ -5,7 +5,6 @@ from rich.console import Group
 from rich.live import Live
 from rich.progress import (
     BarColumn,
-    DownloadColumn,
     Progress,
     TextColumn,
     TimeRemainingColumn,

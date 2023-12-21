@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 import logging
 import re
 from dataclasses import dataclass
@@ -162,7 +161,7 @@ class AlbumMetadata:
         )
 
     @classmethod
-    def from_deezer(cls, resp: dict) -> AlbumMetadata:
+    def from_deezer(cls, resp: dict) -> AlbumMetadata | None:
         album = resp.get("title", "Unknown Album")
         tracktotal = typed(resp.get("track_total", 0) or resp.get("nb_tracks", 0), int)
         disctotal = typed(resp["tracks"][-1]["disk_number"], int)
@@ -228,7 +227,7 @@ class AlbumMetadata:
         track_id = track["id"]
         bit_depth, sampling_rate = None, None
         explicit = typed(
-            safe_get(track, "publisher_metadata", "explicit", default=False), bool
+            safe_get(track, "publisher_metadata", "explicit", default=False), bool,
         )
         genre = typed(track["genre"], str)
         artist = typed(safe_get(track, "publisher_metadata", "artist"), str | None)
@@ -239,7 +238,7 @@ class AlbumMetadata:
         label = typed(track["label_name"], str | None)
         description = typed(track.get("description"), str | None)
         album_title = typed(
-            safe_get(track, "publisher_metadata", "album_title"), str | None
+            safe_get(track, "publisher_metadata", "album_title"), str | None,
         )
         album_title = album_title or "Unknown album"
         copyright = typed(safe_get(track, "publisher_metadata", "p_line"), str | None)
@@ -285,7 +284,7 @@ class AlbumMetadata:
         raise NotImplementedError
 
     @classmethod
-    def from_track_resp(cls, resp: dict, source: str) -> AlbumMetadata:
+    def from_track_resp(cls, resp: dict, source: str) -> AlbumMetadata | None:
         if source == "qobuz":
             return cls.from_qobuz(resp["album"])
         if source == "tidal":
@@ -297,7 +296,7 @@ class AlbumMetadata:
         raise Exception("Invalid source")
 
     @classmethod
-    def from_album_resp(cls, resp: dict, source: str) -> AlbumMetadata:
+    def from_album_resp(cls, resp: dict, source: str) -> AlbumMetadata | None:
         if source == "qobuz":
             return cls.from_qobuz(resp)
         if source == "tidal":

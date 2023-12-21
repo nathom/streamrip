@@ -26,7 +26,7 @@ def typed(thing, expected_type: Type[T]) -> T:
 
 
 def get_quality_id(
-    bit_depth: Optional[int], sampling_rate: Optional[int | float]
+    bit_depth: Optional[int], sampling_rate: Optional[int | float],
 ) -> int:
     """Get the universal quality id from bit depth and sampling rate.
 

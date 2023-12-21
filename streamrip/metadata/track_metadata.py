@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+import json
+import logging
 from dataclasses import dataclass
 from typing import Optional
 
-from ..exceptions import NonStreamable
 from .album_metadata import AlbumMetadata
 from .util import safe_get, typed
+
+logger = logging.getLogger("streamrip")
 
 
 @dataclass(slots=True)
@@ -81,7 +84,11 @@ class TrackMetadata:
         )
 
     @classmethod
-    def from_deezer(cls, album: AlbumMetadata, resp) -> TrackMetadata:
+    def from_deezer(cls, album: AlbumMetadata, resp) -> TrackMetadata | None:
+        with open("resp.json", "w") as f:
+            json.dump(resp, f)
+
+        logger.debug(resp.keys())
         track_id = str(resp["id"])
         bit_depth = 16
         sampling_rate = 44.1
@@ -116,7 +123,7 @@ class TrackMetadata:
         track_id = track["id"]
         bit_depth, sampling_rate = None, None
         explicit = typed(
-            safe_get(track, "publisher_metadata", "explicit", default=False), bool
+            safe_get(track, "publisher_metadata", "explicit", default=False), bool,
         )
 
         title = typed(track["title"].strip(), str)
@@ -143,7 +150,7 @@ class TrackMetadata:
 
     @classmethod
     def from_tidal(cls, album: AlbumMetadata, resp) -> TrackMetadata:
-        raise NotImplemented
+        raise NotImplementedError
 
     @classmethod
     def from_resp(cls, album: AlbumMetadata, source, resp) -> TrackMetadata | None:

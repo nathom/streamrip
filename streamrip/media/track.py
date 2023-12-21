@@ -73,13 +73,13 @@ class Track(Media):
         c = self.config.session.filepaths
         formatter = c.track_format
         track_path = clean_filename(
-            self.meta.format_track_path(formatter), restrict=c.restrict_characters
+            self.meta.format_track_path(formatter), restrict=c.restrict_characters,
         )
         if c.truncate_to > 0 and len(track_path) > c.truncate_to:
             track_path = track_path[: c.truncate_to]
 
         self.download_path = os.path.join(
-            self.folder, f"{track_path}.{self.downloadable.extension}"
+            self.folder, f"{track_path}.{self.downloadable.extension}",
         )
 
 
@@ -97,7 +97,7 @@ class PendingTrack(Pending):
     async def resolve(self) -> Track | None:
         if self.db.downloaded(self.id):
             logger.info(
-                f"Skipping track {self.id}. Marked as downloaded in the database."
+                f"Skipping track {self.id}. Marked as downloaded in the database.",
             )
             return None
 
@@ -112,7 +112,7 @@ class PendingTrack(Pending):
         quality = self.config.session.get_source(source).quality
         downloadable = await self.client.get_downloadable(self.id, quality)
         return Track(
-            meta, downloadable, self.config, self.folder, self.cover_path, self.db
+            meta, downloadable, self.config, self.folder, self.cover_path, self.db,
         )
 
 
@@ -132,7 +132,7 @@ class PendingSingle(Pending):
     async def resolve(self) -> Track | None:
         if self.db.downloaded(self.id):
             logger.info(
-                f"Skipping track {self.id}. Marked as downloaded in the database."
+                f"Skipping track {self.id}. Marked as downloaded in the database.",
             )
             return None
 
@@ -144,17 +144,26 @@ class PendingSingle(Pending):
         # Patch for soundcloud
         # self.id = resp["id"]
         album = AlbumMetadata.from_track_resp(resp, self.client.source)
+        if album is None:
+            self.db.set_failed(self.client.source, "track", self.id)
+            logger.error(
+                f"Cannot stream track (am) ({self.id}) on {self.client.source}",
+            )
+            return None
+
         meta = TrackMetadata.from_resp(album, self.client.source, resp)
 
         if meta is None:
             self.db.set_failed(self.client.source, "track", self.id)
-            logger.error(f"Cannot stream track ({self.id}) on {self.client.source}")
+            logger.error(
+                f"Cannot stream track (tm) ({self.id}) on {self.client.source}",
+            )
             return None
 
         quality = getattr(self.config.session, self.client.source).quality
         assert isinstance(quality, int)
         folder = os.path.join(
-            self.config.session.downloads.folder, self._format_folder(album)
+            self.config.session.downloads.folder, self._format_folder(album),
         )
         os.makedirs(folder, exist_ok=True)
 
