@@ -1,11 +1,11 @@
 """Wrapper classes over FFMPEG."""
 
+import asyncio
 import logging
 import os
 import shutil
-import subprocess
 from tempfile import gettempdir
-from typing import Optional
+from typing import Final, Optional
 
 from .exceptions import ConversionError
 
@@ -48,7 +48,10 @@ class Converter:
         :param remove_source: Remove the source file after conversion.
         :type remove_source: bool
         """
-        logger.debug(locals())
+        if shutil.which("ffmpeg") is None:
+            raise Exception(
+                "Could not find FFMPEG executable. Install it to convert audio files.",
+            )
 
         self.filename = filename
         self.final_fn = f"{os.path.splitext(filename)[0]}.{self.container}"
@@ -68,7 +71,7 @@ class Converter:
 
         logger.debug("FFmpeg codec extra argument: %s", self.ffmpeg_arg)
 
-    def convert(self, custom_fn: Optional[str] = None):
+    async def convert(self, custom_fn: Optional[str] = None):
         """Convert the file.
 
         :param custom_fn: Custom output filename (defaults to the original
@@ -81,8 +84,11 @@ class Converter:
         self.command = self._gen_command()
         logger.debug("Generated conversion command: %s", self.command)
 
-        process = subprocess.Popen(self.command, stderr=subprocess.PIPE)
-        process.wait()
+        process = await asyncio.create_subprocess_exec(
+            *self.command,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        out, err = await process.communicate()
         if process.returncode == 0 and os.path.isfile(self.tempfile):
             if self.remove_source:
                 os.remove(self.filename)
@@ -91,7 +97,7 @@ class Converter:
             shutil.move(self.tempfile, self.final_fn)
             logger.debug("Moved: %s -> %s", self.tempfile, self.final_fn)
         else:
-            raise ConversionError(f"FFmpeg output:\n{process.communicate()[1]}")
+            raise ConversionError(f"FFmpeg output:\n{out, err}")
 
     def _gen_command(self):
         command = [
@@ -123,7 +129,7 @@ class Converter:
 
             elif self.sampling_rate is not None:
                 raise TypeError(
-                    f"Sampling rate must be int, not {type(self.sampling_rate)}"
+                    f"Sampling rate must be int, not {type(self.sampling_rate)}",
                 )
 
             if isinstance(self.bit_depth, int):
@@ -148,7 +154,7 @@ class Converter:
         if self.ffmpeg_arg is not None and self.lossless:
             logger.debug(
                 "Lossless codecs don't support extra arguments; "
-                "the extra argument will be ignored"
+                "the extra argument will be ignored",
             )
             self.ffmpeg_arg = self.default_ffmpeg_arg
             return
@@ -172,7 +178,7 @@ class LAME(Converter):
     https://trac.ffmpeg.org/wiki/Encode/MP3
     """
 
-    __bitrate_map = {
+    _bitrate_map: Final[dict[int, str]] = {
         320: "-b:a 320k",
         245: "-q:a 0",
         225: "-q:a 1",
@@ -192,7 +198,7 @@ class LAME(Converter):
     default_ffmpeg_arg = "-q:a 0"  # V0
 
     def get_quality_arg(self, rate):
-        return self.__bitrate_map[rate]
+        return self._bitrate_map[rate]
 
 
 class ALAC(Converter):
@@ -242,8 +248,8 @@ class OPUS(Converter):
     container = "opus"
     default_ffmpeg_arg = "-b:a 128k"  # Transparent
 
-    def get_quality_arg(self, rate: int) -> str:
-        pass
+    def get_quality_arg(self, _: int) -> str:
+        return ""
 
 
 class AAC(Converter):
@@ -260,5 +266,19 @@ class AAC(Converter):
     container = "m4a"
     default_ffmpeg_arg = "-b:a 256k"
 
-    def get_quality_arg(self, rate: int) -> str:
-        pass
+    def get_quality_arg(self, _: int) -> str:
+        return ""
+
+
+def get(codec: str) -> type[Converter]:
+    converter_classes = {
+        "FLAC": FLAC,
+        "ALAC": ALAC,
+        "MP3": LAME,
+        "OPUS": OPUS,
+        "OGG": Vorbis,
+        "VORBIS": Vorbis,
+        "AAC": AAC,
+        "M4A": AAC,
+    }
+    return converter_classes[codec.upper()]
