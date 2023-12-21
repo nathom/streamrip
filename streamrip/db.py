@@ -5,6 +5,7 @@ import os
 import sqlite3
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from typing import Final
 
 logger = logging.getLogger("streamrip")
 
@@ -161,7 +162,7 @@ class Downloads(DatabaseBase):
     """A table that stores the downloaded IDs."""
 
     name = "downloads"
-    structure = {
+    structure: Final[dict] = {
         "id": ["text", "unique"],
     }
 
@@ -170,7 +171,7 @@ class Failed(DatabaseBase):
     """A table that stores information about failed downloads."""
 
     name = "failed_downloads"
-    structure = {
+    structure: Final[dict] = {
         "source": ["text"],
         "media_type": ["text"],
         "id": ["text", "unique"],

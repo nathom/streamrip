@@ -5,7 +5,7 @@ import logging
 import os
 import shutil
 from tempfile import gettempdir
-from typing import Optional
+from typing import Final, Optional
 
 from .exceptions import ConversionError
 
@@ -178,7 +178,7 @@ class LAME(Converter):
     https://trac.ffmpeg.org/wiki/Encode/MP3
     """
 
-    _bitrate_map = {
+    _bitrate_map: Final[dict[int, str]] = {
         320: "-b:a 320k",
         245: "-q:a 0",
         225: "-q:a 1",
@@ -271,7 +271,7 @@ class AAC(Converter):
 
 
 def get(codec: str) -> type[Converter]:
-    CONV_CLASS = {
+    converter_classes = {
         "FLAC": FLAC,
         "ALAC": ALAC,
         "MP3": LAME,
@@ -281,4 +281,4 @@ def get(codec: str) -> type[Converter]:
         "AAC": AAC,
         "M4A": AAC,
     }
-    return CONV_CLASS[codec.upper()]
+    return converter_classes[codec.upper()]

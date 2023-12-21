@@ -92,6 +92,12 @@ class PlaylistMetadata:
         tracks = [str(track["id"]) for track in resp["tracks"]]
         return cls(name, tracks)
 
+    @classmethod
+    def from_tidal(cls, resp: dict):
+        name = typed(resp["title"], str)
+        tracks = [str(track["id"]) for track in resp["tracks"]]
+        return cls(name, tracks)
+
     def ids(self) -> list[str]:
         if len(self.tracks) == 0:
             return []
@@ -108,5 +114,7 @@ class PlaylistMetadata:
             return cls.from_soundcloud(resp)
         elif source == "deezer":
             return cls.from_deezer(resp)
+        elif source == "tidal":
+            return cls.from_tidal(resp)
         else:
             raise NotImplementedError(source)

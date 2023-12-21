@@ -19,6 +19,7 @@ CLIENT_ID = base64.b64decode("elU0WEhWVmtjMnREUG80dA==").decode("iso-8859-1")
 CLIENT_SECRET = base64.b64decode(
     "VkpLaERGcUpQcXZzUFZOQlY2dWtYVEptd2x2YnR0UDd3bE1scmM3MnNlND0=",
 ).decode("iso-8859-1")
+AUTH = aiohttp.BasicAuth(login=CLIENT_ID, password=CLIENT_SECRET)
 STREAM_URL_REGEX = re.compile(
     r"#EXT-X-STREAM-INF:BANDWIDTH=\d+,AVERAGE-BANDWIDTH=\d+,CODECS=\"(?!jpeg)[^\"]+\",RESOLUTION=\d+x\d+\n(.+)"
 )
@@ -118,7 +119,7 @@ class TidalClient(Client):
         assert media_type in ("album", "track", "playlist", "video")
         return await self._api_request(f"search/{media_type}s", params=params)
 
-    async def get_downloadable(self, track_id, quality: int = 3):
+    async def get_downloadable(self, track_id: str, quality: int):
         params = {
             "audioquality": QUALITY_MAP[quality],
             "playbackmode": "STREAM",
@@ -127,17 +128,22 @@ class TidalClient(Client):
         resp = await self._api_request(
             f"tracks/{track_id}/playbackinfopostpaywall", params
         )
+        logger.debug(resp)
         try:
             manifest = json.loads(base64.b64decode(resp["manifest"]).decode("utf-8"))
         except KeyError:
             raise Exception(resp["userMessage"])
 
         logger.debug(manifest)
+        enc_key = manifest.get("keyId")
+        if manifest.get("encryptionType") == "NONE":
+            enc_key = None
         return TidalDownloadable(
             self.session,
             url=manifest["urls"][0],
-            enc_key=manifest.get("keyId"),
             codec=manifest["codecs"],
+            encryption_key=enc_key,
+            restrictions=manifest.get("restrictions"),
         )
 
     async def get_video_file_url(self, video_id: str) -> str:
@@ -226,11 +232,7 @@ class TidalClient(Client):
             "scope": "r_usr+w_usr+w_sub",
         }
         logger.debug("Checking with %s", data)
-        resp = await self._api_post(
-            f"{AUTH_URL}/token",
-            data,
-            aiohttp.BasicAuth(login=CLIENT_ID, password=CLIENT_SECRET),
-        )
+        resp = await self._api_post(f"{AUTH_URL}/token", data, AUTH)
 
         if "status" in resp and resp["status"] != 200:
             if resp["status"] == 400 and resp["sub_status"] == 1002:
@@ -258,11 +260,7 @@ class TidalClient(Client):
             "grant_type": "refresh_token",
             "scope": "r_usr+w_usr+w_sub",
         }
-        resp = await self._api_post(
-            f"{AUTH_URL}/token",
-            data,
-            aiohttp.BasicAuth(login=CLIENT_ID, password=CLIENT_SECRET),
-        )
+        resp = await self._api_post(f"{AUTH_URL}/token", data, AUTH)
 
         if resp.get("status", 200) != 200:
             raise Exception("Refresh failed")

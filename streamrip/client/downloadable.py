@@ -26,6 +26,9 @@ from ..exceptions import NonStreamable
 logger = logging.getLogger("streamrip")
 
 
+BLOWFISH_SECRET = "g4el58wc0zvf9na1"
+
+
 def generate_temp_path(url: str):
     return os.path.join(
         tempfile.gettempdir(),
@@ -172,12 +175,11 @@ class DeezerDownloadable(Downloadable):
         :param track_id:
         :type track_id: str
         """
-        SECRET = "g4el58wc0zvf9na1"
         md5_hash = hashlib.md5(track_id.encode()).hexdigest()
         # good luck :)
         return "".join(
             chr(functools.reduce(lambda x, y: x ^ y, map(ord, t)))
-            for t in zip(md5_hash[:16], md5_hash[16:], SECRET)
+            for t in zip(md5_hash[:16], md5_hash[16:], BLOWFISH_SECRET)
         ).encode()
 
 
@@ -186,29 +188,52 @@ class TidalDownloadable(Downloadable):
     error messages.
     """
 
-    def __init__(self, session: aiohttp.ClientSession, url: str, enc_key, codec):
+    def __init__(
+        self,
+        session: aiohttp.ClientSession,
+        url: str | None,
+        codec: str,
+        encryption_key: str | None,
+        restrictions,
+    ):
         self.session = session
-        self.url = url
-        assert enc_key is None
-        if self.url is None:
-            raise Exception
-            # if restrictions := info["restrictions"]:
-            #     # Turn CamelCase code into a readable sentence
-            #     words = re.findall(r"([A-Z][a-z]+)", restrictions[0]["code"])
-            #     raise NonStreamable(
-            #         words[0] + " " + " ".join(map(str.lower, words[1:])),
-            #     )
-            #
-            # raise NonStreamable(f"Tidal download: dl_info = {info}")
+        codec = codec.lower()
+        if codec == "flac":
+            self.extension = "flac"
+        else:
+            self.extension = "m4a"
 
-        assert isinstance(url, str)
-        self.downloadable = BasicDownloadable(session, url, "m4a")
+        if url is None:
+            # Turn CamelCase code into a readable sentence
+            if restrictions:
+                words = re.findall(r"([A-Z][a-z]+)", restrictions[0]["code"])
+                raise NonStreamable(
+                    words[0] + " " + " ".join(map(str.lower, words[1:])),
+                )
+            raise NonStreamable(
+                f"Tidal download: dl_info = {url, codec, encryption_key}"
+            )
+        self.url = url
+        self.enc_key = encryption_key
+        self.downloadable = BasicDownloadable(session, url, self.extension)
 
     async def _download(self, path: str, callback):
         await self.downloadable._download(path, callback)
+        if self.enc_key is not None:
+            dec_bytes = await self._decrypt_mqa_file(path, self.enc_key)
+            async with aiofiles.open(path, "wb") as audio:
+                await audio.write(dec_bytes)
+
+    @property
+    def _size(self):
+        return self.downloadable._size
+
+    @_size.setter
+    def _size(self, v):
+        self.downloadable._size = v
 
     @staticmethod
-    async def _decrypt_mqa_file(in_path, out_path, encryption_key):
+    async def _decrypt_mqa_file(in_path, encryption_key):
         """Decrypt an MQA file.
 
         :param in_path:
@@ -240,11 +265,9 @@ class TidalDownloadable(Downloadable):
         counter = Counter.new(64, prefix=nonce, initial_value=0)
         decryptor = AES.new(key, AES.MODE_CTR, counter=counter)
 
-        async with aiofiles.open(in_path, "rb") as enc_file, aiofiles.open(
-            out_path, "wb"
-        ) as dec_file:
+        async with aiofiles.open(in_path, "rb") as enc_file:
             dec_bytes = decryptor.decrypt(await enc_file.read())
-            await dec_file.write(dec_bytes)
+            return dec_bytes
 
 
 class SoundcloudDownloadable(Downloadable):

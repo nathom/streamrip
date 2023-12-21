@@ -10,6 +10,10 @@ from .downloadable import SoundcloudDownloadable
 
 BASE = "https://api-v2.soundcloud.com"
 SOUNDCLOUD_USER_ID = "672320-86895-162383-801513"
+STOCK_URL = "https://soundcloud.com/"
+
+# for playlists
+MAX_BATCH_SIZE = 50
 
 logger = logging.getLogger("streamrip")
 
@@ -82,8 +86,6 @@ class SoundcloudClient(Client):
 
         if len(unresolved_tracks) == 0:
             return original_resp
-
-        MAX_BATCH_SIZE = 50
 
         batches = batched(unresolved_tracks, MAX_BATCH_SIZE)
         requests = [
@@ -237,7 +239,6 @@ class SoundcloudClient(Client):
 
     async def _refresh_tokens(self) -> tuple[str, str]:
         """Return a valid client_id, app_version pair."""
-        STOCK_URL = "https://soundcloud.com/"
         async with self.session.get(STOCK_URL) as resp:
             page_text = await resp.text(encoding="utf-8")
 

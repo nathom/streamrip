@@ -29,6 +29,7 @@ class URL(ABC):
         self.match = match
         self.source = source
 
+    @classmethod
     @abstractmethod
     def from_str(cls, url: str) -> URL | None:
         raise NotImplementedError

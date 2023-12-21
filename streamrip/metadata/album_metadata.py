@@ -24,8 +24,8 @@ class AlbumInfo:
     container: str
     label: Optional[str] = None
     explicit: bool = False
-    sampling_rate: Optional[int | float] = None
-    bit_depth: Optional[int] = None
+    sampling_rate: int | float | None = None
+    bit_depth: int | None = None
     booklets: list[dict] | None = None
 
 
@@ -39,16 +39,16 @@ class AlbumMetadata:
     covers: Covers
     tracktotal: int
     disctotal: int = 1
-    albumcomposer: Optional[str] = None
-    comment: Optional[str] = None
-    compilation: Optional[str] = None
-    copyright: Optional[str] = None
-    date: Optional[str] = None
-    description: Optional[str] = None
-    encoder: Optional[str] = None
-    grouping: Optional[str] = None
-    lyrics: Optional[str] = None
-    purchase_date: Optional[str] = None
+    albumcomposer: str | None = None
+    comment: str | None = None
+    compilation: str | None = None
+    copyright: str | None = None
+    date: str | None = None
+    description: str | None = None
+    encoder: str | None = None
+    grouping: str | None = None
+    lyrics: str | None = None
+    purchase_date: str | None = None
 
     def get_genres(self) -> str:
         return ", ".join(self.genre)
@@ -174,7 +174,6 @@ class AlbumMetadata:
         albumcomposer = None
         label = resp.get("label")
         booklets = None
-        # url = resp.get("link")
         explicit = typed(
             resp.get("parental_warning", False) or resp.get("explicit_lyrics", False),
             bool,
@@ -187,7 +186,6 @@ class AlbumMetadata:
         container = "FLAC"
 
         cover_urls = Covers.from_deezer(resp)
-        # streamable = True
         item_id = str(resp["id"])
 
         info = AlbumInfo(
@@ -282,15 +280,98 @@ class AlbumMetadata:
         )
 
     @classmethod
-    def from_tidal(cls, resp) -> AlbumMetadata:
-        raise NotImplementedError
+    def from_tidal(cls, resp) -> AlbumMetadata | None:
+        """
+
+        Args:
+            resp: API response containing album metadata.
+
+        Returns: AlbumMetadata instance if the album is streamable, otherwise None.
+
+
+        """
+        streamable = resp.get("allowStreaming", False)
+        if not streamable:
+            return None
+
+        item_id = str(resp["id"])
+        album = typed(resp.get("title", "Unknown Album"), str)
+        tracktotal = typed(resp.get("numberOfTracks", 1), int)
+        # genre not returned by API
+        date = typed(resp.get("releaseDate"), str)
+        year = date[:4]
+        _copyright = typed(resp.get("copyright"), str)
+
+        artists = typed(resp.get("artists", []), list)
+        albumartist = ", ".join(a["name"] for a in artists)
+        if not albumartist:
+            albumartist = typed(safe_get(resp, "artist", "name"), str)
+
+        disctotal = typed(resp.get("numberOfVolumes", 1), int)
+        # label not returned by API
+
+        # non-embedded
+        explicit = typed(resp.get("explicit", False), bool)
+        covers = Covers.from_tidal(resp)
+        if covers is None:
+            covers = Covers()
+
+        quality_map: dict[str, int] = {
+            "LOW": 0,
+            "HIGH": 1,
+            "LOSSLESS": 2,
+            "HI_RES": 3,
+        }
+
+        tidal_quality = resp.get("audioQuality", "LOW")
+        quality = quality_map[tidal_quality]
+        if quality >= 2:
+            sampling_rate = 44100
+            if quality == 3:
+                bit_depth = 24
+            else:
+                bit_depth = 16
+        else:
+            sampling_rate = None
+            bit_depth = None
+
+        info = AlbumInfo(
+            id=item_id,
+            quality=quality,
+            container="MP4",
+            label=None,
+            explicit=explicit,
+            sampling_rate=sampling_rate,
+            bit_depth=bit_depth,
+            booklets=None,
+        )
+        return AlbumMetadata(
+            info,
+            album,
+            albumartist,
+            year,
+            genre=[],
+            covers=covers,
+            albumcomposer=None,
+            comment=None,
+            compilation=None,
+            copyright=_copyright,
+            date=date,
+            description=None,
+            disctotal=disctotal,
+            encoder=None,
+            grouping=None,
+            lyrics=None,
+            purchase_date=None,
+            tracktotal=tracktotal,
+        )
 
     @classmethod
     def from_track_resp(cls, resp: dict, source: str) -> AlbumMetadata | None:
         if source == "qobuz":
             return cls.from_qobuz(resp["album"])
         if source == "tidal":
-            return cls.from_tidal(resp["album"])
+            return cls.from_tidal(resp)
         if source == "soundcloud":
             return cls.from_soundcloud(resp)
         if source == "deezer":

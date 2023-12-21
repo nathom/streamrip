@@ -1,3 +1,4 @@
+import asyncio
 import hashlib
 import logging
 import time
@@ -111,10 +112,9 @@ class TidalPrompter(CredentialPrompter):
         while elapsed < self.timeout_s:
             elapsed = time.time() - start
             status, info = await self.client._get_auth_status(device_code)
-            print(status, info)
             if status == 2:
                 # pending
-                time.sleep(4)
+                await asyncio.sleep(4)
                 continue
             elif status == 0:
                 # successful

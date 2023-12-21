@@ -32,6 +32,7 @@ class TrackMetadata:
     tracknumber: int
     discnumber: int
     composer: str | None
+    isrc: str | None = None
 
     @classmethod
     def from_qobuz(cls, album: AlbumMetadata, resp: dict) -> TrackMetadata | None:
@@ -150,8 +151,67 @@ class TrackMetadata:
         )
 
     @classmethod
-    def from_tidal(cls, album: AlbumMetadata, resp) -> TrackMetadata:
-        raise NotImplementedError
+    def from_tidal(cls, album: AlbumMetadata, track) -> TrackMetadata:
+        with open("tidal_track.json", "w") as f:
+            json.dump(track, f)
+
+        title = typed(track["title"], str).strip()
+        item_id = str(track["id"])
+        version = track.get("version")
+        explicit = track.get("explicit", False)
+        isrc = track.get("isrc")
+        if version:
+            title = f"{title} ({version})"
+
+        tracknumber = typed(track.get("trackNumber", 1), int)
+        discnumber = typed(track.get("volumeNumber", 1), int)
+
+        artists = track.get("artists")
+        if len(artists) > 0:
+            artist = ", ".join(a["name"] for a in artists)
+        else:
+            artist = track["artist"]["name"]
+
+        quality_map: dict[str, int] = {
+            "LOW": 0,
+            "HIGH": 1,
+            "LOSSLESS": 2,
+            "HI_RES": 3,
+        }
+
+        tidal_quality = track.get("audioQuality")
+        if tidal_quality is not None:
+            quality = quality_map[tidal_quality]
+        else:
+            quality = 0
+
+        if quality >= 2:
+            sampling_rate = 44100
+            if quality == 3:
+                bit_depth = 24
+            else:
+                bit_depth = 16
+        else:
+            sampling_rate = bit_depth = None
+
+        info = TrackInfo(
+            id=item_id,
+            quality=quality,
+            bit_depth=bit_depth,
+            explicit=explicit,
+            sampling_rate=sampling_rate,
+            work=None,
+        )
+        return cls(
+            info=info,
+            title=title,
+            album=album,
+            artist=artist,
+            tracknumber=tracknumber,
+            discnumber=discnumber,
+            composer=None,
+            isrc=isrc,
+        )
 
     @classmethod
     def from_resp(cls, album: AlbumMetadata, source, resp) -> TrackMetadata | None:
