@@ -45,7 +45,9 @@ def coro(f):
     default=False,
     is_flag=True,
 )
-@click.option("-q", "--quality", help="The maximum quality allowed to download")
+@click.option(
+    "-q", "--quality", help="The maximum quality allowed to download", type=int
+)
 @click.option(
     "-c",
     "--convert",
