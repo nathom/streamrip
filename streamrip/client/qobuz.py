@@ -280,11 +280,16 @@ class QobuzClient(Client):
             raise NonStreamable
 
         return BasicDownloadable(
-            self.session, stream_url, "flac" if quality > 1 else "mp3",
+            self.session,
+            stream_url,
+            "flac" if quality > 1 else "mp3",
         )
 
     async def _paginate(
-        self, epoint: str, params: dict, limit: Optional[int] = None,
+        self,
+        epoint: str,
+        params: dict,
+        limit: Optional[int] = None,
     ) -> list[dict]:
         """Paginate search results.
 
@@ -359,7 +364,10 @@ class QobuzClient(Client):
         return None
 
     async def _request_file_url(
-        self, track_id: str, quality: int, secret: str,
+        self,
+        track_id: str,
+        quality: int,
+        secret: str,
     ) -> tuple[int, dict]:
         quality = self.get_quality(quality)
         unix_ts = time.time()

@@ -80,7 +80,12 @@ class PendingPlaylistTrack(Pending):
             return None
 
         return Track(
-            meta, downloadable, self.config, self.folder, embedded_cover_path, self.db,
+            meta,
+            downloadable,
+            self.config,
+            self.folder,
+            embedded_cover_path,
+            self.db,
         )
 
     async def _download_cover(self, covers: Covers, folder: str) -> str | None:
@@ -125,9 +130,9 @@ class Playlist(Media):
 
     @staticmethod
     def batch(iterable, n=1):
-        l = len(iterable)
-        for ndx in range(0, l, n):
-            yield iterable[ndx : min(ndx + n, l)]
+        total = len(iterable)
+        for ndx in range(0, total, n):
+            yield iterable[ndx : min(ndx + n, total)]
 
 
 @dataclass(slots=True)
@@ -145,7 +150,13 @@ class PendingPlaylist(Pending):
         folder = os.path.join(parent, clean_filename(name))
         tracks = [
             PendingPlaylistTrack(
-                id, self.client, self.config, folder, name, position + 1, self.db,
+                id,
+                self.client,
+                self.config,
+                folder,
+                name,
+                position + 1,
+                self.db,
             )
             for position, id in enumerate(meta.ids())
         ]
@@ -191,12 +202,18 @@ class PendingLastfmPlaylist(Pending):
         s = self.Status(0, 0, len(titles_artists))
         if self.config.session.cli.progress_bars:
             with console.status(s.text(), spinner="moon") as status:
-                callback = lambda: status.update(s.text())
+
+                def callback():
+                    status.update(s.text())
+
                 for title, artist in titles_artists:
                     requests.append(self._make_query(f"{title} {artist}", s, callback))
                 results: list[tuple[str | None, bool]] = await asyncio.gather(*requests)
         else:
-            callback = lambda: None
+
+            def callback():
+                pass
+
             for title, artist in titles_artists:
                 requests.append(self._make_query(f"{title} {artist}", s, callback))
             results: list[tuple[str | None, bool]] = await asyncio.gather(*requests)
@@ -231,7 +248,10 @@ class PendingLastfmPlaylist(Pending):
         return Playlist(playlist_title, self.config, self.client, pending_tracks)
 
     async def _make_query(
-        self, query: str, s: Status, callback,
+        self,
+        query: str,
+        s: Status,
+        callback,
     ) -> tuple[str | None, bool]:
         """Try searching for `query` with main source. If that fails, try with next source.
 
@@ -261,7 +281,9 @@ class PendingLastfmPlaylist(Pending):
                 s.found += 1
                 return (
                     SearchResults.from_pages(
-                        self.fallback_client.source, "track", pages,
+                        self.fallback_client.source,
+                        "track",
+                        pages,
                     )
                     .results[0]
                     .id
@@ -272,7 +294,8 @@ class PendingLastfmPlaylist(Pending):
         return None, True
 
     async def _parse_lastfm_playlist(
-        self, playlist_url: str,
+        self,
+        playlist_url: str,
     ) -> tuple[str, list[tuple[str, str]]]:
         """From a last.fm url, return the playlist title, and a list of
         track titles and artist names.
@@ -337,7 +360,10 @@ class PendingLastfmPlaylist(Pending):
         return playlist_title, title_artist_pairs
 
     async def _make_query_mock(
-        self, _: str, s: Status, callback,
+        self,
+        _: str,
+        s: Status,
+        callback,
     ) -> tuple[str | None, bool]:
         await asyncio.sleep(random.uniform(1, 20))
         if random.randint(0, 4) >= 1:

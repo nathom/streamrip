@@ -3,7 +3,7 @@ import logging
 import os
 
 from .. import db
-from ..client import Client, DeezerClient, QobuzClient, SoundcloudClient
+from ..client import Client, DeezerClient, QobuzClient, SoundcloudClient, TidalClient
 from ..config import Config
 from ..console import console
 from ..media import Media, Pending, PendingLastfmPlaylist, remove_artwork_tempdirs
@@ -33,7 +33,7 @@ class Main:
         self.config = config
         self.clients: dict[str, Client] = {
             "qobuz": QobuzClient(config),
-            # "tidal": TidalClient(config),
+            "tidal": TidalClient(config),
             "deezer": DeezerClient(config),
             "soundcloud": SoundcloudClient(config),
         }
@@ -203,7 +203,11 @@ class Main:
             fallback_client = None
 
         pending_playlist = PendingLastfmPlaylist(
-            playlist_url, client, fallback_client, self.config, self.database,
+            playlist_url,
+            client,
+            fallback_client,
+            self.config,
+            self.database,
         )
         playlist = await pending_playlist.resolve()
 

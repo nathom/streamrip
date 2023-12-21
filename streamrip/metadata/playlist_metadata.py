@@ -53,7 +53,8 @@ class PlaylistMetadata:
 
         for i, track in enumerate(resp["tracks"]["items"]):
             meta = TrackMetadata.from_qobuz(
-                AlbumMetadata.from_qobuz(track["album"]), track,
+                AlbumMetadata.from_qobuz(track["album"]),
+                track,
             )
             if meta is None:
                 logger.error(f"Track {i+1} in playlist {name} not available for stream")

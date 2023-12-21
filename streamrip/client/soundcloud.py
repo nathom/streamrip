@@ -159,7 +159,8 @@ class SoundcloudClient(Client):
             resp_json, status = await self._api_request(f"tracks/{item_id}/download")
             assert status == 200
             return SoundcloudDownloadable(
-                self.session, {"url": resp_json["redirectUri"], "type": "original"},
+                self.session,
+                {"url": resp_json["redirectUri"], "type": "original"},
             )
 
         if download_info == self.NOT_RESOLVED:
@@ -168,11 +169,16 @@ class SoundcloudClient(Client):
         # download_info contains mp3 stream url
         resp_json, status = await self._request(download_info)
         return SoundcloudDownloadable(
-            self.session, {"url": resp_json["url"], "type": "mp3"},
+            self.session,
+            {"url": resp_json["url"], "type": "mp3"},
         )
 
     async def search(
-        self, media_type: str, query: str, limit: int = 50, offset: int = 0,
+        self,
+        media_type: str,
+        query: str,
+        limit: int = 50,
+        offset: int = 0,
     ) -> list[dict]:
         # TODO: implement pagination
         assert media_type in ("track", "playlist")
@@ -236,7 +242,8 @@ class SoundcloudClient(Client):
             page_text = await resp.text(encoding="utf-8")
 
         *_, client_id_url_match = re.finditer(
-            r"<script\s+crossorigin\s+src=\"([^\"]+)\"", page_text,
+            r"<script\s+crossorigin\s+src=\"([^\"]+)\"",
+            page_text,
         )
 
         if client_id_url_match is None:
@@ -245,7 +252,8 @@ class SoundcloudClient(Client):
         client_id_url = client_id_url_match.group(1)
 
         app_version_match = re.search(
-            r'<script>window\.__sc_version="(\d+)"</script>', page_text,
+            r'<script>window\.__sc_version="(\d+)"</script>',
+            page_text,
         )
         if app_version_match is None:
             raise Exception("Could not find app version in %s" % client_id_url_match)

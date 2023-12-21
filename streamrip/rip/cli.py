@@ -5,6 +5,7 @@ import shutil
 import subprocess
 from functools import wraps
 
+import aiofiles
 import click
 from click_help_colors import HelpColorsGroup  # type: ignore
 from rich.logging import RichHandler
@@ -15,7 +16,6 @@ from .. import db
 from ..config import DEFAULT_CONFIG_PATH, Config, set_user_defaults
 from ..console import console
 from .main import Main
-from .user_paths import DEFAULT_CONFIG_PATH
 
 
 def coro(f):
@@ -33,7 +33,9 @@ def coro(f):
 )
 @click.version_option(version="2.0")
 @click.option(
-    "--config-path", default=DEFAULT_CONFIG_PATH, help="Path to the configuration file",
+    "--config-path",
+    default=DEFAULT_CONFIG_PATH,
+    help="Path to the configuration file",
 )
 @click.option("-f", "--folder", help="The folder to download items into.")
 @click.option(
@@ -50,18 +52,26 @@ def coro(f):
     help="Convert the downloaded files to an audio codec (ALAC, FLAC, MP3, AAC, or OGG)",
 )
 @click.option(
-    "--no-progress", help="Do not show progress bars", is_flag=True, default=False,
+    "--no-progress",
+    help="Do not show progress bars",
+    is_flag=True,
+    default=False,
 )
 @click.option(
-    "-v", "--verbose", help="Enable verbose output (debug mode)", is_flag=True,
+    "-v",
+    "--verbose",
+    help="Enable verbose output (debug mode)",
+    is_flag=True,
 )
 @click.pass_context
 def rip(ctx, config_path, folder, no_db, quality, convert, no_progress, verbose):
-    """Streamrip: the all in one music downloader.
-    """
+    """Streamrip: the all in one music downloader."""
     global logger
     logging.basicConfig(
-        level="INFO", format="%(message)s", datefmt="[%X]", handlers=[RichHandler()],
+        level="INFO",
+        format="%(message)s",
+        datefmt="[%X]",
+        handlers=[RichHandler()],
     )
     logger = logging.getLogger("streamrip")
     if verbose:
@@ -147,8 +157,8 @@ async def file(ctx, path):
     """
     with ctx.obj["config"] as cfg:
         async with Main(cfg) as main:
-            with open(path) as f:
-                await main.add_all([line for line in f])
+            async with aiofiles.open(path) as f:
+                await main.add_all([line async for line in f])
             await main.resolve()
             await main.rip()
 

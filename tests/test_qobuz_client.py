@@ -11,8 +11,7 @@ from streamrip.qobuz_client import QobuzClient
 logger = logging.getLogger("streamrip")
 
 
-@pytest.mark.usefixtures("qobuz_client")
-@pytest.fixture
+@pytest.fixture()
 def client(qobuz_client):
     return qobuz_client
 

@@ -85,7 +85,8 @@ class Converter:
         logger.debug("Generated conversion command: %s", self.command)
 
         process = await asyncio.create_subprocess_exec(
-            *self.command, stderr=asyncio.subprocess.PIPE,
+            *self.command,
+            stderr=asyncio.subprocess.PIPE,
         )
         out, err = await process.communicate()
         if process.returncode == 0 and os.path.isfile(self.tempfile):

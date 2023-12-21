@@ -114,7 +114,9 @@ class DeezerClient(Client):
         return response
 
     async def get_downloadable(
-        self, item_id: str, quality: int = 2,
+        self,
+        item_id: str,
+        quality: int = 2,
     ) -> DeezerDownloadable:
         # TODO: optimize such that all of the ids are requested at once
         dl_info: dict = {"quality": quality, "id": item_id}
@@ -168,14 +170,19 @@ class DeezerClient(Client):
 
         if url is None:
             url = self._get_encrypted_file_url(
-                item_id, track_info["MD5_ORIGIN"], track_info["MEDIA_VERSION"],
+                item_id,
+                track_info["MD5_ORIGIN"],
+                track_info["MEDIA_VERSION"],
             )
 
         dl_info["url"] = url
         return DeezerDownloadable(self.session, dl_info)
 
     def _get_encrypted_file_url(
-        self, meta_id: str, track_hash: str, media_version: str,
+        self,
+        meta_id: str,
+        track_hash: str,
+        media_version: str,
     ):
         logger.debug("Unable to fetch URL. Trying encryption method.")
         format_number = 1

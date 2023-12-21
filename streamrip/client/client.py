@@ -52,7 +52,8 @@ class Client(ABC):
         if headers is None:
             headers = {}
         return aiohttp.ClientSession(
-            headers={"User-Agent": DEFAULT_USER_AGENT}, **headers,
+            headers={"User-Agent": DEFAULT_USER_AGENT},
+            **headers,
         )
 
     def __del__(self):

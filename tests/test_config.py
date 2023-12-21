@@ -8,7 +8,7 @@ SAMPLE_CONFIG = "tests/test_config.toml"
 
 
 # Define a fixture to create a sample ConfigData instance for testing
-@pytest.fixture
+@pytest.fixture()
 def sample_config_data() -> ConfigData:
     # Create a sample ConfigData instance here
     # You can customize this to your specific needs for testing
@@ -18,7 +18,7 @@ def sample_config_data() -> ConfigData:
 
 
 # Define a fixture to create a sample Config instance for testing
-@pytest.fixture
+@pytest.fixture()
 def sample_config() -> Config:
     # Create a sample Config instance here
     # You can customize this to your specific needs for testing
@@ -66,10 +66,15 @@ def test_sample_config_data_fields(sample_config_data):
             download_videos=True,
         ),
         deezer=DeezerConfig(
-            arl="testarl", quality=2, use_deezloader=True, deezloader_warnings=True
+            arl="testarl",
+            quality=2,
+            use_deezloader=True,
+            deezloader_warnings=True,
         ),
         soundcloud=SoundcloudConfig(
-            client_id="clientid", app_version="appversion", quality=0
+            client_id="clientid",
+            app_version="appversion",
+            quality=0,
         ),
         youtube=YoutubeConfig(
             video_downloads_folder="videodownloadsfolder",
@@ -92,7 +97,9 @@ def test_sample_config_data_fields(sample_config_data):
             saved_max_width=-1,
         ),
         metadata=MetadataConfig(
-            set_playlist_to_album=True, renumber_playlist_tracks=True, exclude=[]
+            set_playlist_to_album=True,
+            renumber_playlist_tracks=True,
+            exclude=[],
         ),
         qobuz_filters=QobuzDiscographyFilterConfig(
             extras=False,

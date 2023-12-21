@@ -35,7 +35,10 @@ class URL(ABC):
 
     @abstractmethod
     async def into_pending(
-        self, client: Client, config: Config, db: Database,
+        self,
+        client: Client,
+        config: Config,
+        db: Database,
     ) -> Pending:
         raise NotImplementedError
 
@@ -50,7 +53,10 @@ class GenericURL(URL):
         return cls(generic_url, source)
 
     async def into_pending(
-        self, client: Client, config: Config, db: Database,
+        self,
+        client: Client,
+        config: Config,
+        db: Database,
     ) -> Pending:
         source, media_type, item_id = self.match.groups()
         assert client.source == source
@@ -80,7 +86,10 @@ class QobuzInterpreterURL(URL):
         return cls(qobuz_interpreter_url, "qobuz")
 
     async def into_pending(
-        self, client: Client, config: Config, db: Database,
+        self,
+        client: Client,
+        config: Config,
+        db: Database,
     ) -> Pending:
         url = self.match.group(0)
         artist_id = await self.extract_interpreter_url(url, client)
@@ -119,7 +128,10 @@ class SoundcloudURL(URL):
         self.url = url
 
     async def into_pending(
-        self, client: SoundcloudClient, config: Config, db: Database,
+        self,
+        client: SoundcloudClient,
+        config: Config,
+        db: Database,
     ) -> Pending:
         resolved = await client._resolve_url(self.url)
         media_type = resolved["kind"]

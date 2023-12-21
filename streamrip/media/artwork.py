@@ -69,7 +69,8 @@ async def download_artwork(
         assert l_url is not None
         downloadables.append(
             BasicDownloadable(session, l_url, "jpg").download(
-                saved_cover_path, lambda _: None,
+                saved_cover_path,
+                lambda _: None,
             ),
         )
 
@@ -82,7 +83,8 @@ async def download_artwork(
         embed_cover_path = os.path.join(embed_dir, f"cover{hash(embed_url)}.jpg")
         downloadables.append(
             BasicDownloadable(session, embed_url, "jpg").download(
-                embed_cover_path, lambda _: None,
+                embed_cover_path,
+                lambda _: None,
             ),
         )
 

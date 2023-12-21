@@ -16,7 +16,7 @@ def wipe_test_flac():
     audio.save()
 
 
-@pytest.fixture
+@pytest.fixture()
 def sample_metadata() -> TrackMetadata:
     return TrackMetadata(
         TrackInfo(

@@ -4,14 +4,14 @@ import tomlkit
 from streamrip.config import *
 
 
-@pytest.fixture
+@pytest.fixture()
 def toml():
     with open("streamrip/config.toml") as f:
         t = tomlkit.parse(f.read())  # type: ignore
     return t
 
 
-@pytest.fixture
+@pytest.fixture()
 def config():
     return ConfigData.defaults()
 

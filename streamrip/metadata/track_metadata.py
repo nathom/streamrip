@@ -123,7 +123,8 @@ class TrackMetadata:
         track_id = track["id"]
         bit_depth, sampling_rate = None, None
         explicit = typed(
-            safe_get(track, "publisher_metadata", "explicit", default=False), bool,
+            safe_get(track, "publisher_metadata", "explicit", default=False),
+            bool,
         )
 
         title = typed(track["title"].strip(), str)

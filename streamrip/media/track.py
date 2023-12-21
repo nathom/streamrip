@@ -73,13 +73,15 @@ class Track(Media):
         c = self.config.session.filepaths
         formatter = c.track_format
         track_path = clean_filename(
-            self.meta.format_track_path(formatter), restrict=c.restrict_characters,
+            self.meta.format_track_path(formatter),
+            restrict=c.restrict_characters,
         )
         if c.truncate_to > 0 and len(track_path) > c.truncate_to:
             track_path = track_path[: c.truncate_to]
 
         self.download_path = os.path.join(
-            self.folder, f"{track_path}.{self.downloadable.extension}",
+            self.folder,
+            f"{track_path}.{self.downloadable.extension}",
         )
 
 
@@ -112,7 +114,12 @@ class PendingTrack(Pending):
         quality = self.config.session.get_source(source).quality
         downloadable = await self.client.get_downloadable(self.id, quality)
         return Track(
-            meta, downloadable, self.config, self.folder, self.cover_path, self.db,
+            meta,
+            downloadable,
+            self.config,
+            self.folder,
+            self.cover_path,
+            self.db,
         )
 
 
@@ -163,7 +170,8 @@ class PendingSingle(Pending):
         quality = getattr(self.config.session, self.client.source).quality
         assert isinstance(quality, int)
         folder = os.path.join(
-            self.config.session.downloads.folder, self._format_folder(album),
+            self.config.session.downloads.folder,
+            self._format_folder(album),
         )
         os.makedirs(folder, exist_ok=True)
 

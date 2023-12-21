@@ -43,6 +43,6 @@ class AlbumList(Media):
 
     @staticmethod
     def batch(iterable, n=1):
-        l = len(iterable)
-        for ndx in range(0, l, n):
-            yield iterable[ndx : min(ndx + n, l)]
+        total = len(iterable)
+        for ndx in range(0, total, n):
+            yield iterable[ndx : min(ndx + n, total)]

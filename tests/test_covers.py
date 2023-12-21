@@ -3,7 +3,7 @@ import pytest
 from streamrip.metadata import Covers
 
 
-@pytest.fixture
+@pytest.fixture()
 def covers_all():
     c = Covers()
     c.set_cover("original", "ourl", None)
@@ -14,19 +14,19 @@ def covers_all():
     return c
 
 
-@pytest.fixture
+@pytest.fixture()
 def covers_none():
     return Covers()
 
 
-@pytest.fixture
+@pytest.fixture()
 def covers_one():
     c = Covers()
     c.set_cover("small", "surl", None)
     return c
 
 
-@pytest.fixture
+@pytest.fixture()
 def covers_some():
     c = Covers()
     c.set_cover("large", "lurl", None)

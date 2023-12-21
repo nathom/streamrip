@@ -227,7 +227,8 @@ class AlbumMetadata:
         track_id = track["id"]
         bit_depth, sampling_rate = None, None
         explicit = typed(
-            safe_get(track, "publisher_metadata", "explicit", default=False), bool,
+            safe_get(track, "publisher_metadata", "explicit", default=False),
+            bool,
         )
         genre = typed(track["genre"], str)
         artist = typed(safe_get(track, "publisher_metadata", "artist"), str | None)
@@ -238,7 +239,8 @@ class AlbumMetadata:
         label = typed(track["label_name"], str | None)
         description = typed(track.get("description"), str | None)
         album_title = typed(
-            safe_get(track, "publisher_metadata", "album_title"), str | None,
+            safe_get(track, "publisher_metadata", "album_title"),
+            str | None,
         )
         album_title = album_title or "Unknown album"
         copyright = typed(safe_get(track, "publisher_metadata", "p_line"), str | None)
