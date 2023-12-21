@@ -89,7 +89,6 @@ class DeezerDownloadable(Downloadable):
         logger.debug("Deezer info for downloadable: %s", info)
         self.session = session
         self.url = info["url"]
-        self.fallback_id = info["fallback_id"]
         self.quality = info["quality"]
         self._size = int(info["quality_to_size"][self.quality])
         if self.quality <= 1:

@@ -127,13 +127,14 @@ class DeezerClient(Client):
         self,
         item_id: str,
         quality: int = 2,
+        is_retry: bool = False,
     ) -> DeezerDownloadable:
         # TODO: optimize such that all of the ids are requested at once
         dl_info: dict = {"quality": quality, "id": item_id}
 
         track_info = self.client.gw.get_track(item_id)
 
-        dl_info["fallback_id"] = track_info.get("FALLBACK", {}).get("SNG_ID")
+        fallback_id = track_info.get("FALLBACK", {}).get("SNG_ID")
 
         quality_map = [
             (9, "MP3_128"),  # quality 0
@@ -144,7 +145,7 @@ class DeezerClient(Client):
         _, format_str = quality_map[quality]
 
         dl_info["quality_to_size"] = [
-            track_info[f"FILESIZE_{format}"] for _, format in quality_map
+            track_info.get(f"FILESIZE_{format}", 0) for _, format in quality_map
         ]
 
         token = track_info["TRACK_TOKEN"]
@@ -158,6 +159,8 @@ class DeezerClient(Client):
                 "quality allowed is 1.",
             )
         except deezer.WrongGeolocation:
+            if not is_retry:
+                return await self.get_downloadable(fallback_id, quality, is_retry=True)
             raise NonStreamable(
                 "The requested track is not available. This may be due to your country/location.",
             )
