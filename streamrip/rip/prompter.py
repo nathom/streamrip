@@ -97,8 +97,8 @@ class TidalPrompter(CredentialPrompter):
         return len(self.config.session.tidal.access_token) > 0
 
     async def prompt_and_login(self):
-        device_code = await self.client._get_device_code()
-        login_link = f"https://{device_code}"
+        device_code, uri = await self.client._get_device_code()
+        login_link = f"https://{uri}"
 
         console.print(
             f"Go to [blue underline]{login_link}[/blue underline] to log into Tidal within 5 minutes.",
@@ -111,6 +111,7 @@ class TidalPrompter(CredentialPrompter):
         while elapsed < self.timeout_s:
             elapsed = time.time() - start
             status, info = await self.client._get_auth_status(device_code)
+            print(status, info)
             if status == 2:
                 # pending
                 time.sleep(4)
@@ -129,6 +130,7 @@ class TidalPrompter(CredentialPrompter):
         c.token_expiry = info["token_expiry"]  # type: ignore
 
         self.client._update_authorization_from_config()
+        self.client.logged_in = True
         self.save()
 
     def type_check_client(self, client) -> TidalClient:

@@ -1,4 +1,5 @@
 import asyncio
+import base64
 import functools
 import hashlib
 import itertools
@@ -16,7 +17,8 @@ from typing import Any, Callable, Optional
 import aiofiles
 import aiohttp
 import m3u8
-from Cryptodome.Cipher import Blowfish
+from Cryptodome.Cipher import AES, Blowfish
+from Cryptodome.Util import Counter
 
 from .. import converter
 from ..exceptions import NonStreamable
@@ -26,7 +28,8 @@ logger = logging.getLogger("streamrip")
 
 def generate_temp_path(url: str):
     return os.path.join(
-        tempfile.gettempdir(), f"__streamrip_{hash(url)}_{time.time()}.download",
+        tempfile.gettempdir(),
+        f"__streamrip_{hash(url)}_{time.time()}.download",
     )
 
 
@@ -183,24 +186,65 @@ class TidalDownloadable(Downloadable):
     error messages.
     """
 
-    def __init__(self, session: aiohttp.ClientSession, info: dict):
+    def __init__(self, session: aiohttp.ClientSession, url: str, enc_key, codec):
         self.session = session
-        url = info.get("url")
+        self.url = url
+        assert enc_key is None
         if self.url is None:
-            if restrictions := info["restrictions"]:
-                # Turn CamelCase code into a readable sentence
-                words = re.findall(r"([A-Z][a-z]+)", restrictions[0]["code"])
-                raise NonStreamable(
-                    words[0] + " " + " ".join(map(str.lower, words[1:])),
-                )
-
-            raise NonStreamable(f"Tidal download: dl_info = {info}")
+            raise Exception
+            # if restrictions := info["restrictions"]:
+            #     # Turn CamelCase code into a readable sentence
+            #     words = re.findall(r"([A-Z][a-z]+)", restrictions[0]["code"])
+            #     raise NonStreamable(
+            #         words[0] + " " + " ".join(map(str.lower, words[1:])),
+            #     )
+            #
+            # raise NonStreamable(f"Tidal download: dl_info = {info}")
 
         assert isinstance(url, str)
         self.downloadable = BasicDownloadable(session, url, "m4a")
 
     async def _download(self, path: str, callback):
         await self.downloadable._download(path, callback)
+
+    @staticmethod
+    async def _decrypt_mqa_file(in_path, out_path, encryption_key):
+        """Decrypt an MQA file.
+
+        :param in_path:
+        :param out_path:
+        :param encryption_key:
+        """
+
+        # Do not change this
+        master_key = "UIlTTEMmmLfGowo/UC60x2H45W6MdGgTRfo/umg4754="
+
+        # Decode the base64 strings to ascii strings
+        master_key = base64.b64decode(master_key)
+        security_token = base64.b64decode(encryption_key)
+
+        # Get the IV from the first 16 bytes of the securityToken
+        iv = security_token[:16]
+        encrypted_st = security_token[16:]
+
+        # Initialize decryptor
+        decryptor = AES.new(master_key, AES.MODE_CBC, iv)
+
+        # Decrypt the security token
+        decrypted_st = decryptor.decrypt(encrypted_st)
+
+        # Get the audio stream decryption key and nonce from the decrypted security token
+        key = decrypted_st[:16]
+        nonce = decrypted_st[16:24]
+
+        counter = Counter.new(64, prefix=nonce, initial_value=0)
+        decryptor = AES.new(key, AES.MODE_CTR, counter=counter)
+
+        async with aiofiles.open(in_path, "rb") as enc_file, aiofiles.open(
+            out_path, "wb"
+        ) as dec_file:
+            dec_bytes = decryptor.decrypt(await enc_file.read())
+            await dec_file.write(dec_bytes)
 
 
 class SoundcloudDownloadable(Downloadable):
@@ -285,7 +329,8 @@ async def concat_audio_files(paths: list[str], out: str, ext: str, max_files_ope
     tempdir = tempfile.gettempdir()
     outpaths = [
         os.path.join(
-            tempdir, f"__streamrip_ffmpeg_{hash(paths[i*max_files_open])}.{ext}",
+            tempdir,
+            f"__streamrip_ffmpeg_{hash(paths[i*max_files_open])}.{ext}",
         )
         for i in range(num_batches)
     ]
