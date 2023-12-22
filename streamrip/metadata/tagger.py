@@ -38,6 +38,7 @@ MP4_KEYS = (
     None,
     None,
     None,
+    "---:com.apple.iTunes:ISRC",
 )
 
 MP3_KEYS = (
@@ -61,6 +62,7 @@ MP3_KEYS = (
     None,
     None,
     None,
+    id3.TSRC,
 )
 
 METADATA_TYPES = (
@@ -84,6 +86,7 @@ METADATA_TYPES = (
     "tracktotal",
     "disctotal",
     "date",
+    "isrc",
 )
 
 
@@ -170,6 +173,7 @@ class Container(Enum):
             "tracknumber",
             "discnumber",
             "composer",
+            "isrc",
         }
         if attr in in_trackmetadata:
             if attr == "album":
