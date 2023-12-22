@@ -146,7 +146,6 @@ class QobuzClient(Client):
         self.secret: Optional[str] = None
 
     async def login(self):
-        logger.info("Logging into qobuz")
         self.session = await self.get_session()
         c = self.config.session.qobuz
         if not c.email_or_userid or not c.password_or_token:
@@ -162,7 +161,6 @@ class QobuzClient(Client):
             f.qobuz.app_id = c.app_id
             f.qobuz.secrets = c.secrets
             f.set_modified()
-        logger.info(f"Found {c.app_id = } {c.secrets = }")
 
         self.session.headers.update({"X-App-Id": c.app_id})
         self.secret = await self._get_valid_secret(c.secrets)
@@ -189,18 +187,20 @@ class QobuzClient(Client):
         elif status == 400:
             raise InvalidAppIdError(f"Invalid app id from params {params}")
 
-        logger.info("Logged in to Qobuz")
+        logger.debug("Logged in to Qobuz")
 
         if not resp["user"]["credential"]["parameters"]:
             raise IneligibleError("Free accounts are not eligible to download tracks.")
 
         uat = resp["user_auth_token"]
         self.session.headers.update({"X-User-Auth-Token": uat})
-        # label = resp_json["user"]["credential"]["parameters"]["short_label"]
 
         self.logged_in = True
 
     async def get_metadata(self, item_id: str, media_type: str):
+        if media_type == "label":
+            return await self.get_label(item_id)
+
         c = self.config.session.qobuz
         params = {
             "app_id": c.app_id,
@@ -231,6 +231,46 @@ class QobuzClient(Client):
             )
 
         return resp
+
+    async def get_label(self, label_id: str) -> dict:
+        c = self.config.session.qobuz
+        page_limit = 500
+        params = {
+            "app_id": c.app_id,
+            "label_id": label_id,
+            "limit": page_limit,
+            "offset": 0,
+            "extra": "albums",
+        }
+        epoint = "label/get"
+        status, label_resp = await self._api_request(epoint, params)
+        assert status == 200
+        albums_count = label_resp["albums_count"]
+
+        if albums_count <= page_limit:
+            return label_resp
+
+        requests = [
+            self._api_request(
+                epoint,
+                {
+                    "app_id": c.app_id,
+                    "label_id": label_id,
+                    "limit": page_limit,
+                    "offset": offset,
+                    "extra": "albums",
+                },
+            )
+            for offset in range(page_limit, albums_count, page_limit)
+        ]
+
+        results = await asyncio.gather(*requests)
+        items = label_resp["albums"]["items"]
+        for status, resp in results:
+            assert status == 200
+            items.extend(resp["albums"]["items"])
+
+        return label_resp
 
     async def search(self, media_type: str, query: str, limit: int = 500) -> list[dict]:
         if media_type not in ("artist", "album", "track", "playlist"):
@@ -289,7 +329,7 @@ class QobuzClient(Client):
         self,
         epoint: str,
         params: dict,
-        limit: Optional[int] = None,
+        limit: int = 500,
     ) -> list[dict]:
         """Paginate search results.
 
@@ -301,7 +341,7 @@ class QobuzClient(Client):
         -------
             Generator that yields (status code, response) tuples
         """
-        params.update({"limit": limit or 500})
+        params.update({"limit": limit})
         status, page = await self._api_request(epoint, params)
         assert status == 200, status
         logger.debug("paginate: initial request made with status %d", status)
