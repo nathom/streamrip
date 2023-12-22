@@ -15,7 +15,7 @@ from ..client import Client
 from ..config import Config
 from ..console import console
 from ..db import Database
-from ..exceptions import NonStreamable
+from ..exceptions import NonStreamableError
 from ..filepath_utils import clean_filename
 from ..metadata import (
     AlbumMetadata,
@@ -47,7 +47,7 @@ class PendingPlaylistTrack(Pending):
             return None
         try:
             resp = await self.client.get_metadata(self.id, "track")
-        except NonStreamable as e:
+        except NonStreamableError as e:
             logger.error(f"Could not stream track {self.id}: {e}")
             return None
 
@@ -78,7 +78,7 @@ class PendingPlaylistTrack(Pending):
                 self._download_cover(album.covers, self.folder),
                 self.client.get_downloadable(self.id, quality),
             )
-        except NonStreamable as e:
+        except NonStreamableError as e:
             logger.error("Error fetching download info for track: %s", e)
             self.db.set_failed(self.client.source, "track", self.id)
             return None

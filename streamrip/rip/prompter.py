@@ -10,7 +10,7 @@ from rich.prompt import Prompt
 from ..client import Client, DeezerClient, QobuzClient, SoundcloudClient, TidalClient
 from ..config import Config
 from ..console import console
-from ..exceptions import AuthenticationError, MissingCredentials
+from ..exceptions import AuthenticationError, MissingCredentialsError
 
 logger = logging.getLogger("streamrip")
 
@@ -61,7 +61,7 @@ class QobuzPrompter(CredentialPrompter):
             except AuthenticationError:
                 console.print("[yellow]Invalid credentials, try again.")
                 self._prompt_creds_and_set_session_config()
-            except MissingCredentials:
+            except MissingCredentialsError:
                 self._prompt_creds_and_set_session_config()
 
     def _prompt_creds_and_set_session_config(self):

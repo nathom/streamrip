@@ -1,5 +1,4 @@
 """Streamrip specific exceptions."""
-from typing import List
 
 from click import echo, style
 
@@ -8,7 +7,7 @@ class AuthenticationError(Exception):
     """AuthenticationError."""
 
 
-class MissingCredentials(Exception):
+class MissingCredentialsError(Exception):
     """MissingCredentials."""
 
 
@@ -27,11 +26,7 @@ class InvalidAppSecretError(Exception):
     """InvalidAppSecretError."""
 
 
-class InvalidQuality(Exception):
-    """InvalidQuality."""
-
-
-class NonStreamable(Exception):
+class NonStreamableError(Exception):
     """Item is not streamable.
 
     A versatile error that can have many causes.
@@ -71,50 +66,5 @@ class NonStreamable(Exception):
         return " ".join(base_msg)
 
 
-class InvalidContainerError(Exception):
-    """InvalidContainerError."""
-
-
-class InvalidSourceError(Exception):
-    """InvalidSourceError."""
-
-
-class ParsingError(Exception):
-    """ParsingError."""
-
-
-class TooLargeCoverArt(Exception):
-    """TooLargeCoverArt."""
-
-
-class BadEncoderOption(Exception):
-    """BadEncoderOption."""
-
-
 class ConversionError(Exception):
     """ConversionError."""
-
-
-class NoResultsFound(Exception):
-    """NoResultsFound."""
-
-
-class ItemExists(Exception):
-    """ItemExists."""
-
-
-class PartialFailure(Exception):
-    """Raise if part of a tracklist fails to download."""
-
-    def __init__(self, failed_items: List):
-        """Create a PartialFailure exception.
-
-        :param failed_items:
-        :type failed_items: List
-        """
-        self.failed_items = failed_items
-        super().__init__()
-
-
-class FfmpegError(Exception):
-    """Raise if ffmpeg returns nonzero exit code."""

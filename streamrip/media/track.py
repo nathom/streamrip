@@ -7,7 +7,7 @@ from .. import converter
 from ..client import Client, Downloadable
 from ..config import Config
 from ..db import Database
-from ..exceptions import NonStreamable
+from ..exceptions import NonStreamableError
 from ..filepath_utils import clean_filename
 from ..metadata import AlbumMetadata, Covers, TrackMetadata, tag_file
 from ..progress import add_title, get_progress_callback, remove_title
@@ -106,7 +106,7 @@ class PendingTrack(Pending):
         source = self.client.source
         try:
             resp = await self.client.get_metadata(self.id, "track")
-        except NonStreamable as e:
+        except NonStreamableError as e:
             logger.error(f"Track {self.id} not available for stream on {source}: {e}")
             return None
 
@@ -150,7 +150,7 @@ class PendingSingle(Pending):
 
         try:
             resp = await self.client.get_metadata(self.id, "track")
-        except NonStreamable as e:
+        except NonStreamableError as e:
             logger.error(f"Error fetching track {self.id}: {e}")
             return None
         # Patch for soundcloud

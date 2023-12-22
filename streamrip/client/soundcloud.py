@@ -4,7 +4,7 @@ import logging
 import re
 
 from ..config import Config
-from ..exceptions import NonStreamable
+from ..exceptions import NonStreamableError
 from .client import Client
 from .downloadable import SoundcloudDownloadable
 
@@ -155,7 +155,7 @@ class SoundcloudClient(Client):
         assert re.match(r"\d+", item_id) is not None
 
         if download_info == self.NON_STREAMABLE:
-            raise NonStreamable(item_info)
+            raise NonStreamableError(item_info)
 
         if download_info == self.ORIGINAL_DOWNLOAD:
             resp_json, status = await self._api_request(f"tracks/{item_id}/download")
@@ -183,7 +183,7 @@ class SoundcloudClient(Client):
         offset: int = 0,
     ) -> list[dict]:
         # TODO: implement pagination
-        assert media_type in ("track", "playlist")
+        assert media_type in ("track", "playlist"), f"Cannot search for {media_type}"
         params = {
             "q": query,
             "facet": "genre",

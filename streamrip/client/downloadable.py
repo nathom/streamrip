@@ -21,7 +21,7 @@ from Cryptodome.Cipher import AES, Blowfish
 from Cryptodome.Util import Counter
 
 from .. import converter
-from ..exceptions import NonStreamable
+from ..exceptions import NonStreamableError
 
 logger = logging.getLogger("streamrip")
 
@@ -107,12 +107,12 @@ class DeezerDownloadable(Downloadable):
                     info = await resp.json()
                     try:
                         # Usually happens with deezloader downloads
-                        raise NonStreamable(f"{info['error']} - {info['message']}")
+                        raise NonStreamableError(f"{info['error']} - {info['message']}")
                     except KeyError:
-                        raise NonStreamable(info)
+                        raise NonStreamableError(info)
 
                 except json.JSONDecodeError:
-                    raise NonStreamable("File not found.")
+                    raise NonStreamableError("File not found.")
 
             if self.is_encrypted.search(self.url) is None:
                 logger.debug(f"Deezer file at {self.url} not encrypted.")
@@ -206,10 +206,10 @@ class TidalDownloadable(Downloadable):
             # Turn CamelCase code into a readable sentence
             if restrictions:
                 words = re.findall(r"([A-Z][a-z]+)", restrictions[0]["code"])
-                raise NonStreamable(
+                raise NonStreamableError(
                     words[0] + " " + " ".join(map(str.lower, words[1:])),
                 )
-            raise NonStreamable(
+            raise NonStreamableError(
                 f"Tidal download: dl_info = {url, codec, encryption_key}"
             )
         self.url = url

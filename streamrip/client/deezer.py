@@ -7,7 +7,11 @@ import deezer
 from Cryptodome.Cipher import AES
 
 from ..config import Config
-from ..exceptions import AuthenticationError, MissingCredentials, NonStreamable
+from ..exceptions import (
+    AuthenticationError,
+    MissingCredentialsError,
+    NonStreamableError,
+)
 from .client import Client
 from .downloadable import DeezerDownloadable
 
@@ -41,7 +45,7 @@ class DeezerClient(Client):
         self.session = await self.get_session()
         arl = self.config.arl
         if not arl:
-            raise MissingCredentials
+            raise MissingCredentialsError
         success = self.client.login_via_arl(arl)
         if not success:
             raise AuthenticationError
@@ -64,7 +68,7 @@ class DeezerClient(Client):
         try:
             item = await asyncio.to_thread(self.client.api.get_track, item_id)
         except Exception as e:
-            raise NonStreamable(e)
+            raise NonStreamableError(e)
 
         album_id = item["album"]["id"]
         try:
@@ -157,7 +161,7 @@ class DeezerClient(Client):
             logger.debug("Fetching deezer url with token %s", token)
             url = self.client.get_track_url(token, format_str)
         except deezer.WrongLicense:
-            raise NonStreamable(
+            raise NonStreamableError(
                 "The requested quality is not available with your subscription. "
                 "Deezer HiFi is required for quality 2. Otherwise, the maximum "
                 "quality allowed is 1.",
@@ -165,7 +169,7 @@ class DeezerClient(Client):
         except deezer.WrongGeolocation:
             if not is_retry:
                 return await self.get_downloadable(fallback_id, quality, is_retry=True)
-            raise NonStreamable(
+            raise NonStreamableError(
                 "The requested track is not available. This may be due to your country/location.",
             )
 

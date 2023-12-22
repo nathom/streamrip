@@ -115,7 +115,6 @@ class TidalClient(Client):
         :type limit: int
         :rtype: dict
         """
-        # TODD: paginate
         params = {
             "query": query,
             "limit": limit,

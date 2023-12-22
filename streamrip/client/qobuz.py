@@ -15,8 +15,8 @@ from ..exceptions import (
     IneligibleError,
     InvalidAppIdError,
     InvalidAppSecretError,
-    MissingCredentials,
-    NonStreamable,
+    MissingCredentialsError,
+    NonStreamableError,
 )
 from .client import Client
 from .downloadable import BasicDownloadable, Downloadable
@@ -149,7 +149,7 @@ class QobuzClient(Client):
         self.session = await self.get_session()
         c = self.config.session.qobuz
         if not c.email_or_userid or not c.password_or_token:
-            raise MissingCredentials
+            raise MissingCredentialsError
 
         assert not self.logged_in, "Already logged in"
 
@@ -226,7 +226,7 @@ class QobuzClient(Client):
         status, resp = await self._api_request(epoint, params)
 
         if status != 200:
-            raise NonStreamable(
+            raise NonStreamableError(
                 f'Error fetching metadata. Message: "{resp["message"]}"',
             )
 
@@ -313,10 +313,10 @@ class QobuzClient(Client):
             if restrictions:
                 # Turn CamelCase code into a readable sentence
                 words = re.findall(r"([A-Z][a-z]+)", restrictions[0]["code"])
-                raise NonStreamable(
+                raise NonStreamableError(
                     words[0] + " " + " ".join(map(str.lower, words[1:])) + ".",
                 )
-            raise NonStreamable
+            raise NonStreamableError
 
         return BasicDownloadable(
             self.session,
