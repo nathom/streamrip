@@ -157,7 +157,6 @@ class AlbumMetadata:
 
     @classmethod
     def from_deezer(cls, resp: dict) -> AlbumMetadata | None:
-        print(resp.keys())
         album = resp.get("title", "Unknown Album")
         tracktotal = typed(resp.get("track_total", 0) or resp.get("nb_tracks", 0), int)
         disctotal = typed(resp["tracks"][-1]["disk_number"], int)
