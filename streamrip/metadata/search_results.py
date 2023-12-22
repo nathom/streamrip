@@ -92,6 +92,9 @@ class TrackSummary(Summary):
             )
             or "Unknown"
         )
+        if isinstance(artist, dict) and "name" in artist:
+            artist = artist["name"]
+
         date_released = (
             item.get("release_date")
             or item.get("album", {}).get("release_date_original")
@@ -100,7 +103,7 @@ class TrackSummary(Summary):
             or item.get("year")
             or "Unknown"
         )
-        return cls(id, name.strip(), artist, date_released)
+        return cls(id, name.strip(), artist, date_released)  # type: ignore
 
 
 @dataclass(slots=True)
@@ -186,7 +189,7 @@ class PlaylistSummary(Summary):
         wrapped = "\n".join(
             textwrap.wrap(self.description, os.get_terminal_size().columns - 4 or 70),
         )
-        return f"{self.num_tracks} tracks\n\nDescription:\n{wrapped}\n\nid:{self.id}"
+        return f"{self.num_tracks} tracks\n\nDescription:\n{wrapped}\n\nID: {self.id}"
 
     def media_type(self):
         return "playlist"
@@ -199,9 +202,10 @@ class PlaylistSummary(Summary):
             (item.get("publisher_metadata") and item["publisher_metadata"]["artist"])
             or item.get("owner", {}).get("name")
             or item.get("user", {}).get("username")
+            or item.get("user", {}).get("name")
             or "Unknown"
         )
-        num_tracks = item.get("tracks_count") or -1
+        num_tracks = item.get("tracks_count") or item.get("nb_tracks") or -1
         description = item.get("description") or "No description"
         return cls(id, name, creator, num_tracks, description)
 
@@ -234,6 +238,9 @@ class SearchResults:
             elif source == "qobuz":
                 key = media_type + "s"
                 for item in page[key]["items"]:
+                    results.append(summary_type.from_item(item))
+            elif source == "deezer":
+                for item in page["data"]:
                     results.append(summary_type.from_item(item))
             else:
                 raise NotImplementedError
