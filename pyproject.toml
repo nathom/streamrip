@@ -48,10 +48,9 @@ click-help-colors = "^0.9.2"
 "Bug Reports" = "https://github.com/nathom/streamrip/issues"
 
 [tool.poetry.dev-dependencies]
-Sphinx = "^4.1.1"
-autodoc = "^0.5.0"
 types-click = "^7.1.2"
 types-Pillow = "^8.3.1"
+ruff = "^0.1"
 black = "^22"
 isort = "^5.9.3"
 flake8 = "^3.9.2"
