@@ -1,6 +1,8 @@
 import asyncio
 import logging
-import os
+import platform
+
+import aiofiles
 
 from .. import db
 from ..client import Client, DeezerClient, QobuzClient, SoundcloudClient, TidalClient
@@ -105,7 +107,6 @@ class Main:
                 with console.status(f"[cyan]Logging into {source}", spinner="dots"):
                     # Log into client using credentials from config
                     await client.login()
-                # await client.login()
 
         assert client.logged_in
         return client
@@ -135,7 +136,7 @@ class Main:
                 return
             search_results = SearchResults.from_pages(source, media_type, pages)
 
-        if os.name == "nt":
+        if platform.system() == "Windows":  # simple term menu not supported for windows
             from pick import pick
 
             choices = pick(
@@ -150,7 +151,7 @@ class Main:
             assert isinstance(choices, list)
 
             await self.add_all(
-                [f"http://{source}.com/{media_type}/{item.id}" for item, i in choices],
+                [self.dummy_url(source, media_type, item.id) for item, _ in choices],
             )
 
         else:
@@ -175,14 +176,16 @@ class Main:
                 choices = search_results.get_choices(chosen_ind)
                 await self.add_all(
                     [
-                        f"http://{source}.com/{item.media_type()}/{item.id}"
+                        self.dummy_url(source, item.media_type(), item.id)
                         for item in choices
                     ],
                 )
 
     async def search_take_first(self, source: str, media_type: str, query: str):
         client = await self.get_logged_in_client(source)
-        pages = await client.search(media_type, query, limit=1)
+        with console.status(f"[bold]Searching {source}", spinner="dots"):
+            pages = await client.search(media_type, query, limit=1)
+
         if len(pages) == 0:
             console.print(f"[red]No search results found for query {query}")
             return
@@ -190,7 +193,31 @@ class Main:
         search_results = SearchResults.from_pages(source, media_type, pages)
         assert len(search_results.results) > 0
         first = search_results.results[0]
-        await self.add(f"http://{source}.com/{first.media_type()}/{first.id}")
+        url = self.dummy_url(source, first.media_type(), first.id)
+        await self.add(url)
+
+    async def search_output_file(
+        self, source: str, media_type: str, query: str, filepath: str, limit: int
+    ):
+        client = await self.get_logged_in_client(source)
+        with console.status(f"[bold]Searching {source}", spinner="dots"):
+            pages = await client.search(media_type, query, limit=limit)
+
+        if len(pages) == 0:
+            console.print(f"[red]No search results found for query {query}")
+            return
+
+        search_results = SearchResults.from_pages(source, media_type, pages)
+        file_contents = "\n".join(
+            f"{self.dummy_url(source, item.media_type(), item.id)} [{item.summarize()}]"
+            for item in search_results.results
+        )
+        async with aiofiles.open(filepath, "w") as f:
+            await f.write(file_contents)
+
+        console.print(
+            f"Wrote dummy urls for [purple]{len(search_results.results)}[/purple] results to [cyan]{filepath}!"
+        )
 
     async def resolve_lastfm(self, playlist_url: str):
         """Resolve a last.fm playlist."""
@@ -213,6 +240,10 @@ class Main:
 
         if playlist is not None:
             self.media.append(playlist)
+
+    @staticmethod
+    def dummy_url(source, media_type, item_id):
+        return f"http://{source}.com/{media_type}/{item_id}"
 
     async def __aenter__(self):
         return self

@@ -266,22 +266,42 @@ def database_browse(ctx, table):
     help="Automatically download the first search result without showing the menu.",
     is_flag=True,
 )
+@click.option(
+    "-o",
+    "--output-file",
+    help="Write search results to a file instead of showing interactive menu.",
+    type=click.Path(writable=True),
+)
+@click.option(
+    "-n",
+    "--num-results",
+    help="Maximum number of search results to show",
+    default=100,
+    type=click.IntRange(min=1),
+)
 @click.argument("source", required=True)
 @click.argument("media-type", required=True)
 @click.argument("query", required=True)
 @click.pass_context
 @coro
-async def search(ctx, first, source, media_type, query):
+async def search(ctx, first, output_file, num_results, source, media_type, query):
     """Search for content using a specific source.
 
     Example:
-    -------
+
         rip search qobuz album 'rumours'
     """
+    if first and output_file:
+        console.print("Cannot choose --first and --output-file!")
+        return
     with ctx.obj["config"] as cfg:
         async with Main(cfg) as main:
             if first:
                 await main.search_take_first(source, media_type, query)
+            elif output_file:
+                await main.search_output_file(
+                    source, media_type, query, output_file, num_results
+                )
             else:
                 await main.search_interactive(source, media_type, query)
             await main.resolve()
