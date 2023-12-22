@@ -151,7 +151,7 @@ async def url(ctx, urls):
 @click.pass_context
 @coro
 async def file(ctx, path):
-    """Download content from URLs in a file seperated by newlines.
+    """Download content from URLs in a file.
 
     Example usage:
 
@@ -299,7 +299,7 @@ async def search(ctx, first, source, media_type, query):
 @click.pass_context
 @coro
 async def lastfm(ctx, source, fallback_source, url):
-    """Download tracks from a last.fm playlist using a supported source."""
+    """Download tracks from a last.fm playlist."""
     config = ctx.obj["config"]
     if source is not None:
         config.session.lastfm.source = source
