@@ -45,7 +45,11 @@ class PendingPlaylistTrack(Pending):
         if self.db.downloaded(self.id):
             logger.info(f"Track ({self.id}) already logged in database. Skipping.")
             return None
-        resp = await self.client.get_metadata(self.id, "track")
+        try:
+            resp = await self.client.get_metadata(self.id, "track")
+        except NonStreamable as e:
+            logger.error(f"Could not stream track {self.id}: {e}")
+            return None
 
         album = AlbumMetadata.from_track_resp(resp, self.client.source)
         if album is None:

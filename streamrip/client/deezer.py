@@ -61,7 +61,11 @@ class DeezerClient(Client):
             raise Exception(f"Media type {media_type} not available on deezer")
 
     async def get_track(self, item_id: str) -> dict:
-        item = await asyncio.to_thread(self.client.api.get_track, item_id)
+        try:
+            item = await asyncio.to_thread(self.client.api.get_track, item_id)
+        except Exception as e:
+            raise NonStreamable(e)
+
         album_id = item["album"]["id"]
         try:
             album_metadata, album_tracks = await asyncio.gather(
@@ -69,7 +73,7 @@ class DeezerClient(Client):
                 asyncio.to_thread(self.client.api.get_album_tracks, album_id),
             )
         except Exception as e:
-            logger.error("Got exception from deezer API %s", e)
+            logger.error(f"Error fetching album of track {item_id}: {e}")
             return item
 
         album_metadata["tracks"] = album_tracks["data"]

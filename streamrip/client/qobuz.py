@@ -278,7 +278,6 @@ class QobuzClient(Client):
 
         params = {
             "query": query,
-            # "limit": limit,
         }
         epoint = f"{media_type}/search"
 

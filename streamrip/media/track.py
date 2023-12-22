@@ -103,8 +103,13 @@ class PendingTrack(Pending):
             )
             return None
 
-        resp = await self.client.get_metadata(self.id, "track")
         source = self.client.source
+        try:
+            resp = await self.client.get_metadata(self.id, "track")
+        except NonStreamable as e:
+            logger.error(f"Track {self.id} not available for stream on {source}: {e}")
+            return None
+
         meta = TrackMetadata.from_resp(self.album, source, resp)
         if meta is None:
             logger.error(f"Track {self.id} not available for stream on {source}")
@@ -149,7 +154,6 @@ class PendingSingle(Pending):
             logger.error(f"Error fetching track {self.id}: {e}")
             return None
         # Patch for soundcloud
-        # self.id = resp["id"]
         album = AlbumMetadata.from_track_resp(resp, self.client.source)
         if album is None:
             self.db.set_failed(self.client.source, "track", self.id)

@@ -56,10 +56,3 @@ class Client(ABC):
             headers={"User-Agent": DEFAULT_USER_AGENT},
             **headers,
         )
-
-    def __del__(self):
-        # make sure http session is closed by end of program
-        # if hasattr(self, "session"):
-        #     loop = asyncio.get_event_loop()
-        #     loop.run_until_complete(self.session.close())
-        pass

@@ -110,12 +110,7 @@ class AlbumMetadata:
         explicit = typed(resp.get("parental_warning", False), bool)
 
         # Non-embedded information
-        # version = resp.get("version")
         cover_urls = Covers.from_qobuz(resp)
-        # streamable = typed(resp.get("streamable", False), bool)
-        #
-        # if not streamable:
-        #     raise NonStreamable(resp)
 
         bit_depth = typed(resp.get("maximum_bit_depth"), int | None)
         sampling_rate = typed(resp.get("maximum_sampling_rate"), int | float | None)
@@ -162,10 +157,12 @@ class AlbumMetadata:
 
     @classmethod
     def from_deezer(cls, resp: dict) -> AlbumMetadata | None:
+        print(resp.keys())
         album = resp.get("title", "Unknown Album")
         tracktotal = typed(resp.get("track_total", 0) or resp.get("nb_tracks", 0), int)
         disctotal = typed(resp["tracks"][-1]["disk_number"], int)
         genres = [typed(g["name"], str) for g in resp["genres"]["data"]]
+
         date = typed(resp["release_date"], str)
         year = date[:4]
         _copyright = None
@@ -449,6 +446,48 @@ class AlbumMetadata:
         )
 
     @classmethod
+    def from_incomplete_deezer_track_resp(cls, resp: dict) -> AlbumMetadata | None:
+        album_resp = resp["album"]
+        album_id = album_resp["id"]
+        album = album_resp["title"]
+        covers = Covers.from_deezer(album_resp)
+        date = album_resp["release_date"]
+        year = date[:4]
+        albumartist = ", ".join(a["name"] for a in resp["contributors"])
+        explicit = resp.get("explicit_lyrics", False)
+
+        info = AlbumInfo(
+            id=album_id,
+            quality=2,
+            container="MP4",
+            label=None,
+            explicit=explicit,
+            sampling_rate=None,
+            bit_depth=None,
+            booklets=None,
+        )
+        return AlbumMetadata(
+            info,
+            album,
+            albumartist,
+            year,
+            genre=[],
+            covers=covers,
+            albumcomposer=None,
+            comment=None,
+            compilation=None,
+            copyright=None,
+            date=date,
+            description=None,
+            disctotal=1,
+            encoder=None,
+            grouping=None,
+            lyrics=None,
+            purchase_date=None,
+            tracktotal=1,
+        )
+
+    @classmethod
     def from_track_resp(cls, resp: dict, source: str) -> AlbumMetadata | None:
         if source == "qobuz":
             return cls.from_qobuz(resp["album"])
@@ -457,6 +496,8 @@ class AlbumMetadata:
         if source == "soundcloud":
             return cls.from_soundcloud(resp)
         if source == "deezer":
+            if "tracks" not in resp["album"]:
+                return cls.from_incomplete_deezer_track_resp(resp)
             return cls.from_deezer(resp["album"])
         raise Exception("Invalid source")
 
