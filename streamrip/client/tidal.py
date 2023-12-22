@@ -104,7 +104,7 @@ class TidalClient(Client):
         logger.debug(item)
         return item
 
-    async def search(self, query: str, media_type: str, limit: int = 100) -> dict:
+    async def search(self, media_type: str, query: str, limit: int = 100) -> list[dict]:
         """Search for a query.
 
         :param query:
@@ -115,12 +115,14 @@ class TidalClient(Client):
         :type limit: int
         :rtype: dict
         """
+        # TODD: paginate
         params = {
             "query": query,
             "limit": limit,
         }
-        assert media_type in ("album", "track", "playlist", "video")
-        return await self._api_request(f"search/{media_type}s", params=params)
+        assert media_type in ("album", "track", "playlist", "video", "artist")
+        resp = await self._api_request(f"search/{media_type}s", params=params)
+        return [resp]
 
     async def get_downloadable(self, track_id: str, quality: int):
         params = {

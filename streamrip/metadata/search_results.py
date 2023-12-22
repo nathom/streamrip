@@ -97,6 +97,7 @@ class TrackSummary(Summary):
 
         date_released = (
             item.get("release_date")
+            or item.get("streamStartDate")
             or item.get("album", {}).get("release_date_original")
             or item.get("display_date")
             or item.get("date")
@@ -137,19 +138,23 @@ class AlbumSummary(Summary):
             )
             or "Unknown"
         )
-        num_tracks = item.get("tracks_count", 0) or len(
-            item.get("tracks", []) or item.get("items", []),
+        num_tracks = (
+            item.get("tracks_count", 0)
+            or item.get("numberOfTracks", 0)
+            or len(
+                item.get("tracks", []) or item.get("items", []),
+            )
         )
 
         date_released = (
             item.get("release_date_original")
             or item.get("release_date")
+            or item.get("releaseDate")
             or item.get("display_date")
             or item.get("date")
             or item.get("year")
             or "Unknown"
         )
-        # raise Exception(item)
         return cls(id, name, artist, str(num_tracks), date_released)
 
 
@@ -196,7 +201,7 @@ class PlaylistSummary(Summary):
 
     @classmethod
     def from_item(cls, item: dict):
-        id = item["id"]
+        id = item.get("id") or item.get("uuid") or "Unknown"
         name = item.get("name") or item.get("title") or "Unknown"
         creator = (
             (item.get("publisher_metadata") and item["publisher_metadata"]["artist"])
@@ -205,7 +210,12 @@ class PlaylistSummary(Summary):
             or item.get("user", {}).get("name")
             or "Unknown"
         )
-        num_tracks = item.get("tracks_count") or item.get("nb_tracks") or -1
+        num_tracks = (
+            item.get("tracks_count")
+            or item.get("nb_tracks")
+            or item.get("numberOfTracks")
+            or -1
+        )
         description = item.get("description") or "No description"
         return cls(id, name, creator, num_tracks, description)
 
@@ -241,6 +251,9 @@ class SearchResults:
                     results.append(summary_type.from_item(item))
             elif source == "deezer":
                 for item in page["data"]:
+                    results.append(summary_type.from_item(item))
+            elif source == "tidal":
+                for item in page["items"]:
                     results.append(summary_type.from_item(item))
             else:
                 raise NotImplementedError
