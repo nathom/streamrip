@@ -140,7 +140,7 @@ class SoundcloudURL(URL):
         config: Config,
         db: Database,
     ) -> Pending:
-        resolved = await client._resolve_url(self.url)
+        resolved = await client.resolve_url(self.url)
         media_type = resolved["kind"]
         item_id = str(resolved["id"])
         if media_type == "track":

@@ -36,7 +36,7 @@ class SoundcloudClient(Client):
     async def login(self):
         self.session = await self.get_session()
         client_id, app_version = self.config.client_id, self.config.app_version
-        if not client_id or not app_version or not (await self._announce()):
+        if not client_id or not app_version or not (await self._announce_success()):
             client_id, app_version = await self._refresh_tokens()
             # update file and session configs and save to disk
             cf = self.global_config.file.soundcloud
@@ -54,13 +54,14 @@ class SoundcloudClient(Client):
         """Fetch metadata for an item in Soundcloud API.
 
         Args:
-        ----
+
             item_id (str): Plain soundcloud item ID (e.g 1633786176)
             media_type (str): track or playlist
 
         Returns:
-        -------
-            API response.
+
+            API response. The item IDs for the tracks in the playlist are modified to
+            include resolution status.
         """
         if media_type == "track":
             # parse custom id that we injected
@@ -227,12 +228,15 @@ class SoundcloudClient(Client):
         async with self.session.get(url, params=_params, headers=headers) as resp:
             return await resp.content.read(), resp.status
 
-    async def _resolve_url(self, url: str) -> dict:
+    async def resolve_url(self, url: str) -> dict:
         resp, status = await self._api_request("resolve", params={"url": url})
         assert status == 200
+        if resp["kind"] == "track":
+            resp["id"] = self._get_custom_id(resp)
+
         return resp
 
-    async def _announce(self):
+    async def _announce_success(self):
         url = f"{BASE}/announcements"
         _, status = await self._request_body(url)
         return status == 200
