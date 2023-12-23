@@ -6,22 +6,24 @@
 
 A scriptable stream downloader for Qobuz, Tidal, Deezer and SoundCloud.
 
-![Streamrip downloading an album](https://github.com/nathom/streamrip/blob/dev/demo/download_album.png?raw=true)
+![Streamrip downloading an album](demo/download_album.png)
 
 
 ## Features
 
-- Super fast, as it utilizes concurrent downloads and conversion
+- Fast, concurrent downloads powered by `aiohttp`
 - Downloads tracks, albums, playlists, discographies, and labels from Qobuz, Tidal, Deezer, and SoundCloud
 - Supports downloads of Spotify and Apple Music playlists through [last.fm](https://www.last.fm)
 - Automatically converts files to a preferred format
 - Has a database that stores the downloaded tracks' IDs so that repeats are avoided
-- Easy to customize with the config file
+- Concurrency and rate limiting
+- Interactive search for all sources
+- Highly customizable through the config file
 - Integration with `youtube-dl`
 
 ## Installation
 
-First, ensure [Python](https://www.python.org/downloads/) (version 3.8 or greater) and [pip](https://pip.pypa.io/en/stable/installing/) are installed. If you are on Windows, install [Microsoft Visual C++ Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/). Then run the following in the command line:
+First, ensure [Python](https://www.python.org/downloads/) (version 3.10 or greater) and [pip](https://pip.pypa.io/en/stable/installing/) are installed. Then install `ffmpeg`. You may choose not to install this, but some functionality will be limited.
 
 ```bash
 pip3 install streamrip --upgrade
@@ -35,7 +37,6 @@ rip
 
 it should show the main help page. If you have no idea what these mean, or are having other issues installing, check out the [detailed installation instructions](https://github.com/nathom/streamrip/wiki#detailed-installation-instructions).
 
-If you would like to use `streamrip`'s conversion capabilities, download TIDAL videos, or download music from SoundCloud, install [ffmpeg](https://ffmpeg.org/download.html). To download music from YouTube, install [youtube-dl](https://github.com/ytdl-org/youtube-dl#installation).
 
 ### Streamrip beta
 
@@ -83,15 +84,16 @@ To set the maximum quality, use the `--max-quality` option to `0, 1, 2, 3, 4`:
 | 4          | 24 bit, ≤ 192 kHz     | Qobuz                                        |
 
 
-
 ```bash
-rip url --max-quality 3 https://tidal.com/browse/album/147569387
+rip url --quality 3 https://tidal.com/browse/album/147569387
 ```
+
+> Using `4` is generally a waste of space. It is impossible for humans to perceive the between sampling rates higher than 44.1 kHz. It may be useful if you're processing/slowing down the audio.
 
 Search for albums matching `lil uzi vert` on SoundCloud
 
 ```bash
-rip search --source soundcloud 'lil uzi vert'
+rip search soundcloud artist 'lil uzi vert'
 ```
 
 ![streamrip interactive search](https://github.com/nathom/streamrip/blob/dev/demo/album_search.png?raw=true)
@@ -99,13 +101,7 @@ rip search --source soundcloud 'lil uzi vert'
 Search for *Rumours* on Tidal, and download it
 
 ```bash
-rip search 'fleetwood mac rumours'
-```
-
-Want to find some new music? Use the `discover` command (only on Qobuz)
-
-```bash
-rip discover --list 'best-sellers'
+rip search tidal album 'fleetwood mac rumours'
 ```
 
 Download a last.fm playlist using the lastfm command
@@ -114,18 +110,18 @@ Download a last.fm playlist using the lastfm command
 rip lastfm https://www.last.fm/user/nathan3895/playlists/12126195
 ```
 
-For extreme customization, see the config file
+For more customization, see the config file
 
 ```
-rip config --open
+rip config open
 ```
 
 
 
-If you're confused about anything, see the help pages. The main help pages can be accessed by typing `rip` by itself in the command line. The help pages for each command can be accessed with the `-h` flag. For example, to see the help page for the `url` command, type
+If you're confused about anything, see the help pages. The main help pages can be accessed by typing `rip` by itself in the command line. The help pages for each command can be accessed with the `-help` flag. For example, to see the help page for the `url` command, type
 
 ```
-rip url -h
+rip url --help
 ```
 
 ![example_help_page.png](https://github.com/nathom/streamrip/blob/dev/demo/example_help_page.png?raw=true)
