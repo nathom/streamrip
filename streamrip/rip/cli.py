@@ -5,6 +5,7 @@ import os
 import shutil
 import subprocess
 from functools import wraps
+from typing import Any
 
 import aiofiles
 import click
@@ -176,10 +177,10 @@ async def file(ctx, path):
         async with Main(cfg) as main:
             async with aiofiles.open(path, "r") as f:
                 try:
-                    items = json.loads(await f.read())
+                    items: Any = json.loads(await f.read())
                     loaded = True
                 except json.JSONDecodeError:
-                    items = [line async for line in f]
+                    items: Any = [line async for line in f]
                     loaded = False
             if loaded:
                 console.print(
