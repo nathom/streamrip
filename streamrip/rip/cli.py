@@ -1,4 +1,5 @@
 import asyncio
+import json
 import logging
 import os
 import shutil
@@ -147,7 +148,11 @@ async def url(ctx, urls):
 
 
 @rip.command()
-@click.argument("path", required=True)
+@click.argument(
+    "path",
+    required=True,
+    type=click.Path(exists=True, readable=True, file_okay=True, dir_okay=False),
+)
 @click.pass_context
 @coro
 async def file(ctx, path):
@@ -159,8 +164,26 @@ async def file(ctx, path):
     """
     with ctx.obj["config"] as cfg:
         async with Main(cfg) as main:
-            async with aiofiles.open(path) as f:
-                await main.add_all([line async for line in f])
+            async with aiofiles.open(path, "r") as f:
+                try:
+                    items = json.loads(await f.read())
+                    loaded = True
+                except json.JSONDecodeError:
+                    items = [line async for line in f]
+                    loaded = False
+            if loaded:
+                console.print(
+                    f"Detected json file. Loading [yellow]{len(items)}[/yellow] items"
+                )
+                await main.add_all_by_id(
+                    [(i["source"], i["media_type"], i["id"]) for i in items]
+                )
+            else:
+                console.print(
+                    f"Detected list of urls. Loading [yellow]{len(items)}[/yellow] items"
+                )
+                await main.add_all(items)
+
             await main.resolve()
             await main.rip()
 

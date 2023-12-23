@@ -1,4 +1,5 @@
 import asyncio
+import json
 import logging
 import platform
 
@@ -208,10 +209,7 @@ class Main:
             return
 
         search_results = SearchResults.from_pages(source, media_type, pages)
-        file_contents = "\n".join(
-            f"{self.dummy_url(source, item.media_type(), item.id)} [{item.summarize()}]"
-            for item in search_results.results
-        )
+        file_contents = json.dumps(search_results.as_list(source), indent=4)
         async with aiofiles.open(filepath, "w") as f:
             await f.write(file_contents)
 
