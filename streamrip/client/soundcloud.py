@@ -1,6 +1,7 @@
 import asyncio
 import itertools
 import logging
+import random
 import re
 
 from ..config import Config
@@ -8,8 +9,9 @@ from ..exceptions import NonStreamableError
 from .client import Client
 from .downloadable import SoundcloudDownloadable
 
+# e.g. 123456-293847-121314-209849
+USER_ID = "-".join(str(random.randint(111111, 999999)) for _ in range(4))
 BASE = "https://api-v2.soundcloud.com"
-SOUNDCLOUD_USER_ID = "672320-86895-162383-801513"
 STOCK_URL = "https://soundcloud.com/"
 
 # for playlists
@@ -188,7 +190,7 @@ class SoundcloudClient(Client):
         params = {
             "q": query,
             "facet": "genre",
-            "user_id": SOUNDCLOUD_USER_ID,
+            "user_id": USER_ID,
             "limit": limit,
             "offset": offset,
             "linked_partitioning": "1",
