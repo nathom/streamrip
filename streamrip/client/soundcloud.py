@@ -1,6 +1,7 @@
 import asyncio
 import itertools
 import logging
+import random
 import re
 
 from ..config import Config
@@ -8,8 +9,9 @@ from ..exceptions import NonStreamableError
 from .client import Client
 from .downloadable import SoundcloudDownloadable
 
+# e.g. 123456-293847-121314-209849
+USER_ID = "-".join(str(random.randint(111111, 999999)) for _ in range(4))
 BASE = "https://api-v2.soundcloud.com"
-SOUNDCLOUD_USER_ID = "672320-86895-162383-801513"
 STOCK_URL = "https://soundcloud.com/"
 
 # for playlists
@@ -36,7 +38,7 @@ class SoundcloudClient(Client):
     async def login(self):
         self.session = await self.get_session()
         client_id, app_version = self.config.client_id, self.config.app_version
-        if not client_id or not app_version or not (await self._announce()):
+        if not client_id or not app_version or not (await self._announce_success()):
             client_id, app_version = await self._refresh_tokens()
             # update file and session configs and save to disk
             cf = self.global_config.file.soundcloud
@@ -54,13 +56,14 @@ class SoundcloudClient(Client):
         """Fetch metadata for an item in Soundcloud API.
 
         Args:
-        ----
+
             item_id (str): Plain soundcloud item ID (e.g 1633786176)
             media_type (str): track or playlist
 
         Returns:
-        -------
-            API response.
+
+            API response. The item IDs for the tracks in the playlist are modified to
+            include resolution status.
         """
         if media_type == "track":
             # parse custom id that we injected
@@ -70,6 +73,82 @@ class SoundcloudClient(Client):
             return await self._get_playlist(item_id)
         else:
             raise Exception(f"{media_type} not supported")
+
+    async def search(
+        self,
+        media_type: str,
+        query: str,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> list[dict]:
+        # TODO: implement pagination
+        assert media_type in ("track", "playlist"), f"Cannot search for {media_type}"
+        params = {
+            "q": query,
+            "facet": "genre",
+            "user_id": USER_ID,
+            "limit": limit,
+            "offset": offset,
+            "linked_partitioning": "1",
+        }
+        resp, status = await self._api_request(f"search/{media_type}s", params=params)
+        assert status == 200
+        return [resp]
+
+    async def get_downloadable(self, item_info: str, _) -> SoundcloudDownloadable:
+        # We have `get_metadata` overwrite the "id" field so that it contains
+        # some extra information we need to download soundcloud tracks
+
+        # item_id is the soundcloud ID of the track
+        # download_url is either the url that points to an mp3 download or ""
+        # if download_url == '_non_streamable' then we raise an exception
+
+        infos: list[str] = item_info.split("|")
+        logger.debug(f"{infos=}")
+        assert len(infos) == 2, infos
+        item_id, download_info = infos
+        assert re.match(r"\d+", item_id) is not None
+
+        if download_info == self.NON_STREAMABLE:
+            raise NonStreamableError(item_info)
+
+        if download_info == self.ORIGINAL_DOWNLOAD:
+            resp_json, status = await self._api_request(f"tracks/{item_id}/download")
+            assert status == 200
+            return SoundcloudDownloadable(
+                self.session,
+                {"url": resp_json["redirectUri"], "type": "original"},
+            )
+
+        if download_info == self.NOT_RESOLVED:
+            raise NotImplementedError(item_info)
+
+        # download_info contains mp3 stream url
+        resp_json, status = await self._request(download_info)
+        return SoundcloudDownloadable(
+            self.session,
+            {"url": resp_json["url"], "type": "mp3"},
+        )
+
+    async def resolve_url(self, url: str) -> dict:
+        """Get metadata of the item pointed to by a soundcloud url.
+
+        This is necessary only for soundcloud because they don't store
+        the item IDs in their url. See SoundcloudURL.into_pending for example
+        usage.
+
+        Args:
+            url (str): Url to resolve.
+
+        Returns:
+            API response for item.
+        """
+        resp, status = await self._api_request("resolve", params={"url": url})
+        assert status == 200
+        if resp["kind"] == "track":
+            resp["id"] = self._get_custom_id(resp)
+
+        return resp
 
     async def _get_track(self, item_id: str):
         resp, status = await self._api_request(f"tracks/{item_id}")
@@ -140,62 +219,6 @@ class SoundcloudClient(Client):
         assert url is not None
         return f"{item_id}|{url}"
 
-    async def get_downloadable(self, item_info: str, _) -> SoundcloudDownloadable:
-        # We have `get_metadata` overwrite the "id" field so that it contains
-        # some extra information we need to download soundcloud tracks
-
-        # item_id is the soundcloud ID of the track
-        # download_url is either the url that points to an mp3 download or ""
-        # if download_url == '_non_streamable' then we raise an exception
-
-        infos: list[str] = item_info.split("|")
-        logger.debug(f"{infos=}")
-        assert len(infos) == 2, infos
-        item_id, download_info = infos
-        assert re.match(r"\d+", item_id) is not None
-
-        if download_info == self.NON_STREAMABLE:
-            raise NonStreamableError(item_info)
-
-        if download_info == self.ORIGINAL_DOWNLOAD:
-            resp_json, status = await self._api_request(f"tracks/{item_id}/download")
-            assert status == 200
-            return SoundcloudDownloadable(
-                self.session,
-                {"url": resp_json["redirectUri"], "type": "original"},
-            )
-
-        if download_info == self.NOT_RESOLVED:
-            raise NotImplementedError(item_info)
-
-        # download_info contains mp3 stream url
-        resp_json, status = await self._request(download_info)
-        return SoundcloudDownloadable(
-            self.session,
-            {"url": resp_json["url"], "type": "mp3"},
-        )
-
-    async def search(
-        self,
-        media_type: str,
-        query: str,
-        limit: int = 50,
-        offset: int = 0,
-    ) -> list[dict]:
-        # TODO: implement pagination
-        assert media_type in ("track", "playlist"), f"Cannot search for {media_type}"
-        params = {
-            "q": query,
-            "facet": "genre",
-            "user_id": SOUNDCLOUD_USER_ID,
-            "limit": limit,
-            "offset": offset,
-            "linked_partitioning": "1",
-        }
-        resp, status = await self._api_request(f"search/{media_type}s", params=params)
-        assert status == 200
-        return [resp]
-
     async def _api_request(self, path, params=None, headers=None):
         url = f"{BASE}/{path}"
         return await self._request(url, params=params, headers=headers)
@@ -227,12 +250,7 @@ class SoundcloudClient(Client):
         async with self.session.get(url, params=_params, headers=headers) as resp:
             return await resp.content.read(), resp.status
 
-    async def _resolve_url(self, url: str) -> dict:
-        resp, status = await self._api_request("resolve", params={"url": url})
-        assert status == 200
-        return resp
-
-    async def _announce(self):
+    async def _announce_success(self):
         url = f"{BASE}/announcements"
         _, status = await self._request_body(url)
         return status == 200

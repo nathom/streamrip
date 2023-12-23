@@ -14,11 +14,17 @@ from ..media import (
     PendingPlaylist,
     PendingSingle,
 )
-from .validation_regexps import (
-    QOBUZ_INTERPRETER_URL_REGEX,
-    SOUNDCLOUD_URL_REGEX,
-    URL_REGEX,
+
+URL_REGEX = re.compile(
+    r"https?://(?:www|open|play|listen)?\.?(qobuz|tidal|deezer)\.com(?:(?:/(album|artist|track|playlist|video|label))|(?:\/[-\w]+?))+\/([-\w]+)",
 )
+SOUNDCLOUD_URL_REGEX = re.compile(r"https://soundcloud.com/[-\w:/]+")
+LASTFM_URL_REGEX = re.compile(r"https://www.last.fm/user/\w+/playlists/\w+")
+QOBUZ_INTERPRETER_URL_REGEX = re.compile(
+    r"https?://www\.qobuz\.com/\w\w-\w\w/interpreter/[-\w]+/[-\w]+",
+)
+DEEZER_DYNAMIC_LINK_REGEX = re.compile(r"https://deezer\.page\.link/\w+")
+YOUTUBE_URL_REGEX = re.compile(r"https://www\.youtube\.com/watch\?v=[-\w]+")
 
 
 class URL(ABC):
@@ -134,7 +140,7 @@ class SoundcloudURL(URL):
         config: Config,
         db: Database,
     ) -> Pending:
-        resolved = await client._resolve_url(self.url)
+        resolved = await client.resolve_url(self.url)
         media_type = resolved["kind"]
         item_id = str(resolved["id"])
         if media_type == "track":

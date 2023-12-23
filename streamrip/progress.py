@@ -25,8 +25,6 @@ class ProgressManager:
             BarColumn(bar_width=None),
             "[progress.percentage]{task.percentage:>3.1f}%",
             "•",
-            # DownloadColumn(),
-            # "•",
             TransferSpeedColumn(),
             "•",
             TimeRemainingColumn(),

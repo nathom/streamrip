@@ -181,6 +181,7 @@ class DeezerClient(Client):
             )
 
         dl_info["url"] = url
+        logger.debug("dz track info: %s", track_info)
         return DeezerDownloadable(self.session, dl_info)
 
     def _get_encrypted_file_url(
@@ -212,5 +213,6 @@ class DeezerClient(Client):
         path = binascii.hexlify(
             AES.new(b"jo6aey6haid2Teih", AES.MODE_ECB).encrypt(info_bytes),
         ).decode("utf-8")
-
-        return f"https://e-cdns-proxy-{track_hash[0]}.dzcdn.net/mobile/1/{path}"
+        url = f"https://e-cdns-proxy-{track_hash[0]}.dzcdn.net/mobile/1/{path}"
+        logger.debug("Encrypted file path %s", url)
+        return url
