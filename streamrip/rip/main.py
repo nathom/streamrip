@@ -6,7 +6,17 @@ from .. import db
 from ..client import Client, DeezerClient, QobuzClient, SoundcloudClient, TidalClient
 from ..config import Config
 from ..console import console
-from ..media import Media, Pending, PendingLastfmPlaylist, remove_artwork_tempdirs
+from ..media import (
+    Media,
+    Pending,
+    PendingAlbum,
+    PendingArtist,
+    PendingLabel,
+    PendingLastfmPlaylist,
+    PendingPlaylist,
+    PendingSingle,
+    remove_artwork_tempdirs,
+)
 from ..metadata import SearchResults
 from ..progress import clear_progress
 from .parse_url import parse_url
@@ -21,6 +31,7 @@ class Main:
     * Logs in to Clients and prompts for credentials
     * Handles output logging
     * Handles downloading Media
+    * Handles interactive search
 
     User input (urls) -> Main --> Download files & Output messages to terminal
     """
@@ -68,6 +79,32 @@ class Main:
         )
         logger.debug("Added url=%s", url)
 
+    async def add_by_id(self, source: str, media_type: str, id: str):
+        client = await self.get_logged_in_client(source)
+        self._add_by_id_client(client, media_type, id)
+
+    async def add_all_by_id(self, info: list[tuple[str, str, str]]):
+        sources = set(s for s, _, _ in info)
+        clients = {s: await self.get_logged_in_client(s) for s in sources}
+        for source, media_type, id in info:
+            self._add_by_id_client(clients[source], media_type, id)
+
+    def _add_by_id_client(self, client: Client, media_type: str, id: str):
+        if media_type == "track":
+            item = PendingSingle(id, client, self.config, self.database)
+        elif media_type == "album":
+            item = PendingAlbum(id, client, self.config, self.database)
+        elif media_type == "playlist":
+            item = PendingPlaylist(id, client, self.config, self.database)
+        elif media_type == "label":
+            item = PendingLabel(id, client, self.config, self.database)
+        elif media_type == "artist":
+            item = PendingArtist(id, client, self.config, self.database)
+        else:
+            raise Exception(media_type)
+
+        self.pending.append(item)
+
     async def add_all(self, urls: list[str]):
         """Add multiple urls concurrently as pending items."""
         parsed = [parse_url(url) for url in urls]
@@ -105,7 +142,6 @@ class Main:
                 with console.status(f"[cyan]Logging into {source}", spinner="dots"):
                     # Log into client using credentials from config
                     await client.login()
-                # await client.login()
 
         assert client.logged_in
         return client
@@ -149,8 +185,8 @@ class Main:
             )
             assert isinstance(choices, list)
 
-            await self.add_all(
-                [f"http://{source}.com/{media_type}/{item.id}" for item, i in choices],
+            await self.add_all_by_id(
+                [(source, media_type, item.id) for item, _ in choices],
             )
 
         else:
@@ -173,11 +209,8 @@ class Main:
                 console.print("[yellow]No items chosen. Exiting.")
             else:
                 choices = search_results.get_choices(chosen_ind)
-                await self.add_all(
-                    [
-                        f"http://{source}.com/{item.media_type()}/{item.id}"
-                        for item in choices
-                    ],
+                await self.add_all_by_id(
+                    [(source, item.media_type(), item.id) for item in choices],
                 )
 
     async def search_take_first(self, source: str, media_type: str, query: str):
@@ -229,6 +262,3 @@ class Main:
         # may be able to share downloaded artwork in the same `rip` session
         # We don't know that a cover will not be used again until end of execution
         remove_artwork_tempdirs()
-
-    async def add_by_id(self, source: str, media_type: str, id: str):
-        await self.add(f"http://{source}.com/{media_type}/{id}")
