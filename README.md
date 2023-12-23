@@ -1,13 +1,11 @@
-
-![streamrip](demo/logo.svg)
+![streamrip logo](https://github.com/nathom/streamrip/blob/dev/demo/logo.svg?raw=true)
 
 [![Downloads](https://pepy.tech/badge/streamrip)](https://pepy.tech/project/streamrip)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/python/black)
 
 A scriptable stream downloader for Qobuz, Tidal, Deezer and SoundCloud.
 
-![Streamrip downloading an album](demo/download_album.png)
-
+![downloading an album](https://github.com/nathom/streamrip/blob/dev/demo/download_album.png?raw=true)
 
 ## Features
 
@@ -93,10 +91,10 @@ rip url --quality 3 https://tidal.com/browse/album/147569387
 Search for albums matching `lil uzi vert` on SoundCloud
 
 ```bash
-rip search soundcloud artist 'lil uzi vert'
+rip search tidal playlist 'rap'
 ```
 
-![streamrip interactive search](https://github.com/nathom/streamrip/blob/dev/demo/album_search.png?raw=true)
+![streamrip interactive search](https://github.com/nathom/streamrip/blob/dev/demo/playlist_search.png?raw=true)
 
 Search for *Rumours* on Tidal, and download it
 
@@ -173,13 +171,8 @@ Thanks to Vitiko98, Sorrow446, and DashLt for their contributions to this projec
 
 ## Disclaimer
 
+I will not be responsible for how **you** use `streamrip`. By using `streamrip`, you agree to the terms and conditions of the Qobuz, Tidal, and Deezer APIs.
 
-I will not be responsible for how you use `streamrip`. By using `streamrip`, you agree to the terms and conditions of the Qobuz, Tidal, and Deezer APIs.
+## Sponsorship
 
-## Donations/Sponsorship
-
-<a href="https://www.buymeacoffee.com/nathom" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/default-orange.png" alt="Buy Me A Coffee" height="41" width="174"></a>
-
-
-Consider contributing some funds [here](https://www.buymeacoffee.com/nathom), which will go towards holding
-the premium subscriptions that I need to debug and improve streamrip. Thanks for your support!
+Consider becoming a Github sponsor for me if you enjoy my open source software.
