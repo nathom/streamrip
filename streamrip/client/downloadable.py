@@ -89,8 +89,11 @@ class DeezerDownloadable(Downloadable):
         logger.debug("Deezer info for downloadable: %s", info)
         self.session = session
         self.url = info["url"]
-        self.quality = info["quality"]
-        self._size = int(info["quality_to_size"][self.quality])
+        max_quality_available = max(
+            i for i, size in enumerate(info["quality_to_size"]) if size > 0
+        )
+        self.quality = min(info["quality"], max_quality_available)
+        self._size = info["quality_to_size"][self.quality]
         if self.quality <= 1:
             self.extension = "mp3"
         else:

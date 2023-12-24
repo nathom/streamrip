@@ -153,7 +153,7 @@ class DeezerClient(Client):
         _, format_str = quality_map[quality]
 
         dl_info["quality_to_size"] = [
-            track_info.get(f"FILESIZE_{format}", 0) for _, format in quality_map
+            int(track_info.get(f"FILESIZE_{format}", 0)) for _, format in quality_map
         ]
 
         token = track_info["TRACK_TOKEN"]
