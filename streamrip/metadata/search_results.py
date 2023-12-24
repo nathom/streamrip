@@ -39,7 +39,7 @@ class ArtistSummary(Summary):
         return "artist"
 
     def summarize(self) -> str:
-        return self.name
+        return clean(self.name)
 
     def preview(self) -> str:
         return f"{self.num_albums} Albums\n\nID: {self.id}"
@@ -73,7 +73,8 @@ class TrackSummary(Summary):
         return "track"
 
     def summarize(self) -> str:
-        return f"{self.name} by {self.artist}"
+        # This char breaks the menu for some reason
+        return f"{clean(self.name)} by {clean(self.artist)}"
 
     def preview(self) -> str:
         return f"Released on:\n{self.date_released}\n\nID: {self.id}"
@@ -119,7 +120,7 @@ class AlbumSummary(Summary):
         return "album"
 
     def summarize(self) -> str:
-        return f"{self.name} by {self.artist}"
+        return f"{clean(self.name)} by {clean(self.artist)}"
 
     def preview(self) -> str:
         return f"Date released:\n{self.date_released}\n\n{self.num_tracks} Tracks\n\nID: {self.id}"
@@ -188,11 +189,14 @@ class PlaylistSummary(Summary):
     description: str
 
     def summarize(self) -> str:
-        return f"{self.name} by {self.creator}"
+        name = clean(self.name)
+        creator = clean(self.creator)
+        return f"{name} by {creator}"
 
     def preview(self) -> str:
+        desc = clean(self.description, trunc=False)
         wrapped = "\n".join(
-            textwrap.wrap(self.description, os.get_terminal_size().columns - 4 or 70),
+            textwrap.wrap(desc, os.get_terminal_size().columns - 4 or 70),
         )
         return f"{self.num_tracks} tracks\n\nDescription:\n{wrapped}\n\nID: {self.id}"
 
@@ -214,6 +218,7 @@ class PlaylistSummary(Summary):
             item.get("tracks_count")
             or item.get("nb_tracks")
             or item.get("numberOfTracks")
+            or len(item.get("tracks", []))
             or -1
         )
         description = item.get("description") or "No description"
@@ -273,3 +278,11 @@ class SearchResults:
         assert ind is not None
         i = int(ind.group(0))
         return self.results[i - 1].preview()
+
+
+def clean(s: str, trunc=True) -> str:
+    s = s.replace("|", "").replace("\n", "")
+    if trunc:
+        max_chars = 50
+        return s[:max_chars]
+    return s

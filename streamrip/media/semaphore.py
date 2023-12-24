@@ -3,9 +3,6 @@ from contextlib import nullcontext
 
 from ..config import DownloadsConfig
 
-INF = 9999
-
-
 _unlimited = nullcontext()
 _global_semaphore: None | tuple[int, asyncio.Semaphore] = None
 
@@ -23,13 +20,15 @@ def global_download_semaphore(c: DownloadsConfig) -> asyncio.Semaphore | nullcon
     global _unlimited, _global_semaphore
 
     if c.concurrency:
-        max_connections = c.max_connections if c.max_connections > 0 else INF
+        max_connections = c.max_connections if c.max_connections > 0 else None
     else:
         max_connections = 1
 
-    assert max_connections > 0
-    if max_connections == INF:
+    if max_connections is None:
         return _unlimited
+
+    if max_connections <= 0:
+        raise Exception(f"{max_connections = } too small")
 
     if _global_semaphore is None:
         _global_semaphore = (max_connections, asyncio.Semaphore(max_connections))
