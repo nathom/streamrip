@@ -228,8 +228,7 @@ class Main:
         search_results = SearchResults.from_pages(source, media_type, pages)
         assert len(search_results.results) > 0
         first = search_results.results[0]
-        url = self.dummy_url(source, first.media_type(), first.id)
-        await self.add(url)
+        await self.add_by_id(source, first.media_type(), first.id)
 
     async def search_output_file(
         self, source: str, media_type: str, query: str, filepath: str, limit: int
@@ -248,7 +247,7 @@ class Main:
             await f.write(file_contents)
 
         console.print(
-            f"Wrote dummy urls for [purple]{len(search_results.results)}[/purple] results to [cyan]{filepath}!"
+            f"Wrote [purple]{len(search_results.results)}[/purple] results to [cyan]{filepath} as JSON!"
         )
 
     async def resolve_lastfm(self, playlist_url: str):
@@ -272,10 +271,6 @@ class Main:
 
         if playlist is not None:
             self.media.append(playlist)
-
-    @staticmethod
-    def dummy_url(source, media_type, item_id):
-        return f"http://{source}.com/{media_type}/{item_id}"
 
     async def __aenter__(self):
         return self
