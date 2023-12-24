@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 import logging
 from dataclasses import dataclass
 from typing import Optional
@@ -86,10 +85,6 @@ class TrackMetadata:
 
     @classmethod
     def from_deezer(cls, album: AlbumMetadata, resp) -> TrackMetadata | None:
-        with open("resp.json", "w") as f:
-            json.dump(resp, f)
-
-        logger.debug(resp.keys())
         track_id = str(resp["id"])
         bit_depth = 16
         sampling_rate = 44.1
@@ -152,9 +147,6 @@ class TrackMetadata:
 
     @classmethod
     def from_tidal(cls, album: AlbumMetadata, track) -> TrackMetadata:
-        with open("tidal_track.json", "w") as f:
-            json.dump(track, f)
-
         title = typed(track["title"], str).strip()
         item_id = str(track["id"])
         version = track.get("version")
