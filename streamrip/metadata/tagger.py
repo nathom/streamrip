@@ -8,6 +8,7 @@ from mutagen.flac import FLAC, Picture
 from mutagen.id3 import (
     APIC,  # type: ignore
     ID3,
+    ID3NoHeaderError,
 )
 from mutagen.mp4 import MP4, MP4Cover
 
@@ -106,7 +107,10 @@ class Container(Enum):
         elif self == Container.AAC:
             return MP4(path)
         elif self == Container.MP3:
-            return ID3(path)
+            try:
+                return ID3(path)
+            except ID3NoHeaderError:
+                return ID3()
         # unreachable
         return {}
 
