@@ -18,7 +18,10 @@ logger = logging.getLogger("streamrip")
 def remove_artwork_tempdirs():
     logger.debug("Removing dirs %s", _artwork_tempdirs)
     for path in _artwork_tempdirs:
-        shutil.rmtree(path)
+        try:
+            shutil.rmtree(path)
+        except FileNotFoundError:
+            pass
 
 
 async def download_artwork(

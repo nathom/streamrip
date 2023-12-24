@@ -48,7 +48,7 @@ class Downloadable(ABC):
         await self._download(path, callback)
 
     async def size(self) -> int:
-        if self._size is not None:
+        if hasattr(self, "_size") and self._size is not None:
             return self._size
 
         async with self.session.head(self.url) as response:
@@ -293,6 +293,7 @@ class SoundcloudDownloadable(Downloadable):
     async def _download_original(self, path: str, callback):
         downloader = BasicDownloadable(self.session, self.url, "flac")
         await downloader.download(path, callback)
+        self.size = downloader.size
         engine = converter.FLAC(path)
         await engine.convert(path)
 
