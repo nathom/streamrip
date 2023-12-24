@@ -38,7 +38,7 @@ MP4_KEYS = (
     None,
     None,
     None,
-    "---:com.apple.iTunes:ISRC",
+    "----:com.apple.iTunes:ISRC",
 )
 
 MP3_KEYS = (
@@ -116,7 +116,7 @@ class Container(Enum):
         elif self == Container.MP3:
             return self._tag_mp3(meta)
         elif self == Container.AAC:
-            return self._tag_aac(meta)
+            return self._tag_mp4(meta)
         # unreachable
         return []
 
@@ -150,13 +150,15 @@ class Container(Enum):
                 out.append((v.__name__, v(encoding=3, text=text)))
         return out
 
-    def _tag_aac(self, meta: TrackMetadata):
+    def _tag_mp4(self, meta: TrackMetadata):
         out = []
         for k, v in MP4_KEY.items():
             if k == "tracknumber":
                 text = [(meta.tracknumber, meta.album.tracktotal)]
             elif k == "discnumber":
                 text = [(meta.discnumber, meta.album.disctotal)]
+            elif k == "isrc" and meta.isrc is not None:
+                text = meta.isrc.encode("utf-8")
             else:
                 text = self._attr_from_meta(meta, k)
 
