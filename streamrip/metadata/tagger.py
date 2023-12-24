@@ -158,6 +158,9 @@ class Container(Enum):
             elif k == "discnumber":
                 text = [(meta.discnumber, meta.album.disctotal)]
             elif k == "isrc" and meta.isrc is not None:
+                # because ISRC is an mp4 freeform value (not supported natively)
+                # we have to pass in the actual bytes to mutagen
+                # See mutagen.MP4Tags.__render_freeform
                 text = meta.isrc.encode("utf-8")
             else:
                 text = self._attr_from_meta(meta, k)
