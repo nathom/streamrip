@@ -21,4 +21,6 @@ def qobuz_client():
     client = QobuzClient(config)
     arun(client.login())
 
-    return client
+    yield client
+
+    arun(client.session.close())
