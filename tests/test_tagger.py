@@ -4,6 +4,8 @@ from util import arun
 
 from streamrip.metadata import *
 from streamrip.metadata.tagger import tag_file
+from streamrip.metadata.track_metadata import TrackInfo
+from streamrip.metadata.album_metadata import AlbumInfo
 
 test_flac = "tests/silence.flac"
 test_cover = "tests/1x1_pixel.jpg"
