@@ -3,9 +3,9 @@ import shutil
 
 from util import arun
 
-from streamrip.downloadable import Downloadable
-from streamrip.qobuz_client import QobuzClient
-from streamrip.track import PendingSingle, Track
+from streamrip.client.downloadable import Downloadable
+from streamrip.client.qobuz import QobuzClient
+from streamrip.media.track import PendingSingle, Track
 
 
 def test_pending_resolve(qobuz_client: QobuzClient):

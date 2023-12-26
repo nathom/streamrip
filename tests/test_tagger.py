@@ -3,7 +3,7 @@ from mutagen.flac import FLAC
 from util import arun
 
 from streamrip.metadata import *
-from streamrip.tagger import tag_file
+from streamrip.metadata.tagger import tag_file
 
 test_flac = "tests/silence.flac"
 test_cover = "tests/1x1_pixel.jpg"

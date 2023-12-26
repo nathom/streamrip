@@ -4,9 +4,9 @@ import pytest
 from util import afor, arun
 
 from streamrip.config import Config
-from streamrip.downloadable import BasicDownloadable
-from streamrip.exceptions import MissingCredentials
-from streamrip.qobuz_client import QobuzClient
+from streamrip.client.downloadable import BasicDownloadable
+from streamrip.exceptions import MissingCredentialsError
+from streamrip.client.qobuz import QobuzClient
 
 logger = logging.getLogger("streamrip")
 
@@ -18,7 +18,7 @@ def client(qobuz_client):
 
 def test_client_raises_missing_credentials():
     c = Config.defaults()
-    with pytest.raises(MissingCredentials):
+    with pytest.raises(MissingCredentialsError):
         arun(QobuzClient(c).login())
 
 
