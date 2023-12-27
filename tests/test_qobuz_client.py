@@ -1,14 +1,13 @@
 import logging
+import os
 
 import pytest
-from util import afor, arun
+from util import arun
 
-from streamrip.config import Config
 from streamrip.client.downloadable import BasicDownloadable
-from streamrip.exceptions import MissingCredentialsError
 from streamrip.client.qobuz import QobuzClient
-from fixtures.clients import qobuz_client
-
+from streamrip.config import Config
+from streamrip.exceptions import MissingCredentialsError
 
 logger = logging.getLogger("streamrip")
 
@@ -24,6 +23,9 @@ def test_client_raises_missing_credentials():
         arun(QobuzClient(c).login())
 
 
+@pytest.mark.skipif(
+    "QOBUZ_EMAIL" not in os.environ, reason="Qobuz credentials not found in env."
+)
 def test_client_get_metadata(client):
     meta = arun(client.get_metadata("s9nzkwg2rh1nc", "album"))
     assert meta["title"] == "I Killed Your Dog"
@@ -31,6 +33,9 @@ def test_client_get_metadata(client):
     assert meta["maximum_bit_depth"] == 24
 
 
+@pytest.mark.skipif(
+    "QOBUZ_EMAIL" not in os.environ, reason="Qobuz credentials not found in env."
+)
 def test_client_get_downloadable(client):
     d = arun(client.get_downloadable("19512574", 3))
     assert isinstance(d, BasicDownloadable)
@@ -39,6 +44,9 @@ def test_client_get_downloadable(client):
     assert "https://" in d.url
 
 
+@pytest.mark.skipif(
+    "QOBUZ_EMAIL" not in os.environ, reason="Qobuz credentials not found in env."
+)
 def test_client_search_limit(client):
     res = client.search("album", "rumours", limit=5)
     total = 0
@@ -47,6 +55,9 @@ def test_client_search_limit(client):
     assert total == 5
 
 
+@pytest.mark.skipif(
+    "QOBUZ_EMAIL" not in os.environ, reason="Qobuz credentials not found in env."
+)
 def test_client_search_no_limit(client):
     # Setting no limit has become impossible because `limit: int` now
     res = client.search("album", "rumours", limit=10000)

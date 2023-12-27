@@ -4,7 +4,7 @@ import logging
 from dataclasses import dataclass
 from typing import Optional
 
-from .album_metadata import AlbumMetadata
+from .album import AlbumMetadata
 from .util import safe_get, typed
 
 logger = logging.getLogger("streamrip")
