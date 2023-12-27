@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import re
 from abc import ABC, abstractmethod
 
@@ -15,13 +16,14 @@ from ..media import (
     PendingSingle,
 )
 
+logger = logging.getLogger("streamrip")
 URL_REGEX = re.compile(
     r"https?://(?:www|open|play|listen)?\.?(qobuz|tidal|deezer)\.com(?:(?:/(album|artist|track|playlist|video|label))|(?:\/[-\w]+?))+\/([-\w]+)",
 )
 SOUNDCLOUD_URL_REGEX = re.compile(r"https://soundcloud.com/[-\w:/]+")
 LASTFM_URL_REGEX = re.compile(r"https://www.last.fm/user/\w+/playlists/\w+")
 QOBUZ_INTERPRETER_URL_REGEX = re.compile(
-    r"https?://www\.qobuz\.com/\w\w-\w\w/interpreter/[-\w]+/[-\w]+",
+    r"https?://www\.qobuz\.com/\w\w-\w\w/interpreter/[-\w]+/([-\w]+)",
 )
 DEEZER_DYNAMIC_LINK_REGEX = re.compile(r"https://deezer\.page\.link/\w+")
 YOUTUBE_URL_REGEX = re.compile(r"https://www\.youtube\.com/watch\?v=[-\w]+")
@@ -56,7 +58,11 @@ class GenericURL(URL):
         generic_url = URL_REGEX.match(url)
         if generic_url is None:
             return None
-        source = generic_url.group(1)
+
+        source, media_type, item_id = generic_url.groups()
+        if source is None or media_type is None or item_id is None:
+            return None
+
         return cls(generic_url, source)
 
     async def into_pending(
@@ -78,8 +84,7 @@ class GenericURL(URL):
             return PendingArtist(item_id, client, config, db)
         elif media_type == "label":
             return PendingLabel(item_id, client, config, db)
-        else:
-            raise NotImplementedError
+        raise NotImplementedError
 
 
 class QobuzInterpreterURL(URL):
@@ -90,6 +95,7 @@ class QobuzInterpreterURL(URL):
         qobuz_interpreter_url = QOBUZ_INTERPRETER_URL_REGEX.match(url)
         if qobuz_interpreter_url is None:
             return None
+
         return cls(qobuz_interpreter_url, "qobuz")
 
     async def into_pending(
@@ -99,7 +105,12 @@ class QobuzInterpreterURL(URL):
         db: Database,
     ) -> Pending:
         url = self.match.group(0)
-        artist_id = await self.extract_interpreter_url(url, client)
+        possible_id = self.match.group(1)
+        if possible_id.isdigit():
+            logger.debug("Found artist ID %s in interpreter url %s", possible_id, url)
+            artist_id = possible_id
+        else:
+            artist_id = await self.extract_interpreter_url(url, client)
         return PendingArtist(artist_id, client, config, db)
 
     @staticmethod
