@@ -5,7 +5,7 @@ import pytest
 from util import arun
 
 from streamrip.config import Config
-from streamrip.qobuz_client import QobuzClient
+from streamrip.client.qobuz import QobuzClient
 
 
 @pytest.fixture(scope="session")
@@ -21,4 +21,6 @@ def qobuz_client():
     client = QobuzClient(config)
     arun(client.login())
 
-    return client
+    yield client
+
+    arun(client.session.close())

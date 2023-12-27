@@ -4,9 +4,11 @@ import pytest
 from util import afor, arun
 
 from streamrip.config import Config
-from streamrip.downloadable import BasicDownloadable
-from streamrip.exceptions import MissingCredentials
-from streamrip.qobuz_client import QobuzClient
+from streamrip.client.downloadable import BasicDownloadable
+from streamrip.exceptions import MissingCredentialsError
+from streamrip.client.qobuz import QobuzClient
+from fixtures.clients import qobuz_client
+
 
 logger = logging.getLogger("streamrip")
 
@@ -18,12 +20,12 @@ def client(qobuz_client):
 
 def test_client_raises_missing_credentials():
     c = Config.defaults()
-    with pytest.raises(MissingCredentials):
+    with pytest.raises(MissingCredentialsError):
         arun(QobuzClient(c).login())
 
 
 def test_client_get_metadata(client):
-    meta = arun(client.get_metadata("lzpf67e8f4h1a", "album"))
+    meta = arun(client.get_metadata("s9nzkwg2rh1nc", "album"))
     assert meta["title"] == "I Killed Your Dog"
     assert len(meta["tracks"]["items"]) == 16
     assert meta["maximum_bit_depth"] == 24
@@ -38,18 +40,19 @@ def test_client_get_downloadable(client):
 
 
 def test_client_search_limit(client):
-    res = client.search("rumours", "album", limit=5)
+    res = client.search("album", "rumours", limit=5)
     total = 0
-    for r in afor(res):
+    for r in arun(res):
         total += len(r["albums"]["items"])
     assert total == 5
 
 
 def test_client_search_no_limit(client):
-    res = client.search("rumours", "album", limit=None)
+    # Setting no limit has become impossible because `limit: int` now
+    res = client.search("album", "rumours", limit=10000)
     correct_total = 0
     total = 0
-    for r in afor(res):
+    for r in arun(res):
         total += len(r["albums"]["items"])
         correct_total = max(correct_total, r["albums"]["total"])
     assert total == correct_total

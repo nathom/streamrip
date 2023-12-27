@@ -48,17 +48,16 @@ def test_album_metadata_qobuz():
 def test_track_metadata_qobuz():
     a = AlbumMetadata.from_qobuz(qobuz_track_resp["album"])
     t = TrackMetadata.from_qobuz(a, qobuz_track_resp)
-    assert t.title == "Dreams (2001 Remaster)"
     info = t.info
-    assert info.id == "19512574"
+    assert info.id == "216020864"
     assert info.quality == 3
     assert info.bit_depth == 24
     assert info.sampling_rate == 96
     assert info.work is None
 
-    assert t.title == "Dreams (2001 Remaster)"
+    assert t.title == "Water Tower"
     assert t.album == a
-    assert t.artist == "Fleetwood Mac"
-    assert t.tracknumber == 2
+    assert t.artist == "The Mountain Goats"
+    assert t.tracknumber == 9
     assert t.discnumber == 1
-    assert t.composer == None
+    assert t.composer == "John Darnielle"

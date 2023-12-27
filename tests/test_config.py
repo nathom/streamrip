@@ -44,8 +44,8 @@ def test_sample_config_data_fields(sample_config_data):
             folder="test_folder",
             source_subdirectories=False,
             concurrency=True,
-            max_connections=3,
-            requests_per_minute=-1,
+            max_connections=6,
+            requests_per_minute=60,
         ),
         qobuz=QobuzConfig(
             use_auth_token=False,
@@ -81,13 +81,13 @@ def test_sample_config_data_fields(sample_config_data):
             quality=0,
             download_videos=False,
         ),
-        lastfm=LastFmConfig(source="qobuz", fallback_source="deezer"),
+        lastfm=LastFmConfig(source="qobuz", fallback_source=""),
         filepaths=FilepathsConfig(
             add_singles_to_folder=False,
             folder_format="{albumartist} - {title} ({year}) [{container}] [{bit_depth}B-{sampling_rate}kHz]",
             track_format="{tracknumber}. {artist} - {title}{explicit}",
             restrict_characters=False,
-            truncate_to=200,
+            truncate_to=120,
         ),
         artwork=ArtworkConfig(
             embed=True,
@@ -108,6 +108,11 @@ def test_sample_config_data_fields(sample_config_data):
             features=False,
             non_studio_albums=False,
             non_remaster=False,
+        ),
+        cli=CliConfig(
+            text_output=False,
+            progress_bars=False,
+            max_search_results=100,
         ),
         database=DatabaseConfig(
             downloads_enabled=True,
