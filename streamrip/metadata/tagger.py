@@ -8,6 +8,7 @@ from mutagen.flac import FLAC, Picture
 from mutagen.id3 import (
     APIC,  # type: ignore
     ID3,
+    ID3NoHeaderError,
 )
 from mutagen.mp4 import MP4, MP4Cover
 
@@ -38,6 +39,7 @@ MP4_KEYS = (
     None,
     None,
     None,
+    "----:com.apple.iTunes:ISRC",
 )
 
 MP3_KEYS = (
@@ -61,6 +63,7 @@ MP3_KEYS = (
     None,
     None,
     None,
+    id3.TSRC,
 )
 
 METADATA_TYPES = (
@@ -84,6 +87,7 @@ METADATA_TYPES = (
     "tracktotal",
     "disctotal",
     "date",
+    "isrc",
 )
 
 
@@ -103,7 +107,10 @@ class Container(Enum):
         elif self == Container.AAC:
             return MP4(path)
         elif self == Container.MP3:
-            return ID3(path)
+            try:
+                return ID3(path)
+            except ID3NoHeaderError:
+                return ID3()
         # unreachable
         return {}
 
@@ -113,7 +120,7 @@ class Container(Enum):
         elif self == Container.MP3:
             return self._tag_mp3(meta)
         elif self == Container.AAC:
-            return self._tag_aac(meta)
+            return self._tag_mp4(meta)
         # unreachable
         return []
 
@@ -147,13 +154,18 @@ class Container(Enum):
                 out.append((v.__name__, v(encoding=3, text=text)))
         return out
 
-    def _tag_aac(self, meta: TrackMetadata):
+    def _tag_mp4(self, meta: TrackMetadata):
         out = []
         for k, v in MP4_KEY.items():
             if k == "tracknumber":
                 text = [(meta.tracknumber, meta.album.tracktotal)]
             elif k == "discnumber":
                 text = [(meta.discnumber, meta.album.disctotal)]
+            elif k == "isrc" and meta.isrc is not None:
+                # because ISRC is an mp4 freeform value (not supported natively)
+                # we have to pass in the actual bytes to mutagen
+                # See mutagen.MP4Tags.__render_freeform
+                text = meta.isrc.encode("utf-8")
             else:
                 text = self._attr_from_meta(meta, k)
 
@@ -170,6 +182,7 @@ class Container(Enum):
             "tracknumber",
             "discnumber",
             "composer",
+            "isrc",
         }
         if attr in in_trackmetadata:
             if attr == "album":

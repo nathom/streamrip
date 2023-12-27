@@ -36,6 +36,7 @@ class TrackMetadata:
     @classmethod
     def from_qobuz(cls, album: AlbumMetadata, resp: dict) -> TrackMetadata | None:
         title = typed(resp["title"].strip(), str)
+        isrc = typed(resp["isrc"], str)
         streamable = typed(resp.get("streamable", False), bool)
 
         if not streamable:
@@ -81,11 +82,13 @@ class TrackMetadata:
             tracknumber=tracknumber,
             discnumber=discnumber,
             composer=composer,
+            isrc=isrc,
         )
 
     @classmethod
     def from_deezer(cls, album: AlbumMetadata, resp) -> TrackMetadata | None:
         track_id = str(resp["id"])
+        isrc = typed(resp["isrc"], str)
         bit_depth = 16
         sampling_rate = 44.1
         explicit = typed(resp["explicit_lyrics"], bool)
@@ -111,12 +114,14 @@ class TrackMetadata:
             tracknumber=tracknumber,
             discnumber=discnumber,
             composer=composer,
+            isrc=isrc,
         )
 
     @classmethod
     def from_soundcloud(cls, album: AlbumMetadata, resp: dict) -> TrackMetadata:
         track = resp
         track_id = track["id"]
+        isrc = typed(safe_get(track, "publisher_metadata", "isrc"), str | None)
         bit_depth, sampling_rate = None, None
         explicit = typed(
             safe_get(track, "publisher_metadata", "explicit", default=False),
@@ -143,15 +148,16 @@ class TrackMetadata:
             tracknumber=tracknumber,
             discnumber=0,
             composer=None,
+            isrc=isrc,
         )
 
     @classmethod
     def from_tidal(cls, album: AlbumMetadata, track) -> TrackMetadata:
         title = typed(track["title"], str).strip()
         item_id = str(track["id"])
+        isrc = typed(track["isrc"], str)
         version = track.get("version")
         explicit = track.get("explicit", False)
-        isrc = track.get("isrc")
         if version:
             title = f"{title} ({version})"
 
