@@ -93,6 +93,9 @@ class SoundcloudClient(Client):
         }
         resp, status = await self._api_request(f"search/{media_type}s", params=params)
         assert status == 200
+        if media_type == "track":
+            for item in resp["collection"]:
+                item["id"] = self._get_custom_id(item)
         return [resp]
 
     async def get_downloadable(self, item_info: str, _) -> SoundcloudDownloadable:

@@ -46,7 +46,7 @@ class ArtistSummary(Summary):
 
     @classmethod
     def from_item(cls, item: dict):
-        id = item["id"]
+        id = str(item["id"])
         name = (
             item.get("name")
             or item.get("performer", {}).get("name")
@@ -81,7 +81,7 @@ class TrackSummary(Summary):
 
     @classmethod
     def from_item(cls, item: dict):
-        id = item["id"]
+        id = str(item["id"])
         name = item.get("title") or item.get("name") or "Unknown"
         artist = (
             item.get("performer", {}).get("name")
@@ -127,7 +127,7 @@ class AlbumSummary(Summary):
 
     @classmethod
     def from_item(cls, item: dict):
-        id = item["id"]
+        id = str(item["id"])
         name = item.get("title") or "Unknown Title"
         artist = (
             item.get("performer", {}).get("name")
@@ -175,7 +175,7 @@ class LabelSummary(Summary):
 
     @classmethod
     def from_item(cls, item: dict):
-        id = item["id"]
+        id = str(item["id"])
         name = item["name"]
         return cls(id, name)
 
@@ -278,6 +278,17 @@ class SearchResults:
         assert ind is not None
         i = int(ind.group(0))
         return self.results[i - 1].preview()
+
+    def as_list(self, source: str) -> list[dict[str, str]]:
+        return [
+            {
+                "source": source,
+                "media_type": i.media_type(),
+                "id": i.id,
+                "desc": i.summarize(),
+            }
+            for i in self.results
+        ]
 
 
 def clean(s: str, trunc=True) -> str:

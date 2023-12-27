@@ -12,10 +12,10 @@ concurrency = true
 # If you have very fast internet, you will benefit from a higher value,
 # A value that is too high for your bandwidth may cause slowdowns
 # Set to -1 for no limit
-max_connections = 3
-# Max number of API requests to handle per minute
+max_connections = 6
+# Max number of API requests per source to handle per minute
 # Set to -1 for no limit
-requests_per_minute = -1
+requests_per_minute = 60
 
 [qobuz]
 # 1: 320kbps MP3, 2: 16/44.1, 3: 24/<=96, 4: 24/>=96
@@ -81,11 +81,13 @@ download_videos = false
 # The path to download the videos to
 video_downloads_folder = "videodownloadsfolder"
 
-# This stores a list of item IDs so that repeats are not downloaded.
 [database]
+# Create a database that contains all the track IDs downloaded so far
+# Any time a track logged in the database is requested, it is skipped
+# This can be disabled temporarily with the --no-db flag
 downloads_enabled = true
+# Path to the downloads database 
 downloads_path = "downloadspath"
-
 # If a download fails, the item ID is stored here. Then, `rip repair` can be
 # called to retry the downloads
 failed_downloads_enabled = true
@@ -141,8 +143,9 @@ saved_max_width = -1
 # Sets the value of the 'ALBUM' field in the metadata to the playlist's name. 
 # This is useful if your music library software organizes tracks based on album name.
 set_playlist_to_album = true
-# Replaces the original track's tracknumber with it's position in the playlist
-new_playlist_tracknumbers = true
+# If part of a playlist, sets the `tracknumber` field in the metadata to the track's 
+# position in the playlist instead of its position in its album
+renumber_playlist_tracks = true
 # The following metadata tags won't be applied
 # See https://github.com/nathom/streamrip/wiki/Metadata-Tag-Names for more info
 exclude = []
@@ -162,7 +165,7 @@ track_format = "{tracknumber}. {artist} - {title}{explicit}"
 restrict_characters = false
 # Truncate the filename if it is greater than this number of characters
 # Setting this to false may cause downloads to fail on some systems
-truncate_to = 200
+truncate_to = 120
 
 # Last.fm playlists are downloaded by searching for the titles of the tracks
 [lastfm]
@@ -170,11 +173,15 @@ truncate_to = 200
 source = "qobuz"
 # If no results were found with the primary source, the item is searched for 
 # on this one.
-fallback_source = "deezer"
+fallback_source = ""
 
-[theme]
-# Options: "dainty" or "plain"
-progress_bar = "dainty"
+[cli]
+# Print "Downloading {Album name}" etc. to screen
+text_output = true
+# Show resolve, download progress bars
+progress_bars = true
+# The maximum number of search results to show in the interactive menu
+max_search_results = 100
 
 [misc]
 # Metadata to identify this config file. Do not change.

@@ -224,7 +224,8 @@ class AlbumMetadata:
             safe_get(track, "publisher_metadata", "explicit", default=False),
             bool,
         )
-        genre = typed(track["genre"], str)
+        genre = typed(track["genre"], str | None)
+        genres = [genre] if genre is not None else []
         artist = typed(safe_get(track, "publisher_metadata", "artist"), str | None)
         artist = artist or typed(track["user"]["username"], str)
         albumartist = artist
@@ -259,7 +260,7 @@ class AlbumMetadata:
             album_title,
             albumartist,
             year,
-            genre=[genre],
+            genre=genres,
             covers=covers,
             albumcomposer=None,
             comment=None,

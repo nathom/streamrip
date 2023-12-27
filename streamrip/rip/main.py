@@ -1,6 +1,9 @@
 import asyncio
+import json
 import logging
-import os
+import platform
+
+import aiofiles
 
 from .. import db
 from ..client import Client, DeezerClient, QobuzClient, SoundcloudClient, TidalClient
@@ -171,7 +174,7 @@ class Main:
                 return
             search_results = SearchResults.from_pages(source, media_type, pages)
 
-        if os.name == "nt":
+        if platform.system() == "Windows":  # simple term menu not supported for windows
             from pick import pick
 
             choices = pick(
@@ -215,7 +218,9 @@ class Main:
 
     async def search_take_first(self, source: str, media_type: str, query: str):
         client = await self.get_logged_in_client(source)
-        pages = await client.search(media_type, query, limit=1)
+        with console.status(f"[bold]Searching {source}", spinner="dots"):
+            pages = await client.search(media_type, query, limit=1)
+
         if len(pages) == 0:
             console.print(f"[red]No search results found for query {query}")
             return
@@ -223,7 +228,27 @@ class Main:
         search_results = SearchResults.from_pages(source, media_type, pages)
         assert len(search_results.results) > 0
         first = search_results.results[0]
-        await self.add(f"http://{source}.com/{first.media_type()}/{first.id}")
+        await self.add_by_id(source, first.media_type(), first.id)
+
+    async def search_output_file(
+        self, source: str, media_type: str, query: str, filepath: str, limit: int
+    ):
+        client = await self.get_logged_in_client(source)
+        with console.status(f"[bold]Searching {source}", spinner="dots"):
+            pages = await client.search(media_type, query, limit=limit)
+
+        if len(pages) == 0:
+            console.print(f"[red]No search results found for query {query}")
+            return
+
+        search_results = SearchResults.from_pages(source, media_type, pages)
+        file_contents = json.dumps(search_results.as_list(source), indent=4)
+        async with aiofiles.open(filepath, "w") as f:
+            await f.write(file_contents)
+
+        console.print(
+            f"Wrote [purple]{len(search_results.results)}[/purple] results to [cyan]{filepath} as JSON!"
+        )
 
     async def resolve_lastfm(self, playlist_url: str):
         """Resolve a last.fm playlist."""
