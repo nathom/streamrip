@@ -1,8 +1,8 @@
 import logging
 from dataclasses import dataclass
 
-from .album_metadata import AlbumMetadata
-from .track_metadata import TrackMetadata
+from .album import AlbumMetadata
+from .track import TrackMetadata
 from .util import typed
 
 NON_STREAMABLE = "_non_streamable"

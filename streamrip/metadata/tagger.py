@@ -12,7 +12,7 @@ from mutagen.id3 import (
 )
 from mutagen.mp4 import MP4, MP4Cover
 
-from .track_metadata import TrackMetadata
+from .track import TrackMetadata
 
 logger = logging.getLogger("streamrip")
 
