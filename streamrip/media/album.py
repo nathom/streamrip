@@ -50,7 +50,6 @@ class PendingAlbum(Pending):
 
     async def resolve(self) -> Album | None:
         resp = await self.client.get_metadata(self.id, "album")
-
         meta = AlbumMetadata.from_album_resp(resp, self.client.source)
         if meta is None:
             logger.error(
