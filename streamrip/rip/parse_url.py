@@ -25,7 +25,6 @@ LASTFM_URL_REGEX = re.compile(r"https://www.last.fm/user/\w+/playlists/\w+")
 QOBUZ_INTERPRETER_URL_REGEX = re.compile(
     r"https?://www\.qobuz\.com/\w\w-\w\w/interpreter/[-\w]+/([-\w]+)",
 )
-DEEZER_DYNAMIC_LINK_REGEX = re.compile(r"https://deezer\.page\.link/\w+")
 YOUTUBE_URL_REGEX = re.compile(r"https://www\.youtube\.com/watch\?v=[-\w]+")
 
 
@@ -136,7 +135,56 @@ class QobuzInterpreterURL(URL):
 
 
 class DeezerDynamicURL(URL):
-    pass
+    standard_link_re = re.compile(
+        r"https://www\.deezer\.com/[a-z]{2}/(album|artist|playlist|track)/(\d+)"
+    )
+    dynamic_link_re = re.compile(r"https://deezer\.page\.link/\w+")
+
+    @classmethod
+    def from_str(cls, url: str) -> URL | None:
+        match = cls.dynamic_link_re.match(url)
+        if match is None:
+            return None
+
+        return cls(match, "deezer")
+
+    async def into_pending(
+        self,
+        client: Client,
+        config: Config,
+        db: Database,
+    ) -> Pending:
+        url = self.match.group(0)  # entire dynamic link
+        media_type, item_id = await self._extract_info_from_dynamic_link(url, client)
+        if media_type == "track":
+            return PendingSingle(item_id, client, config, db)
+        elif media_type == "album":
+            return PendingAlbum(item_id, client, config, db)
+        elif media_type == "playlist":
+            return PendingPlaylist(item_id, client, config, db)
+        elif media_type == "artist":
+            return PendingArtist(item_id, client, config, db)
+        elif media_type == "label":
+            return PendingLabel(item_id, client, config, db)
+        raise NotImplementedError
+
+    @classmethod
+    async def _extract_info_from_dynamic_link(
+        cls, url: str, client: Client
+    ) -> tuple[str, str]:
+        """Extract the item's type and ID from a dynamic link.
+
+        :param url:
+        :type url: str
+        :rtype: Tuple[str, str] (media type, item id)
+        """
+        async with client.session.get(url) as resp:
+            match = cls.standard_link_re.search(await resp.text())
+
+        if match:
+            return match.group(1), match.group(2)
+
+        raise Exception("Unable to extract Deezer dynamic link.")
 
 
 class SoundcloudURL(URL):
@@ -169,10 +217,6 @@ class SoundcloudURL(URL):
         return cls(soundcloud_url.group(0))
 
 
-class LastFmURL(URL):
-    pass
-
-
 def parse_url(url: str) -> URL | None:
     """Return a URL type given a url string.
 
@@ -187,6 +231,7 @@ def parse_url(url: str) -> URL | None:
         GenericURL.from_str(url),
         QobuzInterpreterURL.from_str(url),
         SoundcloudURL.from_str(url),
+        DeezerDynamicURL.from_str(url),
         # TODO: the rest of the url types
     ]
     return next((u for u in parsed_urls if u is not None), None)
