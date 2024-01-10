@@ -108,6 +108,7 @@ bit_depth = 24
 lossy_bitrate = 320
 
 # Filter a Qobuz artist's discography. Set to 'true' to turn on a filter.
+# This will also be applied to other sources, but is not guaranteed to work correctly
 [qobuz_filters]
 # Remove Collectors Editions, live recordings, etc.
 extras = false
