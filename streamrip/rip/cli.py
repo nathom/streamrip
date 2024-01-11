@@ -33,7 +33,7 @@ def coro(f):
     help_headers_color="yellow",
     help_options_color="green",
 )
-@click.version_option(version="2.0")
+@click.version_option(version="2.0.2")
 @click.option(
     "--config-path",
     default=DEFAULT_CONFIG_PATH,
