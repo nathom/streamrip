@@ -137,6 +137,10 @@ class DeezerClient(Client):
         quality: int = 2,
         is_retry: bool = False,
     ) -> DeezerDownloadable:
+        if item_id is None:
+            raise NonStreamableError(
+                "No item id provided. This can happen when searching for fallback songs.",
+            )
         # TODO: optimize such that all of the ids are requested at once
         dl_info: dict = {"quality": quality, "id": item_id}
 
