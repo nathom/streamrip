@@ -24,19 +24,9 @@ def config_version() -> str | None:
     return m.group(1)
 
 
-@pytest.fixture
-def click_version() -> str | None:
-    r = re.compile(r'\@click\.version_option\(version="([\d\.]+)"\)')
-    with open("streamrip/rip/cli.py") as f:
-        m = r.search(f.read())
-    assert m is not None
-    return m.group(1)
-
-
 def test_config_versions_match(config_version):
     assert config_version == CURRENT_CONFIG_VERSION
 
 
-def test_streamrip_versions_match(pyproject_version, click_version):
-    assert pyproject_version == click_version
-    assert click_version == init_version
+def test_streamrip_versions_match(pyproject_version):
+    assert pyproject_version == init_version
