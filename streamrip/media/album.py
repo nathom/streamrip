@@ -85,10 +85,12 @@ class PendingAlbum(Pending):
         return Album(meta, pending_tracks, self.config, album_folder, self.db)
 
     def _album_folder(self, parent: str, meta: AlbumMetadata) -> str:
-        conf = self.config.session.filepaths
-        formatter = conf.folder_format
+        config = self.config.session
+        if config.downloads.source_subdirectories:
+            parent = os.path.join(parent, self.client.source.capitalize())
+        formatter = config.filepaths.folder_format
         folder = clean_filename(
-            meta.format_folder_path(formatter), conf.restrict_characters
+            meta.format_folder_path(formatter), config.filepaths.restrict_characters
         )
 
         return os.path.join(parent, folder)

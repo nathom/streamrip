@@ -200,6 +200,9 @@ class PendingSingle(Pending):
         c = self.config.session
         parent = c.downloads.folder
         formatter = c.filepaths.folder_format
+        if c.downloads.source_subdirectories:
+            parent = os.path.join(parent, self.client.source.capitalize())
+
         return os.path.join(parent, meta.format_folder_path(formatter))
 
     async def _download_cover(self, covers: Covers, folder: str) -> str | None:
