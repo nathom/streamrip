@@ -7,6 +7,7 @@ from .. import progress
 from ..client import Client
 from ..config import Config
 from ..db import Database
+from ..filepath_utils import clean_filename
 from ..metadata import AlbumMetadata
 from ..metadata.util import get_album_track_ids
 from .artwork import download_artwork
@@ -84,6 +85,10 @@ class PendingAlbum(Pending):
         return Album(meta, pending_tracks, self.config, album_folder, self.db)
 
     def _album_folder(self, parent: str, meta: AlbumMetadata) -> str:
-        formatter = self.config.session.filepaths.folder_format
-        folder = meta.format_folder_path(formatter)
+        conf = self.config.session.filepaths
+        formatter = conf.folder_format
+        folder = clean_filename(
+            meta.format_folder_path(formatter), conf.restrict_characters
+        )
+
         return os.path.join(parent, folder)
