@@ -171,12 +171,15 @@ class PendingSingle(Pending):
             )
             return None
 
-        quality = getattr(self.config.session, self.client.source).quality
+        config = self.config.session
+        quality = getattr(config, self.client.source).quality
         assert isinstance(quality, int)
-        folder = os.path.join(
-            self.config.session.downloads.folder,
-            self._format_folder(album),
-        )
+        parent = config.downloads.folder
+        if config.filepaths.add_singles_to_folder:
+            folder = os.path.join(parent, self._format_folder(album))
+        else:
+            folder = parent
+
         os.makedirs(folder, exist_ok=True)
 
         embedded_cover_path, downloadable = await asyncio.gather(
