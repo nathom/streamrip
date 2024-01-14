@@ -15,7 +15,7 @@ logger = logging.getLogger("streamrip")
 APP_DIR = click.get_app_dir("streamrip")
 os.makedirs(APP_DIR, exist_ok=True)
 DEFAULT_CONFIG_PATH = os.path.join(APP_DIR, "config.toml")
-CURRENT_CONFIG_VERSION = "2.0"
+CURRENT_CONFIG_VERSION = "2.0.3"
 
 
 @dataclass(slots=True)
@@ -214,6 +214,7 @@ class CliConfig:
 @dataclass(slots=True)
 class MiscConfig:
     version: str
+    check_for_updates: bool
 
 
 HOME = Path.home()
