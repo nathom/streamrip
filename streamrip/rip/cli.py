@@ -8,13 +8,15 @@ from functools import wraps
 from typing import Any
 
 import aiofiles
+import aiohttp
 import click
 from click_help_colors import HelpColorsGroup  # type: ignore
 from rich.logging import RichHandler
+from rich.markdown import Markdown
 from rich.prompt import Confirm
 from rich.traceback import install
 
-from .. import db
+from .. import __version__, db
 from ..config import DEFAULT_CONFIG_PATH, Config, set_user_defaults
 from ..console import console
 from .main import Main
@@ -33,7 +35,7 @@ def coro(f):
     help_headers_color="yellow",
     help_options_color="green",
 )
-@click.version_option(version="2.0.2")
+@click.version_option(version=__version__)
 @click.option(
     "--config-path",
     default=DEFAULT_CONFIG_PATH,
@@ -152,10 +154,29 @@ def rip(ctx, config_path, folder, no_db, quality, codec, no_progress, verbose):
 async def url(ctx, urls):
     """Download content from URLs."""
     with ctx.obj["config"] as cfg:
+        cfg: Config
+        updates = cfg.session.misc.check_for_updates
+        if updates:
+            # Run in background
+            version_coro = asyncio.create_task(latest_streamrip_version())
+        else:
+            version_coro = None
+
         async with Main(cfg) as main:
             await main.add_all(urls)
             await main.resolve()
             await main.rip()
+
+        if version_coro is not None:
+            latest_version, notes = await version_coro
+            if latest_version != __version__:
+                console.print(
+                    f"\n[green]A new version of streamrip [cyan]v{latest_version}[/cyan]"
+                    " is available! Run [white][bold]pip3 install streamrip --upgrade[/bold][/white]"
+                    " to update.[/green]\n"
+                )
+
+                console.print(Markdown(notes))
 
 
 @rip.command()
@@ -388,6 +409,23 @@ async def id(ctx, source, media_type, id):
             await main.add_by_id(source, media_type, id)
             await main.resolve()
             await main.rip()
+
+
+async def latest_streamrip_version() -> tuple[str, str | None]:
+    async with aiohttp.ClientSession() as s:
+        async with s.get("https://pypi.org/pypi/streamrip/json") as resp:
+            data = await resp.json()
+        version = data["info"]["version"]
+
+        if version == __version__:
+            return version, None
+
+        async with s.get(
+            "https://api.github.com/repos/nathom/streamrip/releases/latest"
+        ) as resp:
+            json = await resp.json()
+        notes = json["body"]
+    return version, notes
 
 
 if __name__ == "__main__":
