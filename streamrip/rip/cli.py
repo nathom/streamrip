@@ -176,11 +176,12 @@ async def file(ctx, path):
     with ctx.obj["config"] as cfg:
         async with Main(cfg) as main:
             async with aiofiles.open(path, "r") as f:
+                content = await f.read()
                 try:
-                    items: Any = json.loads(await f.read())
+                    items: Any = json.loads(content)
                     loaded = True
                 except json.JSONDecodeError:
-                    items: Any = [line async for line in f]
+                    items = content.split()
                     loaded = False
             if loaded:
                 console.print(
@@ -190,6 +191,12 @@ async def file(ctx, path):
                     [(i["source"], i["media_type"], i["id"]) for i in items]
                 )
             else:
+                s = set(items)
+                if len(s) < len(items):
+                    console.print(
+                        f"Found [orange]{len(items)-len(s)}[/orange] repeated URLs!"
+                    )
+                    items = list(s)
                 console.print(
                     f"Detected list of urls. Loading [yellow]{len(items)}[/yellow] items"
                 )

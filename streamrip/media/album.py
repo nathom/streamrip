@@ -7,6 +7,7 @@ from .. import progress
 from ..client import Client
 from ..config import Config
 from ..db import Database
+from ..filepath_utils import clean_filename
 from ..metadata import AlbumMetadata
 from ..metadata.util import get_album_track_ids
 from .artwork import download_artwork
@@ -88,5 +89,8 @@ class PendingAlbum(Pending):
         if config.downloads.source_subdirectories:
             parent = os.path.join(parent, self.client.source.capitalize())
         formatter = config.filepaths.folder_format
-        folder = meta.format_folder_path(formatter)
+        folder = clean_filename(
+            meta.format_folder_path(formatter), config.filepaths.restrict_characters
+        )
+
         return os.path.join(parent, folder)
