@@ -222,8 +222,11 @@ def config_open(ctx, vim):
     if vim:
         if shutil.which("nvim") is not None:
             subprocess.run(["nvim", config_path])
-        else:
+        elif shutil.which("vim") is not None:
             subprocess.run(["vim", config_path])
+        else:
+            logger.error("Could not find nvim or vim. Using default launcher.")
+            click.launch(config_path)
     else:
         click.launch(config_path)
 
