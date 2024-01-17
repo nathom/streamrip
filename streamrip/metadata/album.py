@@ -63,19 +63,30 @@ class AlbumMetadata:
 
     def format_folder_path(self, formatter: str) -> str:
         # Available keys: "albumartist", "title", "year", "bit_depth", "sampling_rate",
-        # "id", and "albumcomposer",
+        # "id", and "albumcomposer",        
+
         none_str = "Unknown"
         info: dict[str, str | int | float] = {
-            "albumartist": self.albumartist,
-            "albumcomposer": self.albumcomposer or none_str,
+            "albumartist": self.validate_str(self.albumartist),
+            "albumcomposer": self.validate_str(self.albumcomposer) or none_str,
             "bit_depth": self.info.bit_depth or none_str,
             "id": self.info.id,
             "sampling_rate": self.info.sampling_rate or none_str,
-            "title": self.album,
+            "title": self.validate_str(self.album),
             "year": self.year,
             "container": self.info.container,
         }
+        
         return formatter.format(**info)
+    
+    def validate_str(self, string) -> str:
+        # The OS will not correctly process the folders if special characters
+        # or trailing spaces are present
+
+        bad_chars = ['/', '\\', ':', '*', '?', '\"', '<', '>', '|']
+
+        valid_string = ''.join(i for i in string if not i in bad_chars).rstrip()
+        return valid_string
 
     @classmethod
     def from_qobuz(cls, resp: dict) -> AlbumMetadata:
