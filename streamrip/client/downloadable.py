@@ -200,7 +200,7 @@ class TidalDownloadable(Downloadable):
     ):
         self.session = session
         codec = codec.lower()
-        if codec == "flac":
+        if codec in ("flac", "mqa"):
             self.extension = "flac"
         else:
             self.extension = "m4a"
