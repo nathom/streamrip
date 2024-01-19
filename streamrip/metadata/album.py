@@ -7,6 +7,7 @@ from typing import Optional
 
 from .covers import Covers
 from .util import get_quality_id, safe_get, typed
+from ..filepath_utils import clean_filename
 
 PHON_COPYRIGHT = "\u2117"
 COPYRIGHT = "\u00a9"
@@ -63,20 +64,22 @@ class AlbumMetadata:
 
     def format_folder_path(self, formatter: str) -> str:
         # Available keys: "albumartist", "title", "year", "bit_depth", "sampling_rate",
-        # "id", and "albumcomposer",
+        # "id", and "albumcomposer",        
+
         none_str = "Unknown"
         info: dict[str, str | int | float] = {
-            "albumartist": self.albumartist,
-            "albumcomposer": self.albumcomposer or none_str,
+            "albumartist": clean_filename(self.albumartist),
+            "albumcomposer": clean_filename(self.albumcomposer) or none_str,
             "bit_depth": self.info.bit_depth or none_str,
             "id": self.info.id,
             "sampling_rate": self.info.sampling_rate or none_str,
-            "title": self.album,
+            "title": clean_filename(self.album),
             "year": self.year,
             "container": self.info.container,
         }
+        
         return formatter.format(**info)
-
+    
     @classmethod
     def from_qobuz(cls, resp: dict) -> AlbumMetadata:
         album = resp.get("title", "Unknown Album")
