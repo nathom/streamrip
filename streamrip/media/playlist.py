@@ -16,7 +16,7 @@ from ..config import Config
 from ..console import console
 from ..db import Database
 from ..exceptions import NonStreamableError
-from ..filepath_utils import clean_filename
+from ..filepath_utils import clean_filepath
 from ..metadata import (
     AlbumMetadata,
     Covers,
@@ -151,7 +151,7 @@ class PendingPlaylist(Pending):
         meta = PlaylistMetadata.from_resp(resp, self.client.source)
         name = meta.name
         parent = self.config.session.downloads.folder
-        folder = os.path.join(parent, clean_filename(name))
+        folder = os.path.join(parent, clean_filepath(name))
         tracks = [
             PendingPlaylistTrack(
                 id,
@@ -223,7 +223,7 @@ class PendingLastfmPlaylist(Pending):
             results: list[tuple[str | None, bool]] = await asyncio.gather(*requests)
 
         parent = self.config.session.downloads.folder
-        folder = os.path.join(parent, clean_filename(playlist_title))
+        folder = os.path.join(parent, clean_filepath(playlist_title))
 
         pending_tracks = []
         for pos, (id, from_fallback) in enumerate(results, start=1):
@@ -254,12 +254,19 @@ class PendingLastfmPlaylist(Pending):
     async def _make_query(
         self,
         query: str,
-        s: Status,
+        search_status: Status,
         callback,
     ) -> tuple[str | None, bool]:
-        """Try searching for `query` with main source. If that fails, try with next source.
+        """Search for a track with the main source, and use fallback source
+        if that fails.
 
-        If both fail, return None.
+        Args:
+            query (str): Query to search
+            s (Status):
+            callback: function to call after each query completes
+
+        Returns: A 2-tuple, where the first element contains the ID if it was found,
+        and the second element is True if the fallback source was used.
         """
         with ExitStack() as stack:
             # ensure `callback` is always called
@@ -267,7 +274,7 @@ class PendingLastfmPlaylist(Pending):
             pages = await self.client.search("track", query, limit=1)
             if len(pages) > 0:
                 logger.debug(f"Found result for {query} on {self.client.source}")
-                s.found += 1
+                search_status.found += 1
                 return (
                     SearchResults.from_pages(self.client.source, "track", pages)
                     .results[0]
@@ -276,13 +283,13 @@ class PendingLastfmPlaylist(Pending):
 
             if self.fallback_client is None:
                 logger.debug(f"No result found for {query} on {self.client.source}")
-                s.failed += 1
+                search_status.failed += 1
                 return None, False
 
             pages = await self.fallback_client.search("track", query, limit=1)
             if len(pages) > 0:
                 logger.debug(f"Found result for {query} on {self.client.source}")
-                s.found += 1
+                search_status.found += 1
                 return (
                     SearchResults.from_pages(
                         self.fallback_client.source,
@@ -294,7 +301,7 @@ class PendingLastfmPlaylist(Pending):
                 ), True
 
             logger.debug(f"No result found for {query} on {self.client.source}")
-            s.failed += 1
+            search_status.failed += 1
         return None, True
 
     async def _parse_lastfm_playlist(
