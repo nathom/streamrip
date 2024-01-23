@@ -129,7 +129,9 @@ class DeezerClient(Client):
                 raise Exception(f"Invalid media type {media_type}")
 
         response = search_function(query, limit=limit)  # type: ignore
-        return [response]
+        if response["total"] > 0:
+            return [response]
+        return []
 
     async def get_downloadable(
         self,
