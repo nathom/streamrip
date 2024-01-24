@@ -147,7 +147,14 @@ class PendingPlaylist(Pending):
     db: Database
 
     async def resolve(self) -> Playlist | None:
-        resp = await self.client.get_metadata(self.id, "playlist")
+        try:
+            resp = await self.client.get_metadata(self.id, "playlist")
+        except NonStreamableError as e:
+            logger.error(
+                f"Playlist {self.id} not available to stream on {self.client.source} ({e})",
+            )
+            return None
+
         meta = PlaylistMetadata.from_resp(resp, self.client.source)
         name = meta.name
         parent = self.config.session.downloads.folder
@@ -261,6 +268,7 @@ class PendingLastfmPlaylist(Pending):
         if that fails.
 
         Args:
+        ----
             query (str): Query to search
             s (Status):
             callback: function to call after each query completes

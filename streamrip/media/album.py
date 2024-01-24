@@ -7,6 +7,7 @@ from .. import progress
 from ..client import Client
 from ..config import Config
 from ..db import Database
+from ..exceptions import NonStreamableError
 from ..filepath_utils import clean_filepath
 from ..metadata import AlbumMetadata
 from ..metadata.util import get_album_track_ids
@@ -50,7 +51,14 @@ class PendingAlbum(Pending):
     db: Database
 
     async def resolve(self) -> Album | None:
-        resp = await self.client.get_metadata(self.id, "album")
+        try:
+            resp = await self.client.get_metadata(self.id, "album")
+        except NonStreamableError as e:
+            logger.error(
+                f"Album {self.id} not available to stream on {self.client.source} ({e})",
+            )
+            return None
+
         meta = AlbumMetadata.from_album_resp(resp, self.client.source)
         if meta is None:
             logger.error(

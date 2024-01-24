@@ -7,6 +7,7 @@ from ..client import Client
 from ..config import Config, QobuzDiscographyFilterConfig
 from ..console import console
 from ..db import Database
+from ..exceptions import NonStreamableError
 from ..metadata import ArtistMetadata
 from .album import Album, PendingAlbum
 from .media import Media, Pending
@@ -180,8 +181,15 @@ class PendingArtist(Pending):
     config: Config
     db: Database
 
-    async def resolve(self) -> Artist:
-        resp = await self.client.get_metadata(self.id, "artist")
+    async def resolve(self) -> Artist | None:
+        try:
+            resp = await self.client.get_metadata(self.id, "artist")
+        except NonStreamableError as e:
+            logger.error(
+                f"Artist {self.id} not available to stream on {self.client.source} ({e})",
+            )
+            return None
+
         meta = ArtistMetadata.from_resp(resp, self.client.source)
         albums = [
             PendingAlbum(album_id, self.client, self.config, self.db)
