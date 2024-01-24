@@ -125,13 +125,14 @@ def downscale_image(input_image_path: str, max_dimension: int):
 
 
     """
+    logger.info("Downscaling image at {input_image_path} to ")
     # Open the image
     image = Image.open(input_image_path)
 
     # Get the original width and height
     width, height = image.size
 
-    if max_dimension <= max(width, height):
+    if max_dimension >= max(width, height):
         return
 
     # Calculate the new dimensions while maintaining the aspect ratio
