@@ -120,10 +120,10 @@ class DeezerDownloadable(Downloadable):
             if self.is_encrypted.search(self.url) is None:
                 logger.debug(f"Deezer file at {self.url} not encrypted.")
                 async with aiofiles.open(path, "wb") as file:
-                    async for data in resp.content.iter_chunked(self.chunk_size):
-                        await file.write(data)
+                    async for chunk in resp.content.iter_chunked(self.chunk_size):
+                        await file.write(chunk)
                         # typically a bar.update()
-                        callback(len(data))
+                        callback(len(chunk))
             else:
                 blowfish_key = self._generate_blowfish_key(self.id)
                 logger.debug(
