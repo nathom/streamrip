@@ -261,6 +261,7 @@ class PendingLastfmPlaylist(Pending):
         if that fails.
 
         Args:
+        ----
             query (str): Query to search
             s (Status):
             callback: function to call after each query completes

@@ -1,3 +1,37 @@
+"""Module providing a QobuzClient class for interacting with the Qobuz API.
+
+The QobuzClient class extends the Client class and includes methods for
+authentication, metadata retrieval, search, and downloading content from Qobuz.
+
+Classes:
+    - QobuzClient: Main class for interacting with the Qobuz API.
+
+Usage:
+    Example usage of the QobuzClient class:
+
+    ```python
+    from qobuz_client import QobuzClient
+
+    # Initialize the QobuzClient with a configuration object
+    qobuz_client = QobuzClient(config)
+
+    # Log in to the Qobuz API
+    await qobuz_client.login()
+
+    # Retrieve metadata for a track
+    metadata = await qobuz_client.get_metadata("123456", "track")
+
+    # Search for albums by an artist
+    search_results = await qobuz_client.search("artist", "John Doe", limit=5)
+
+    # Get user favorites for tracks
+    user_favorites = await qobuz_client.get_user_favorites("track", limit=10)
+
+    # Download a track
+    downloadable = await qobuz_client.get_downloadable("789012", quality=3)
+    await downloadable.download("output_path")
+    ```
+"""
 import asyncio
 import base64
 import hashlib
@@ -64,6 +98,7 @@ class QobuzSpoofer:
         self.session = None
 
     async def get_app_id_and_secrets(self) -> tuple[str, list[str]]:
+        """Request the relevant pages and return app ID and secrets."""
         assert self.session is not None
         async with self.session.get("https://play.qobuz.com/login") as req:
             login_page = await req.text()
@@ -124,20 +159,57 @@ class QobuzSpoofer:
         return app_id, secrets_list
 
     async def __aenter__(self):
+        """Enter context manager and create async client session."""
         self.session = aiohttp.ClientSession()
         return self
 
     async def __aexit__(self, *_):
+        """Close client session on context manager exit."""
         if self.session is not None:
             await self.session.close()
         self.session = None
 
 
 class QobuzClient(Client):
+    """QobuzClient class for interacting with the Qobuz API.
+
+    Attributes
+    ----------
+        source (str): The source identifier for Qobuz.
+        max_quality (int): The maximum quality level supported by Qobuz.
+
+    Methods
+    -------
+        __init__(self, config: Config): Initialize the QobuzClient instance.
+        login(self): Log in to the Qobuz API.
+        get_metadata(self, item_id: str, media_type: str): Get metadata for a specified item.
+        get_label(self, label_id: str) -> dict: Get details for a label.
+        search(self, media_type: str, query: str, limit: int = 500) -> list[dict]: Search for items on Qobuz.
+        get_featured(self, query, limit: int = 500) -> list[dict]: Get featured items on Qobuz.
+        get_user_favorites(self, media_type: str, limit: int = 500) -> list[dict]: Get user favorites for a media type.
+        get_user_playlists(self, limit: int = 500) -> list[dict]: Get user playlists on Qobuz.
+        get_downloadable(self, item_id: str, quality: int) -> Downloadable: Get downloadable content details.
+
+    Private Methods
+        _paginate(self, epoint: str, params: dict, limit: int = 500) -> list[dict]: Paginate search results.
+        _get_app_id_and_secrets(self) -> tuple[str, list[str]]: Get Qobuz app ID and secrets.
+        _get_valid_secret(self, secrets: list[str]) -> str: Get a valid secret for authentication.
+        _test_secret(self, secret: str) -> Optional[str]: Test the validity of a secret.
+        _request_file_url(self, track_id: str, quality: int, secret: str) -> tuple[int, dict]: Request file URL for downloading.
+        _api_request(self, epoint: str, params: dict) -> tuple[int, dict]: Make a request to the Qobuz API.
+        get_quality(quality: int): Map the quality level to Qobuz format.
+    """
+
     source = "qobuz"
     max_quality = 4
 
     def __init__(self, config: Config):
+        """Initialize a new QobuzClient instance.
+
+        Args:
+        ----
+            config (Config): Configuration object containing session details.
+        """
         self.logged_in = False
         self.config = config
         self.rate_limiter = self.get_rate_limiter(
@@ -146,6 +218,15 @@ class QobuzClient(Client):
         self.secret: Optional[str] = None
 
     async def login(self):
+        """Log in to the Qobuz API.
+
+        Raises
+        ------
+            MissingCredentialsError: If email/user ID or password/token is missing.
+            AuthenticationError: If invalid credentials are provided.
+            InvalidAppIdError: If the app ID is invalid.
+            IneligibleError: If the user has a free account that is not eligible for downloading tracks.
+        """
         self.session = await self.get_session()
         c = self.config.session.qobuz
         if not c.email_or_userid or not c.password_or_token:
@@ -198,6 +279,17 @@ class QobuzClient(Client):
         self.logged_in = True
 
     async def get_metadata(self, item_id: str, media_type: str):
+        """Get metadata for a specified item.
+
+        Args:
+        ----
+            item_id (str): The ID of the item.
+            media_type (str): The type of media (e.g., artist, album, track).
+
+        Raises:
+        ------
+            NonStreamableError: If there is an error fetching metadata.
+        """
         if media_type == "label":
             return await self.get_label(item_id)
 
@@ -233,6 +325,16 @@ class QobuzClient(Client):
         return resp
 
     async def get_label(self, label_id: str) -> dict:
+        """Get details for a label.
+
+        Args:
+        ----
+            label_id (str): The ID of the label.
+
+        Returns:
+        -------
+            dict: Details of the label.
+        """
         c = self.config.session.qobuz
         page_limit = 500
         params = {
@@ -273,6 +375,18 @@ class QobuzClient(Client):
         return label_resp
 
     async def search(self, media_type: str, query: str, limit: int = 500) -> list[dict]:
+        """Search for items on Qobuz.
+
+        Args:
+        ----
+            media_type (str): The type of media to search for (e.g., artist, album, track, playlist).
+            query (str): The search query.
+            limit (int): The maximum number of results to retrieve.
+
+        Returns:
+        -------
+            list[dict]: List of search results.
+        """
         if media_type not in ("artist", "album", "track", "playlist"):
             raise Exception(f"{media_type} not available for search on qobuz")
 
@@ -284,6 +398,21 @@ class QobuzClient(Client):
         return await self._paginate(epoint, params, limit=limit)
 
     async def get_featured(self, query, limit: int = 500) -> list[dict]:
+        """Get featured items on Qobuz.
+
+        Args:
+        ----
+            query: The type of featured items to retrieve.
+            limit (int): The maximum number of results to retrieve.
+
+        Raises:
+        ------
+            AssertionError: If the provided query is invalid.
+
+        Returns:
+        -------
+            list[dict]: List of featured items.
+        """
         params = {
             "type": query,
         }
@@ -292,6 +421,21 @@ class QobuzClient(Client):
         return await self._paginate(epoint, params, limit=limit)
 
     async def get_user_favorites(self, media_type: str, limit: int = 500) -> list[dict]:
+        """Get user favorites for a specific media type on Qobuz.
+
+        Args:
+        ----
+            media_type (str): The type of media (e.g., track, artist, album).
+            limit (int): The maximum number of results to retrieve.
+
+        Raises:
+        ------
+            AssertionError: If the provided media type is invalid.
+
+        Returns:
+        -------
+            list[dict]: List of user favorites for the specified media type.
+        """
         assert media_type in ("track", "artist", "album")
         params = {"type": f"{media_type}s"}
         epoint = "favorite/getUserFavorites"
@@ -299,10 +443,36 @@ class QobuzClient(Client):
         return await self._paginate(epoint, params, limit=limit)
 
     async def get_user_playlists(self, limit: int = 500) -> list[dict]:
+        """Get user playlists on Qobuz.
+
+        Args:
+        ----
+            limit (int): The maximum number of playlists to retrieve.
+
+        Returns:
+        -------
+            list[dict]: List of user playlists.
+        """
         epoint = "playlist/getUserPlaylists"
         return await self._paginate(epoint, {}, limit=limit)
 
     async def get_downloadable(self, item_id: str, quality: int) -> Downloadable:
+        """Get details of a downloadable item on Qobuz.
+
+        Args:
+        ----
+            item_id (str): The ID of the item to download.
+            quality (int): The quality level of the download.
+
+        Raises:
+        ------
+            AssertionError: If the secret is not valid, not logged in, or quality level is out of bounds.
+            NonStreamableError: If the item is not streamable or there is an error.
+
+        Returns:
+        -------
+            Downloadable: Downloadable item details.
+        """
         assert self.secret is not None and self.logged_in and 1 <= quality <= 4
         status, resp_json = await self._request_file_url(item_id, quality, self.secret)
         assert status == 200
@@ -332,13 +502,15 @@ class QobuzClient(Client):
     ) -> list[dict]:
         """Paginate search results.
 
-        params:
-            limit: If None, all the results are yielded. Otherwise a maximum
-            of `limit` results are yielded.
+        Args:
+        ----
+            epoint (str): The API endpoint.
+            params (dict): Parameters for the API request.
+            limit (int): The maximum number of results to retrieve.
 
-        Returns
+        Returns:
         -------
-            Generator that yields (status code, response) tuples
+            list[dict]: List of paginated search results.
         """
         params.update({"limit": limit})
         status, page = await self._api_request(epoint, params)
@@ -408,7 +580,7 @@ class QobuzClient(Client):
         quality: int,
         secret: str,
     ) -> tuple[int, dict]:
-        quality = self.get_quality(quality)
+        quality = self._get_quality(quality)
         unix_ts = time.time()
         r_sig = f"trackgetFileUrlformat_id{quality}intentstreamtrack_id{track_id}{unix_ts}{secret}"
         logger.debug("Raw request signature: %s", r_sig)
@@ -425,6 +597,7 @@ class QobuzClient(Client):
 
     async def _api_request(self, epoint: str, params: dict) -> tuple[int, dict]:
         """Make a request to the API.
+
         returns: status code, json parsed response
         """
         url = f"{QOBUZ_BASE_URL}/{epoint}"
@@ -434,6 +607,6 @@ class QobuzClient(Client):
                 return response.status, await response.json()
 
     @staticmethod
-    def get_quality(quality: int):
+    def _get_quality(quality: int):
         quality_map = (5, 6, 7, 27)
         return quality_map[quality - 1]

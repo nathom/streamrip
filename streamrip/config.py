@@ -20,6 +20,8 @@ CURRENT_CONFIG_VERSION = "2.0.3"
 
 @dataclass(slots=True)
 class QobuzConfig:
+    """Stores configuration related to Qobuz."""
+
     use_auth_token: bool
     email_or_userid: str
     # This is an md5 hash of the plaintext password
@@ -35,6 +37,8 @@ class QobuzConfig:
 
 @dataclass(slots=True)
 class TidalConfig:
+    """Stores configuration related to Tidal."""
+
     # Do not change any of the fields below
     user_id: str
     country_code: str
@@ -52,6 +56,8 @@ class TidalConfig:
 
 @dataclass(slots=True)
 class DeezerConfig:
+    """Stores configuration related to Deezer."""
+
     # An authentication cookie that allows streamrip to use your Deezer account
     # See https://github.com/nathom/streamrip/wiki/Finding-Your-Deezer-ARL-Cookie
     # for instructions on how to find this
@@ -70,6 +76,8 @@ class DeezerConfig:
 
 @dataclass(slots=True)
 class SoundcloudConfig:
+    """Stores configuration related to Soundcloud."""
+
     # This changes periodically, so it needs to be updated
     client_id: str
     app_version: str
@@ -79,6 +87,8 @@ class SoundcloudConfig:
 
 @dataclass(slots=True)
 class YoutubeConfig:
+    """Stores configuration related to Youtube."""
+
     # The path to download the videos to
     video_downloads_folder: str
     # Only 0 is available for now
@@ -89,6 +99,8 @@ class YoutubeConfig:
 
 @dataclass(slots=True)
 class DatabaseConfig:
+    """Stores configuration related to databases."""
+
     downloads_enabled: bool
     downloads_path: str
     failed_downloads_enabled: bool
@@ -97,6 +109,8 @@ class DatabaseConfig:
 
 @dataclass(slots=True)
 class ConversionConfig:
+    """Stores configuration related to audio coversion."""
+
     enabled: bool
     # FLAC, ALAC, OPUS, MP3, VORBIS, or AAC
     codec: str
@@ -112,6 +126,8 @@ class ConversionConfig:
 
 @dataclass(slots=True)
 class QobuzDiscographyFilterConfig:
+    """Stores configuration related to qobuz discography filters."""
+
     # Remove Collectors Editions, live recordings, etc.
     extras: bool
     # Picks the highest quality out of albums with identical titles.
@@ -128,6 +144,8 @@ class QobuzDiscographyFilterConfig:
 
 @dataclass(slots=True)
 class ArtworkConfig:
+    """Stores configuration related to Album artwork."""
+
     # Write the image to the audio file
     embed: bool
     # The size of the artwork to embed. Options: thumbnail, small, large, original.
@@ -146,6 +164,8 @@ class ArtworkConfig:
 
 @dataclass(slots=True)
 class MetadataConfig:
+    """Stores configuration related to Metadata."""
+
     # Sets the value of the 'ALBUM' field in the metadata to the playlist's name.
     # This is useful if your music library software organizes tracks based on album name.
     set_playlist_to_album: bool
@@ -159,6 +179,8 @@ class MetadataConfig:
 
 @dataclass(slots=True)
 class FilepathsConfig:
+    """Stores configuration related to Filepaths."""
+
     # Create folders for single tracks within the downloads directory using the folder_format
     # template
     add_singles_to_folder: bool
@@ -177,6 +199,8 @@ class FilepathsConfig:
 
 @dataclass(slots=True)
 class DownloadsConfig:
+    """Stores configuration related to downloads."""
+
     # Folder where tracks are downloaded to
     folder: str
     # Put Qobuz albums in a 'Qobuz' folder, Tidal albums in 'Tidal' etc.
@@ -194,6 +218,8 @@ class DownloadsConfig:
 
 @dataclass(slots=True)
 class LastFmConfig:
+    """Stores configuration related to last.fm."""
+
     # The source on which to search for the tracks.
     source: str
     # If no results were found with the primary source, the item is searched for
@@ -203,6 +229,8 @@ class LastFmConfig:
 
 @dataclass(slots=True)
 class CliConfig:
+    """Stores configuration related to the command line interface."""
+
     # Print "Downloading {Album name}" etc. to screen
     text_output: bool
     # Show resolve, download progress bars
@@ -213,6 +241,8 @@ class CliConfig:
 
 @dataclass(slots=True)
 class MiscConfig:
+    """Stores miscellaneous configuration."""
+
     version: str
     check_for_updates: bool
 
@@ -231,6 +261,8 @@ assert os.path.isfile(BLANK_CONFIG_PATH), "Template config not found"
 
 @dataclass(slots=True)
 class ConfigData:
+    """Stores all the configuration data."""
+
     toml: TOMLDocument
     downloads: DownloadsConfig
 
@@ -256,6 +288,7 @@ class ConfigData:
 
     @classmethod
     def from_toml(cls, toml_str: str):
+        """Create a ConfigData instance from valid TOML."""
         # TODO: handle the mistake where Windows people forget to escape backslash
         toml = parse(toml_str)
         if (v := toml["misc"]["version"]) != CURRENT_CONFIG_VERSION:  # type: ignore
@@ -300,36 +333,55 @@ class ConfigData:
 
     @classmethod
     def defaults(cls):
+        """Return a ConfigData object filled with default values."""
         with open(BLANK_CONFIG_PATH) as f:
             return cls.from_toml(f.read())
 
     def set_modified(self):
+        """Set the config data as modified for saving to disk."""
         self._modified = True
 
     @property
     def modified(self):
+        """Get whether the config was modified for saving to disk."""
         return self._modified
 
     def update_toml(self):
-        update_toml_section_from_config(self.toml["downloads"], self.downloads)
-        update_toml_section_from_config(self.toml["qobuz"], self.qobuz)
-        update_toml_section_from_config(self.toml["tidal"], self.tidal)
-        update_toml_section_from_config(self.toml["deezer"], self.deezer)
-        update_toml_section_from_config(self.toml["soundcloud"], self.soundcloud)
-        update_toml_section_from_config(self.toml["youtube"], self.youtube)
-        update_toml_section_from_config(self.toml["lastfm"], self.lastfm)
-        update_toml_section_from_config(self.toml["artwork"], self.artwork)
-        update_toml_section_from_config(self.toml["filepaths"], self.filepaths)
-        update_toml_section_from_config(self.toml["metadata"], self.metadata)
-        update_toml_section_from_config(self.toml["qobuz_filters"], self.qobuz_filters)
-        update_toml_section_from_config(self.toml["cli"], self.cli)
-        update_toml_section_from_config(self.toml["database"], self.database)
-        update_toml_section_from_config(self.toml["conversion"], self.conversion)
+        """Write the current state to the TOML object, which will be synced with disk."""
+        _update_toml_section_from_config(self.toml["downloads"], self.downloads)
+        _update_toml_section_from_config(self.toml["qobuz"], self.qobuz)
+        _update_toml_section_from_config(self.toml["tidal"], self.tidal)
+        _update_toml_section_from_config(self.toml["deezer"], self.deezer)
+        _update_toml_section_from_config(self.toml["soundcloud"], self.soundcloud)
+        _update_toml_section_from_config(self.toml["youtube"], self.youtube)
+        _update_toml_section_from_config(self.toml["lastfm"], self.lastfm)
+        _update_toml_section_from_config(self.toml["artwork"], self.artwork)
+        _update_toml_section_from_config(self.toml["filepaths"], self.filepaths)
+        _update_toml_section_from_config(self.toml["metadata"], self.metadata)
+        _update_toml_section_from_config(self.toml["qobuz_filters"], self.qobuz_filters)
+        _update_toml_section_from_config(self.toml["cli"], self.cli)
+        _update_toml_section_from_config(self.toml["database"], self.database)
+        _update_toml_section_from_config(self.toml["conversion"], self.conversion)
 
     def get_source(
         self,
         source: str,
     ) -> QobuzConfig | DeezerConfig | SoundcloudConfig | TidalConfig:
+        """Return the configuration for the source.
+
+        Args:
+        ----
+            source (str): One of the available sources
+
+        Returns:
+        -------
+            A Config dataclass.
+
+        Raises:
+        ------
+            Exception: If the source is invalid
+
+        """
         d = {
             "qobuz": self.qobuz,
             "deezer": self.deezer,
@@ -342,13 +394,21 @@ class ConfigData:
         return res
 
 
-def update_toml_section_from_config(toml_section, config):
+def _update_toml_section_from_config(toml_section, config):
     for field in fields(config):
         toml_section[field.name] = getattr(config, field.name)
 
 
 class Config:
+    """Manages the synchronization between the config data and the file stored on disk.
+
+    It contains 2 copies of the data: one that will be synced with disk (self.file),
+    and another that will be read during program execution, but not synced with
+    disk (self.session).
+    """
+
     def __init__(self, path: str, /):
+        """Create Config object."""
         self.path = path
 
         with open(path) as toml_file:
@@ -357,6 +417,7 @@ class Config:
         self.session: ConfigData = copy.deepcopy(self.file)
 
     def save_file(self):
+        """Save the file config copy to disk."""
         if not self.file.modified:
             return
 
@@ -366,12 +427,15 @@ class Config:
 
     @classmethod
     def defaults(cls):
+        """Return a Config object with default values."""
         return cls(BLANK_CONFIG_PATH)
 
     def __enter__(self):
+        """Enter context manager."""
         return self
 
     def __exit__(self, *_):
+        """Save to disk when context manager exits."""
         self.save_file()
 
 

@@ -242,7 +242,6 @@ class TidalDownloadable(Downloadable):
         :param out_path:
         :param encryption_key:
         """
-
         # Do not change this
         master_key = "UIlTTEMmmLfGowo/UC60x2H45W6MdGgTRfo/umg4754="
 

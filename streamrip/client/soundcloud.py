@@ -56,12 +56,12 @@ class SoundcloudClient(Client):
         """Fetch metadata for an item in Soundcloud API.
 
         Args:
-
+        ----
             item_id (str): Plain soundcloud item ID (e.g 1633786176)
             media_type (str): track or playlist
 
         Returns:
-
+        -------
             API response. The item IDs for the tracks in the playlist are modified to
             include resolution status.
         """
@@ -141,9 +141,11 @@ class SoundcloudClient(Client):
         usage.
 
         Args:
+        ----
             url (str): Url to resolve.
 
         Returns:
+        -------
             API response for item.
         """
         resp, status = await self._api_request("resolve", params={"url": url})

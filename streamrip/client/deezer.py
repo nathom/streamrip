@@ -22,7 +22,8 @@ logging.captureWarnings(True)
 class DeezerClient(Client):
     """Client to handle deezer API. Does not do rate limiting.
 
-    Attributes:
+    Attributes
+    ----------
         global_config: Entire config object
         client: client from deezer py used for API requests
         logged_in: True if logged in

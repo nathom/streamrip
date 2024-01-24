@@ -353,7 +353,7 @@ async def search(ctx, first, output_file, num_results, source, media_type, query
     """Search for content using a specific source.
 
     Example:
-
+    -------
         rip search qobuz album 'rumours'
     """
     if first and output_file:

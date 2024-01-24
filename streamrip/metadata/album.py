@@ -281,9 +281,8 @@ class AlbumMetadata:
 
     @classmethod
     def from_tidal(cls, resp) -> AlbumMetadata | None:
-        """
-
-        Args:
+        """Args:
+        ----
             resp: API response containing album metadata.
 
         Returns: AlbumMetadata instance if the album is streamable, otherwise None.
