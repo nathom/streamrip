@@ -134,8 +134,7 @@ class DeezerDownloadable(Downloadable):
                 )
 
                 buf = bytearray()
-                async for chunk in resp.content.iter_chunks():
-                    data, _ = chunk
+                async for data, _ in resp.content.iter_chunks():
                     buf += data
                     callback(len(data))
 
