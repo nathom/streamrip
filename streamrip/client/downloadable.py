@@ -133,29 +133,23 @@ class DeezerDownloadable(Downloadable):
                     blowfish_key,
                 )
 
-                assert self.chunk_size == 2048 * 3
+                buf = bytearray()
+                async for data, _ in resp.content.iter_chunks():
+                    buf += data
+                    callback(len(data))
 
-                # Write data from server to tempfile because there's no
-                # efficient way to guarantee a fixed chunk size for all iterations
-                # in async
-                async with aiofiles.tempfile.TemporaryFile("wb+") as tmp:
-                    async for chunk in resp.content.iter_chunks():
-                        data, _ = chunk
-                        await tmp.write(data)
-                        callback(len(data))
-
-                    await tmp.seek(0)
-                    async with aiofiles.open(path, "wb") as audio:
-                        while chunk := await tmp.read(self.chunk_size):
-                            if len(chunk) >= 2048:
-                                decrypted_chunk = (
-                                    self._decrypt_chunk(blowfish_key, chunk[:2048])
-                                    + chunk[2048:]
-                                )
-                            else:
-                                decrypted_chunk = chunk
-
-                            await audio.write(decrypted_chunk)
+                async with aiofiles.open(path, "wb") as audio:
+                    buflen = len(buf)
+                    for i in range(0, buflen, self.chunk_size):
+                        data = buf[i : min(i + self.chunk_size, buflen - 1)]
+                        if len(data) >= 2048:
+                            decrypted_chunk = (
+                                self._decrypt_chunk(blowfish_key, data[:2048])
+                                + data[2048:]
+                            )
+                        else:
+                            decrypted_chunk = data
+                        await audio.write(decrypted_chunk)
 
     @staticmethod
     def _decrypt_chunk(key, data):
