@@ -1,7 +1,9 @@
 """The clients that interact with the streaming service APIs."""
 
+import asyncio
 import contextlib
 import logging
+import sys
 from abc import ABC, abstractmethod
 
 import aiohttp
@@ -14,6 +16,13 @@ logger = logging.getLogger("streamrip")
 DEFAULT_USER_AGENT = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:83.0) Gecko/20100101 Firefox/83.0"
 )
+
+if (
+    sys.version_info[0] == 3
+    and sys.version_info[1] >= 8
+    and sys.platform.startswith("win")
+):
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 
 class Client(ABC):
