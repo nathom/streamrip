@@ -141,7 +141,7 @@ class DeezerDownloadable(Downloadable):
                 async with aiofiles.open(path, "wb") as audio:
                     buflen = len(buf)
                     for i in range(0, buflen, self.chunk_size):
-                        data = buf[i : min(i + self.chunk_size, buflen - 1)]
+                        data = buf[i : min(i + self.chunk_size, buflen)]
                         if len(data) >= 2048:
                             decrypted_chunk = (
                                 self._decrypt_chunk(blowfish_key, data[:2048])
