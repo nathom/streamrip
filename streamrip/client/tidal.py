@@ -8,6 +8,7 @@ import time
 import aiohttp
 
 from ..config import Config
+from ..exceptions import NonStreamableError
 from .client import Client
 from .downloadable import TidalDownloadable
 
@@ -321,5 +322,8 @@ class TidalClient(Client):
 
         async with self.rate_limiter:
             async with self.session.get(f"{BASE}/{path}", params=params) as resp:
+                if resp.status == 404:
+                    logger.warning("TIDAL: track not found", resp)
+                    raise NonStreamableError("TIDAL: Track not found")
                 resp.raise_for_status()
                 return await resp.json()
