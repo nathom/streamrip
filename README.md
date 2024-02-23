@@ -33,7 +33,18 @@ When you type
 rip
 ```
 
-it should show the main help page. If you have no idea what these mean, or are having other issues installing, check out the [detailed installation instructions](https://github.com/nathom/streamrip/wiki#detailed-installation-instructions).
+it should show the main help page. If you have no idea what these mean, or are having other issues installing, check out the [detailed installation instructions](https://github.com/nathom/streamrip/wiki#detailed-installation-instructions).  
+
+For Arch Linux users, an AUR package exists. Make sure to install required packages from the AUR before using `makepkg` or use an AUR helper to automatically resolve them.  
+```
+git clone https://aur.archlinux.org/streamrip.git
+cd streamrip
+makepkg -si
+```
+ or
+ ```
+paru -S streamrip
+```
 
 
 ### Streamrip beta
