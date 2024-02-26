@@ -165,9 +165,13 @@ class FilepathsConfig:
     # Available keys: "albumartist", "title", "year", "bit_depth", "sampling_rate",
     # "container", "id", and "albumcomposer"
     folder_format: str
-    # Available keys: "tracknumber", "artist", "albumartist", "composer", "title",
+    # Available keys: "tracknumber", "artist", "albumartist", "composer", "title", "albumtitle"
     # and "albumcomposer"
     track_format: str
+    # Available keys : "owner", "playlist", leave empty if no needed upper level format to be prepended to track_format
+    playlist_format: str
+    # Available keys : "owner", "playlist"
+    m3u8_format: str
     # Only allow printable ASCII characters in filenames.
     restrict_characters: bool
     # Truncate the filename if it is greater than 120 characters
