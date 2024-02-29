@@ -60,7 +60,8 @@ class PendingPlaylistTrack(Pending):
         except NonStreamableError as e:
             logger.error(f"Could not stream track {self.id}: {e}")
             return None
-
+        # in case of alternative song downloaded
+        self.id = resp["id"]
         album = AlbumMetadata.from_track_resp(resp, self.client.source)
         if album is None:
             logger.error(
