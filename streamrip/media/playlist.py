@@ -43,16 +43,7 @@ class PendingPlaylistTrack(Pending):
     db: Database
 
     async def resolve(self) -> Track | None:
-        alreadyDownloaded = self.db.downloaded(self.id)
-        if alreadyDownloaded:
-            logger.info(f"Track ({self.id}) already logged in database, stored in {alreadyDownloaded}. Skipping.")
-            if self.m3u8:
-                try:
-                    with open(self.m3u8, 'a+') as f:
-                        # Write filepath using relative path. Given m3u8 file is located in the same folder structure, simply replace its path with "."
-                        f.write(alreadyDownloaded.replace(os.path.dirname(self.m3u8), ".") + "\n")
-                except Exception as e:
-                    logger.error("Error occured while appending line to m3u8 file: %s", e)
+        if self._check_downloaded():
             return None
             
         try:
@@ -60,8 +51,13 @@ class PendingPlaylistTrack(Pending):
         except NonStreamableError as e:
             logger.error(f"Could not stream track {self.id}: {e}")
             return None
-        # in case of alternative song downloaded
-        self.id = resp["id"]
+
+        # In case of alternative song downloaded, update track id and re-do the self.db.downloaded test
+        if self.id != resp["id"] :
+            self.id = resp["id"]
+            if self._check_downloaded():
+                return None
+
         album = AlbumMetadata.from_track_resp(resp, self.client.source)
         if album is None:
             logger.error(
@@ -103,6 +99,18 @@ class PendingPlaylistTrack(Pending):
             cover_path=embedded_cover_path,
             db=self.db,
         )
+
+    def _check_downloaded(self) -> bool:
+        alreadyDownloaded = self.db.downloaded(self.id)
+        if alreadyDownloaded:
+            logger.info(f"Track ({self.id}) already logged in database, stored in {alreadyDownloaded}. Skipping.")
+            if self.m3u8:
+                with open(self.m3u8, 'a+') as f:
+                    # Write filepath using relative path. Given m3u8 file is located in the same folder structure, simply replace its path with "."
+                    f.write(alreadyDownloaded.replace(os.path.dirname(self.m3u8), ".") + "\n")
+            return True
+        else:
+            return False
 
     async def _download_cover(self, covers: Covers, folder: str) -> str | None:
         embed_path, _ = await download_artwork(
