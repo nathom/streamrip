@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from .album import AlbumMetadata
 from .track import TrackMetadata
 from .util import typed
+from ..filepath_utils import clean_pathsep
 
 NON_STREAMABLE = "_non_streamable"
 ORIGINAL_DOWNLOAD = "_original_download"
@@ -43,12 +44,14 @@ def parse_soundcloud_id(item_id: str) -> tuple[str, str]:
 @dataclass(slots=True)
 class PlaylistMetadata:
     name: str
+    owner: str
     tracks: list[TrackMetadata] | list[str]
 
     @classmethod
     def from_qobuz(cls, resp: dict):
         logger.debug(resp)
         name = typed(resp["name"], str)
+        owner = typed(resp["owner"]["name"], str)
         tracks = []
 
         for i, track in enumerate(resp["tracks"]["items"]):
@@ -61,7 +64,7 @@ class PlaylistMetadata:
                 continue
             tracks.append(meta)
 
-        return cls(name, tracks)
+        return cls(name, owner, tracks)
 
     @classmethod
     def from_soundcloud(cls, resp: dict):
@@ -80,23 +83,26 @@ class PlaylistMetadata:
             PlaylistMetadata object.
         """
         name = typed(resp["title"], str)
+        owner = typed(resp["user_id"], str)
         tracks = [
             TrackMetadata.from_soundcloud(AlbumMetadata.from_soundcloud(track), track)
             for track in resp["tracks"]
         ]
-        return cls(name, tracks)
+        return cls(name, owner, tracks)
 
     @classmethod
     def from_deezer(cls, resp: dict):
         name = typed(resp["title"], str)
+        owner = typed(resp["creator"]["name"], str)
         tracks = [str(track["id"]) for track in resp["tracks"]]
-        return cls(name, tracks)
+        return cls(name, owner, tracks)
 
     @classmethod
     def from_tidal(cls, resp: dict):
         name = typed(resp["title"], str)
+        owner = typed(resp["creator"]["id"], str)
         tracks = [str(track["id"]) for track in resp["tracks"]]
-        return cls(name, tracks)
+        return cls(name, owner, tracks)
 
     def ids(self) -> list[str]:
         if len(self.tracks) == 0:
@@ -118,3 +124,13 @@ class PlaylistMetadata:
             return cls.from_tidal(resp)
         else:
             raise NotImplementedError(source)
+
+    def format_folder_path(self, formatter: str) -> str:
+        # Available keys: "playlist", "owner"
+        none_str = "Unknown"
+        info: dict[str, str | int | float] = {
+            "playlist": clean_pathsep(self.name),
+            "owner": clean_pathsep(self.owner) or none_str,
+        }
+        
+        return formatter.format(**info)

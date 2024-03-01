@@ -1,6 +1,6 @@
 [downloads]
 # Folder where tracks are downloaded to
-folder = ""
+folder = "/music"
 # Put Qobuz albums in a 'Qobuz' folder, Tidal albums in 'Tidal' etc.
 source_subdirectories = false
 
@@ -156,12 +156,16 @@ exclude = []
 # Create folders for single tracks within the downloads directory using the folder_format
 # template
 add_singles_to_folder = false
-# Available keys: "albumartist", "title", "year", "bit_depth", "sampling_rate",
-# "id", and "albumcomposer"
+# Available keys: "albumartist", "title", "year", "bit_depth", "sampling_rate"
+# "id", "albumcomposer", "playlist", "owner"
 folder_format = "{albumartist} - {title} ({year}) [{container}] [{bit_depth}B-{sampling_rate}kHz]"
-# Available keys: "tracknumber", "artist", "albumartist", "composer", "title",
+# Available keys: "tracknumber", "artist", "albumartist", "composer", "title", "albumtitle"
 # and "albumcomposer", "explicit"
 track_format = "{tracknumber:02}. {artist} - {title}{explicit}"
+# Available keys : "owner", "playlist", leave empty if no needed upper level format to be prepended to track_format
+playlist_format = "{playlist}"
+# Available keys : "owner", "playlist"
+m3u8_format = "{owner} - {playlist}"
 # Only allow printable ASCII characters in filenames.
 restrict_characters = false
 # Truncate the filename if it is greater than this number of characters

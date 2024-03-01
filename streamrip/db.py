@@ -38,8 +38,8 @@ class Dummy(DatabaseInterface):
     def create(self):
         pass
 
-    def contains(self, **_):
-        return False
+    def getPath(self, **_):
+        return ""
 
     def add(self, *_):
         pass
@@ -164,7 +164,31 @@ class Downloads(DatabaseBase):
     name = "downloads"
     structure: Final[dict] = {
         "id": ["text", "unique"],
+        "filepath": ["text"],
     }
+
+    def getPath(self, **items) -> str:
+        """Check whether items matches an entry in the table, return associated filepath
+
+        :param items: a dict of column-name + expected value
+        :rtype: string
+        """
+        allowed_keys = set(self.structure.keys())
+        assert all(
+            key in allowed_keys for key in items.keys()
+        ), f"Invalid key. Valid keys: {allowed_keys}"
+
+        items = {k: str(v) for k, v in items.items()}
+
+        with sqlite3.connect(self.path) as conn:
+            conditions = " AND ".join(f"{key}=?" for key in items.keys())
+            command = f"SELECT filepath FROM {self.name} WHERE {conditions}"
+            logger.debug("Executing %s", command)
+            row = conn.execute(command, tuple(items.values())).fetchone()
+            if row:
+                return row[0]
+            else:
+                return ""
 
 
 class Failed(DatabaseBase):
@@ -180,14 +204,14 @@ class Failed(DatabaseBase):
 
 @dataclass(slots=True)
 class Database:
-    downloads: DatabaseInterface
-    failed: DatabaseInterface
+    downloads: Downloads
+    failed: Failed
 
-    def downloaded(self, item_id: str) -> bool:
-        return self.downloads.contains(id=item_id)
+    def downloaded(self, item_id: str) -> str:
+        return self.downloads.getPath(id=item_id)
 
-    def set_downloaded(self, item_id: str):
-        self.downloads.add((item_id,))
+    def set_downloaded(self, item_id, filepath: str):
+        self.downloads.add((item_id,filepath,))
 
     def get_failed_downloads(self) -> list[tuple[str, str, str]]:
         return self.failed.all()

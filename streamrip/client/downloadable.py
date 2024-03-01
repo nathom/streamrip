@@ -52,9 +52,12 @@ class Downloadable(ABC):
             return self._size
 
         async with self.session.head(self.url) as response:
-            response.raise_for_status()
-            content_length = response.headers.get("Content-Length", 0)
-            self._size = int(content_length)
+            try:
+                response.raise_for_status()
+                content_length = response.headers.get("Content-Length", 0)
+                self._size = int(content_length)
+            except Exception as e:
+                self._size = 0
             return self._size
 
     @abstractmethod
@@ -73,12 +76,15 @@ class BasicDownloadable(Downloadable):
 
     async def _download(self, path: str, callback: Callable[[int], None]):
         async with self.session.get(self.url, allow_redirects=True) as response:
-            response.raise_for_status()
-            async with aiofiles.open(path, "wb") as file:
-                async for chunk in response.content.iter_chunked(self.chunk_size):
-                    await file.write(chunk)
-                    # typically a bar.update()
-                    callback(len(chunk))
+            try:
+                response.raise_for_status()
+                async with aiofiles.open(path, "wb") as file:
+                    async for chunk in response.content.iter_chunked(self.chunk_size):
+                        await file.write(chunk)
+                        # typically a bar.update()
+                        callback(len(chunk))
+            except:
+                self._size = None
 
 
 class DeezerDownloadable(Downloadable):
@@ -89,67 +95,83 @@ class DeezerDownloadable(Downloadable):
         logger.debug("Deezer info for downloadable: %s", info)
         self.session = session
         self.url = info["url"]
-        max_quality_available = max(
-            i for i, size in enumerate(info["quality_to_size"]) if size > 0
-        )
-        self.quality = min(info["quality"], max_quality_available)
-        self._size = info["quality_to_size"][self.quality]
-        if self.quality <= 1:
-            self.extension = "mp3"
-        else:
+        try:
+            max_quality_available = max(
+                i for i, size in enumerate(info["quality_to_size"]) if size > 0
+            )
+            self.quality = min(info["quality"], max_quality_available)
+            self._size = info["quality_to_size"][self.quality]
+            if self.quality <= 1:
+                self.extension = "mp3"
+            else:
+                self.extension = "flac"
+            self.id = str(info["id"])
+        except Exception as e:
+            logger.error("Error occured while preparing download for item id %s, assuming mp3 with 320kbs : %s", info["id"], e)
+            self.id = str(info["id"])
             self.extension = "flac"
-        self.id = str(info["id"])
+            self.quality = 1
+
 
     async def _download(self, path: str, callback):
         # with requests.Session().get(self.url, allow_redirects=True) as resp:
         async with self.session.get(self.url, allow_redirects=True) as resp:
-            resp.raise_for_status()
-            self._size = int(resp.headers.get("Content-Length", 0))
-            if self._size < 20000 and not self.url.endswith(".jpg"):
-                try:
-                    info = await resp.json()
+            try:
+                resp.raise_for_status()
+                self._size = int(resp.headers.get("Content-Length", 0))
+                if self._size < 20000 and not self.url.endswith(".jpg"):
                     try:
-                        # Usually happens with deezloader downloads
-                        raise NonStreamableError(f"{info['error']} - {info['message']}")
-                    except KeyError:
-                        raise NonStreamableError(info)
+                        info = await resp.json()
+                        try:
+                            # Usually happens with deezloader downloads
+                            raise NonStreamableError(f"{info['error']} - {info['message']}")
+                        except KeyError:
+                            raise NonStreamableError(info)
 
-                except json.JSONDecodeError:
-                    raise NonStreamableError("File not found.")
+                    except json.JSONDecodeError:
+                        raise NonStreamableError("File not found.")
 
-            if self.is_encrypted.search(self.url) is None:
-                logger.debug(f"Deezer file at {self.url} not encrypted.")
-                async with aiofiles.open(path, "wb") as file:
-                    async for chunk in resp.content.iter_chunked(self.chunk_size):
-                        await file.write(chunk)
-                        # typically a bar.update()
-                        callback(len(chunk))
-            else:
-                blowfish_key = self._generate_blowfish_key(self.id)
-                logger.debug(
-                    "Deezer file (id %s) at %s is encrypted. Decrypting with %s",
-                    self.id,
-                    self.url,
-                    blowfish_key,
-                )
+                if self.is_encrypted.search(self.url) is None:
+                    logger.debug(f"Deezer file at {self.url} not encrypted.")
+                    async with aiofiles.open(path, "wb") as file:
+                        async for chunk in resp.content.iter_chunked(self.chunk_size):
+                            await file.write(chunk)
+                            # typically a bar.update()
+                            callback(len(chunk))
+                else:
+                    blowfish_key = self._generate_blowfish_key(self.id)
+                    logger.debug(
+                        "Deezer file (id %s) at %s is encrypted. Decrypting with %s",
+                        self.id,
+                        self.url,
+                        blowfish_key,
+                    )
 
-                buf = bytearray()
-                async for data, _ in resp.content.iter_chunks():
-                    buf += data
-                    callback(len(data))
+                    buf = bytearray()
+                    async for data, _ in resp.content.iter_chunks():
+                        buf += data
+                        callback(len(data))
 
-                async with aiofiles.open(path, "wb") as audio:
-                    buflen = len(buf)
-                    for i in range(0, buflen, self.chunk_size):
-                        data = buf[i : min(i + self.chunk_size, buflen)]
-                        if len(data) >= 2048:
-                            decrypted_chunk = (
-                                self._decrypt_chunk(blowfish_key, data[:2048])
-                                + data[2048:]
-                            )
-                        else:
-                            decrypted_chunk = data
-                        await audio.write(decrypted_chunk)
+                    async with aiofiles.open(path, "wb") as audio:
+                        buflen = len(buf)
+                        for i in range(0, buflen, self.chunk_size):
+                            data = buf[i : min(i + self.chunk_size, buflen)]
+                            if len(data) >= 2048:
+                                decrypted_chunk = (
+                                    self._decrypt_chunk(blowfish_key, data[:2048])
+                                    + data[2048:]
+                                )
+                            else:
+                                decrypted_chunk = data
+                            try:
+                                await audio.write(decrypted_chunk)
+                            except Exception as e:
+                                logger.error("Error occured while writing file for item %s : %s", self.id, e)
+                                self._size = None
+            except Exception as e:
+                logger.error("Error occured while downloading item %s : %s", self.id, e)
+                self._size = None
+
 
     @staticmethod
     def _decrypt_chunk(key, data):
