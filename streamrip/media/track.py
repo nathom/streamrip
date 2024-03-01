@@ -24,6 +24,7 @@ class Track(Media):
     downloadable: Downloadable
     config: Config
     folder: str
+    m3u8: str
     # Is None if a cover doesn't exist for the track
     cover_path: str | None
     db: Database
@@ -48,14 +49,27 @@ class Track(Media):
                 await self.downloadable.download(self.download_path, callback)
 
     async def postprocess(self):
-        if self.is_single:
-            remove_title(self.meta.title)
+        if self.downloadable._size != None:
+            if self.is_single:
+                remove_title(self.meta.title)
 
-        await tag_file(self.download_path, self.meta, self.cover_path)
-        if self.config.session.conversion.enabled:
-            await self._convert()
+            try:
+                await tag_file(self.download_path, self.meta, self.cover_path)
+                if self.config.session.conversion.enabled:
+                    await self._convert()
+            except Exception as e:
+                logger.warning(
+                    f"Unable to tag or convert file {self.download_path}, file is left as-is, please check result carefully : {e}",
+                )
 
-        self.db.set_downloaded(self.meta.info.id)
+            self.db.set_downloaded(self.meta.info.id, self.download_path)
+            if self.m3u8:
+                try:
+                    with open(self.m3u8, 'a+') as f:
+                        # Write filepath using relative path. Given m3u8 file is located in the same folder structure, simply replace its path with "."
+                        f.write(self.download_path.replace(os.path.dirname(self.m3u8), ".") + "\n")
+                except Exception as e:
+                    logger.warning(f"Unable to append line {self.download_path} to m3u8 file {self.m3u8} : {e}")
 
     async def _convert(self):
         c = self.config.session.conversion
@@ -84,6 +98,9 @@ class Track(Media):
             f"{track_path}.{self.downloadable.extension}",
         )
 
+        os.makedirs(os.path.dirname(self.download_path), exist_ok=True) # To deal with subfolders in track name
+
+
 
 @dataclass(slots=True)
 class PendingTrack(Pending):
@@ -92,6 +109,7 @@ class PendingTrack(Pending):
     client: Client
     config: Config
     folder: str
+    m3u8: str
     db: Database
     # cover_path is None <==> Artwork for this track doesn't exist in API
     cover_path: str | None
@@ -119,12 +137,13 @@ class PendingTrack(Pending):
         quality = self.config.session.get_source(source).quality
         downloadable = await self.client.get_downloadable(self.id, quality)
         return Track(
-            meta,
-            downloadable,
-            self.config,
-            self.folder,
-            self.cover_path,
-            self.db,
+            meta=meta,
+            downloadable=downloadable,
+            config=self.config,
+            folder=self.folder,
+            m3u8=self.m3u8,
+            cover_path=self.cover_path,
+            db=self.db,
         )
 
 
@@ -187,12 +206,13 @@ class PendingSingle(Pending):
             self.client.get_downloadable(self.id, quality),
         )
         return Track(
-            meta,
-            downloadable,
-            self.config,
-            folder,
-            embedded_cover_path,
-            self.db,
+            meta=meta,
+            downloadable=downloadable,
+            config=self.config,
+            folder=folder,
+            m3u8="",
+            cover_path=embedded_cover_path,
+            db=self.db,
             is_single=True,
         )
 

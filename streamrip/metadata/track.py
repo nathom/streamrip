@@ -6,6 +6,7 @@ from typing import Optional
 
 from .album import AlbumMetadata
 from .util import safe_get, typed
+from ..filepath_utils import clean_pathsep
 
 logger = logging.getLogger("streamrip")
 
@@ -228,12 +229,13 @@ class TrackMetadata:
         # and "explicit", "albumcomposer"
         none_text = "Unknown"
         info = {
-            "title": self.title,
+            "title": clean_pathsep(self.title),
             "tracknumber": self.tracknumber,
-            "artist": self.artist,
-            "albumartist": self.album.albumartist,
-            "albumcomposer": self.album.albumcomposer or none_text,
-            "composer": self.composer or none_text,
+            "artist": clean_pathsep(self.artist),
+            "albumtitle": clean_pathsep(self.album.album),
+            "albumartist": clean_pathsep(self.album.albumartist),
+            "albumcomposer": clean_pathsep(self.album.albumcomposer) or none_text,
+            "composer": clean_pathsep(self.composer) or none_text,
             "explicit": " (Explicit) " if self.info.explicit else "",
         }
         return format_string.format(**info)

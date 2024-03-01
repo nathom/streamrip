@@ -84,6 +84,7 @@ class PendingAlbum(Pending):
                 client=self.client,
                 config=self.config,
                 folder=album_folder,
+                m3u8="",
                 db=self.db,
                 cover_path=embed_cover,
             )
