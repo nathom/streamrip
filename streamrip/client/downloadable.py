@@ -17,6 +17,7 @@ from typing import Any, Callable, Optional
 import aiofiles
 import aiohttp
 import m3u8
+import requests
 from Cryptodome.Cipher import AES, Blowfish
 from Cryptodome.Util import Counter
 
@@ -41,7 +42,7 @@ class Downloadable(ABC):
     session: aiohttp.ClientSession
     url: str
     extension: str
-    chunk_size = 1024
+    chunk_size = 2**17  # 1 MiB
     _size: Optional[int] = None
 
     async def download(self, path: str, callback: Callable[[int], Any]):
@@ -71,19 +72,24 @@ class BasicDownloadable(Downloadable):
         self.extension = extension
         self._size = None
 
-    async def _download(self, path: str, callback: Callable[[int], None]):
-        async with self.session.get(self.url, allow_redirects=True) as response:
-            response.raise_for_status()
-            async with aiofiles.open(path, "wb") as file:
-                async for chunk in response.content.iter_chunked(self.chunk_size):
-                    await file.write(chunk)
-                    # typically a bar.update()
+    async def _download(self, path: str, callback):
+        # Attempt to fix async performance issues by manually and infrequently
+        # yielding to event loop selector
+        counter = 0
+        yield_every = 16
+        with open(path, "wb") as file:
+            with requests.get(self.url, allow_redirects=True, stream=True) as resp:
+                for chunk in resp.iter_content(chunk_size=self.chunk_size):
+                    file.write(chunk)
                     callback(len(chunk))
+                    if counter % yield_every == 0:
+                        await asyncio.sleep(0)
+                    counter += 1
 
 
 class DeezerDownloadable(Downloadable):
     is_encrypted = re.compile("/m(?:obile|edia)/")
-    chunk_size = 2048 * 3
+    # chunk_size = 2048 * 3
 
     def __init__(self, session: aiohttp.ClientSession, info: dict):
         logger.debug("Deezer info for downloadable: %s", info)
