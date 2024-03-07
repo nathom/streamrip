@@ -5,9 +5,9 @@ import re
 from dataclasses import dataclass
 from typing import Optional
 
+from ..filepath_utils import clean_filename
 from .covers import Covers
 from .util import get_quality_id, safe_get, typed
-from ..filepath_utils import clean_filename
 
 PHON_COPYRIGHT = "\u2117"
 COPYRIGHT = "\u00a9"
@@ -64,12 +64,12 @@ class AlbumMetadata:
 
     def format_folder_path(self, formatter: str) -> str:
         # Available keys: "albumartist", "title", "year", "bit_depth", "sampling_rate",
-        # "id", and "albumcomposer",        
+        # "id", and "albumcomposer",
 
         none_str = "Unknown"
         info: dict[str, str | int | float] = {
             "albumartist": clean_filename(self.albumartist),
-            "albumcomposer": clean_filename(self.albumcomposer) or none_str,
+            "albumcomposer": clean_filename(self.albumcomposer or "") or none_str,
             "bit_depth": self.info.bit_depth or none_str,
             "id": self.info.id,
             "sampling_rate": self.info.sampling_rate or none_str,
@@ -77,9 +77,9 @@ class AlbumMetadata:
             "year": self.year,
             "container": self.info.container,
         }
-        
+
         return formatter.format(**info)
-    
+
     @classmethod
     def from_qobuz(cls, resp: dict) -> AlbumMetadata:
         album = resp.get("title", "Unknown Album")
@@ -284,6 +284,7 @@ class AlbumMetadata:
         """
 
         Args:
+        ----
             resp: API response containing album metadata.
 
         Returns: AlbumMetadata instance if the album is streamable, otherwise None.
@@ -300,7 +301,7 @@ class AlbumMetadata:
         # genre not returned by API
         date = typed(resp.get("releaseDate"), str)
         year = date[:4]
-        _copyright = typed(resp.get("copyright"), str)
+        _copyright = typed(resp.get("copyright"), str | None)
 
         artists = typed(resp.get("artists", []), list)
         albumartist = ", ".join(a["name"] for a in artists)
@@ -383,7 +384,7 @@ class AlbumMetadata:
         else:
             year = "Unknown Year"
 
-        _copyright = typed(resp.get("copyright"), str)
+        _copyright = typed(resp.get("copyright"), str | None)
         artists = typed(resp.get("artists", []), list)
         albumartist = ", ".join(a["name"] for a in artists)
         if not albumartist:
