@@ -1,5 +1,5 @@
-"""streamrip: the all in one music downloader."""
+from . import converter, db, exceptions, media, metadata
+from .config import Config
 
-__version__ = "1.9.7"
-
-from . import clients, constants, converter, downloadtools, media
+__all__ = ["Config", "media", "metadata", "converter", "db", "exceptions"]
+__version__ = "2.0.5"

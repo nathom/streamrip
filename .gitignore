@@ -20,3 +20,4 @@ StreamripDownloads
 *test.py
 /.mypy_cache
 .DS_Store
+pyrightconfig.json
