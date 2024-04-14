@@ -77,7 +77,7 @@ rip url https://www.qobuz.com/us-en/album/back-in-black-ac-dc/0886444889841 http
 Download the album and convert it to `mp3`
 
 ```bash
-rip url --codec mp3 https://open.qobuz.com/album/0060253780968
+rip url --codec=MP3 https://open.qobuz.com/album/0060253780968
 ```
 
 
@@ -94,7 +94,7 @@ To set the maximum quality, use the `--max-quality` option to `0, 1, 2, 3, 4`:
 
 
 ```bash
-rip url --quality 3 https://tidal.com/browse/album/147569387
+rip url --max-quality=3 https://tidal.com/browse/album/147569387
 ```
 
 > Using `4` is generally a waste of space. It is impossible for humans to perceive the between sampling rates higher than 44.1 kHz. It may be useful if you're processing/slowing down the audio.
