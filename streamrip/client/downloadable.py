@@ -42,8 +42,8 @@ class Downloadable(ABC):
     session: aiohttp.ClientSession
     url: str
     extension: str
-    chunk_size = 2**17
-    _size: Optional[int] = None
+    chunk_size: int = 2**17
+    _size_base: Optional[int] = None
 
     async def download(self, path: str, callback: Callable[[int], Any]):
         await self._download(path, callback)
@@ -57,6 +57,14 @@ class Downloadable(ABC):
             content_length = response.headers.get("Content-Length", 0)
             self._size = int(content_length)
             return self._size
+
+    @property
+    def _size(self):
+        return self._size_base
+
+    @_size.setter
+    def _size(self, v):
+        self._size_base = v
 
     @abstractmethod
     async def _download(self, path: str, callback: Callable[[int], None]):
@@ -77,8 +85,13 @@ class BasicDownloadable(Downloadable):
         # yielding to event loop selector
         counter = 0
         yield_every = 16
-        with open(path, "wb") as file:
-            with requests.get(self.url, allow_redirects=True, stream=True) as resp:
+        with open(path, "wb") as file:  # noqa: ASYNC101
+            with requests.get(  # noqa: ASYNC100
+                self.url,
+                headers=self.session.headers,
+                allow_redirects=True,
+                stream=True,
+            ) as resp:
                 for chunk in resp.iter_content(chunk_size=self.chunk_size):
                     file.write(chunk)
                     callback(len(chunk))
@@ -89,7 +102,6 @@ class BasicDownloadable(Downloadable):
 
 class DeezerDownloadable(Downloadable):
     is_encrypted = re.compile("/m(?:obile|edia)/")
-    # chunk_size = 2048 * 3
 
     def __init__(self, session: aiohttp.ClientSession, info: dict):
         logger.debug("Deezer info for downloadable: %s", info)
