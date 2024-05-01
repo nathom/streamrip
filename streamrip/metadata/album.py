@@ -5,9 +5,9 @@ import re
 from dataclasses import dataclass
 from typing import Optional
 
+from ..filepath_utils import clean_filename
 from .covers import Covers
 from .util import get_quality_id, safe_get, typed
-from ..filepath_utils import clean_filename
 
 PHON_COPYRIGHT = "\u2117"
 COPYRIGHT = "\u00a9"
@@ -64,7 +64,7 @@ class AlbumMetadata:
 
     def format_folder_path(self, formatter: str) -> str:
         # Available keys: "albumartist", "title", "year", "bit_depth", "sampling_rate",
-        # "id", and "albumcomposer",        
+        # "id", and "albumcomposer",
 
         none_str = "Unknown"
         info: dict[str, str | int | float] = {
@@ -77,9 +77,9 @@ class AlbumMetadata:
             "year": self.year,
             "container": self.info.container,
         }
-        
+
         return formatter.format(**info)
-    
+
     @classmethod
     def from_qobuz(cls, resp: dict) -> AlbumMetadata:
         album = resp.get("title", "Unknown Album")
@@ -300,12 +300,12 @@ class AlbumMetadata:
         # genre not returned by API
         date = typed(resp.get("releaseDate"), str)
         year = date[:4]
-        _copyright = typed(resp.get("copyright"), str)
+        _copyright = typed(resp.get("copyright", ""), str)
 
         artists = typed(resp.get("artists", []), list)
         albumartist = ", ".join(a["name"] for a in artists)
         if not albumartist:
-            albumartist = typed(safe_get(resp, "artist", "name"), str)
+            albumartist = typed(safe_get(resp, "artist", "name", default=""), str)
 
         disctotal = typed(resp.get("numberOfVolumes", 1), int)
         # label not returned by API
@@ -367,7 +367,7 @@ class AlbumMetadata:
         )
 
     @classmethod
-    def from_tidal_playlist_track_resp(cls, resp) -> AlbumMetadata | None:
+    def from_tidal_playlist_track_resp(cls, resp: dict) -> AlbumMetadata | None:
         album_resp = resp["album"]
         streamable = resp.get("allowStreaming", False)
         if not streamable:
@@ -383,11 +383,13 @@ class AlbumMetadata:
         else:
             year = "Unknown Year"
 
-        _copyright = typed(resp.get("copyright"), str)
+        _copyright = typed(resp.get("copyright", ""), str)
         artists = typed(resp.get("artists", []), list)
         albumartist = ", ".join(a["name"] for a in artists)
         if not albumartist:
-            albumartist = typed(safe_get(resp, "artist", "name"), str)
+            albumartist = typed(
+                safe_get(resp, "artist", "name", default="Unknown Albumbartist"), str
+            )
 
         disctotal = typed(resp.get("volumeNumber", 1), int)
         # label not returned by API
