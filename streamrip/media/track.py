@@ -148,11 +148,18 @@ class PendingTrack(Pending):
 
         quality = self.config.session.get_source(source).quality
         downloadable = await self.client.get_downloadable(self.id, quality)
+
+        downloads_config = self.config.session.downloads
+        if downloads_config.disc_subdirectories and self.album.disctotal > 1:
+            folder = os.path.join(self.folder, f"Disc {meta.discnumber}")
+        else:
+            folder = self.folder
+
         return Track(
             meta,
             downloadable,
             self.config,
-            self.folder,
+            folder,
             self.cover_path,
             self.db,
         )
