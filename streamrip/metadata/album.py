@@ -69,7 +69,7 @@ class AlbumMetadata:
         none_str = "Unknown"
         info: dict[str, str | int | float] = {
             "albumartist": clean_filename(self.albumartist),
-            "albumcomposer": clean_filename(self.albumcomposer) or none_str,
+            "albumcomposer": clean_filename(self.albumcomposer or "") or none_str,
             "bit_depth": self.info.bit_depth or none_str,
             "id": self.info.id,
             "sampling_rate": self.info.sampling_rate or none_str,
@@ -284,6 +284,7 @@ class AlbumMetadata:
         """
 
         Args:
+        ----
             resp: API response containing album metadata.
 
         Returns: AlbumMetadata instance if the album is streamable, otherwise None.
