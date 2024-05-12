@@ -96,12 +96,12 @@ class AlbumMetadata:
         else:
             albumartist = typed(safe_get(resp, "artist", "name"), str)
 
-        albumcomposer = typed(safe_get(resp, "composer", "name"), str | None)
+        albumcomposer = typed(safe_get(resp, "composer", "name", default=""), str)
         _label = resp.get("label")
         if isinstance(_label, dict):
             _label = _label["name"]
-        label = typed(_label, str | None)
-        description = typed(resp.get("description") or None, str | None)
+        label = typed(_label or "", str)
+        description = typed(resp.get("description", "") or None, str)
         disctotal = typed(
             max(
                 track.get("media_number", 1)
@@ -115,8 +115,8 @@ class AlbumMetadata:
         # Non-embedded information
         cover_urls = Covers.from_qobuz(resp)
 
-        bit_depth = typed(resp.get("maximum_bit_depth"), int | None)
-        sampling_rate = typed(resp.get("maximum_sampling_rate"), int | float | None)
+        bit_depth = typed(resp.get("maximum_bit_depth", -1), int)
+        sampling_rate = typed(resp.get("maximum_sampling_rate", -1.0), int | float)
         quality = get_quality_id(bit_depth, sampling_rate)
         # Make sure it is non-empty list
         booklets = typed(resp.get("goodies", None) or None, list | None)
@@ -227,14 +227,14 @@ class AlbumMetadata:
             safe_get(track, "publisher_metadata", "explicit", default=False),
             bool,
         )
-        genre = typed(track["genre"], str | None)
+        genre = typed(track.get("genre"), str | None)
         genres = [genre] if genre is not None else []
         artist = typed(safe_get(track, "publisher_metadata", "artist"), str | None)
         artist = artist or typed(track["user"]["username"], str)
         albumartist = artist
-        date = typed(track["created_at"], str)
+        date = typed(track.get("created_at"), str)
         year = date[:4]
-        label = typed(track["label_name"], str | None)
+        label = typed(track.get("label_name"), str | None)
         description = typed(track.get("description"), str | None)
         album_title = typed(
             safe_get(track, "publisher_metadata", "album_title"),
