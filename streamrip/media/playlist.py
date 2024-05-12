@@ -155,7 +155,11 @@ class PendingPlaylist(Pending):
             )
             return None
 
-        meta = PlaylistMetadata.from_resp(resp, self.client.source)
+        try:
+            meta = PlaylistMetadata.from_resp(resp, self.client.source)
+        except Exception as e:
+            logger.error(f"Error creating playlist: {e}")
+            return None
         name = meta.name
         parent = self.config.session.downloads.folder
         folder = os.path.join(parent, clean_filepath(name))

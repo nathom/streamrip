@@ -190,7 +190,14 @@ class PendingArtist(Pending):
             )
             return None
 
-        meta = ArtistMetadata.from_resp(resp, self.client.source)
+        try:
+            meta = ArtistMetadata.from_resp(resp, self.client.source)
+        except Exception as e:
+            logger.error(
+                f"Error building artist metadata: {e}",
+            )
+            return None
+
         albums = [
             PendingAlbum(album_id, self.client, self.config, self.db)
             for album_id in meta.album_ids()

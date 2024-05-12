@@ -37,7 +37,7 @@ def get_soundcloud_id(resp: dict) -> str:
 def parse_soundcloud_id(item_id: str) -> tuple[str, str]:
     info = item_id.split("|")
     assert len(info) == 2
-    return tuple(info)
+    return (info[0], info[1])
 
 
 @dataclass(slots=True)
