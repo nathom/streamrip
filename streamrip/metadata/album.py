@@ -101,7 +101,7 @@ class AlbumMetadata:
         if isinstance(_label, dict):
             _label = _label["name"]
         label = typed(_label or "", str)
-        description = typed(resp.get("description", "") or None, str)
+        description = typed(resp.get("description", ""), str)
         disctotal = typed(
             max(
                 track.get("media_number", 1)

@@ -17,7 +17,7 @@ logger = logging.getLogger("streamrip")
 APP_DIR = click.get_app_dir("streamrip")
 os.makedirs(APP_DIR, exist_ok=True)
 DEFAULT_CONFIG_PATH = os.path.join(APP_DIR, "config.toml")
-CURRENT_CONFIG_VERSION = "2.0.3"
+CURRENT_CONFIG_VERSION = "2.0.6"
 
 
 class OutdatedConfigError(Exception):
@@ -187,6 +187,8 @@ class DownloadsConfig:
     folder: str
     # Put Qobuz albums in a 'Qobuz' folder, Tidal albums in 'Tidal' etc.
     source_subdirectories: bool
+    # Put tracks in an album with 2 or more discs into a subfolder named `Disc N`
+    disc_subdirectories: bool
     # Download (and convert) tracks all at once, instead of sequentially.
     # If you are converting the tracks, or have fast internet, this will
     # substantially improve processing speed.

@@ -158,6 +158,8 @@ def rip(ctx, config_path, folder, no_db, quality, codec, no_progress, verbose):
 @coro
 async def url(ctx, urls):
     """Download content from URLs."""
+    if ctx.obj["config"] is None:
+        return
     with ctx.obj["config"] as cfg:
         cfg: Config
         updates = cfg.session.misc.check_for_updates
@@ -242,7 +244,7 @@ def config():
 @click.pass_context
 def config_open(ctx, vim):
     """Open the config file in a text editor."""
-    config_path = ctx.obj["config"].path
+    config_path = ctx.obj["config_path"]
 
     console.print(f"Opening file at [bold cyan]{config_path}")
     if vim:
