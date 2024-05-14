@@ -373,15 +373,18 @@ class Config:
             toml_file.write(dumps(self.file.toml))
 
     @staticmethod
-    def _update_file(old_path, new_config_path: str | os.PathLike):
-        """Updates the current config based on a newer config version at `new_config_path`."""
+    def _update_file(old_path: str, new_path: str):
+        """Updates the current config based on a newer config `new_toml`."""
+        with open(new_path) as new_conf:
+            new_toml = parse(new_conf.read())
+
+        toml_set_user_defaults(new_toml)
+
         with open(old_path) as old_conf:
             old_toml = parse(old_conf.read())
 
-        with open(new_config_path) as new_config:
-            new_toml = parse(new_config.read())
-
         update_config(old_toml, new_toml)
+
         with open(old_path, "w") as f:
             f.write(dumps(new_toml))
 
@@ -406,12 +409,18 @@ def set_user_defaults(path: str, /):
 
     with open(path) as f:
         toml = parse(f.read())
+
+    toml_set_user_defaults(toml)
+
+    with open(path, "w") as f:
+        f.write(dumps(toml))
+
+
+def toml_set_user_defaults(toml: TOMLDocument):
     toml["downloads"]["folder"] = DEFAULT_DOWNLOADS_FOLDER  # type: ignore
     toml["database"]["downloads_path"] = DEFAULT_DOWNLOADS_DB_PATH  # type: ignore
     toml["database"]["failed_downloads_path"] = DEFAULT_FAILED_DOWNLOADS_DB_PATH  # type: ignore
     toml["youtube"]["video_downloads_folder"] = DEFAULT_YOUTUBE_VIDEO_DOWNLOADS_FOLDER  # type: ignore
-    with open(path, "w") as f:
-        f.write(dumps(toml))
 
 
 def _get_dict_keys_r(d: dict) -> set[tuple]:
@@ -457,6 +466,7 @@ def update_config(old_with_data: dict, new_without_data: dict):
     old_keys = _get_dict_keys_r(old_with_data)
     new_keys = _get_dict_keys_r(new_without_data)
     common = old_keys.intersection(new_keys)
+    common.discard(("misc", "version"))
 
     for k in common:
         old_val = _nested_get(old_with_data, *k)

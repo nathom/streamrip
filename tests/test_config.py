@@ -116,6 +116,8 @@ def test_config_file_update():
     assert toml["cli"]["text_output"] is True  # type: ignore
     assert toml["cli"]["progress_bars"] is True  # type: ignore
     assert toml["cli"]["max_search_results"] == 100  # type: ignore
+    assert toml["misc"]["version"] == "2.0.6"  # type: ignore
+    assert "YouTubeVideos" in str(toml["youtube"]["video_downloads_folder"])
     # type: ignore
     os.remove("tests/test_config_old2.toml")
 

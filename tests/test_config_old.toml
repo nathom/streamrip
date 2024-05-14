@@ -63,8 +63,6 @@ app_version = "old_appversion"
 quality = 0
 # Download the video along with the audio
 download_videos = false
-# The path to download the videos to
-video_downloads_folder = "old_videodownloadsfolder"
 
 [database]
 # Create a database that contains all the track IDs downloaded so far
