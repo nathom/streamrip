@@ -1,6 +1,6 @@
 import json
 
-from streamrip.metadata import *
+from streamrip.metadata import AlbumMetadata, TrackMetadata
 
 with open("tests/qobuz_album_resp.json") as f:
     qobuz_album_resp = json.load(f)
@@ -16,7 +16,7 @@ def test_album_metadata_qobuz():
     assert info.quality == 3
     assert info.container == "FLAC"
     assert info.label == "Rhino - Warner Records"
-    assert info.explicit == False
+    assert info.explicit is False
     assert info.sampling_rate == 96
     assert info.bit_depth == 24
     assert info.booklets is None

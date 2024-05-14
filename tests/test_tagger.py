@@ -5,7 +5,14 @@ import pytest
 from mutagen.flac import FLAC
 from util import arun
 
-from streamrip.metadata import *
+from streamrip.metadata import (
+    AlbumInfo,
+    AlbumMetadata,
+    Covers,
+    TrackInfo,
+    TrackMetadata,
+    tag_file,
+)
 
 TEST_FLAC_ORIGINAL = "tests/silence.flac"
 TEST_FLAC_COPY = "tests/silence_copy.flac"

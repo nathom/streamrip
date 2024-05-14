@@ -9,9 +9,9 @@ def arun(coro):
 
 def afor(async_gen):
     async def _afor(async_gen):
-        l = []
+        items = []
         async for item in async_gen:
-            l.append(item)
-        return l
+            items.append(item)
+        return items
 
     return arun(_afor(async_gen))
