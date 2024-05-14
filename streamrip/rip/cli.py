@@ -17,7 +17,7 @@ from rich.prompt import Confirm
 from rich.traceback import install
 
 from .. import __version__, db
-from ..config import DEFAULT_CONFIG_PATH, Config, set_user_defaults
+from ..config import DEFAULT_CONFIG_PATH, Config, OutdatedConfigError, set_user_defaults
 from ..console import console
 from .main import Main
 
@@ -115,6 +115,11 @@ def rip(ctx, config_path, folder, no_db, quality, codec, no_progress, verbose):
     ctx.obj["config_path"] = config_path
 
     try:
+        c = Config(config_path)
+    except OutdatedConfigError as e:
+        console.print(e)
+        console.print("Auto-updating config file...")
+        Config.update_file(config_path)
         c = Config(config_path)
     except Exception as e:
         console.print(
