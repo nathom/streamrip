@@ -3,6 +3,7 @@
 folder = "test_folder"
 # Put Qobuz albums in a 'Qobuz' folder, Tidal albums in 'Tidal' etc.
 source_subdirectories = false
+disc_subdirectories = true
 
 # Download (and convert) tracks all at once, instead of sequentially. 
 # If you are converting the tracks, or have fast internet, this will 
@@ -185,5 +186,5 @@ max_search_results = 100
 
 [misc]
 # Metadata to identify this config file. Do not change.
-version = "2.0.3"
+version = "2.0.6"
 check_for_updates = true

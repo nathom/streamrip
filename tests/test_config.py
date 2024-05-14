@@ -43,6 +43,7 @@ def test_sample_config_data_fields(sample_config_data):
         downloads=DownloadsConfig(
             folder="test_folder",
             source_subdirectories=False,
+            disc_subdirectories=True,
             concurrency=True,
             max_connections=6,
             requests_per_minute=60,
