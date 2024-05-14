@@ -1,10 +1,14 @@
+import os
 import shutil
 
 import pytest
+import tomlkit
 
 from streamrip.config import *
+from streamrip.config import _get_dict_keys_r, _nested_set
 
 SAMPLE_CONFIG = "tests/test_config.toml"
+OLD_CONFIG = "tests/test_config_old.toml"
 
 
 # Define a fixture to create a sample ConfigData instance for testing
@@ -24,6 +28,98 @@ def sample_config() -> Config:
     # You can customize this to your specific needs for testing
     config = Config(SAMPLE_CONFIG)
     return config
+
+
+def test_get_keys_r():
+    d = {
+        "key1": {
+            "key2": {
+                "key3": 1,
+                "key4": 1,
+            },
+            "key6": [1, 2],
+            5: 1,
+        }
+    }
+    res = _get_dict_keys_r(d)
+    print(res)
+    assert res == {
+        ("key1", "key2", "key3"),
+        ("key1", "key2", "key4"),
+        ("key1", "key6"),
+        ("key1", 5),
+    }
+
+
+def test_safe_set():
+    d = {
+        "key1": {
+            "key2": {
+                "key3": 1,
+                "key4": 1,
+            },
+            "key6": [1, 2],
+            5: 1,
+        }
+    }
+    _nested_set(d, "key1", "key2", "key3", val=5)
+    assert d == {
+        "key1": {
+            "key2": {
+                "key3": 5,
+                "key4": 1,
+            },
+            "key6": [1, 2],
+            5: 1,
+        }
+    }
+
+
+def test_config_update():
+    old = {
+        "downloads": {"folder": "some_path", "use_service": True},
+        "qobuz": {"email": "asdf@gmail.com", "password": "test"},
+        "legacy_conf": {"something": 1, "other": 2},
+    }
+    new = {
+        "downloads": {"folder": "", "use_service": False, "keep_artwork": True},
+        "qobuz": {"email": "", "password": ""},
+        "tidal": {"email": "", "password": ""},
+    }
+    update_config(old, new)
+    assert new == {
+        "downloads": {"folder": "some_path", "use_service": True, "keep_artwork": True},
+        "qobuz": {"email": "asdf@gmail.com", "password": "test"},
+        "tidal": {"email": "", "password": ""},
+    }
+
+
+def test_config_throws_outdated():
+    with pytest.raises(Exception, match="update"):
+        _ = Config(OLD_CONFIG)
+
+
+def test_config_file_update():
+    tmp_conf = "tests/test_config_old2.toml"
+    shutil.copy("tests/test_config_old.toml", tmp_conf)
+    Config._update_file(tmp_conf, SAMPLE_CONFIG)
+
+    with open(tmp_conf) as f:
+        s = f.read()
+        toml = tomlkit.parse(s)  # type: ignore
+
+    assert toml["downloads"]["folder"] == "old_value"  # type: ignore
+    assert toml["downloads"]["source_subdirectories"] is True  # type: ignore
+    assert toml["downloads"]["concurrency"] is True  # type: ignore
+    assert toml["downloads"]["max_connections"] == 6  # type: ignore
+    assert toml["downloads"]["requests_per_minute"] == 60  # type: ignore
+    assert toml["cli"]["text_output"] is True  # type: ignore
+    assert toml["cli"]["progress_bars"] is True  # type: ignore
+    assert toml["cli"]["max_search_results"] == 100  # type: ignore
+    assert toml["misc"]["version"] == "2.0.6"  # type: ignore
+    assert "YouTubeVideos" in str(toml["youtube"]["video_downloads_folder"])
+    # type: ignore
+    os.remove("tests/test_config_old2.toml")
 
 
 def test_sample_config_data_properties(sample_config_data):
