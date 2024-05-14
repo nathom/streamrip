@@ -124,10 +124,14 @@ class Converter:
             aformat = []
 
             if isinstance(self.sampling_rate, int):
-                sample_rates = "|".join(str(rate) for rate in SAMPLING_RATES if rate <= self.sampling_rate)
+                sample_rates = "|".join(
+                    str(rate) for rate in SAMPLING_RATES if rate <= self.sampling_rate
+                )
                 aformat.append(f"sample_rates={sample_rates}")
             elif self.sampling_rate is not None:
-                raise TypeError(f"Sampling rate must be int, not {type(self.sampling_rate)}")
+                raise TypeError(
+                    f"Sampling rate must be int, not {type(self.sampling_rate)}"
+                )
 
             if isinstance(self.bit_depth, int):
                 bit_depths = ["s16p", "s16"]
@@ -143,9 +147,9 @@ class Converter:
                 raise TypeError(f"Bit depth must be int, not {type(self.bit_depth)}")
 
             if aformat:
-                aformat_params = ':'.join(aformat)
+                aformat_params = ":".join(aformat)
                 command.extend(["-af", f"aformat={aformat_params}"])
-    
+
         # automatically overwrite
         command.extend(["-y", self.tempfile])
 
