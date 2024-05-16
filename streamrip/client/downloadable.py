@@ -124,9 +124,14 @@ class DeezerDownloadable(Downloadable):
         self.session = session
         self.url = info["url"]
         self.source: str = "deezer"
-        max_quality_available = max(
-            i for i, size in enumerate(info["quality_to_size"]) if size > 0
-        )
+        try:
+            max_quality_available = max(
+                i for i, size in enumerate(info["quality_to_size"]) if size > 0
+            )
+        except:
+            raise NonStreamableError(
+                "Missing download info. Skipping.",
+            )
         self.quality = min(info["quality"], max_quality_available)
         self._size = info["quality_to_size"][self.quality]
         if self.quality <= 1:
