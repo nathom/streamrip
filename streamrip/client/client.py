@@ -53,6 +53,7 @@ class Client(ABC):
         if headers is None:
             headers = {}
         return aiohttp.ClientSession(
+            timeout=aiohttp.ClientTimeout(total=0),
             headers={"User-Agent": DEFAULT_USER_AGENT},
             **headers,
         )
