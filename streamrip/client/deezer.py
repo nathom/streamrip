@@ -71,7 +71,7 @@ class DeezerClient(Client):
             raise NonStreamableError(e)
 
         # If not readable (wrong zone, track id not available anymore etc.)
-        if item["readable"] == False:
+        if not item["readable"]:
             try:
                 if ("alternative" in item):
                     logger.warning(f"Original track id {item_id} not readable, using alternative {item['d']}")
