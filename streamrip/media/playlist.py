@@ -79,7 +79,7 @@ class PendingPlaylistTrack(Pending):
                 self.client.get_downloadable(self.id, quality),
             )
         except NonStreamableError as e:
-            logger.error("Error fetching download info for track: %s", e)
+            logger.error(f"Error fetching download info for track {self.id}: {e}")
             self.db.set_failed(self.client.source, "track", self.id)
             return None
 
