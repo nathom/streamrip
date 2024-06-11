@@ -72,21 +72,29 @@ class DeezerClient(Client):
 
         # If not readable (wrong zone, track id not available anymore etc.)
         if not item["readable"]:
-            try:
-                if ("alternative" in item):
-                    logger.warning(f"Original track id {item_id} not readable, using alternative {item['d']}")
-                    item = item["alternative"]
-                    item_id = item["id"]
-                else:
-                    item = self.find_alternative_track(artist=item["artist"]["name"], album=item["album"]["title"], track=item["title"])
-                    if len(item) == 0:
-                        raise Exception(f"Track {item_id} non readable, and no alternative found")
-                    else:
-                        logger.warning(f"Original track id {item_id} not readable, replacing with search result {item['id']}")
-                        item_id = item["id"]
-                        item = await asyncio.to_thread(self.client.api.get_track, item_id)
-            except Exception as e:
-                raise NonStreamableError(e)
+            alternative_item = item.get("alternative")
+            if alternative_item is not None:
+                logger.warning(
+                    f"Original track id {item_id} not readable, using alternative {alternative_item['id']}"
+                )
+                item = alternative_item
+                item_id = alternative_item["id"]
+            else:
+                alternative_item = await self._search_single(
+                    artist=item["artist"]["name"],
+                    album=item["album"]["title"],
+                    track=item["title"],
+                )
+                if alternative_item is None:
+                    raise NonStreamableError(
+                        f"Track {item_id} not readable, and no alternative found"
+                    )
+
+                logger.warning(
+                    f"Original track id {item_id} not readable, replacing with search result {alternative_item['id']}"
+                )
+                item_id = item["id"]
+                item = await asyncio.to_thread(self.client.api.get_track, item_id)
 
         album_id = item["album"]["id"]
         try:
@@ -151,12 +159,18 @@ class DeezerClient(Client):
             return [response]
         return []
 
-    
-    def find_alternative_track(self, artist="", album="", track="") -> dict:
-        response = self.client.api.advanced_search(artist=artist, album=album, track=track, limit=1, strict=True)
+    async def _search_single(self, artist, album, track) -> dict | None:
+        response = await asyncio.to_thread(
+            self.client.api.advanced_search,
+            artist=artist,
+            album=album,
+            track=track,
+            limit=1,
+            strict=True,
+        )
         if response["total"] >= 1:
             return response["data"][0]
-        return []
+        return None
 
     async def get_downloadable(
         self,
