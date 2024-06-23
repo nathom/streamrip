@@ -150,7 +150,9 @@ class PendingTrack(Pending):
         try:
             downloadable = await self.client.get_downloadable(self.id, quality)
         except NonStreamableError as e:
-            logger.error(f'Error getting downloadable data for track {meta.tracknumber} [{self.id}]: {e}')
+            logger.error(
+                f"Error getting downloadable data for track {meta.tracknumber} [{self.id}]: {e}"
+            )
             return None
 
         downloads_config = self.config.session.downloads
