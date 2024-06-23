@@ -138,7 +138,7 @@ class PendingTrack(Pending):
         try:
             meta = TrackMetadata.from_resp(self.album, source, resp)
         except Exception as e:
-            logger.error(f"Error building track metadata for {id=}: {e}")
+            logger.error(f"Error building track metadata for {self.id}: {e}")
             return None
 
         if meta is None:
@@ -147,7 +147,11 @@ class PendingTrack(Pending):
             return None
 
         quality = self.config.session.get_source(source).quality
-        downloadable = await self.client.get_downloadable(self.id, quality)
+        try:
+            downloadable = await self.client.get_downloadable(self.id, quality)
+        except NonStreamableError as e:
+            logger.error(f'Error getting downloadable data for track {meta.tracknumber} [{self.id}]: {e}')
+            return None
 
         downloads_config = self.config.session.downloads
         if downloads_config.disc_subdirectories and self.album.disctotal > 1:
