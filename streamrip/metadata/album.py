@@ -5,9 +5,9 @@ import re
 from dataclasses import dataclass
 from typing import Optional
 
+from ..filepath_utils import clean_filename
 from .covers import Covers
 from .util import get_quality_id, safe_get, typed
-from ..filepath_utils import clean_filename
 
 PHON_COPYRIGHT = "\u2117"
 COPYRIGHT = "\u00a9"
@@ -64,12 +64,12 @@ class AlbumMetadata:
 
     def format_folder_path(self, formatter: str) -> str:
         # Available keys: "albumartist", "title", "year", "bit_depth", "sampling_rate",
-        # "id", and "albumcomposer",        
+        # "id", and "albumcomposer",
 
         none_str = "Unknown"
         info: dict[str, str | int | float] = {
             "albumartist": clean_filename(self.albumartist),
-            "albumcomposer": clean_filename(self.albumcomposer) or none_str,
+            "albumcomposer": clean_filename(self.albumcomposer or "") or none_str,
             "bit_depth": self.info.bit_depth or none_str,
             "id": self.info.id,
             "sampling_rate": self.info.sampling_rate or none_str,
@@ -77,9 +77,9 @@ class AlbumMetadata:
             "year": self.year,
             "container": self.info.container,
         }
-        
+
         return formatter.format(**info)
-    
+
     @classmethod
     def from_qobuz(cls, resp: dict) -> AlbumMetadata:
         album = resp.get("title", "Unknown Album")
@@ -96,12 +96,12 @@ class AlbumMetadata:
         else:
             albumartist = typed(safe_get(resp, "artist", "name"), str)
 
-        albumcomposer = typed(safe_get(resp, "composer", "name"), str | None)
+        albumcomposer = typed(safe_get(resp, "composer", "name", default=""), str)
         _label = resp.get("label")
         if isinstance(_label, dict):
             _label = _label["name"]
-        label = typed(_label, str | None)
-        description = typed(resp.get("description") or None, str | None)
+        label = typed(_label or "", str)
+        description = typed(resp.get("description", ""), str)
         disctotal = typed(
             max(
                 track.get("media_number", 1)
@@ -115,8 +115,8 @@ class AlbumMetadata:
         # Non-embedded information
         cover_urls = Covers.from_qobuz(resp)
 
-        bit_depth = typed(resp.get("maximum_bit_depth"), int | None)
-        sampling_rate = typed(resp.get("maximum_sampling_rate"), int | float | None)
+        bit_depth = typed(resp.get("maximum_bit_depth", -1), int)
+        sampling_rate = typed(resp.get("maximum_sampling_rate", -1.0), int | float)
         quality = get_quality_id(bit_depth, sampling_rate)
         # Make sure it is non-empty list
         booklets = typed(resp.get("goodies", None) or None, list | None)
@@ -227,14 +227,14 @@ class AlbumMetadata:
             safe_get(track, "publisher_metadata", "explicit", default=False),
             bool,
         )
-        genre = typed(track["genre"], str | None)
+        genre = typed(track.get("genre"), str | None)
         genres = [genre] if genre is not None else []
         artist = typed(safe_get(track, "publisher_metadata", "artist"), str | None)
         artist = artist or typed(track["user"]["username"], str)
         albumartist = artist
-        date = typed(track["created_at"], str)
+        date = typed(track.get("created_at"), str)
         year = date[:4]
-        label = typed(track["label_name"], str | None)
+        label = typed(track.get("label_name"), str | None)
         description = typed(track.get("description"), str | None)
         album_title = typed(
             safe_get(track, "publisher_metadata", "album_title"),
@@ -284,6 +284,7 @@ class AlbumMetadata:
         """
 
         Args:
+        ----
             resp: API response containing album metadata.
 
         Returns: AlbumMetadata instance if the album is streamable, otherwise None.
@@ -300,12 +301,12 @@ class AlbumMetadata:
         # genre not returned by API
         date = typed(resp.get("releaseDate"), str)
         year = date[:4]
-        _copyright = typed(resp.get("copyright"), str)
+        _copyright = typed(resp.get("copyright", ""), str)
 
         artists = typed(resp.get("artists", []), list)
         albumartist = ", ".join(a["name"] for a in artists)
         if not albumartist:
-            albumartist = typed(safe_get(resp, "artist", "name"), str)
+            albumartist = typed(safe_get(resp, "artist", "name", default=""), str)
 
         disctotal = typed(resp.get("numberOfVolumes", 1), int)
         # label not returned by API
@@ -367,7 +368,7 @@ class AlbumMetadata:
         )
 
     @classmethod
-    def from_tidal_playlist_track_resp(cls, resp) -> AlbumMetadata | None:
+    def from_tidal_playlist_track_resp(cls, resp: dict) -> AlbumMetadata | None:
         album_resp = resp["album"]
         streamable = resp.get("allowStreaming", False)
         if not streamable:
@@ -383,11 +384,13 @@ class AlbumMetadata:
         else:
             year = "Unknown Year"
 
-        _copyright = typed(resp.get("copyright"), str)
+        _copyright = typed(resp.get("copyright", ""), str)
         artists = typed(resp.get("artists", []), list)
         albumartist = ", ".join(a["name"] for a in artists)
         if not albumartist:
-            albumartist = typed(safe_get(resp, "artist", "name"), str)
+            albumartist = typed(
+                safe_get(resp, "artist", "name", default="Unknown Albumbartist"), str
+            )
 
         disctotal = typed(resp.get("volumeNumber", 1), int)
         # label not returned by API

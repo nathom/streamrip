@@ -94,7 +94,11 @@ async def download_artwork(
     if len(downloadables) == 0:
         return embed_cover_path, saved_cover_path
 
-    await asyncio.gather(*downloadables)
+    try:
+        await asyncio.gather(*downloadables)
+    except Exception as e:
+        logger.error(f"Error downloading artwork: {e}")
+        return None, None
 
     # Update `covers` to reflect the current download state
     if save_artwork:

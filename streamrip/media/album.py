@@ -59,7 +59,12 @@ class PendingAlbum(Pending):
             )
             return None
 
-        meta = AlbumMetadata.from_album_resp(resp, self.client.source)
+        try:
+            meta = AlbumMetadata.from_album_resp(resp, self.client.source)
+        except Exception as e:
+            logger.error(f"Error building album metadata for {id=}: {e}")
+            return None
+
         if meta is None:
             logger.error(
                 f"Album {self.id} not available to stream on {self.client.source}",

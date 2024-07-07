@@ -197,14 +197,14 @@ class QobuzClient(Client):
 
         self.logged_in = True
 
-    async def get_metadata(self, item_id: str, media_type: str):
+    async def get_metadata(self, item: str, media_type: str):
         if media_type == "label":
-            return await self.get_label(item_id)
+            return await self.get_label(item)
 
         c = self.config.session.qobuz
         params = {
             "app_id": c.app_id,
-            f"{media_type}_id": item_id,
+            f"{media_type}_id": item,
             # Do these matter?
             "limit": 500,
             "offset": 0,
@@ -302,9 +302,9 @@ class QobuzClient(Client):
         epoint = "playlist/getUserPlaylists"
         return await self._paginate(epoint, {}, limit=limit)
 
-    async def get_downloadable(self, item_id: str, quality: int) -> Downloadable:
+    async def get_downloadable(self, item: str, quality: int) -> Downloadable:
         assert self.secret is not None and self.logged_in and 1 <= quality <= 4
-        status, resp_json = await self._request_file_url(item_id, quality, self.secret)
+        status, resp_json = await self._request_file_url(item, quality, self.secret)
         assert status == 200
         stream_url = resp_json.get("url")
 
@@ -319,9 +319,7 @@ class QobuzClient(Client):
             raise NonStreamableError
 
         return BasicDownloadable(
-            self.session,
-            stream_url,
-            "flac" if quality > 1 else "mp3",
+            self.session, stream_url, "flac" if quality > 1 else "mp3", source="qobuz"
         )
 
     async def _paginate(

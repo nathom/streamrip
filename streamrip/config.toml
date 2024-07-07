@@ -3,7 +3,8 @@
 folder = ""
 # Put Qobuz albums in a 'Qobuz' folder, Tidal albums in 'Tidal' etc.
 source_subdirectories = false
-
+# Put tracks in an album with 2 or more discs into a subfolder named `Disc N` 
+disc_subdirectories = true
 # Download (and convert) tracks all at once, instead of sequentially. 
 # If you are converting the tracks, or have fast internet, this will 
 # substantially improve processing speed.
@@ -181,6 +182,6 @@ max_search_results = 100
 
 [misc]
 # Metadata to identify this config file. Do not change.
-version = "2.0.3"
+version = "2.0.6"
 # Print a message if a new version of streamrip is available 
 check_for_updates = true

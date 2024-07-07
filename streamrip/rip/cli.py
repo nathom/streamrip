@@ -17,7 +17,7 @@ from rich.prompt import Confirm
 from rich.traceback import install
 
 from .. import __version__, db
-from ..config import DEFAULT_CONFIG_PATH, Config, set_user_defaults
+from ..config import DEFAULT_CONFIG_PATH, Config, OutdatedConfigError, set_user_defaults
 from ..console import console
 from .main import Main
 
@@ -116,6 +116,11 @@ def rip(ctx, config_path, folder, no_db, quality, codec, no_progress, verbose):
 
     try:
         c = Config(config_path)
+    except OutdatedConfigError as e:
+        console.print(e)
+        console.print("Auto-updating config file...")
+        Config.update_file(config_path)
+        c = Config(config_path)
     except Exception as e:
         console.print(
             f"Error loading config from [bold cyan]{config_path}[/bold cyan]: {e}\n"
@@ -153,6 +158,8 @@ def rip(ctx, config_path, folder, no_db, quality, codec, no_progress, verbose):
 @coro
 async def url(ctx, urls):
     """Download content from URLs."""
+    if ctx.obj["config"] is None:
+        return
     with ctx.obj["config"] as cfg:
         cfg: Config
         updates = cfg.session.misc.check_for_updates
@@ -237,7 +244,7 @@ def config():
 @click.pass_context
 def config_open(ctx, vim):
     """Open the config file in a text editor."""
-    config_path = ctx.obj["config"].path
+    config_path = ctx.obj["config_path"]
 
     console.print(f"Opening file at [bold cyan]{config_path}")
     if vim:
