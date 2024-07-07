@@ -106,5 +106,4 @@ class PendingAlbum(Pending):
             meta.format_folder_path(formatter), config.filepaths.restrict_characters
         )
 
-        # limit to 255 characters (max filename length)
-        return os.path.join(parent, folder[:254])
+        return os.path.join(parent, folder)
