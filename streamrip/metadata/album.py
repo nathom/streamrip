@@ -77,8 +77,8 @@ class AlbumMetadata:
             "year": self.year,
             "container": self.info.container,
         }
-
-        return formatter.format(**info)
+        
+        return clean_filename(formatter.format(**info))
 
     @classmethod
     def from_qobuz(cls, resp: dict) -> AlbumMetadata:
