@@ -79,7 +79,7 @@ class PendingPlaylistTrack(Pending):
                 self.client.get_downloadable(self.id, quality),
             )
         except NonStreamableError as e:
-            logger.error("Error fetching download info for track: %s", e)
+            logger.error(f"Error fetching download info for track {self.id}: {e}")
             self.db.set_failed(self.client.source, "track", self.id)
             return None
 
@@ -155,7 +155,11 @@ class PendingPlaylist(Pending):
             )
             return None
 
-        meta = PlaylistMetadata.from_resp(resp, self.client.source)
+        try:
+            meta = PlaylistMetadata.from_resp(resp, self.client.source)
+        except Exception as e:
+            logger.error(f"Error creating playlist: {e}")
+            return None
         name = meta.name
         parent = self.config.session.downloads.folder
         folder = os.path.join(parent, clean_filepath(name))

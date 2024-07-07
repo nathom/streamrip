@@ -1,7 +1,8 @@
 import pytest
 import tomlkit
+from tomlkit.toml_document import TOMLDocument
 
-from streamrip.config import *
+from streamrip.config import ConfigData
 
 
 @pytest.fixture()

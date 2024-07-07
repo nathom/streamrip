@@ -1,39 +1,23 @@
 [downloads]
 # Folder where tracks are downloaded to
-folder = ""
+folder = "old_value"
 # Put Qobuz albums in a 'Qobuz' folder, Tidal albums in 'Tidal' etc.
-source_subdirectories = false
-# Put tracks in an album with 2 or more discs into a subfolder named `Disc N` 
-disc_subdirectories = true
-# Download (and convert) tracks all at once, instead of sequentially. 
-# If you are converting the tracks, or have fast internet, this will 
-# substantially improve processing speed.
-concurrency = true
-# The maximum number of tracks to download at once
-# If you have very fast internet, you will benefit from a higher value,
-# A value that is too high for your bandwidth may cause slowdowns
-# Set to -1 for no limit
-max_connections = 6
-# Max number of API requests per source to handle per minute
-# Set to -1 for no limit
-requests_per_minute = 60
+source_subdirectories = true
 
 [qobuz]
 # 1: 320kbps MP3, 2: 16/44.1, 3: 24/<=96, 4: 24/>=96
 quality = 3
-# This will download booklet pdfs that are included with some albums
-download_booklets = true
 
 # Authenticate to Qobuz using auth token? Value can be true/false only
 use_auth_token = false
 # Enter your userid if the above use_auth_token is set to true, else enter your email
-email_or_userid = ""
+email_or_userid = "old_test@gmail.com"
 # Enter your auth token if the above use_auth_token is set to true, else enter the md5 hash of your plaintext password
-password_or_token = ""
+password_or_token = "old_test_pwd"
 # Do not change
-app_id = ""
+app_id = "old_12345"
 # Do not change
-secrets = []
+secrets = ['old_secret1', 'old_secret2']
 
 [tidal]
 # 0: 256kbps AAC, 1: 320kbps AAC, 2: 16/44.1 "HiFi" FLAC, 3: 24/44.1 "MQA" FLAC
@@ -42,14 +26,14 @@ quality = 3
 download_videos = true
 
 # Do not change any of the fields below
-user_id = ""
-country_code = ""
-access_token = ""
-refresh_token = ""
+user_id = "old_userid"
+country_code = "old_countrycode"
+access_token = "old_accesstoken"
+refresh_token = "old_refreshtoken"
 # Tokens last 1 week after refresh. This is the Unix timestamp of the expiration
 # time. If you haven't used streamrip in more than a week, you may have to log
 # in again using `rip config --tidal`
-token_expiry = ""
+token_expiry = "old_tokenexpiry"
 
 [deezer]
 # 0, 1, or 2
@@ -59,7 +43,7 @@ quality = 2
 # An authentication cookie that allows streamrip to use your Deezer account
 # See https://github.com/nathom/streamrip/wiki/Finding-Your-Deezer-ARL-Cookie
 # for instructions on how to find this
-arl = ""
+arl = "old_testarl"
 # This allows for free 320kbps MP3 downloads from Deezer
 # If an arl is provided, deezloader is never used
 use_deezloader = true
@@ -71,16 +55,14 @@ deezloader_warnings = true
 # Only 0 is available for now
 quality = 0
 # This changes periodically, so it needs to be updated
-client_id = ""
-app_version = ""
+client_id = "old_clientid"
+app_version = "old_appversion"
 
 [youtube]
 # Only 0 is available for now
 quality = 0
 # Download the video along with the audio
 download_videos = false
-# The path to download the videos to
-video_downloads_folder = ""
 
 [database]
 # Create a database that contains all the track IDs downloaded so far
@@ -88,17 +70,17 @@ video_downloads_folder = ""
 # This can be disabled temporarily with the --no-db flag
 downloads_enabled = true
 # Path to the downloads database 
-downloads_path = ""
+downloads_path = "old_downloadspath"
 # If a download fails, the item ID is stored here. Then, `rip repair` can be
 # called to retry the downloads
 failed_downloads_enabled = true
-failed_downloads_path = ""
+failed_downloads_path = "old_faileddownloadspath"
 
 # Convert tracks to a codec after downloading them.
 [conversion]
 enabled = false
 # FLAC, ALAC, OPUS, MP3, VORBIS, or AAC
-codec = "ALAC"
+codec = "old_ALAC"
 # In Hz. Tracks are downsampled if their sampling rate is greater than this. 
 # Value of 48000 is recommended to maximize quality and minimize space
 sampling_rate = 48000
@@ -109,7 +91,6 @@ bit_depth = 24
 lossy_bitrate = 320
 
 # Filter a Qobuz artist's discography. Set to 'true' to turn on a filter.
-# This will also be applied to other sources, but is not guaranteed to work correctly
 [qobuz_filters]
 # Remove Collectors Editions, live recordings, etc.
 extras = false
@@ -130,15 +111,7 @@ embed = true
 # The size of the artwork to embed. Options: thumbnail, small, large, original.
 # "original" images can be up to 30MB, and may fail embedding. 
 # Using "large" is recommended.
-embed_size = "large"
-# If this is set to a value > 0, max(width, height) of the embedded art will be set to this value in pixels
-# Proportions of the image will remain the same
-embed_max_width = -1
-# Save the cover image at the highest quality as a seperate jpg file
-save_artwork = true
-# If this is set to a value > 0, max(width, height) of the saved art will be set to this value in pixels
-# Proportions of the image will remain the same
-saved_max_width = -1
+embed_size = "old_large"
 
 
 [metadata]
@@ -159,34 +132,11 @@ exclude = []
 add_singles_to_folder = false
 # Available keys: "albumartist", "title", "year", "bit_depth", "sampling_rate",
 # "id", and "albumcomposer"
-folder_format = "{albumartist} - {title} ({year}) [{container}] [{bit_depth}B-{sampling_rate}kHz]"
+folder_format = "old_{albumartist} - {title} ({year}) [{container}] [{bit_depth}B-{sampling_rate}kHz]"
 # Available keys: "tracknumber", "artist", "albumartist", "composer", "title",
 # and "albumcomposer", "explicit"
-track_format = "{tracknumber:02}. {artist} - {title}{explicit}"
-# Only allow printable ASCII characters in filenames.
-restrict_characters = false
-# Truncate the filename if it is greater than this number of characters
-# Setting this to false may cause downloads to fail on some systems
-truncate_to = 120
-
-# Last.fm playlists are downloaded by searching for the titles of the tracks
-[lastfm]
-# The source on which to search for the tracks.
-source = "qobuz"
-# If no results were found with the primary source, the item is searched for 
-# on this one.
-fallback_source = ""
-
-[cli]
-# Print "Downloading {Album name}" etc. to screen
-text_output = true
-# Show resolve, download progress bars
-progress_bars = true
-# The maximum number of search results to show in the interactive menu
-max_search_results = 100
 
 [misc]
 # Metadata to identify this config file. Do not change.
-version = "2.0.6"
-# Print a message if a new version of streamrip is available 
+version = "0.0.1"
 check_for_updates = true

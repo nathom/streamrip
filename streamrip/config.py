@@ -1,5 +1,7 @@
-"""A config class that manages arguments between the config file and CLI."""
+"""Classes and functions that manage config state."""
+
 import copy
+import functools
 import logging
 import os
 import shutil
@@ -15,7 +17,11 @@ logger = logging.getLogger("streamrip")
 APP_DIR = click.get_app_dir("streamrip")
 os.makedirs(APP_DIR, exist_ok=True)
 DEFAULT_CONFIG_PATH = os.path.join(APP_DIR, "config.toml")
-CURRENT_CONFIG_VERSION = "2.0.3"
+CURRENT_CONFIG_VERSION = "2.0.6"
+
+
+class OutdatedConfigError(Exception):
+    pass
 
 
 @dataclass(slots=True)
@@ -181,6 +187,8 @@ class DownloadsConfig:
     folder: str
     # Put Qobuz albums in a 'Qobuz' folder, Tidal albums in 'Tidal' etc.
     source_subdirectories: bool
+    # Put tracks in an album with 2 or more discs into a subfolder named `Disc N`
+    disc_subdirectories: bool
     # Download (and convert) tracks all at once, instead of sequentially.
     # If you are converting the tracks, or have fast internet, this will
     # substantially improve processing speed.
@@ -259,7 +267,7 @@ class ConfigData:
         # TODO: handle the mistake where Windows people forget to escape backslash
         toml = parse(toml_str)
         if (v := toml["misc"]["version"]) != CURRENT_CONFIG_VERSION:  # type: ignore
-            raise Exception(
+            raise OutdatedConfigError(
                 f"Need to update config from {v} to {CURRENT_CONFIG_VERSION}",
             )
 
@@ -364,6 +372,26 @@ class Config:
             self.file.update_toml()
             toml_file.write(dumps(self.file.toml))
 
+    @staticmethod
+    def _update_file(old_path: str, new_path: str):
+        """Updates the current config based on a newer config `new_toml`."""
+        with open(new_path) as new_conf:
+            new_toml = parse(new_conf.read())
+
+        toml_set_user_defaults(new_toml)
+
+        with open(old_path) as old_conf:
+            old_toml = parse(old_conf.read())
+
+        update_config(old_toml, new_toml)
+
+        with open(old_path, "w") as f:
+            f.write(dumps(new_toml))
+
+    @classmethod
+    def update_file(cls, path: str):
+        cls._update_file(path, BLANK_CONFIG_PATH)
+
     @classmethod
     def defaults(cls):
         return cls(BLANK_CONFIG_PATH)
@@ -381,9 +409,65 @@ def set_user_defaults(path: str, /):
 
     with open(path) as f:
         toml = parse(f.read())
+
+    toml_set_user_defaults(toml)
+
+    with open(path, "w") as f:
+        f.write(dumps(toml))
+
+
+def toml_set_user_defaults(toml: TOMLDocument):
     toml["downloads"]["folder"] = DEFAULT_DOWNLOADS_FOLDER  # type: ignore
     toml["database"]["downloads_path"] = DEFAULT_DOWNLOADS_DB_PATH  # type: ignore
     toml["database"]["failed_downloads_path"] = DEFAULT_FAILED_DOWNLOADS_DB_PATH  # type: ignore
     toml["youtube"]["video_downloads_folder"] = DEFAULT_YOUTUBE_VIDEO_DOWNLOADS_FOLDER  # type: ignore
-    with open(path, "w") as f:
-        f.write(dumps(toml))
+
+
+def _get_dict_keys_r(d: dict) -> set[tuple]:
+    """Get all possible key combinations in nested dicts.
+
+    See tests/test_config.py for example.
+    """
+    keys = d.keys()
+    ret = set()
+    for cur in keys:
+        val = d[cur]
+        if isinstance(val, dict):
+            ret.update((cur, *remaining) for remaining in _get_dict_keys_r(val))
+        else:
+            ret.add((cur,))
+    return ret
+
+
+def _nested_get(dictionary, *keys, default=None):
+    return functools.reduce(
+        lambda d, key: d.get(key, default) if isinstance(d, dict) else default,
+        keys,
+        dictionary,
+    )
+
+
+def _nested_set(dictionary, *keys, val):
+    """Nested set. Throws exception if keys are invalid."""
+    assert len(keys) > 0
+    final = functools.reduce(lambda d, key: d.get(key), keys[:-1], dictionary)
+    final[keys[-1]] = val
+
+
+def update_config(old_with_data: dict, new_without_data: dict):
+    """Used to update config when a new config version is detected.
+
+    All data associated with keys that are shared between the old and
+    new configs are copied from old to new. The remaining keep their default value.
+
+    Assumes that new_without_data contains default config values of the
+    latest version.
+    """
+    old_keys = _get_dict_keys_r(old_with_data)
+    new_keys = _get_dict_keys_r(new_without_data)
+    common = old_keys.intersection(new_keys)
+    common.discard(("misc", "version"))
+
+    for k in common:
+        old_val = _nested_get(old_with_data, *k)
+        _nested_set(new_without_data, *k, val=old_val)

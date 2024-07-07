@@ -1,0 +1,41 @@
+name: Python Poetry Test
+
+on:
+  push:
+    branches:
+      - main
+      - dev
+  pull_request:
+    branches:
+      - main
+      - dev
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+      name: Check out repository code
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'  # Specify the Python version
+        
+    - name: Install and configure Poetry
+      uses: snok/install-poetry@v1
+      with:
+        version: 1.5.1
+        virtualenvs-create: false
+        virtualenvs-in-project: true
+        installer-parallel: true
+
+    - name: Install dependencies
+      run: poetry install
+
+    - name: Run tests
+      run: poetry run pytest
+
+    - name: Success message
+      if: success()
+      run: echo "Tests passed successfully!"
