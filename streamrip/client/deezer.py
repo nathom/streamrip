@@ -173,7 +173,7 @@ class DeezerClient(Client):
                 "quality allowed is 1.",
             )
         except deezer.WrongGeolocation:
-            if not is_retry:
+            if not is_retry and fallback_id:
                 return await self.get_downloadable(fallback_id, quality, is_retry=True)
             raise NonStreamableError(
                 "The requested track is not available. This may be due to your country/location.",
