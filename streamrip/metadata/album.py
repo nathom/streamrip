@@ -5,7 +5,7 @@ import re
 from dataclasses import dataclass
 from typing import Optional
 
-from ..filepath_utils import clean_filename
+from ..filepath_utils import clean_filename, clean_filepath
 from .covers import Covers
 from .util import get_quality_id, safe_get, typed
 
@@ -78,7 +78,7 @@ class AlbumMetadata:
             "container": self.info.container,
         }
         
-        return clean_filename(formatter.format(**info))
+        return clean_filepath(formatter.format(**info))
 
     @classmethod
     def from_qobuz(cls, resp: dict) -> AlbumMetadata:
