@@ -162,20 +162,20 @@ class QobuzClient(Client):
             f.qobuz.secrets = c.secrets
             f.set_modified()
 
-        self.session.headers.update({"X-App-Id": c.app_id})
+        self.session.headers.update({"X-App-Id": str(c.app_id)})
         self.secret = await self._get_valid_secret(c.secrets)
 
         if c.use_auth_token:
             params = {
                 "user_id": c.email_or_userid,
                 "user_auth_token": c.password_or_token,
-                "app_id": c.app_id,
+                "app_id": str(c.app_id),
             }
         else:
             params = {
                 "email": c.email_or_userid,
                 "password": c.password_or_token,
-                "app_id": c.app_id,
+                "app_id": str(c.app_id),
             }
 
         logger.debug("Request params %s", params)
@@ -203,7 +203,7 @@ class QobuzClient(Client):
 
         c = self.config.session.qobuz
         params = {
-            "app_id": c.app_id,
+            "app_id": str(c.app_id),
             f"{media_type}_id": item,
             # Do these matter?
             "limit": 500,
@@ -236,7 +236,7 @@ class QobuzClient(Client):
         c = self.config.session.qobuz
         page_limit = 500
         params = {
-            "app_id": c.app_id,
+            "app_id": str(c.app_id),
             "label_id": label_id,
             "limit": page_limit,
             "offset": 0,
@@ -254,7 +254,7 @@ class QobuzClient(Client):
             self._api_request(
                 epoint,
                 {
-                    "app_id": c.app_id,
+                    "app_id": str(c.app_id),
                     "label_id": label_id,
                     "limit": page_limit,
                     "offset": offset,
