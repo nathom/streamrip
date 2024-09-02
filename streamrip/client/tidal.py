@@ -140,6 +140,9 @@ class TidalClient(Client):
             manifest = json.loads(base64.b64decode(resp["manifest"]).decode("utf-8"))
         except KeyError:
             raise Exception(resp["userMessage"])
+        except JSONDecodeError:
+            logger.error(f"Failed to get manifest for {track_id}. Retrying with lower quality.")
+            return await self.get_downloadable(track_id, quality - 1)
 
         logger.debug(manifest)
         enc_key = manifest.get("keyId")
