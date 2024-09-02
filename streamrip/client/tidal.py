@@ -103,12 +103,16 @@ class TidalClient(Client):
             item["albums"] = album_resp["items"]
             item["albums"].extend(ep_resp["items"])
         elif media_type == "track":
-            resp = await self._api_request(f"tracks/{str(item_id)}/lyrics", base="https://listen.tidal.com/v1")
-            # Use unsynced lyrics for MP3, synced for others (FLAC, OPUS, etc)
-            if self.global_config.session.conversion.enabled and self.global_config.session.conversion.codec.upper() == "MP3":
-                item["lyrics"] = resp.get("lyrics") or ''
-            else:
-                item["lyrics"] = resp.get("subtitles") or resp.get("lyrics") or ''
+            try:
+                resp = await self._api_request(f"tracks/{str(item_id)}/lyrics", base="https://listen.tidal.com/v1")
+
+                # Use unsynced lyrics for MP3, synced for others (FLAC, OPUS, etc)
+                if self.global_config.session.conversion.enabled and self.global_config.session.conversion.codec.upper() == "MP3":
+                    item["lyrics"] = resp.get("lyrics") or ''
+                else:
+                    item["lyrics"] = resp.get("subtitles") or resp.get("lyrics") or ''
+            except TypeError as e:
+                logger.warning(f"Failed to get lyrics for {item_id}: {e}")
 
         logger.debug(item)
         return item
