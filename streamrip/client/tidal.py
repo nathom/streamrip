@@ -104,7 +104,11 @@ class TidalClient(Client):
             item["albums"].extend(ep_resp["items"])
         elif media_type == "track":
             resp = await self._api_request(f"tracks/{str(item_id)}/lyrics", base="https://listen.tidal.com/v1")
-            item["lyrics"] = resp.get("subtitles") or resp.get("lyrics") or ''
+            # Use unsynced lyrics for MP3, synced for others (FLAC, OPUS, etc)
+            if self.global_config.session.conversion.enabled and self.global_config.session.conversion.codec.upper() == "MP3":
+                item["lyrics"] = resp.get("lyrics") or ''
+            else:
+                item["lyrics"] = resp.get("subtitles") or resp.get("lyrics") or ''
 
         logger.debug(item)
         return item
