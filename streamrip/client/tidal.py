@@ -153,7 +153,7 @@ class TidalClient(Client):
         except KeyError:
             raise Exception(resp["userMessage"])
         except JSONDecodeError:
-            logger.error(f"Failed to get manifest for {track_id}. Retrying with lower quality.")
+            logger.warning(f"Failed to get manifest for {track_id}. Retrying with lower quality.")
             return await self.get_downloadable(track_id, quality - 1)
 
         logger.debug(manifest)
