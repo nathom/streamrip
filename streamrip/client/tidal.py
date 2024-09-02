@@ -4,6 +4,7 @@ import json
 import logging
 import re
 import time
+from json import JSONDecodeError
 
 import aiohttp
 
@@ -101,6 +102,9 @@ class TidalClient(Client):
 
             item["albums"] = album_resp["items"]
             item["albums"].extend(ep_resp["items"])
+        elif media_type == "track":
+            resp = await self._api_request(f"tracks/{str(item_id)}/lyrics", base="https://listen.tidal.com/v1")
+            item["lyrics"] = resp.get("subtitles") or resp.get("lyrics") or ''
 
         logger.debug(item)
         return item
@@ -309,7 +313,7 @@ class TidalClient(Client):
             async with self.session.post(url, data=data, auth=auth) as resp:
                 return await resp.json()
 
-    async def _api_request(self, path: str, params=None) -> dict:
+    async def _api_request(self, path: str, params=None, base: str = BASE) -> dict:
         """Handle Tidal API requests.
 
         :param path:
@@ -324,7 +328,7 @@ class TidalClient(Client):
         params["limit"] = 100
 
         async with self.rate_limiter:
-            async with self.session.get(f"{BASE}/{path}", params=params) as resp:
+            async with self.session.get(f"{base}/{path}", params=params) as resp:
                 if resp.status == 404:
                     logger.warning("TIDAL: track not found", resp)
                     raise NonStreamableError("TIDAL: Track not found")

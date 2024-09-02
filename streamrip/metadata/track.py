@@ -32,6 +32,7 @@ class TrackMetadata:
     discnumber: int
     composer: str | None
     isrc: str | None = None
+    lyrics: str | None = ""
 
     @classmethod
     def from_qobuz(cls, album: AlbumMetadata, resp: dict) -> TrackMetadata | None:
@@ -170,6 +171,8 @@ class TrackMetadata:
         else:
             artist = track["artist"]["name"]
 
+        lyrics = track.get("lyrics", "")
+
         quality_map: dict[str, int] = {
             "LOW": 0,
             "HIGH": 1,
@@ -209,6 +212,7 @@ class TrackMetadata:
             discnumber=discnumber,
             composer=None,
             isrc=isrc,
+            lyrics=lyrics
         )
 
     @classmethod
