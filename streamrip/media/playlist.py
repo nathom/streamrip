@@ -65,12 +65,15 @@ class PendingPlaylistTrack(Pending):
             )
             self.db.set_failed(self.client.source, "track", self.id)
             return None
-
+            
+        meta.compilation = 1
         c = self.config.session.metadata
         if c.renumber_playlist_tracks:
             meta.tracknumber = self.position
         if c.set_playlist_to_album:
             album.album = self.playlist_name
+            album.albumartist = "Playlist"
+
 
         quality = self.config.session.get_source(self.client.source).quality
         try:
