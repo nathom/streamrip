@@ -8,6 +8,7 @@ import aiohttp
 import aiolimiter
 
 from .downloadable import Downloadable
+from .ripClient import StreamRipClient
 
 logger = logging.getLogger("streamrip")
 
@@ -52,7 +53,12 @@ class Client(ABC):
     async def get_session(headers: dict | None = None) -> aiohttp.ClientSession:
         if headers is None:
             headers = {}
-        return aiohttp.ClientSession(
+        # return aiohttp.ClientSession(
+        #    headers={"User-Agent": DEFAULT_USER_AGENT},
+        #    **headers,
+        # )
+
+        return StreamRipClient(
             headers={"User-Agent": DEFAULT_USER_AGENT},
             **headers,
         )
