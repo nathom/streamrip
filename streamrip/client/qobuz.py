@@ -163,8 +163,7 @@ class QobuzClient(Client):
             f.set_modified()
 
         self.session.headers.update({"X-App-Id": str(c.app_id)})
-        self.secret = await self._get_valid_secret(c.secrets)
-
+        
         if c.use_auth_token:
             params = {
                 "user_id": c.email_or_userid,
@@ -194,6 +193,8 @@ class QobuzClient(Client):
 
         uat = resp["user_auth_token"]
         self.session.headers.update({"X-User-Auth-Token": uat})
+
+        self.secret = await self._get_valid_secret(c.secrets)
 
         self.logged_in = True
 
