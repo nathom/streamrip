@@ -117,7 +117,8 @@ class QobuzSpoofer:
             ).decode("utf-8")
 
         vals: List[str] = list(secrets.values())
-        vals.remove("")
+        while "" in vals:
+            vals.remove("")
 
         secrets_list = vals
 
