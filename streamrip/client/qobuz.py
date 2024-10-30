@@ -1,4 +1,9 @@
 import asyncio
+
+# Forcer l'utilisation de SelectorEventLoop sur Windows
+if asyncio.get_event_loop_policy().__class__.__name__ == 'WindowsProactorEventLoopPolicy':
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+
 import base64
 import hashlib
 import logging
