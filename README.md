@@ -52,7 +52,7 @@ If you want to get access to the latest and greatest features without waiting fo
 from the `dev` branch with the following command
 
 ```bash
-pip3 install git+https://github.com/nathom/streamrip.git@dev
+pip3 install git+https://github.com/Akashi2025/streamrip.git@dev
 ```
 
 ## Example Usage
