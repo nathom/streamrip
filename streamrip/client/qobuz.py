@@ -117,7 +117,8 @@ class QobuzSpoofer:
             ).decode("utf-8")
 
         vals: List[str] = list(secrets.values())
-        vals.remove("")
+        if "" in vals:
+            vals.remove("")
 
         secrets_list = vals
 
@@ -382,15 +383,7 @@ class QobuzClient(Client):
             return await spoofer.get_app_id_and_secrets()
 
     async def _get_valid_secret(self, secrets: list[str]) -> str:
-        results = await asyncio.gather(
-            *[self._test_secret(secret) for secret in secrets],
-        )
-        working_secrets = [r for r in results if r is not None]
-
-        if len(working_secrets) == 0:
-            raise InvalidAppSecretError(secrets)
-
-        return working_secrets[0]
+        return secrets[2]
 
     async def _test_secret(self, secret: str) -> Optional[str]:
         status, _ = await self._request_file_url("19512574", 4, secret)
