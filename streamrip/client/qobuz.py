@@ -382,8 +382,22 @@ class QobuzClient(Client):
         async with QobuzSpoofer() as spoofer:
             return await spoofer.get_app_id_and_secrets()
 
+    async def _test_secret(self, secret: str) -> Optional[str]:
+        status, _ = await self._request_file_url("19512574", 4, secret)
+        if status == 400:
+            return None
+        if status == 200 or status == 401:
+            return secret
+        logger.warning("Got status %d when testing secret", status)
+        return None
+
     async def _get_valid_secret(self, secrets: list[str]) -> str:
-        working_secrets = [r for r in secrets]
+        results = await asyncio.gather(
+                *[self._test_secret(secret) for secret in secrets],
+                )
+        working_secrets = [r for r in results if r is not None]
+        if len(working_secrets) == 0:
+            raise InvalidAppSecretError(secrets)
 
         return working_secrets[0]
 
