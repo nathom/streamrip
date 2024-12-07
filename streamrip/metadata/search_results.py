@@ -128,7 +128,9 @@ class AlbumSummary(Summary):
     @classmethod
     def from_item(cls, item: dict):
         id = str(item["id"])
-        name = item.get("title") or "Unknown Title"
+        title = (item.get("title") or "").strip()
+        version = (item.get("version") or "").strip()
+        name = title + (" (" + version + ")" if version else "")
         artist = (
             item.get("performer", {}).get("name")
             or item.get("artist", {}).get("name")
