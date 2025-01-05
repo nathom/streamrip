@@ -52,6 +52,11 @@ makepkg -si
 paru -S streamrip
 ```
 
+Alternatively, for users of Homebrew, you can install streamrip through brew.
+```
+brew install streamrip
+```
+
 ### Streamrip beta
 
 If you want to get access to the latest and greatest features without waiting for a new release, install
