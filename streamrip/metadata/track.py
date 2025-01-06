@@ -96,8 +96,8 @@ class TrackMetadata:
         work = None
         title = typed(resp["title"], str)
         artist = typed(resp["artist"]["name"], str)
-        tracknumber = typed(resp["track_position"], int)
-        discnumber = typed(resp["disk_number"], int)
+        tracknumber = typed(resp.get("track_position", 0), int)
+        discnumber = typed(resp.get("disk_number", 0), int)
         composer = None
         info = TrackInfo(
             id=track_id,
@@ -212,7 +212,7 @@ class TrackMetadata:
             discnumber=discnumber,
             composer=None,
             isrc=isrc,
-            lyrics=lyrics
+            lyrics=lyrics,
         )
 
     @classmethod

@@ -77,7 +77,7 @@ class AlbumMetadata:
             "year": self.year,
             "container": self.info.container,
         }
-        
+
         return clean_filepath(formatter.format(**info))
 
     @classmethod
@@ -457,9 +457,15 @@ class AlbumMetadata:
         album_id = album_resp["id"]
         album = album_resp["title"]
         covers = Covers.from_deezer(album_resp)
-        date = album_resp["release_date"]
-        year = date[:4]
-        albumartist = ", ".join(a["name"] for a in resp["contributors"])
+        date = album_resp.get("release_date")
+        if date is not None:
+            year = date[:4]
+        else:
+            year = None
+        if "contributors" in resp:
+            albumartist = ", ".join(a["name"] for a in resp["contributors"])
+        else:
+            albumartist = resp["artist"].get("name")
         explicit = resp.get("explicit_lyrics", False)
 
         info = AlbumInfo(

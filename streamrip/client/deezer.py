@@ -2,6 +2,7 @@ import asyncio
 import binascii
 import hashlib
 import logging
+import os
 
 import deezer
 from Cryptodome.Cipher import AES
@@ -36,7 +37,7 @@ class DeezerClient(Client):
 
     def __init__(self, config: Config):
         self.global_config = config
-        self.client = deezer.Deezer()
+        self.client = deezer.Deezer(os.getenv("DEEZER_ACCESS_TOKEN", None))
         self.logged_in = False
         self.config = config.session.deezer
 
@@ -70,6 +71,13 @@ class DeezerClient(Client):
         except Exception as e:
             raise NonStreamableError(e)
 
+        if not item["readable"]:
+            raise NonStreamableError(f"Track {item_id} not readable")
+
+        # User uploaded files might not have an album attached, because it does not exist in Deezer
+        if "album" not in item:
+            return item
+
         album_id = item["album"]["id"]
         try:
             album_metadata, album_tracks = await asyncio.gather(
@@ -101,6 +109,22 @@ class DeezerClient(Client):
             asyncio.to_thread(self.client.api.get_playlist_tracks, item_id),
         )
         pl_metadata["tracks"] = pl_tracks["data"]
+        for track in pl_tracks["data"]:
+            if not track["readable"]:
+                # We need to use gw instead of api
+                # gw has the fallback of a track, the api strangely enough, not
+                try:
+                    item_fallbacks = await asyncio.to_thread(
+                        self.client.gw.get_track_with_fallback, track["id"]
+                    )
+                    if "FALLBACK" in item_fallbacks:
+                        track["id"] = item_fallbacks["FALLBACK"]["SNG_ID"]
+                        track["readable"] = True
+                except Exception as e:
+                    logger.error(
+                        f"Error while getting fallbacks for track {track['id']}: {e}"
+                    )
+
         pl_metadata["track_total"] = len(pl_tracks["data"])
         return pl_metadata
 

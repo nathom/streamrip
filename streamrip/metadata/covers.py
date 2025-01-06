@@ -70,10 +70,14 @@ class Covers:
     @classmethod
     def from_deezer(cls, resp):
         c = cls()
-        c.set_cover_url("original", resp["cover_xl"])
-        c.set_cover_url("large", resp["cover_big"])
-        c.set_cover_url("small", resp["cover_medium"])
-        c.set_cover_url("thumbnail", resp["cover_small"])
+        if "cover_xl" in resp:
+            c.set_cover_url("original", resp["cover_xl"])
+        if "cover_big" in resp:
+            c.set_cover_url("large", resp["cover_big"])
+        if "cover_medium" in resp:
+            c.set_cover_url("small", resp["cover_medium"])
+        if "cover_small" in resp:
+            c.set_cover_url("thumbnail", resp["cover_small"])
         return c
 
     @classmethod

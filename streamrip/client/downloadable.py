@@ -127,6 +127,11 @@ class DeezerDownloadable(Downloadable):
         qualities_available = [
             i for i, size in enumerate(info["quality_to_size"]) if size > 0
         ]
+        # user uploaded tracks have negative ID's
+        if int(info.get("id", 0)) < 0:
+            # Always mp3
+            qualities_available = [1]
+
         if len(qualities_available) == 0:
             raise NonStreamableError(
                 "Missing download info. Skipping.",
