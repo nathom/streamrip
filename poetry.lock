@@ -455,14 +455,16 @@ description = "A wrapper for all Deezer's APIs"
 optional = false
 python-versions = ">=3.6"
 files = []
-develop = true
+develop = false
 
 [package.dependencies]
 requests = "*"
 
 [package.source]
-type = "directory"
-url = "../deezer-py"
+type = "git"
+url = "https://github.com/OhMyMndy/deezer-py.git"
+reference = "fixes"
+resolved_reference = "0a5de7c3ad4ae60fbb7ac4d1dec1654e3ba9b6bb"
 
 [[package]]
 name = "exceptiongroup"
@@ -1471,4 +1473,4 @@ multidict = ">=4.0"
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.10 <4.0"
-content-hash = "ee3220630fc02605e1cc169180a413e34809fa965018b5c3be1f13a64e3671bc"
+content-hash = "51f6e8689dc4a9366c2f672b1b8e509d2afa33e534d08f7d6f878b510c2e3706"
