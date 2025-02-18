@@ -21,6 +21,7 @@ logger = logging.getLogger("streamrip")
 @dataclass(slots=True)
 class Track(Media):
     meta: TrackMetadata
+    album: AlbumMetadata
     downloadable: Downloadable
     config: Config
     folder: str
@@ -46,7 +47,14 @@ class Track(Media):
                 f"Track {self.meta.tracknumber}",
             ) as callback:
                 try:
-                    await self.downloadable.download(self.download_path, callback)
+                    # Create temp file first so when the transfer is aborted
+                    # We do not end with an incomplete file
+                    # TODO: remove temp file on abort
+                    if not os.path.isfile(self.download_path):
+                        await self.downloadable.download(
+                            self.download_path + ".tmp", callback
+                        )
+                        os.rename(self.download_path + ".tmp", self.download_path)
                     retry = False
                 except Exception as e:
                     logger.error(
@@ -63,7 +71,14 @@ class Track(Media):
                 f"Track {self.meta.tracknumber} (retry)",
             ) as callback:
                 try:
-                    await self.downloadable.download(self.download_path, callback)
+                    # Create temp file first so when the transfer is aborted
+                    # We do not end with an incomplete file
+                    # TODO: remove temp file on abort
+                    if not os.path.isfile(self.download_path):
+                        await self.downloadable.download(
+                            self.download_path + ".tmp", callback
+                        )
+                        os.rename(self.download_path + ".tmp", self.download_path)
                 except Exception as e:
                     logger.error(
                         f"Persistent error downloading track '{self.meta.title}', skipping: {e}"
@@ -75,12 +90,14 @@ class Track(Media):
     async def postprocess(self):
         if self.is_single:
             remove_title(self.meta.title)
+        # Sometimes downloads fails, and it wants to tag it, which can't without a file
+        # This happens with user uploaded files on Deezer from time to time
+        if os.path.isfile(self.download_path):
+            await tag_file(self.download_path, self.meta, self.cover_path)
+            if self.config.session.conversion.enabled:
+                await self._convert()
 
-        await tag_file(self.download_path, self.meta, self.cover_path)
-        if self.config.session.conversion.enabled:
-            await self._convert()
-
-        self.db.set_downloaded(self.meta.info.id)
+            self.db.set_downloaded(self.meta.info.id)
 
     async def _convert(self):
         c = self.config.session.conversion
@@ -161,8 +178,10 @@ class PendingTrack(Pending):
         else:
             folder = self.folder
 
+
         return Track(
             meta,
+            self.album,
             downloadable,
             self.config,
             folder,
@@ -200,7 +219,7 @@ class PendingSingle(Pending):
         try:
             album = AlbumMetadata.from_track_resp(resp, self.client.source)
         except Exception as e:
-            logger.error(f"Error building album metadata for track {id=}: {e}")
+            logger.error(f"Error building album metadata for track {self.id}: {e}")
             return None
 
         if album is None:
@@ -213,7 +232,7 @@ class PendingSingle(Pending):
         try:
             meta = TrackMetadata.from_resp(album, self.client.source, resp)
         except Exception as e:
-            logger.error(f"Error building track metadata for track {id=}: {e}")
+            logger.error(f"Error building track metadata for track {self.id}: {e}")
             return None
 
         if meta is None:
@@ -233,13 +252,19 @@ class PendingSingle(Pending):
             folder = parent
 
         os.makedirs(folder, exist_ok=True)
+        c = self.config.session.filepaths
 
+        folder = os.path.join(
+            folder,
+            album.format_folder_path(c.folder_format),
+        )
         embedded_cover_path, downloadable = await asyncio.gather(
             self._download_cover(album.covers, folder),
             self.client.get_downloadable(self.id, quality),
         )
         return Track(
             meta,
+            album,
             downloadable,
             self.config,
             folder,
