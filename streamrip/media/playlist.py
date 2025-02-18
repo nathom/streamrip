@@ -72,6 +72,17 @@ class PendingPlaylistTrack(Pending):
         if c.set_playlist_to_album:
             album.album = self.playlist_name
 
+        playlist_tracks_in_subdirs = True
+        if playlist_tracks_in_subdirs:
+            c = self.config.session.filepaths
+
+            self.folder = os.path.join(
+                self.folder,
+                album.format_folder_path(c.folder_format),
+            )
+
+        self.cover_path = self.folder
+
         quality = self.config.session.get_source(self.client.source).quality
         try:
             embedded_cover_path, downloadable = await asyncio.gather(
@@ -85,6 +96,7 @@ class PendingPlaylistTrack(Pending):
 
         return Track(
             meta,
+            album,
             downloadable,
             self.config,
             self.folder,
