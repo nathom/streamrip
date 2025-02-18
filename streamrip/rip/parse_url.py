@@ -184,7 +184,7 @@ class DeezerDynamicURL(URL):
         if match:
             return match.group(1), match.group(2)
 
-        raise Exception("Unable to extract Deezer dynamic link.")
+        raise Exception(f"Unable to extract Deezer dynamic link from '{url}'")
 
 
 class SoundcloudURL(URL):
