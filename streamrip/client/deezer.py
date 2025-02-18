@@ -71,7 +71,10 @@ class DeezerClient(Client):
         except Exception as e:
             raise NonStreamableError(e)
 
-        if not item["readable"]:
+        items = self.get_alternatives([item])
+        item = items[0]
+
+        if "readable" in item and not item["readable"]:
             raise NonStreamableError(f"Track {item_id} not readable")
 
         # User uploaded files might not have an album attached, because it does not exist in Deezer
@@ -79,6 +82,9 @@ class DeezerClient(Client):
             return item
 
         album_id = item["album"]["id"]
+        if album_id == 0:
+            # todo: what to return here?
+            return item
         try:
             album_metadata, album_tracks = await asyncio.gather(
                 asyncio.to_thread(self.client.api.get_album, album_id),
@@ -99,31 +105,45 @@ class DeezerClient(Client):
             asyncio.to_thread(self.client.api.get_album, item_id),
             asyncio.to_thread(self.client.api.get_album_tracks, item_id),
         )
-        album_metadata["tracks"] = album_tracks["data"]
+        album_metadata["tracks"] = await self.get_alternatives(album_tracks["data"])
         album_metadata["track_total"] = len(album_tracks["data"])
         return album_metadata
+
+    async def get_alternatives(self, tracks):
+        for track in tracks:
+            if not track["readable"]:
+                # We need to use gw instead of api
+                # gw has the fallback of a track, the api strangely enough, not
+                try:
+                    retries = 0
+                    while True:
+                        retries += 1
+                        if retries > 4:
+                            break
+
+                        item_fallbacks = await asyncio.to_thread(
+                            self.client.gw.get_track_with_fallback, track["id"]
+                        )
+                        if "FALLBACK" in item_fallbacks:
+                            track["id"] = item_fallbacks["FALLBACK"]["SNG_ID"]
+                            track["readable"] = (
+                                    item_fallbacks["FALLBACK"]["STATUS"] == 1
+                            )
+                        else:
+                            break
+                except Exception as e:
+                    logger.error(
+                        f"Error while getting fallbacks for track {track['id']}: {e}"
+                    )
+
+        return tracks
 
     async def get_playlist(self, item_id: str) -> dict:
         pl_metadata, pl_tracks = await asyncio.gather(
             asyncio.to_thread(self.client.api.get_playlist, item_id),
             asyncio.to_thread(self.client.api.get_playlist_tracks, item_id),
         )
-        pl_metadata["tracks"] = pl_tracks["data"]
-        for track in pl_tracks["data"]:
-            if not track["readable"]:
-                # We need to use gw instead of api
-                # gw has the fallback of a track, the api strangely enough, not
-                try:
-                    item_fallbacks = await asyncio.to_thread(
-                        self.client.gw.get_track_with_fallback, track["id"]
-                    )
-                    if "FALLBACK" in item_fallbacks:
-                        track["id"] = item_fallbacks["FALLBACK"]["SNG_ID"]
-                        track["readable"] = True
-                except Exception as e:
-                    logger.error(
-                        f"Error while getting fallbacks for track {track['id']}: {e}"
-                    )
+        pl_metadata["tracks"] = await self.get_alternatives(pl_tracks["data"])
 
         pl_metadata["track_total"] = len(pl_tracks["data"])
         return pl_metadata
