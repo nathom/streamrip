@@ -86,7 +86,7 @@ class Artist(Media):
     ) -> list[Album]:
         _albums = albums
         if filt.repeats_prefer_explicit or filt.repeats_prefer_quality:
-            _albums = self._filter_repeats(_albums)
+            _albums = self._filter_repeats(_albums, filt.repeats_prefer_explicit)
         if filt.extras:
             _albums = filter(self._extras, _albums)
         if filt.features:
