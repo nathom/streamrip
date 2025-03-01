@@ -68,13 +68,17 @@ class TrackSummary(Summary):
     name: str
     artist: str
     date_released: str | None
+    explicit: bool
 
     def media_type(self):
         return "track"
 
     def summarize(self) -> str:
         # This char breaks the menu for some reason
-        return f"{clean(self.name)} by {clean(self.artist)}"
+        summary = f"{clean(self.name)} by {clean(self.artist)}"
+        if self.explicit:
+            summary += " [Explicit]"
+        return summary
 
     def preview(self) -> str:
         return f"Released on:\n{self.date_released}\n\nID: {self.id}"
@@ -105,7 +109,9 @@ class TrackSummary(Summary):
             or item.get("year")
             or "Unknown"
         )
-        return cls(id, name.strip(), artist, date_released)  # type: ignore
+
+        explicit = item.get("parental_warning", False)
+        return cls(id, name.strip(), artist, date_released, explicit)  # type: ignore
 
 
 @dataclass(slots=True)
@@ -115,12 +121,16 @@ class AlbumSummary(Summary):
     artist: str
     num_tracks: str
     date_released: str | None
+    explicit: bool
 
     def media_type(self):
         return "album"
 
     def summarize(self) -> str:
-        return f"{clean(self.name)} by {clean(self.artist)}"
+        summary = f"{clean(self.name)} by {clean(self.artist)}"
+        if self.explicit:
+            summary += " [Explicit]"
+        return summary
 
     def preview(self) -> str:
         return f"Date released:\n{self.date_released}\n\n{self.num_tracks} Tracks\n\nID: {self.id}"
@@ -158,7 +168,9 @@ class AlbumSummary(Summary):
             or item.get("year")
             or "Unknown"
         )
-        return cls(id, name, artist, str(num_tracks), date_released)
+
+        explicit = item.get("parental_warning", False)
+        return cls(id, name, artist, str(num_tracks), date_released, explicit)
 
 
 @dataclass(slots=True)
