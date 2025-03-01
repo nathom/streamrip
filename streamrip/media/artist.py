@@ -123,11 +123,12 @@ class Artist(Media):
             best = None
             max_bd, max_sr = 0, 0
 
-            # remove non-explicit albums if prefer_explicit is True
             if prefer_explicit:
-                for i, album in enumerate(group):
-                    if not album.meta.info.explicit:
-                        group.pop(i)
+                # filter out non-explicit albums, only if there are explicit albums (at least one)
+                explicit_group = [a for a in group if a.meta.info.explicit]
+                if explicit_group:
+                    # if there is at least one explicit album, continue the quality check with them
+                    group = explicit_group
 
             # assume that highest bd is always with highest sr
             for album in group:
