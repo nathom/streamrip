@@ -34,7 +34,7 @@ class Artist(Media):
 
     async def download(self):
         filter_conf = self.config.session.qobuz_filters
-        if filter_conf.repeats:
+        if filter_conf.repeats_prefer_explicit or filter_conf.repeats_prefer_quality:
             console.log(
                 "Resolving [purple]ALL[/purple] artist albums to detect repeats. This may take a while."
             )
@@ -85,7 +85,7 @@ class Artist(Media):
         self, albums: list[Album], filt: QobuzDiscographyFilterConfig
     ) -> list[Album]:
         _albums = albums
-        if filt.repeats:
+        if filt.repeats_prefer_explicit or filt.repeats_prefer_quality:
             _albums = self._filter_repeats(_albums)
         if filt.extras:
             _albums = filter(self._extras, _albums)
@@ -100,9 +100,11 @@ class Artist(Media):
     # Will not fail on any nonempty string
     _essence = re.compile(r"([^\(]+)(?:\s*[\(\[][^\)][\)\]])*")
 
-    def _filter_repeats(self, albums: list[Album]) -> list[Album]:
+    def _filter_repeats(self, albums: list[Album], prefer_explicit: bool) -> list[Album]:
         """When there are different versions of an album on the artist,
-        choose the one with the best quality.
+        choose the explicit one if prefer_explicit is True, otherwise choose
+        the one with the highest quality.
+
 
         It determines that two albums are identical if they have the same title
         ignoring contents in brackets or parentheses.
@@ -120,6 +122,13 @@ class Artist(Media):
         for group in groups.values():
             best = None
             max_bd, max_sr = 0, 0
+
+            # remove non-explicit albums if prefer_explicit is True
+            if prefer_explicit:
+                for i, album in enumerate(group):
+                    if not album.meta.info.explicit:
+                        group.pop(i)
+
             # assume that highest bd is always with highest sr
             for album in group:
                 bd = album.meta.info.bit_depth or 0

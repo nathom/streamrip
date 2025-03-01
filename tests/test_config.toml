@@ -112,8 +112,14 @@ lossy_bitrate = 320
 [qobuz_filters]
 # Remove Collectors Editions, live recordings, etc.
 extras = false
+
 # Picks the highest quality out of albums with identical titles.
-repeats = false
+repeats_prefer_quality = false
+# Picks the explicit album out of albums with identical titles.
+repeats_prefer_explicit = false
+# If both of the above are set to true, the explicit album takes precedence and will be downloaded,
+# falling back to the highest quality if no explicit album is found.
+
 # Remove EPs and Singles
 non_albums = false
 # Remove albums whose artist is not the one requested

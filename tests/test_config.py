@@ -220,7 +220,8 @@ def test_sample_config_data_fields(sample_config_data):
         ),
         qobuz_filters=QobuzDiscographyFilterConfig(
             extras=False,
-            repeats=False,
+            repeats_prefer_quality=False,
+            repeats_prefer_explicit=False,
             non_albums=False,
             features=False,
             non_studio_albums=False,

@@ -121,7 +121,9 @@ class QobuzDiscographyFilterConfig:
     # Remove Collectors Editions, live recordings, etc.
     extras: bool
     # Picks the highest quality out of albums with identical titles.
-    repeats: bool
+    repeats_prefer_quality: bool
+    # Picks the explicit album out of albums with identical titles.
+    repeats_prefer_explicit: bool
     # Remove EPs and Singles
     non_albums: bool
     # Remove albums whose artist is not the one requested
