@@ -162,7 +162,17 @@ class Main:
 
     async def rip(self):
         """Download all resolved items."""
-        await asyncio.gather(*[item.rip() for item in self.media])
+        results = await asyncio.gather(*[item.rip() for item in self.media], return_exceptions=True)
+        
+        failed_items = 0
+        for result in results:
+            if isinstance(result, Exception):
+                logger.error(f"Error processing media item: {result}")
+                failed_items += 1
+        
+        if failed_items > 0:
+            total_items = len(self.media)
+            logger.info(f"Download completed with {failed_items} failed items out of {total_items} total items.")
 
     async def search_interactive(self, source: str, media_type: str, query: str):
         client = await self.get_logged_in_client(source)
