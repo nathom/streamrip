@@ -50,7 +50,7 @@ ruff = "^0.1"
 black = "^24"
 isort = "^5.9.3"
 flake8 = "^3.9.2"
-setuptools = "^67.4.0"
+setuptools = "^70.0.0"
 pytest = "^7.4"
 
 [tool.pytest.ini_options]
