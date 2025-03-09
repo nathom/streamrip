@@ -163,6 +163,7 @@ def test_sample_config_data_fields(sample_config_data):
             concurrency=True,
             max_connections=6,
             requests_per_minute=60,
+            verify_ssl=True,
         ),
         qobuz=QobuzConfig(
             use_auth_token=False,
