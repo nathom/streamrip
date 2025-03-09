@@ -126,7 +126,12 @@ class QobuzSpoofer:
         return app_id, secrets_list
 
     async def __aenter__(self):
-        connector = aiohttp.TCPConnector(verify_ssl=self.verify_ssl)
+        from ..utils.ssl_utils import get_aiohttp_connector_kwargs
+        
+        # For the spoofer, always use SSL verification
+        connector_kwargs = get_aiohttp_connector_kwargs(verify_ssl=True)
+        connector = aiohttp.TCPConnector(**connector_kwargs)
+        
         self.session = aiohttp.ClientSession(connector=connector)
         return self
 

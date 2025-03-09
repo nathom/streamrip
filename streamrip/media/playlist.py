@@ -27,6 +27,7 @@ from ..metadata import (
 from .artwork import download_artwork
 from .media import Media, Pending
 from .track import Track
+from ..utils.ssl_utils import get_aiohttp_connector_kwargs
 
 logger = logging.getLogger("streamrip")
 
@@ -350,7 +351,10 @@ class PendingLastfmPlaylist(Pending):
                 return await resp.text("utf-8")
 
         # Create new session so we're not bound by rate limit
-        connector = aiohttp.TCPConnector(verify_ssl=self.config.session.downloads.verify_ssl)
+        verify_ssl = getattr(self.config.session.downloads, "verify_ssl", True)
+        connector_kwargs = get_aiohttp_connector_kwargs(verify_ssl=verify_ssl)
+        connector = aiohttp.TCPConnector(**connector_kwargs)
+        
         async with aiohttp.ClientSession(connector=connector) as session:
             page = await fetch(session, playlist_url)
             playlist_title_match = re_playlist_title_match.search(page)
