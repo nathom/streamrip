@@ -350,7 +350,8 @@ class PendingLastfmPlaylist(Pending):
                 return await resp.text("utf-8")
 
         # Create new session so we're not bound by rate limit
-        async with aiohttp.ClientSession() as session:
+        connector = aiohttp.TCPConnector(verify_ssl=self.config.session.downloads.verify_ssl)
+        async with aiohttp.ClientSession(connector=connector) as session:
             page = await fetch(session, playlist_url)
             playlist_title_match = re_playlist_title_match.search(page)
             if playlist_title_match is None:

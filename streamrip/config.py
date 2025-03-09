@@ -198,6 +198,9 @@ class DownloadsConfig:
     # A value that is too high for your bandwidth may cause slowdowns
     max_connections: int
     requests_per_minute: int
+    # Verify SSL certificates for API connections
+    # Set to false if you encounter SSL certificate verification errors (not recommended)
+    verify_ssl: bool
 
 
 @dataclass(slots=True)

@@ -49,10 +49,14 @@ class Client(ABC):
         )
 
     @staticmethod
-    async def get_session(headers: dict | None = None) -> aiohttp.ClientSession:
+    async def get_session(headers: dict | None = None, verify_ssl: bool = True) -> aiohttp.ClientSession:
         if headers is None:
             headers = {}
+        
+        # Create a TCP connector with the specified SSL verification setting
+        connector = aiohttp.TCPConnector(verify_ssl=verify_ssl)
+        
         return aiohttp.ClientSession(
-            headers={"User-Agent": DEFAULT_USER_AGENT},
-            **headers,
+            headers={"User-Agent": DEFAULT_USER_AGENT} | headers,
+            connector=connector,
         )

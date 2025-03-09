@@ -50,7 +50,7 @@ class TidalClient(Client):
         )
 
     async def login(self):
-        self.session = await self.get_session()
+        self.session = await self.get_session(verify_ssl=self.global_config.session.downloads.verify_ssl)
         c = self.config
         if not c.access_token:
             raise Exception("Access token not found in config.")
@@ -74,7 +74,7 @@ class TidalClient(Client):
         :type media_type: str
         :rtype: dict
         """
-        assert media_type in ("track", "playlist", "album", "artist"), media_type
+        assert media_type in ("track", "album", "playlist", "video", "artist"), media_type
 
         url = f"{media_type}s/{item_id}"
         item = await self._api_request(url)

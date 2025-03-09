@@ -73,13 +73,19 @@ def coro(f):
     default=False,
 )
 @click.option(
+    "--no-ssl-verify",
+    help="Disable SSL certificate verification (use if you encounter SSL errors)",
+    is_flag=True,
+    default=False,
+)
+@click.option(
     "-v",
     "--verbose",
     help="Enable verbose output (debug mode)",
     is_flag=True,
 )
 @click.pass_context
-def rip(ctx, config_path, folder, no_db, quality, codec, no_progress, verbose):
+def rip(ctx, config_path, folder, no_db, quality, codec, no_progress, no_ssl_verify, verbose):
     """Streamrip: the all in one music downloader."""
     global logger
     logging.basicConfig(
@@ -149,6 +155,9 @@ def rip(ctx, config_path, folder, no_db, quality, codec, no_progress, verbose):
     if no_progress:
         c.session.cli.progress_bars = False
 
+    if no_ssl_verify:
+        c.session.downloads.verify_ssl = False
+
     ctx.obj["config"] = c
 
 
@@ -165,7 +174,7 @@ async def url(ctx, urls):
         updates = cfg.session.misc.check_for_updates
         if updates:
             # Run in background
-            version_coro = asyncio.create_task(latest_streamrip_version())
+            version_coro = asyncio.create_task(latest_streamrip_version(verify_ssl=cfg.session.downloads.verify_ssl))
         else:
             version_coro = None
 
@@ -418,8 +427,11 @@ async def id(ctx, source, media_type, id):
             await main.rip()
 
 
-async def latest_streamrip_version() -> tuple[str, str | None]:
-    async with aiohttp.ClientSession() as s:
+async def latest_streamrip_version(verify_ssl: bool = True) -> tuple[str, str | None]:
+    # Create a connector with the specified SSL verification setting
+    connector = aiohttp.TCPConnector(verify_ssl=verify_ssl)
+    
+    async with aiohttp.ClientSession(connector=connector) as s:
         async with s.get("https://pypi.org/pypi/streamrip/json") as resp:
             data = await resp.json()
         version = data["info"]["version"]
