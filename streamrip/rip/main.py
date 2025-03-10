@@ -28,8 +28,7 @@ from .prompter import get_prompter
 logger = logging.getLogger("streamrip")
 
 if platform.system() == "Windows":
-    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
-
+	asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 class Main:
     """Provides all of the functionality called into by the CLI.
