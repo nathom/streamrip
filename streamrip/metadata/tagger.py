@@ -182,6 +182,7 @@ class Container(Enum):
             "tracknumber",
             "discnumber",
             "composer",
+            "compilation",
             "isrc",
             "lyrics",
         }
