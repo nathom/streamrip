@@ -36,7 +36,9 @@ class SoundcloudClient(Client):
         )
 
     async def login(self):
-        self.session = await self.get_session()
+        self.session = await self.get_session(
+            verify_ssl=self.global_config.session.downloads.verify_ssl
+        )
         client_id, app_version = self.config.client_id, self.config.app_version
         if not client_id or not app_version or not (await self._announce_success()):
             client_id, app_version = await self._refresh_tokens()

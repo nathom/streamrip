@@ -50,7 +50,9 @@ class TidalClient(Client):
         )
 
     async def login(self):
-        self.session = await self.get_session()
+        self.session = await self.get_session(
+            verify_ssl=self.global_config.session.downloads.verify_ssl
+        )
         c = self.config
         if not c.access_token:
             raise Exception("Access token not found in config.")
@@ -74,7 +76,13 @@ class TidalClient(Client):
         :type media_type: str
         :rtype: dict
         """
-        assert media_type in ("track", "playlist", "album", "artist"), media_type
+        assert media_type in (
+            "track",
+            "album",
+            "playlist",
+            "video",
+            "artist",
+        ), media_type
 
         url = f"{media_type}s/{item_id}"
         item = await self._api_request(url)
@@ -104,13 +112,18 @@ class TidalClient(Client):
             item["albums"].extend(ep_resp["items"])
         elif media_type == "track":
             try:
-                resp = await self._api_request(f"tracks/{str(item_id)}/lyrics", base="https://listen.tidal.com/v1")
+                resp = await self._api_request(
+                    f"tracks/{item_id!s}/lyrics", base="https://listen.tidal.com/v1"
+                )
 
                 # Use unsynced lyrics for MP3, synced for others (FLAC, OPUS, etc)
-                if self.global_config.session.conversion.enabled and self.global_config.session.conversion.codec.upper() == "MP3":
-                    item["lyrics"] = resp.get("lyrics") or ''
+                if (
+                    self.global_config.session.conversion.enabled
+                    and self.global_config.session.conversion.codec.upper() == "MP3"
+                ):
+                    item["lyrics"] = resp.get("lyrics") or ""
                 else:
-                    item["lyrics"] = resp.get("subtitles") or resp.get("lyrics") or ''
+                    item["lyrics"] = resp.get("subtitles") or resp.get("lyrics") or ""
             except TypeError as e:
                 logger.warning(f"Failed to get lyrics for {item_id}: {e}")
 
@@ -153,7 +166,9 @@ class TidalClient(Client):
         except KeyError:
             raise Exception(resp["userMessage"])
         except JSONDecodeError:
-            logger.warning(f"Failed to get manifest for {track_id}. Retrying with lower quality.")
+            logger.warning(
+                f"Failed to get manifest for {track_id}. Retrying with lower quality."
+            )
             return await self.get_downloadable(track_id, quality - 1)
 
         logger.debug(manifest)
