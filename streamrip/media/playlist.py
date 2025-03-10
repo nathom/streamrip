@@ -133,10 +133,10 @@ class Playlist(Media):
             [_resolve_download(track) for track in self.tracks],
             track_resolve_chunk_size,
         )
-        
+
         for batch in batches:
             results = await asyncio.gather(*batch, return_exceptions=True)
-            
+
             for result in results:
                 if isinstance(result, Exception):
                     logger.error(f"Batch processing error: {result}")
