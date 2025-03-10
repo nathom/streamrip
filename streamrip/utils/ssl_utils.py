@@ -1,13 +1,14 @@
 """Utility functions for SSL handling."""
 
-import ssl
 import logging
+import ssl
 import sys
 
 logger = logging.getLogger("streamrip")
 
 try:
     import certifi
+
     HAS_CERTIFI = True
 except ImportError:
     logger.debug("certifi not found, falling back to system certificates")
@@ -16,10 +17,10 @@ except ImportError:
 
 def create_ssl_context(verify=True):
     """Create an SSL context with the appropriate verification settings.
-    
+
     Args:
         verify: Whether to verify SSL certificates
-        
+
     Returns:
         An SSL context object with the specified verification settings
     """
@@ -30,7 +31,7 @@ def create_ssl_context(verify=True):
         ctx.check_hostname = False
         ctx.verify_mode = ssl.CERT_NONE
         return ctx
-    
+
     # Use certifi for certificate verification if available
     if HAS_CERTIFI:
         return ssl.create_default_context(cafile=certifi.where())
@@ -40,16 +41,16 @@ def create_ssl_context(verify=True):
 
 def get_aiohttp_connector_kwargs(verify_ssl=True):
     """Get keyword arguments for aiohttp.TCPConnector with SSL settings.
-    
+
     Args:
         verify_ssl: Whether to verify SSL certificates
-        
+
     Returns:
         Dictionary of kwargs to pass to aiohttp.TCPConnector
     """
     if not verify_ssl:
         return {"verify_ssl": False}
-    
+
     if HAS_CERTIFI:
         ssl_context = create_ssl_context(verify=True)
         return {"ssl": ssl_context}
@@ -62,11 +63,13 @@ def print_ssl_error_help():
     print("\nError: Cannot verify SSL certificate.")
     print("Options:")
     print("  1. Run again with the --no-ssl-verify flag (less secure)")
-    print("     Example: rip --no-ssl-verify url \"https://tidal.com/browse/playlist/...\"")
+    print(
+        '     Example: rip --no-ssl-verify url "https://tidal.com/browse/playlist/..."'
+    )
     print()
     print("  2. Install certifi for better certificate handling:")
     print("     pip install certifi")
     print()
     print("  3. Update your certificates:")
     print("     pip install --upgrade certifi")
-    sys.exit(1) 
+    sys.exit(1)

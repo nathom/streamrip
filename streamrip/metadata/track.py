@@ -212,7 +212,7 @@ class TrackMetadata:
             discnumber=discnumber,
             composer=None,
             isrc=isrc,
-            lyrics=lyrics
+            lyrics=lyrics,
         )
 
     @classmethod

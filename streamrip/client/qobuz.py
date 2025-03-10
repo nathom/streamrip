@@ -127,11 +127,11 @@ class QobuzSpoofer:
 
     async def __aenter__(self):
         from ..utils.ssl_utils import get_aiohttp_connector_kwargs
-        
+
         # For the spoofer, always use SSL verification
         connector_kwargs = get_aiohttp_connector_kwargs(verify_ssl=True)
         connector = aiohttp.TCPConnector(**connector_kwargs)
-        
+
         self.session = aiohttp.ClientSession(connector=connector)
         return self
 
@@ -154,14 +154,15 @@ class QobuzClient(Client):
         self.secret: Optional[str] = None
 
     async def login(self):
-        self.session = await self.get_session(verify_ssl=self.config.session.downloads.verify_ssl)
+        self.session = await self.get_session(
+            verify_ssl=self.config.session.downloads.verify_ssl
+        )
         """User credentials require either a user token OR a user email & password.
 
         A hash of the password is stored in self.config.qobuz.password_or_token.
         This data as well as the app_id is passed to self._get_user_auth_token() to get
         the actual credentials for the user.
         """
-        config = self.config.session.qobuz
         c = self.config.session.qobuz
         if not c.email_or_userid or not c.password_or_token:
             raise MissingCredentialsError
@@ -178,7 +179,7 @@ class QobuzClient(Client):
             f.set_modified()
 
         self.session.headers.update({"X-App-Id": str(c.app_id)})
-        
+
         if c.use_auth_token:
             params = {
                 "user_id": c.email_or_userid,
@@ -393,7 +394,9 @@ class QobuzClient(Client):
         return pages
 
     async def _get_app_id_and_secrets(self) -> tuple[str, list[str]]:
-        async with QobuzSpoofer(verify_ssl=self.config.session.downloads.verify_ssl) as spoofer:
+        async with QobuzSpoofer(
+            verify_ssl=self.config.session.downloads.verify_ssl
+        ) as spoofer:
             return await spoofer.get_app_id_and_secrets()
 
     async def _test_secret(self, secret: str) -> Optional[str]:
@@ -407,8 +410,8 @@ class QobuzClient(Client):
 
     async def _get_valid_secret(self, secrets: list[str]) -> str:
         results = await asyncio.gather(
-                *[self._test_secret(secret) for secret in secrets],
-                )
+            *[self._test_secret(secret) for secret in secrets],
+        )
         working_secrets = [r for r in results if r is not None]
         if len(working_secrets) == 0:
             raise InvalidAppSecretError(secrets)

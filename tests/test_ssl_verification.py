@@ -1,10 +1,9 @@
-import asyncio
 import inspect
-import pytest
-from unittest.mock import patch, MagicMock, AsyncMock
 import ssl
+from unittest.mock import AsyncMock, MagicMock, patch
 
-import aiohttp
+import pytest
+
 from streamrip.client.client import Client
 from streamrip.client.qobuz import QobuzSpoofer
 from streamrip.rip.cli import latest_streamrip_version, rip
@@ -292,9 +291,9 @@ async def test_client_uses_config_settings():
     from streamrip.client.tidal import TidalClient
 
     # Mock the config
-    with patch("streamrip.config.Config") as MockConfig:
+    with patch("streamrip.config.Config") as mock_config:
         mock_config = MagicMock()
-        MockConfig.return_value = mock_config
+        mock_config.return_value = mock_config
 
         # Set verify_ssl in config
         mock_config.session.downloads.verify_ssl = False
@@ -334,7 +333,7 @@ def test_cli_option_registered():
 
 def test_error_handling_with_ssl_errors():
     """Test the error handling output with SSL errors."""
-    with patch("sys.stdout") as mock_stdout, patch("sys.exit") as mock_exit:
+    with patch("sys.stdout"), patch("sys.exit") as mock_exit:
         # Call the function
         print_ssl_error_help()
 

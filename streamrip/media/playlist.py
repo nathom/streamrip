@@ -24,10 +24,10 @@ from ..metadata import (
     SearchResults,
     TrackMetadata,
 )
+from ..utils.ssl_utils import get_aiohttp_connector_kwargs
 from .artwork import download_artwork
 from .media import Media, Pending
 from .track import Track
-from ..utils.ssl_utils import get_aiohttp_connector_kwargs
 
 logger = logging.getLogger("streamrip")
 
@@ -354,7 +354,7 @@ class PendingLastfmPlaylist(Pending):
         verify_ssl = getattr(self.config.session.downloads, "verify_ssl", True)
         connector_kwargs = get_aiohttp_connector_kwargs(verify_ssl=verify_ssl)
         connector = aiohttp.TCPConnector(**connector_kwargs)
-        
+
         async with aiohttp.ClientSession(connector=connector) as session:
             page = await fetch(session, playlist_url)
             playlist_title_match = re_playlist_title_match.search(page)

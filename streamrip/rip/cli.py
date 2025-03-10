@@ -19,8 +19,8 @@ from rich.traceback import install
 from .. import __version__, db
 from ..config import DEFAULT_CONFIG_PATH, Config, OutdatedConfigError, set_user_defaults
 from ..console import console
-from .main import Main
 from ..utils.ssl_utils import get_aiohttp_connector_kwargs
+from .main import Main
 
 
 def coro(f):
@@ -86,7 +86,9 @@ def coro(f):
     is_flag=True,
 )
 @click.pass_context
-def rip(ctx, config_path, folder, no_db, quality, codec, no_progress, no_ssl_verify, verbose):
+def rip(
+    ctx, config_path, folder, no_db, quality, codec, no_progress, no_ssl_verify, verbose
+):
     """Streamrip: the all in one music downloader."""
     global logger
     logging.basicConfig(
@@ -170,14 +172,18 @@ async def url(ctx, urls):
     """Download content from URLs."""
     if ctx.obj["config"] is None:
         return
-    
+
     try:
         with ctx.obj["config"] as cfg:
             cfg: Config
             updates = cfg.session.misc.check_for_updates
             if updates:
                 # Run in background
-                version_coro = asyncio.create_task(latest_streamrip_version(verify_ssl=cfg.session.downloads.verify_ssl))
+                version_coro = asyncio.create_task(
+                    latest_streamrip_version(
+                        verify_ssl=cfg.session.downloads.verify_ssl
+                    )
+                )
             else:
                 version_coro = None
 
@@ -196,9 +202,10 @@ async def url(ctx, urls):
                     )
 
                     console.print(Markdown(notes))
-                    
+
     except aiohttp.ClientConnectorCertificateError as e:
         from ..utils.ssl_utils import print_ssl_error_help
+
         console.print(f"[red]SSL Certificate verification error: {e}[/red]")
         print_ssl_error_help()
 
@@ -252,6 +259,7 @@ async def file(ctx, path):
                 await main.rip()
     except aiohttp.ClientConnectorCertificateError as e:
         from ..utils.ssl_utils import print_ssl_error_help
+
         console.print(f"[red]SSL Certificate verification error: {e}[/red]")
         print_ssl_error_help()
 
@@ -442,17 +450,17 @@ async def id(ctx, source, media_type, id):
 
 async def latest_streamrip_version(verify_ssl: bool = True) -> tuple[str, str | None]:
     """Get the latest streamrip version from PyPI and release notes from GitHub.
-    
+
     Args:
         verify_ssl: Whether to verify SSL certificates
-        
+
     Returns:
         A tuple of (version, release_notes)
     """
     # Create connector with appropriate SSL settings
     connector_kwargs = get_aiohttp_connector_kwargs(verify_ssl=verify_ssl)
     connector = aiohttp.TCPConnector(**connector_kwargs)
-    
+
     async with aiohttp.ClientSession(connector=connector) as s:
         async with s.get("https://pypi.org/pypi/streamrip/json") as resp:
             data = await resp.json()
