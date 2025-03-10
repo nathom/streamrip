@@ -17,6 +17,7 @@ from typing import Any, Callable, Optional
 import aiofiles
 import aiohttp
 import m3u8
+import requests
 from Cryptodome.Cipher import AES, Blowfish
 from Cryptodome.Util import Counter
 
@@ -36,13 +37,38 @@ def generate_temp_path(url: str):
     )
 
 
+async def fast_async_download(path, url, headers, callback):
+    """Synchronous download with yield for every 1MB read.
+
+    Using aiofiles/aiohttp resulted in a yield to the event loop for every 1KB,
+    which made file downloads CPU-bound. This resulted in a ~10MB max total download
+    speed. This fixes the issue by only yielding to the event loop for every 1MB read.
+    """
+    chunk_size: int = 2**17  # 131 KB
+    counter = 0
+    yield_every = 8  # 1 MB
+    with open(path, "wb") as file:  # noqa: ASYNC101
+        with requests.get(  # noqa: ASYNC100
+            url,
+            headers=headers,
+            allow_redirects=True,
+            stream=True,
+        ) as resp:
+            for chunk in resp.iter_content(chunk_size=chunk_size):
+                file.write(chunk)
+                callback(len(chunk))
+                if counter % yield_every == 0:
+                    await asyncio.sleep(0)
+                counter += 1
+
+
 @dataclass(slots=True)
 class Downloadable(ABC):
     session: aiohttp.ClientSession
     url: str
     extension: str
-    chunk_size = 1024
-    _size: Optional[int] = None
+    source: str = "Unknown"
+    _size_base: Optional[int] = None
 
     async def download(self, path: str, callback: Callable[[int], Any]):
         await self._download(path, callback)
@@ -57,6 +83,14 @@ class Downloadable(ABC):
             self._size = int(content_length)
             return self._size
 
+    @property
+    def _size(self):
+        return self._size_base
+
+    @_size.setter
+    def _size(self, v):
+        self._size_base = v
+
     @abstractmethod
     async def _download(self, path: str, callback: Callable[[int], None]):
         raise NotImplementedError
@@ -65,33 +99,39 @@ class Downloadable(ABC):
 class BasicDownloadable(Downloadable):
     """Just downloads a URL."""
 
-    def __init__(self, session: aiohttp.ClientSession, url: str, extension: str):
+    def __init__(
+        self,
+        session: aiohttp.ClientSession,
+        url: str,
+        extension: str,
+        source: str | None = None,
+    ):
         self.session = session
         self.url = url
         self.extension = extension
         self._size = None
+        self.source: str = source or "Unknown"
 
-    async def _download(self, path: str, callback: Callable[[int], None]):
-        async with self.session.get(self.url, allow_redirects=True) as response:
-            response.raise_for_status()
-            async with aiofiles.open(path, "wb") as file:
-                async for chunk in response.content.iter_chunked(self.chunk_size):
-                    await file.write(chunk)
-                    # typically a bar.update()
-                    callback(len(chunk))
+    async def _download(self, path: str, callback):
+        await fast_async_download(path, self.url, self.session.headers, callback)
 
 
 class DeezerDownloadable(Downloadable):
     is_encrypted = re.compile("/m(?:obile|edia)/")
-    chunk_size = 2048 * 3
 
     def __init__(self, session: aiohttp.ClientSession, info: dict):
         logger.debug("Deezer info for downloadable: %s", info)
         self.session = session
         self.url = info["url"]
-        max_quality_available = max(
+        self.source: str = "deezer"
+        qualities_available = [
             i for i, size in enumerate(info["quality_to_size"]) if size > 0
-        )
+        ]
+        if len(qualities_available) == 0:
+            raise NonStreamableError(
+                "Missing download info. Skipping.",
+            )
+        max_quality_available = max(qualities_available)
         self.quality = min(info["quality"], max_quality_available)
         self._size = info["quality_to_size"][self.quality]
         if self.quality <= 1:
@@ -119,11 +159,9 @@ class DeezerDownloadable(Downloadable):
 
             if self.is_encrypted.search(self.url) is None:
                 logger.debug(f"Deezer file at {self.url} not encrypted.")
-                async with aiofiles.open(path, "wb") as file:
-                    async for chunk in resp.content.iter_chunked(self.chunk_size):
-                        await file.write(chunk)
-                        # typically a bar.update()
-                        callback(len(chunk))
+                await fast_async_download(
+                    path, self.url, self.session.headers, callback
+                )
             else:
                 blowfish_key = self._generate_blowfish_key(self.id)
                 logger.debug(
@@ -138,10 +176,11 @@ class DeezerDownloadable(Downloadable):
                     buf += data
                     callback(len(data))
 
+                encrypt_chunk_size = 3 * 2048
                 async with aiofiles.open(path, "wb") as audio:
                     buflen = len(buf)
-                    for i in range(0, buflen, self.chunk_size):
-                        data = buf[i : min(i + self.chunk_size, buflen - 1)]
+                    for i in range(0, buflen, encrypt_chunk_size):
+                        data = buf[i : min(i + encrypt_chunk_size, buflen)]
                         if len(data) >= 2048:
                             decrypted_chunk = (
                                 self._decrypt_chunk(blowfish_key, data[:2048])
@@ -193,6 +232,7 @@ class TidalDownloadable(Downloadable):
         restrictions,
     ):
         self.session = session
+        self.source = "tidal"
         codec = codec.lower()
         if codec in ("flac", "mqa"):
             self.extension = "flac"
@@ -211,7 +251,7 @@ class TidalDownloadable(Downloadable):
             )
         self.url = url
         self.enc_key = encryption_key
-        self.downloadable = BasicDownloadable(session, url, self.extension)
+        self.downloadable = BasicDownloadable(session, url, self.extension, "tidal")
 
     async def _download(self, path: str, callback):
         await self.downloadable._download(path, callback)
@@ -270,6 +310,7 @@ class SoundcloudDownloadable(Downloadable):
     def __init__(self, session, info: dict):
         self.session = session
         self.file_type = info["type"]
+        self.source = "soundcloud"
         if self.file_type == "mp3":
             self.extension = "mp3"
         elif self.file_type == "original":
@@ -285,7 +326,9 @@ class SoundcloudDownloadable(Downloadable):
             await self._download_original(path, callback)
 
     async def _download_original(self, path: str, callback):
-        downloader = BasicDownloadable(self.session, self.url, "flac")
+        downloader = BasicDownloadable(
+            self.session, self.url, "flac", source="soundcloud"
+        )
         await downloader.download(path, callback)
         self.size = downloader.size
         engine = converter.FLAC(path)

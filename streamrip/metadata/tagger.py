@@ -183,6 +183,7 @@ class Container(Enum):
             "discnumber",
             "composer",
             "isrc",
+            "lyrics",
         }
         if attr in in_trackmetadata:
             if attr == "album":

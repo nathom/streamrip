@@ -1,4 +1,5 @@
 """Manages the information that will be embeded in the audio file."""
+
 from . import util
 from .album import AlbumInfo, AlbumMetadata
 from .artist import ArtistMetadata

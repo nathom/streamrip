@@ -45,7 +45,32 @@ class Track(Media):
                 await self.downloadable.size(),
                 f"Track {self.meta.tracknumber}",
             ) as callback:
-                await self.downloadable.download(self.download_path, callback)
+                try:
+                    await self.downloadable.download(self.download_path, callback)
+                    retry = False
+                except Exception as e:
+                    logger.error(
+                        f"Error downloading track '{self.meta.title}', retrying: {e}"
+                    )
+                    retry = True
+
+            if not retry:
+                return
+
+            with get_progress_callback(
+                self.config.session.cli.progress_bars,
+                await self.downloadable.size(),
+                f"Track {self.meta.tracknumber} (retry)",
+            ) as callback:
+                try:
+                    await self.downloadable.download(self.download_path, callback)
+                except Exception as e:
+                    logger.error(
+                        f"Persistent error downloading track '{self.meta.title}', skipping: {e}"
+                    )
+                    self.db.set_failed(
+                        self.downloadable.source, "track", self.meta.info.id
+                    )
 
     async def postprocess(self):
         if self.is_single:
@@ -110,19 +135,37 @@ class PendingTrack(Pending):
             logger.error(f"Track {self.id} not available for stream on {source}: {e}")
             return None
 
-        meta = TrackMetadata.from_resp(self.album, source, resp)
+        try:
+            meta = TrackMetadata.from_resp(self.album, source, resp)
+        except Exception as e:
+            logger.error(f"Error building track metadata for {self.id}: {e}")
+            return None
+
         if meta is None:
             logger.error(f"Track {self.id} not available for stream on {source}")
             self.db.set_failed(source, "track", self.id)
             return None
 
         quality = self.config.session.get_source(source).quality
-        downloadable = await self.client.get_downloadable(self.id, quality)
+        try:
+            downloadable = await self.client.get_downloadable(self.id, quality)
+        except NonStreamableError as e:
+            logger.error(
+                f"Error getting downloadable data for track {meta.tracknumber} [{self.id}]: {e}"
+            )
+            return None
+
+        downloads_config = self.config.session.downloads
+        if downloads_config.disc_subdirectories and self.album.disctotal > 1:
+            folder = os.path.join(self.folder, f"Disc {meta.discnumber}")
+        else:
+            folder = self.folder
+
         return Track(
             meta,
             downloadable,
             self.config,
-            self.folder,
+            folder,
             self.cover_path,
             self.db,
         )
@@ -154,7 +197,12 @@ class PendingSingle(Pending):
             logger.error(f"Error fetching track {self.id}: {e}")
             return None
         # Patch for soundcloud
-        album = AlbumMetadata.from_track_resp(resp, self.client.source)
+        try:
+            album = AlbumMetadata.from_track_resp(resp, self.client.source)
+        except Exception as e:
+            logger.error(f"Error building album metadata for track {id=}: {e}")
+            return None
+
         if album is None:
             self.db.set_failed(self.client.source, "track", self.id)
             logger.error(
@@ -162,7 +210,11 @@ class PendingSingle(Pending):
             )
             return None
 
-        meta = TrackMetadata.from_resp(album, self.client.source, resp)
+        try:
+            meta = TrackMetadata.from_resp(album, self.client.source, resp)
+        except Exception as e:
+            logger.error(f"Error building track metadata for track {id=}: {e}")
+            return None
 
         if meta is None:
             self.db.set_failed(self.client.source, "track", self.id)

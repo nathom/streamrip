@@ -36,9 +36,9 @@ body:
     attributes:
       label: Debug Traceback
       description: |
-        Run your command, with `-vvv` appended to it, and paste the output here.
+        Run your command with the `-vvv` option and paste the output here.
         For example, if the problematic command was `rip url https://example.com`, then
-        you would run `rip url https://example.com -vvv` to get the debug logs.
+        you would run `rip -vvv url https://example.com` to get the debug logs.
         Make sure to check the logs for any personal information such as emails and remove them.
       render: "text"
       placeholder: Logs printed to terminal screen
@@ -49,7 +49,7 @@ body:
     attributes:
       label: Config File
       description: |
-        Find the config file using `rip config --open` and paste the contents here. 
+        Find the config file using `rip config open` and paste the contents here. 
         Make sure you REMOVE YOUR CREDENTIALS!
       render: toml
       placeholder: Contents of config.toml

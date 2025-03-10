@@ -27,6 +27,12 @@ First, ensure [Python](https://www.python.org/downloads/) (version 3.10 or great
 pip3 install streamrip --upgrade
 ```
 
+If you run into issues, try installing directly from the `dev` branch:
+
+```bash
+pip3 install git+https://github.com/nathom/streamrip.git@dev
+```
+
 When you type
 
 ```bash
@@ -35,6 +41,21 @@ rip
 
 it should show the main help page. If you have no idea what these mean, or are having other issues installing, check out the [detailed installation instructions](https://github.com/nathom/streamrip/wiki#detailed-installation-instructions).
 
+For Arch Linux users, an AUR package exists. Make sure to install required packages from the AUR before using `makepkg` or use an AUR helper to automatically resolve them.
+```
+git clone https://aur.archlinux.org/streamrip.git
+cd streamrip
+makepkg -si
+```
+ or
+ ```
+paru -S streamrip
+```
+
+Alternatively, for users of Homebrew, you can install streamrip through brew.
+```
+brew install streamrip
+```
 
 ### Streamrip beta
 
@@ -61,17 +82,13 @@ Download multiple albums from Qobuz
 rip url https://www.qobuz.com/us-en/album/back-in-black-ac-dc/0886444889841 https://www.qobuz.com/us-en/album/blue-train-john-coltrane/0060253764852
 ```
 
-
-
 Download the album and convert it to `mp3`
 
 ```bash
-rip url --codec mp3 https://open.qobuz.com/album/0060253780968
+rip --codec mp3 url https://open.qobuz.com/album/0060253780968
 ```
 
-
-
-To set the maximum quality, use the `--max-quality` option to `0, 1, 2, 3, 4`:
+To set the maximum quality, use the `--quality` option to `0, 1, 2, 3, 4`:
 
 | Quality ID | Audio Quality         | Available Sources                            |
 | ---------- | --------------------- | -------------------------------------------- |
@@ -81,14 +98,13 @@ To set the maximum quality, use the `--max-quality` option to `0, 1, 2, 3, 4`:
 | 3          | 24 bit, ≤ 96 kHz      | Tidal (MQA), Qobuz, SoundCloud (rarely)      |
 | 4          | 24 bit, ≤ 192 kHz     | Qobuz                                        |
 
-
 ```bash
-rip url --quality 3 https://tidal.com/browse/album/147569387
+rip --quality 3 url https://tidal.com/browse/album/147569387
 ```
 
-> Using `4` is generally a waste of space. It is impossible for humans to perceive the between sampling rates higher than 44.1 kHz. It may be useful if you're processing/slowing down the audio.
+> Using `4` is generally a waste of space. It is impossible for humans to perceive the difference between sampling rates higher than 44.1 kHz. It may be useful if you're processing/slowing down the audio.
 
-Search for albums matching `lil uzi vert` on SoundCloud
+Search for playlists matching `rap` on Tidal
 
 ```bash
 rip search tidal playlist 'rap'
@@ -114,9 +130,7 @@ For more customization, see the config file
 rip config open
 ```
 
-
-
-If you're confused about anything, see the help pages. The main help pages can be accessed by typing `rip` by itself in the command line. The help pages for each command can be accessed with the `-help` flag. For example, to see the help page for the `url` command, type
+If you're confused about anything, see the help pages. The main help pages can be accessed by typing `rip` by itself in the command line. The help pages for each command can be accessed with the `--help` flag. For example, to see the help page for the `url` command, type
 
 ```
 rip url --help
@@ -127,7 +141,6 @@ rip url --help
 ## Other information
 
 For more in-depth information about `streamrip`, see the help pages and the [wiki](https://github.com/nathom/streamrip/wiki/).
-
 
 ## Contributions
 
@@ -153,7 +166,7 @@ Please document any functions or obscure lines of code.
 
 ### The Wiki
 
-To help out `streamrip` users that may be having trouble, consider contributing some information to the wiki. 
+To help out `streamrip` users that may be having trouble, consider contributing some information to the wiki.
 Nothing is too obvious and everything is appreciated.
 
 ## Acknowledgements
@@ -166,8 +179,6 @@ Thanks to Vitiko98, Sorrow446, and DashLt for their contributions to this projec
 - [Qo-DL Reborn](https://github.com/badumbass/Qo-DL-Reborn)
 - [Tidal-Media-Downloader](https://github.com/yaronzz/Tidal-Media-Downloader)
 - [scdl](https://github.com/flyingrub/scdl)
-
-
 
 ## Disclaimer
 

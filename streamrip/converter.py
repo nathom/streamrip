@@ -121,26 +121,34 @@ class Converter:
             command.extend(self.ffmpeg_arg.split())
 
         if self.lossless:
+            aformat = []
+
             if isinstance(self.sampling_rate, int):
-                sampling_rates = "|".join(
+                sample_rates = "|".join(
                     str(rate) for rate in SAMPLING_RATES if rate <= self.sampling_rate
                 )
-                command.extend(["-af", f"aformat=sample_rates={sampling_rates}"])
-
+                aformat.append(f"sample_rates={sample_rates}")
             elif self.sampling_rate is not None:
                 raise TypeError(
-                    f"Sampling rate must be int, not {type(self.sampling_rate)}",
+                    f"Sampling rate must be int, not {type(self.sampling_rate)}"
                 )
 
             if isinstance(self.bit_depth, int):
-                if int(self.bit_depth) == 16:
-                    command.extend(["-sample_fmt", "s16"])
-                elif int(self.bit_depth) in (24, 32):
-                    command.extend(["-sample_fmt", "s32p"])
-                else:
+                bit_depths = ["s16p", "s16"]
+
+                if self.bit_depth in (24, 32):
+                    bit_depths.extend(["s32p", "s32"])
+                elif self.bit_depth != 16:
                     raise ValueError("Bit depth must be 16, 24, or 32")
+
+                sample_fmts = "|".join(bit_depths)
+                aformat.append(f"sample_fmts={sample_fmts}")
             elif self.bit_depth is not None:
                 raise TypeError(f"Bit depth must be int, not {type(self.bit_depth)}")
+
+            if aformat:
+                aformat_params = ":".join(aformat)
+                command.extend(["-af", f"aformat={aformat_params}"])
 
         # automatically overwrite
         command.extend(["-y", self.tempfile])

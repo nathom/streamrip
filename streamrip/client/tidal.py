@@ -4,10 +4,12 @@ import json
 import logging
 import re
 import time
+from json import JSONDecodeError
 
 import aiohttp
 
 from ..config import Config
+from ..exceptions import NonStreamableError
 from .client import Client
 from .downloadable import TidalDownloadable
 
@@ -48,7 +50,9 @@ class TidalClient(Client):
         )
 
     async def login(self):
-        self.session = await self.get_session()
+        self.session = await self.get_session(
+            verify_ssl=self.global_config.session.downloads.verify_ssl
+        )
         c = self.config
         if not c.access_token:
             raise Exception("Access token not found in config.")
@@ -72,7 +76,13 @@ class TidalClient(Client):
         :type media_type: str
         :rtype: dict
         """
-        assert media_type in ("track", "playlist", "album", "artist"), media_type
+        assert media_type in (
+            "track",
+            "album",
+            "playlist",
+            "video",
+            "artist",
+        ), media_type
 
         url = f"{media_type}s/{item_id}"
         item = await self._api_request(url)
@@ -100,6 +110,22 @@ class TidalClient(Client):
 
             item["albums"] = album_resp["items"]
             item["albums"].extend(ep_resp["items"])
+        elif media_type == "track":
+            try:
+                resp = await self._api_request(
+                    f"tracks/{item_id!s}/lyrics", base="https://listen.tidal.com/v1"
+                )
+
+                # Use unsynced lyrics for MP3, synced for others (FLAC, OPUS, etc)
+                if (
+                    self.global_config.session.conversion.enabled
+                    and self.global_config.session.conversion.codec.upper() == "MP3"
+                ):
+                    item["lyrics"] = resp.get("lyrics") or ""
+                else:
+                    item["lyrics"] = resp.get("subtitles") or resp.get("lyrics") or ""
+            except TypeError as e:
+                logger.warning(f"Failed to get lyrics for {item_id}: {e}")
 
         logger.debug(item)
         return item
@@ -139,6 +165,11 @@ class TidalClient(Client):
             manifest = json.loads(base64.b64decode(resp["manifest"]).decode("utf-8"))
         except KeyError:
             raise Exception(resp["userMessage"])
+        except JSONDecodeError:
+            logger.warning(
+                f"Failed to get manifest for {track_id}. Retrying with lower quality."
+            )
+            return await self.get_downloadable(track_id, quality - 1)
 
         logger.debug(manifest)
         enc_key = manifest.get("keyId")
@@ -305,7 +336,7 @@ class TidalClient(Client):
             async with self.session.post(url, data=data, auth=auth) as resp:
                 return await resp.json()
 
-    async def _api_request(self, path: str, params=None) -> dict:
+    async def _api_request(self, path: str, params=None, base: str = BASE) -> dict:
         """Handle Tidal API requests.
 
         :param path:
@@ -320,6 +351,9 @@ class TidalClient(Client):
         params["limit"] = 100
 
         async with self.rate_limiter:
-            async with self.session.get(f"{BASE}/{path}", params=params) as resp:
+            async with self.session.get(f"{base}/{path}", params=params) as resp:
+                if resp.status == 404:
+                    logger.warning("TIDAL: track not found", resp)
+                    raise NonStreamableError("TIDAL: Track not found")
                 resp.raise_for_status()
                 return await resp.json()

@@ -1,6 +1,6 @@
 import json
 
-from streamrip.metadata import *
+from streamrip.metadata import AlbumMetadata, TrackMetadata
 
 with open("tests/qobuz_album_resp.json") as f:
     qobuz_album_resp = json.load(f)
@@ -16,10 +16,10 @@ def test_album_metadata_qobuz():
     assert info.quality == 3
     assert info.container == "FLAC"
     assert info.label == "Rhino - Warner Records"
-    assert info.explicit == False
+    assert info.explicit is False
     assert info.sampling_rate == 96
     assert info.bit_depth == 24
-    assert info.booklets == None
+    assert info.booklets is None
 
     assert m.album == "Rumours"
     assert m.albumartist == "Fleetwood Mac"
@@ -29,19 +29,19 @@ def test_album_metadata_qobuz():
     assert not m.covers.empty()
 
     assert m.albumcomposer == "Various Composers"
-    assert m.comment == None
-    assert m.compilation == None
+    assert m.comment is None
+    assert m.compilation is None
     assert (
         m.copyright
         == "© 1977 Warner Records Inc. ℗ 1977 Warner Records Inc. Marketed by Rhino Entertainment Company, A Warner Music Group Company."
     )
     assert m.date == "1977-02-04"
-    assert m.description == None
+    assert m.description == ""
     assert m.disctotal == 1
-    assert m.encoder == None
-    assert m.grouping == None
-    assert m.lyrics == None
-    assert m.purchase_date == None
+    assert m.encoder is None
+    assert m.grouping is None
+    assert m.lyrics is None
+    assert m.purchase_date is None
     assert m.tracktotal == 11
 
 

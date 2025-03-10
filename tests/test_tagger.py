@@ -1,15 +1,26 @@
+import os
+import shutil
+
 import pytest
 from mutagen.flac import FLAC
 from util import arun
 
-from streamrip.metadata import *
+from streamrip.metadata import (
+    AlbumInfo,
+    AlbumMetadata,
+    Covers,
+    TrackInfo,
+    TrackMetadata,
+    tag_file,
+)
 
-test_flac = "tests/silence.flac"
+TEST_FLAC_ORIGINAL = "tests/silence.flac"
+TEST_FLAC_COPY = "tests/silence_copy.flac"
 test_cover = "tests/1x1_pixel.jpg"
 
 
 def wipe_test_flac():
-    audio = FLAC(test_flac)
+    audio = FLAC(TEST_FLAC_COPY)
     # Remove all tags
     audio.delete()
     audio.save()
@@ -55,9 +66,10 @@ def sample_metadata() -> TrackMetadata:
 
 
 def test_tag_flac_no_cover(sample_metadata):
+    shutil.copy(TEST_FLAC_ORIGINAL, TEST_FLAC_COPY)
     wipe_test_flac()
-    arun(tag_file(test_flac, sample_metadata, None))
-    file = FLAC(test_flac)
+    arun(tag_file(TEST_FLAC_COPY, sample_metadata, None))
+    file = FLAC(TEST_FLAC_COPY)
     assert file["title"][0] == "testtitle"
     assert file["album"][0] == "testalbum"
     assert file["composer"][0] == "testcomposer"
@@ -72,12 +84,14 @@ def test_tag_flac_no_cover(sample_metadata):
     assert file["tracktotal"][0] == "14"
     assert file["date"][0] == "1998-02-13"
     assert "purchase_date" not in file, file["purchase_date"]
+    os.remove(TEST_FLAC_COPY)
 
 
 def test_tag_flac_cover(sample_metadata):
+    shutil.copy(TEST_FLAC_ORIGINAL, TEST_FLAC_COPY)
     wipe_test_flac()
-    arun(tag_file(test_flac, sample_metadata, test_cover))
-    file = FLAC(test_flac)
+    arun(tag_file(TEST_FLAC_COPY, sample_metadata, test_cover))
+    file = FLAC(TEST_FLAC_COPY)
     assert file["title"][0] == "testtitle"
     assert file["album"][0] == "testalbum"
     assert file["composer"][0] == "testcomposer"
@@ -94,3 +108,4 @@ def test_tag_flac_cover(sample_metadata):
     with open(test_cover, "rb") as img:
         assert file.pictures[0].data == img.read()
     assert "purchase_date" not in file, file["purchase_date"]
+    os.remove(TEST_FLAC_COPY)
