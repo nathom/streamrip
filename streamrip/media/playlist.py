@@ -121,17 +121,25 @@ class Playlist(Media):
         track_resolve_chunk_size = 20
 
         async def _resolve_download(item: PendingPlaylistTrack):
-            track = await item.resolve()
-            if track is None:
-                return
-            await track.rip()
+            try:
+                track = await item.resolve()
+                if track is None:
+                    return
+                await track.rip()
+            except Exception as e:
+                logger.error(f"Error downloading track: {e}")
 
         batches = self.batch(
             [_resolve_download(track) for track in self.tracks],
             track_resolve_chunk_size,
         )
+        
         for batch in batches:
-            await asyncio.gather(*batch)
+            results = await asyncio.gather(*batch, return_exceptions=True)
+            
+            for result in results:
+                if isinstance(result, Exception):
+                    logger.error(f"Batch processing error: {result}")
 
     @staticmethod
     def batch(iterable, n=1):

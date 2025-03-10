@@ -32,12 +32,19 @@ class Album(Media):
 
     async def download(self):
         async def _resolve_and_download(pending: Pending):
-            track = await pending.resolve()
-            if track is None:
-                return
-            await track.rip()
+            try:
+                track = await pending.resolve()
+                if track is None:
+                    return
+                await track.rip()
+            except Exception as e:
+                logger.error(f"Error downloading track: {e}")
 
-        await asyncio.gather(*[_resolve_and_download(p) for p in self.tracks])
+        results = await asyncio.gather(*[_resolve_and_download(p) for p in self.tracks], return_exceptions=True)
+        
+        for result in results:
+            if isinstance(result, Exception):
+                logger.error(f"Album track processing error: {result}")
 
     async def postprocess(self):
         progress.remove_title(self.meta.album)
