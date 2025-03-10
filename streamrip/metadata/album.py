@@ -77,7 +77,7 @@ class AlbumMetadata:
             "year": self.year,
             "container": self.info.container,
         }
-        
+
         return clean_filepath(formatter.format(**info))
 
     @classmethod

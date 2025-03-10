@@ -7,6 +7,7 @@ from abc import ABC, abstractmethod
 import aiohttp
 import aiolimiter
 
+from ..utils.ssl_utils import get_aiohttp_connector_kwargs
 from .downloadable import Downloadable
 
 logger = logging.getLogger("streamrip")
@@ -49,10 +50,17 @@ class Client(ABC):
         )
 
     @staticmethod
-    async def get_session(headers: dict | None = None) -> aiohttp.ClientSession:
+    async def get_session(
+        headers: dict | None = None, verify_ssl: bool = True
+    ) -> aiohttp.ClientSession:
         if headers is None:
             headers = {}
+
+        # Get connector kwargs based on SSL verification setting
+        connector_kwargs = get_aiohttp_connector_kwargs(verify_ssl=verify_ssl)
+        connector = aiohttp.TCPConnector(**connector_kwargs)
+
         return aiohttp.ClientSession(
-            headers={"User-Agent": DEFAULT_USER_AGENT},
-            **headers,
+            headers={"User-Agent": DEFAULT_USER_AGENT} | headers,
+            connector=connector,
         )

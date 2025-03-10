@@ -18,7 +18,7 @@ class Summary(ABC):
 
     @classmethod
     @abstractmethod
-    def from_item(cls, item: dict) -> str:
+    def from_item(cls, item: dict) -> "Summary":
         pass
 
     @abstractmethod

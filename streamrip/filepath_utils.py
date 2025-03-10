@@ -10,7 +10,7 @@ def truncate_str(text: str) -> str:
     str_bytes = text.encode()
     str_bytes = str_bytes[:255]
     return str_bytes.decode(errors="ignore")
-    
+
 
 def clean_filename(fn: str, restrict: bool = False) -> str:
     path = truncate_str(str(sanitize_filename(fn)))
