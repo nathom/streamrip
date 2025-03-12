@@ -185,7 +185,7 @@ async def url(ctx, urls):
                     )
                 )
             else:
-                version_coro = None
+                version_coro = None  # type: ignore  # pyright: ignore
 
             async with Main(cfg) as main:
                 await main.add_all(urls)
@@ -201,7 +201,8 @@ async def url(ctx, urls):
                         " to update.[/green]\n"
                     )
 
-                    console.print(Markdown(notes))
+                    if notes is not None:
+                        console.print(Markdown(notes))
 
     except aiohttp.ClientConnectorCertificateError as e:
         from ..utils.ssl_utils import print_ssl_error_help
@@ -459,7 +460,7 @@ async def latest_streamrip_version(verify_ssl: bool = True) -> tuple[str, str | 
     """
     # Create connector with appropriate SSL settings
     connector_kwargs = get_aiohttp_connector_kwargs(verify_ssl=verify_ssl)
-    connector = aiohttp.TCPConnector(**connector_kwargs)
+    connector = aiohttp.TCPConnector(**connector_kwargs)  # type: ignore
 
     async with aiohttp.ClientSession(connector=connector) as s:
         async with s.get("https://pypi.org/pypi/streamrip/json") as resp:
@@ -473,7 +474,7 @@ async def latest_streamrip_version(verify_ssl: bool = True) -> tuple[str, str | 
             "https://api.github.com/repos/nathom/streamrip/releases/latest"
         ) as resp:
             json = await resp.json()
-        notes = json["body"]
+        notes: str | None = json["body"]
     return version, notes
 
 

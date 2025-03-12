@@ -39,12 +39,13 @@ class CredentialPrompter(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def type_check_client(self, client: Client):
+    def type_check_client(self, client: Client) -> Client:
         raise NotImplementedError
 
 
 class QobuzPrompter(CredentialPrompter):
-    client: QobuzClient
+    # Override the client type to be more specific
+    client: Client  # Use the base class type in the class attribute
 
     def has_creds(self) -> bool:
         c = self.config.session.qobuz
@@ -92,13 +93,18 @@ class QobuzPrompter(CredentialPrompter):
 
 class TidalPrompter(CredentialPrompter):
     timeout_s: int = 600  # 5 mins to login
-    client: TidalClient
+    client: Client  # Use the base class type in the class attribute
 
     def has_creds(self) -> bool:
         return len(self.config.session.tidal.access_token) > 0
 
     async def prompt_and_login(self):
-        device_code, uri = await self.client._get_device_code()
+        # Type check the client to get access to TidalClient specific methods
+        from ..client import TidalClient
+        assert isinstance(self.client, TidalClient), "Client must be a TidalClient"
+        tidal_client = self.client
+        
+        device_code, uri = await tidal_client._get_device_code()
         login_link = f"https://{uri}"
 
         console.print(
@@ -111,7 +117,7 @@ class TidalPrompter(CredentialPrompter):
         info = {}
         while elapsed < self.timeout_s:
             elapsed = time.time() - start
-            status, info = await self.client._get_auth_status(device_code)
+            status, info = await tidal_client._get_auth_status(device_code)
             if status == 2:
                 # pending
                 await asyncio.sleep(4)
@@ -129,8 +135,8 @@ class TidalPrompter(CredentialPrompter):
         c.refresh_token = info["refresh_token"]  # type: ignore
         c.token_expiry = info["token_expiry"]  # type: ignore
 
-        self.client._update_authorization_from_config()
-        self.client.logged_in = True
+        tidal_client._update_authorization_from_config()
+        tidal_client.logged_in = True
         self.save()
 
     def type_check_client(self, client) -> TidalClient:
@@ -149,7 +155,7 @@ class TidalPrompter(CredentialPrompter):
 
 
 class DeezerPrompter(CredentialPrompter):
-    client: DeezerClient
+    client: Client  # Use the base class type in the class attribute
 
     def has_creds(self):
         c = self.config.session.deezer

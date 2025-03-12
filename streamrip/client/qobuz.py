@@ -130,7 +130,16 @@ class QobuzSpoofer:
 
         # For the spoofer, always use SSL verification
         connector_kwargs = get_aiohttp_connector_kwargs(verify_ssl=True)
-        connector = aiohttp.TCPConnector(**connector_kwargs)
+        
+        # Create the connector with appropriate SSL settings
+        if "ssl" in connector_kwargs:
+            # When using a custom SSL context
+            ssl_context = connector_kwargs["ssl"]
+            connector = aiohttp.TCPConnector(ssl=ssl_context)
+        else:
+            # When using verify_ssl boolean flag
+            verify_ssl_flag = bool(connector_kwargs["verify_ssl"])
+            connector = aiohttp.TCPConnector(verify_ssl=verify_ssl_flag)
 
         self.session = aiohttp.ClientSession(connector=connector)
         return self
@@ -214,14 +223,14 @@ class QobuzClient(Client):
 
         self.logged_in = True
 
-    async def get_metadata(self, item: str, media_type: str):
+    async def get_metadata(self, item_id: str, media_type: str):
         if media_type == "label":
-            return await self.get_label(item)
+            return await self.get_label(item_id)
 
         c = self.config.session.qobuz
         params = {
             "app_id": str(c.app_id),
-            f"{media_type}_id": item,
+            f"{media_type}_id": item_id,
             # Do these matter?
             "limit": 500,
             "offset": 0,
@@ -319,9 +328,9 @@ class QobuzClient(Client):
         epoint = "playlist/getUserPlaylists"
         return await self._paginate(epoint, {}, limit=limit)
 
-    async def get_downloadable(self, item: str, quality: int) -> Downloadable:
+    async def get_downloadable(self, item_id: str, quality: int) -> Downloadable:
         assert self.secret is not None and self.logged_in and 1 <= quality <= 4
-        status, resp_json = await self._request_file_url(item, quality, self.secret)
+        status, resp_json = await self._request_file_url(item_id, quality, self.secret)
         assert status == 200
         stream_url = resp_json.get("url")
 

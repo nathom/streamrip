@@ -24,7 +24,7 @@ class DatabaseInterface(ABC):
         pass
 
     @abstractmethod
-    def remove(self, kvs):
+    def remove(self, **kvs):
         pass
 
     @abstractmethod
@@ -41,10 +41,10 @@ class Dummy(DatabaseInterface):
     def contains(self, **_):
         return False
 
-    def add(self, *_):
+    def add(self, kvs):
         pass
 
-    def remove(self, *_):
+    def remove(self, **kvs):
         pass
 
     def all(self):
@@ -109,24 +109,24 @@ class DatabaseBase(DatabaseInterface):
 
             return bool(conn.execute(command, tuple(items.values())).fetchone()[0])
 
-    def add(self, items: tuple[str]):
+    def add(self, kvs: tuple[str]):
         """Add a row to the table.
 
-        :param items: Column-name + value. Values must be provided for all cols.
-        :type items: Tuple[str]
+        :param kvs: Column-name + value. Values must be provided for all cols.
+        :type kvs: tuple[str]
         """
-        assert len(items) == len(self.structure)
+        assert len(kvs) == len(self.structure)
 
         params = ", ".join(self.structure.keys())
-        question_marks = ", ".join("?" for _ in items)
+        question_marks = ", ".join("?" for _ in kvs)
         command = f"INSERT INTO {self.name} ({params}) VALUES ({question_marks})"
 
         logger.debug("Executing %s", command)
-        logger.debug("Items to add: %s", items)
+        logger.debug("Items to add: %s", kvs)
 
         with sqlite3.connect(self.path) as conn:
             try:
-                conn.execute(command, tuple(items))
+                conn.execute(command, tuple(kvs))
             except sqlite3.IntegrityError as e:
                 # tried to insert an item that was already there
                 logger.debug(e)
@@ -162,7 +162,7 @@ class Downloads(DatabaseBase):
     """A table that stores the downloaded IDs."""
 
     name = "downloads"
-    structure: Final[dict] = {
+    structure: dict = {
         "id": ["text", "unique"],
     }
 
@@ -171,7 +171,7 @@ class Failed(DatabaseBase):
     """A table that stores information about failed downloads."""
 
     name = "failed_downloads"
-    structure: Final[dict] = {
+    structure: dict = {
         "source": ["text"],
         "media_type": ["text"],
         "id": ["text", "unique"],

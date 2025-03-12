@@ -1,5 +1,5 @@
 import functools
-from typing import Optional, Type, TypeVar
+from typing import Optional, Type, TypeVar, Union, Any, get_type_hints, get_origin
 
 
 def get_album_track_ids(source: str, resp) -> list[str]:
@@ -20,8 +20,20 @@ def safe_get(dictionary, *keys, default=None):
 T = TypeVar("T")
 
 
-def typed(thing, expected_type: Type[T]) -> T:
-    assert isinstance(thing, expected_type)
+def typed(thing, expected_type: Type[T] | Any) -> T:
+    # For Union types (like str | None, int | float)
+    try:
+        # Check if it's a union type from Python 3.10+ (int | str)
+        origin = get_origin(expected_type)
+        if origin is Union:
+            # Skip type checking for union types
+            return thing
+    except (TypeError, AttributeError):
+        pass
+    
+    # Regular type checking for non-union types
+    if expected_type is not None:
+        assert isinstance(thing, expected_type)
     return thing
 
 

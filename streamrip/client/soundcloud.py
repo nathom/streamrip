@@ -182,7 +182,7 @@ class SoundcloudClient(Client):
         ]
 
         # (list of track metadata, status code)
-        responses: list[tuple[list[dict], int]] = await asyncio.gather(*requests)
+        responses: list[tuple[dict, int]] = await asyncio.gather(*requests)
 
         assert all(status == 200 for _, status in responses)
 

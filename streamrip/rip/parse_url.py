@@ -195,10 +195,13 @@ class SoundcloudURL(URL):
 
     async def into_pending(
         self,
-        client: SoundcloudClient,
+        client: Client,
         config: Config,
         db: Database,
     ) -> Pending:
+        # Type check the client
+        assert isinstance(client, SoundcloudClient), "Client must be a SoundcloudClient"
+        soundcloud_client = client
         resolved = await client.resolve_url(self.url)
         media_type = resolved["kind"]
         item_id = str(resolved["id"])

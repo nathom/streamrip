@@ -353,7 +353,10 @@ class SoundcloudDownloadable(Downloadable):
 
         await concat_audio_files(segment_paths, path, "mp3")
 
-    async def _download_segment(self, segment_uri: str) -> str:
+    async def _download_segment(self, segment_uri: str | None) -> str:
+        if segment_uri is None:
+            raise ValueError("segment_uri cannot be None")
+            
         tmp = generate_temp_path(segment_uri)
         async with self.session.get(segment_uri) as resp:
             resp.raise_for_status()

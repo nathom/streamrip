@@ -351,6 +351,12 @@ class ConfigData:
         if res is None:
             raise Exception(f"Invalid source {source}")
         return res
+        
+    def __getitem__(self, key: str):
+        """Allow dictionary-style access to config attributes."""
+        if hasattr(self, key):
+            return getattr(self, key)
+        raise KeyError(f"No configuration section named '{key}'")
 
 
 def update_toml_section_from_config(toml_section, config):

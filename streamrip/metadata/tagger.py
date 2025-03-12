@@ -8,8 +8,8 @@ from mutagen.flac import FLAC, Picture
 from mutagen.id3 import (
     APIC,  # type: ignore
     ID3,
-    ID3NoHeaderError,
 )
+from mutagen.id3._util import ID3NoHeaderError
 from mutagen.mp4 import MP4, MP4Cover
 
 from .track import TrackMetadata
@@ -63,7 +63,7 @@ MP3_KEYS = (
     None,
     None,
     None,
-    id3.TSRC,
+    id3.TSRC,  # type: ignore
 )
 
 METADATA_TYPES = (

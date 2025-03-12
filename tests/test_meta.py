@@ -48,16 +48,26 @@ def test_album_metadata_qobuz():
 def test_track_metadata_qobuz():
     a = AlbumMetadata.from_qobuz(qobuz_track_resp["album"])
     t = TrackMetadata.from_qobuz(a, qobuz_track_resp)
+    
+    # First check that t is not None before accessing its attributes
+    assert t is not None, "TrackMetadata.from_qobuz returned None"
+    
+    # Now we can safely access t.info
     info = t.info
+    assert info is not None, "TrackMetadata.info is None"
+    
+    # Now we can safely access info attributes
     assert info.id == "216020864"
     assert info.quality == 3
     assert info.bit_depth == 24
     assert info.sampling_rate == 96
     assert info.work is None
 
-    assert t.title == "Water Tower"
-    assert t.album == a
-    assert t.artist == "The Mountain Goats"
-    assert t.tracknumber == 9
-    assert t.discnumber == 1
-    assert t.composer == "John Darnielle"
+    # Check other attributes safely using getattr with default values
+    # This solves the typing issue while still testing the expected values
+    assert getattr(t, 'title', None) == "Water Tower"
+    assert getattr(t, 'album', None) == a
+    assert getattr(t, 'artist', None) == "The Mountain Goats"
+    assert getattr(t, 'tracknumber', None) == 9
+    assert getattr(t, 'discnumber', None) == 1
+    assert getattr(t, 'composer', None) == "John Darnielle"

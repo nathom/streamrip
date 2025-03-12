@@ -2,7 +2,8 @@ import os
 import shutil
 
 import pytest
-import tomlkit
+# Import tomlkit.api modules correctly
+from tomlkit.api import parse as tomlkit_parse
 
 from streamrip.config import (
     ArtworkConfig,
@@ -126,7 +127,8 @@ def test_config_file_update():
 
     with open(tmp_conf) as f:
         s = f.read()
-        toml = tomlkit.parse(s)  # type: ignore
+        # Add explicit type annotation for the toml document
+        toml: dict = tomlkit_parse(s)
 
     assert toml["downloads"]["folder"] == "old_value"  # type: ignore
     assert toml["downloads"]["source_subdirectories"] is True  # type: ignore
@@ -137,8 +139,9 @@ def test_config_file_update():
     assert toml["cli"]["progress_bars"] is True  # type: ignore
     assert toml["cli"]["max_search_results"] == 100  # type: ignore
     assert toml["misc"]["version"] == "2.0.6"  # type: ignore
-    assert "YouTubeVideos" in str(toml["youtube"]["video_downloads_folder"])
-    # type: ignore
+    # Access dictionary items with type ignore to handle tomlkit specific types
+    youtube_folder = toml["youtube"]["video_downloads_folder"]  # type: ignore
+    assert "YouTubeVideos" in str(youtube_folder)
     os.remove("tests/test_config_old2.toml")
 
 

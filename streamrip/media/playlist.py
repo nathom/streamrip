@@ -95,23 +95,21 @@ class PendingPlaylistTrack(Pending):
 
     async def _download_cover(self, covers: Covers, folder: str) -> str | None:
         """Download the cover art for a playlist.
-        
+
         Args:
             covers: Cover art information
             folder: Folder to save the cover in
-            
+
         Returns:
             Path to the embedded cover art, or None if not available
         """
-        result = await download_artwork(
+        embed_path, _ = await download_artwork(
             self.client.session,
             folder,
             covers,
             self.config.session.artwork,
             for_playlist=True,
         )
-        # Explicitly handle the tuple to ensure proper typing
-        embed_path: str | None = result[0]
         return embed_path
 
 
@@ -371,8 +369,8 @@ class PendingLastfmPlaylist(Pending):
 
         # Create new session so we're not bound by rate limit
         verify_ssl = getattr(self.config.session.downloads, "verify_ssl", True)
-        connector_kwargs = get_aiohttp_connector_kwargs(verify_ssl=verify_ssl)
-        connector = aiohttp.TCPConnector(**connector_kwargs)
+        connector_kwargs = get_aiohttp_connector_kwargs(verify_ssl=bool(verify_ssl))
+        connector = aiohttp.TCPConnector(**connector_kwargs)  # type: ignore
 
         async with aiohttp.ClientSession(connector=connector) as session:
             page = await fetch(session, playlist_url)

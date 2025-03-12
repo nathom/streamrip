@@ -25,8 +25,10 @@ def test_pending_resolve(qobuz_client: QobuzClient):
     dir = "tests/tests/Fleetwood Mac - Rumours (1977) [FLAC] [24B-96kHz]"
     assert os.path.isdir(dir)
     assert os.path.isfile(os.path.join(dir, "cover.jpg"))
-    assert os.path.isfile(t.cover_path)
+    # First verify that cover_path exists and is not None
+    cover_path = getattr(t, 'cover_path', None)
+    assert cover_path is not None
+    assert os.path.isfile(cover_path)
     assert isinstance(t, Track)
     assert isinstance(t.downloadable, Downloadable)
-    assert t.cover_path is not None
     shutil.rmtree(dir)

@@ -151,14 +151,16 @@ class TidalClient(Client):
             return [resp]
         return []
 
-    async def get_downloadable(self, track_id: str, quality: int):
+    async def get_downloadable(self, item_id: str, quality: int) -> TidalDownloadable:
+        from .downloadable import TidalDownloadable
+        
         params = {
             "audioquality": QUALITY_MAP[quality],
             "playbackmode": "STREAM",
             "assetpresentation": "FULL",
         }
         resp = await self._api_request(
-            f"tracks/{track_id}/playbackinfopostpaywall", params
+            f"tracks/{item_id}/playbackinfopostpaywall", params
         )
         logger.debug(resp)
         try:
@@ -167,9 +169,9 @@ class TidalClient(Client):
             raise Exception(resp["userMessage"])
         except JSONDecodeError:
             logger.warning(
-                f"Failed to get manifest for {track_id}. Retrying with lower quality."
+                f"Failed to get manifest for {item_id}. Retrying with lower quality."
             )
-            return await self.get_downloadable(track_id, quality - 1)
+            return await self.get_downloadable(item_id, quality - 1)
 
         logger.debug(manifest)
         enc_key = manifest.get("keyId")

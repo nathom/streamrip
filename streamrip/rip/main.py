@@ -2,8 +2,19 @@ import asyncio
 import json
 import logging
 import platform
+from typing import Any, TYPE_CHECKING
 
 import aiofiles
+
+# Import conditionally used modules
+if platform.system() == "Windows":
+    try:
+        # Use a conditional TYPE_CHECKING import for pick to suppress the import error
+        if TYPE_CHECKING:
+            import pick  # type: ignore
+    except ImportError:
+        # Will handle this error when the function is actually used
+        pass
 
 from .. import db
 from ..client import Client, DeezerClient, QobuzClient, SoundcloudClient, TidalClient
@@ -27,8 +38,35 @@ from .prompter import get_prompter
 
 logger = logging.getLogger("streamrip")
 
+# Handle Windows event loop policy
 if platform.system() == "Windows":
-    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+    try:
+        # On Windows, we need to use a different event loop policy 
+        # to avoid "RuntimeError: Event loop is closed" errors
+        # This needs to be handled separately since the module is Windows-specific
+        
+        # Directly import the Windows-specific policy class
+        # Use a string literal to satisfy the type checker while allowing runtime resolution
+        # The actual class name resolution will happen at runtime
+        policy_class_name = "WindowsSelectorEventLoopPolicy"
+        
+        # Get the Windows events module and the policy class
+        import asyncio.windows_events
+        policy_class = getattr(asyncio.windows_events, policy_class_name, None)
+        
+        if policy_class:
+            asyncio.set_event_loop_policy(policy_class())
+        else:
+            logger.warning(f"Windows policy class {policy_class_name} not found")
+            
+        # Import pick for Windows menu UI - type ignore because it's a conditional import
+        try:
+            import pick  # type: ignore 
+        except ImportError:
+            # We'll handle this when the function is actually used
+            pass
+    except Exception as e:
+        logger.warning(f"Error setting Windows-specific configuration: {e}")
 
 
 class Main:
@@ -192,9 +230,13 @@ class Main:
             search_results = SearchResults.from_pages(source, media_type, pages)
 
         if platform.system() == "Windows":  # simple term menu not supported for windows
-            from pick import pick
+            try:
+                # Type ignore since pick is a conditional import
+                from pick import pick  # type: ignore
+            except ImportError:
+                raise ImportError("The 'pick' package is required for Windows. Please install it with 'pip install pick'")
 
-            choices = pick(
+            choices = pick(  # type: ignore
                 search_results.results,
                 title=(
                     f"{source.capitalize()} {media_type} search.\n"

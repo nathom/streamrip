@@ -34,6 +34,7 @@ def create_ssl_context(verify=True):
 
     # Use certifi for certificate verification if available
     if HAS_CERTIFI:
+        import certifi
         return ssl.create_default_context(cafile=certifi.where())
     else:
         return ssl.create_default_context()
