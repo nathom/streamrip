@@ -258,11 +258,22 @@ class PendingSingle(Pending):
         return os.path.join(parent, meta.format_folder_path(formatter))
 
     async def _download_cover(self, covers: Covers, folder: str) -> str | None:
-        embed_path, _ = await download_artwork(
+        """Download the cover art for a track.
+        
+        Args:
+            covers: Cover art information
+            folder: Folder to save the cover in
+            
+        Returns:
+            Path to the embedded cover art, or None if not available
+        """
+        result = await download_artwork(
             self.client.session,
             folder,
             covers,
             self.config.session.artwork,
             for_playlist=False,
         )
+        # Explicitly handle the tuple to ensure proper typing
+        embed_path: str | None = result[0]
         return embed_path

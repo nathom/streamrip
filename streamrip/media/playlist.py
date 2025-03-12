@@ -94,13 +94,24 @@ class PendingPlaylistTrack(Pending):
         )
 
     async def _download_cover(self, covers: Covers, folder: str) -> str | None:
-        embed_path, _ = await download_artwork(
+        """Download the cover art for a playlist.
+        
+        Args:
+            covers: Cover art information
+            folder: Folder to save the cover in
+            
+        Returns:
+            Path to the embedded cover art, or None if not available
+        """
+        result = await download_artwork(
             self.client.session,
             folder,
             covers,
             self.config.session.artwork,
             for_playlist=True,
         )
+        # Explicitly handle the tuple to ensure proper typing
+        embed_path: str | None = result[0]
         return embed_path
 
 
@@ -323,7 +334,7 @@ class PendingLastfmPlaylist(Pending):
 
             logger.debug(f"No result found for {query} on {self.client.source}")
             search_status.failed += 1
-        return None, True
+        return None, False
 
     async def _parse_lastfm_playlist(
         self,
