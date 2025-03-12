@@ -100,25 +100,26 @@ class SoundcloudClient(Client):
                 item["id"] = self._get_custom_id(item)
         return [resp]
 
-    async def get_downloadable(self, item_info: str, _) -> SoundcloudDownloadable:
+    async def get_downloadable(self, item_id: str, quality: int = 0) -> SoundcloudDownloadable:
         # We have `get_metadata` overwrite the "id" field so that it contains
         # some extra information we need to download soundcloud tracks
 
-        # item_id is the soundcloud ID of the track
+        # item_id is the soundcloud ID of the track that contains
+        # additional info needed for download
         # download_url is either the url that points to an mp3 download or ""
         # if download_url == '_non_streamable' then we raise an exception
 
-        infos: list[str] = item_info.split("|")
+        infos: list[str] = item_id.split("|")
         logger.debug(f"{infos=}")
         assert len(infos) == 2, infos
-        item_id, download_info = infos
-        assert re.match(r"\d+", item_id) is not None
+        track_id, download_info = infos
+        assert re.match(r"\d+", track_id) is not None
 
         if download_info == self.NON_STREAMABLE:
-            raise NonStreamableError(item_info)
+            raise NonStreamableError(item_id)
 
         if download_info == self.ORIGINAL_DOWNLOAD:
-            resp_json, status = await self._api_request(f"tracks/{item_id}/download")
+            resp_json, status = await self._api_request(f"tracks/{track_id}/download")
             assert status == 200
             return SoundcloudDownloadable(
                 self.session,
@@ -126,7 +127,7 @@ class SoundcloudClient(Client):
             )
 
         if download_info == self.NOT_RESOLVED:
-            raise NotImplementedError(item_info)
+            raise NotImplementedError(item_id)
 
         # download_info contains mp3 stream url
         resp_json, status = await self._request(download_info)
@@ -181,11 +182,15 @@ class SoundcloudClient(Client):
         ]
 
         # (list of track metadata, status code)
-        responses: list[tuple[list, int]] = await asyncio.gather(*requests)
+        responses: list[tuple[list[dict], int]] = await asyncio.gather(*requests)
 
         assert all(status == 200 for _, status in responses)
 
-        remaining_tracks = list(itertools.chain(*[resp for resp, _ in responses]))
+        # Extract all tracks from each response
+        remaining_tracks: list = []
+        for resp, _ in responses:
+            # Add all tracks from this response
+            remaining_tracks.extend(resp)
 
         # Insert the new metadata into the original response
         track_map: dict[str, dict] = {track["id"]: track for track in remaining_tracks}
