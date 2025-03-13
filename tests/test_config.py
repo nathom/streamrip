@@ -183,12 +183,7 @@ def test_sample_config_data_fields(sample_config_data):
             quality=3,
             download_videos=True,
         ),
-        deezer=DeezerConfig(
-            arl="testarl",
-            quality=2,
-            use_deezloader=True,
-            deezloader_warnings=True,
-        ),
+        deezer=DeezerConfig(arl="testarl", quality=2),
         soundcloud=SoundcloudConfig(
             client_id="clientid",
             app_version="appversion",

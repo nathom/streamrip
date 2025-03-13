@@ -141,7 +141,6 @@ class DeezerDownloadable(Downloadable):
         self.id = str(info["id"])
 
     async def _download(self, path: str, callback):
-        # with requests.Session().get(self.url, allow_redirects=True) as resp:
         async with self.session.get(self.url, allow_redirects=True) as resp:
             resp.raise_for_status()
             self._size = int(resp.headers.get("Content-Length", 0))
@@ -149,7 +148,6 @@ class DeezerDownloadable(Downloadable):
                 try:
                     info = await resp.json()
                     try:
-                        # Usually happens with deezloader downloads
                         raise NonStreamableError(f"{info['error']} - {info['message']}")
                     except KeyError:
                         raise NonStreamableError(info)

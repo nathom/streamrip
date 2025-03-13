@@ -170,9 +170,7 @@ class DeezerClient(Client):
             url = self.client.get_track_url(token, format_str)
         except deezer.WrongLicense:
             raise NonStreamableError(
-                "The requested quality is not available with your subscription. "
-                "Deezer HiFi is required for quality 2. Otherwise, the maximum "
-                "quality allowed is 1.",
+                f"The requested quality ({quality}) is not available with your subscription. Deezer HiFi is required for quality 2. Deezer Premium is required for quality 1. Otherwise, the maximum quality allowed is 0."
             )
         except deezer.WrongGeolocation:
             if not is_retry and fallback_id:

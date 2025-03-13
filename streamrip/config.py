@@ -63,15 +63,10 @@ class DeezerConfig:
     # for instructions on how to find this
     arl: str
     # 0, 1, or 2
-    # This only applies to paid Deezer subscriptions. Those using deezloader
-    # are automatically limited to quality = 1
+    # Unpaid accounts are limited to quality = 0.
+    # Quality 1 requires a Deezer Premium subscription,
+    # and quality 2 requires a Deezer HiFi subscription.
     quality: int
-    # This allows for free 320kbps MP3 downloads from Deezer
-    # If an arl is provided, deezloader is never used
-    use_deezloader: bool
-    # This warns you when the paid deezer account is not logged in and rip falls
-    # back to deezloader, which is unreliable
-    deezloader_warnings: bool
 
 
 @dataclass(slots=True)
