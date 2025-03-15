@@ -28,6 +28,7 @@ class TrackMetadata:
     title: str
     album: AlbumMetadata
     artist: str
+    albumtitle: str
     tracknumber: int
     discnumber: int
     composer: str | None
@@ -53,6 +54,8 @@ class TrackMetadata:
         composer = typed(resp.get("composer", {}).get("name"), str | None)
         tracknumber = typed(resp.get("track_number", 1), int)
         discnumber = typed(resp.get("media_number", 1), int)
+        albumtitle =  typed(resp.get("album", {}).get("title"), str | None)
+
         artist = typed(
             safe_get(
                 resp,
@@ -80,6 +83,7 @@ class TrackMetadata:
             title=title,
             album=album,
             artist=artist,
+            albumtitle=albumtitle,
             tracknumber=tracknumber,
             discnumber=discnumber,
             composer=composer,
@@ -235,9 +239,11 @@ class TrackMetadata:
             "title": self.title,
             "tracknumber": self.tracknumber,
             "artist": self.artist,
+            "albumtitle": self.albumtitle,
             "albumartist": self.album.albumartist,
             "albumcomposer": self.album.albumcomposer or none_text,
             "composer": self.composer or none_text,
             "explicit": " (Explicit) " if self.info.explicit else "",
         }
         return format_string.format(**info)
+
