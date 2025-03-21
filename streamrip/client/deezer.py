@@ -111,6 +111,7 @@ class DeezerClient(Client):
                 track['id'] = found_track["SNG_ID"]
 
                 track['album']["id"] = found_track["ALB_ID"]
+                return track
 
         return track
 
