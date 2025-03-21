@@ -141,8 +141,6 @@ class DeezerClient(Client):
             asyncio.to_thread(self.client.api.get_playlist, item_id),
             asyncio.to_thread(self.client.api.get_playlist_tracks, item_id),
         )
-        # pl_metadata["tracks"] = pl_tracks["data"]
-
         pl_metadata["tracks"] = await self.get_alternatives(pl_tracks["data"])
         pl_metadata["track_total"] = len(pl_tracks["data"])
         return pl_metadata
