@@ -130,7 +130,8 @@ class DeezerClient(Client):
             self.client.gw.get_track_with_fallback, track["id"]
         )
 
-
+        if not "album" in track:
+            track["album"] = {}
         if "ALBUM_FALLBACK" in item_fallbacks:
             for album_fallback in item_fallbacks['ALBUM_FALLBACK']['data']:
                 if "RIGHTS" in album_fallback and len(album_fallback["RIGHTS"]) > 0:
