@@ -37,7 +37,7 @@ class DeezerClient(Client):
 
     def __init__(self, config: Config):
         self.global_config = config
-        self.client = deezer.Deezer(os.getenv("DEEZER_ACCESS_TOKEN", None))
+        self.client = deezer.Deezer()
         self.logged_in = False
         self.config = config.session.deezer
 
@@ -71,7 +71,7 @@ class DeezerClient(Client):
         except Exception as e:
             raise NonStreamableError(e)
 
-        items = self.get_alternatives([item])
+        items = await self.get_alternatives([item])
         item = items[0]
 
         if "readable" in item and not item["readable"]:
