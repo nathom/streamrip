@@ -82,7 +82,7 @@ class DeezerClient(Client):
             logger.error(f"Error fetching album of track {item_id}: {e}")
             return item
 
-        album_metadata["tracks"] = album_tracks["data"]
+        album_metadata["tracks"] = await self.get_alternatives(album_tracks["data"])
         album_metadata["track_total"] = len(album_tracks["data"])
         item["album"] = album_metadata
 
@@ -93,16 +93,57 @@ class DeezerClient(Client):
             asyncio.to_thread(self.client.api.get_album, item_id),
             asyncio.to_thread(self.client.api.get_album_tracks, item_id),
         )
-        album_metadata["tracks"] = album_tracks["data"]
+        album_metadata["tracks"] = await self.get_alternatives(album_tracks["data"])
         album_metadata["track_total"] = len(album_tracks["data"])
         return album_metadata
+
+
+    async def get_alternative(self, track):
+        item_fallbacks = await asyncio.to_thread(
+            self.client.gw.get_track_with_fallback, track["id"]
+        )
+        if "FALLBACK" in item_fallbacks:
+            track["id"] = item_fallbacks["FALLBACK"]["SNG_ID"]
+            track["readable"] = (
+                    item_fallbacks["FALLBACK"]["STATUS"] == 1
+            )
+        else:
+            if "ALBUM_FALLBACK" in item_fallbacks:
+                for album_fallback in item_fallbacks['ALBUM_FALLBACK']['data']:
+                    if "RIGHTS" in album_fallback:
+                        if len(album_fallback["RIGHTS"]) > 0:
+                            for alternative_track in self.client.gw.get_album_tracks(album_fallback["ALB_ID"]):
+                                if alternative_track['SNG_TITLE'].lower() == track['title'].lower():
+                                    track["id"] = alternative_track["SNG_ID"]
+                                    track["readable"] = (
+                                            alternative_track["STATUS"] == 1
+                                    )
+                                    break
+
+    async def get_alternatives(self, tracks):
+        for track in tracks:
+            if not track["readable"]:
+                try:
+                    retries = 0
+                    while True:
+                        retries += 1
+                        if retries > 4:
+                            break
+                        await self.get_alternative(track)
+                except Exception as e:
+                    logger.error(
+                        f"Error while getting fallbacks for track {track['id']}: {e}"
+                    )
+        return tracks
 
     async def get_playlist(self, item_id: str) -> dict:
         pl_metadata, pl_tracks = await asyncio.gather(
             asyncio.to_thread(self.client.api.get_playlist, item_id),
             asyncio.to_thread(self.client.api.get_playlist_tracks, item_id),
         )
-        pl_metadata["tracks"] = pl_tracks["data"]
+        # pl_metadata["tracks"] = pl_tracks["data"]
+
+        pl_metadata["tracks"] = await self.get_alternatives(pl_tracks["data"])
         pl_metadata["track_total"] = len(pl_tracks["data"])
         return pl_metadata
 
