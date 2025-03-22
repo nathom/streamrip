@@ -176,6 +176,10 @@ class FLAC(Converter):
     container = "flac"
     lossless = True
 
+    def get_quality_arg(_rate: int): -> str
+        """Mock function. Lossless codecs do not need extra quality arguments."""
+        return ""
+
 
 class LAME(Converter):
     """Class for libmp3lame converter.
@@ -205,8 +209,8 @@ class LAME(Converter):
     container = "mp3"
     default_ffmpeg_arg = "-q:a 0"  # V0
 
-    def get_quality_arg(self, rate):
-        return self._bitrate_map[rate]
+    def get_quality_arg(rate: int): -> str
+        return LAME._bitrate_map[rate]
 
 
 class ALAC(Converter):
@@ -216,6 +220,10 @@ class ALAC(Converter):
     codec_lib = "alac"
     container = "m4a"
     lossless = True
+
+    def get_quality_arg(_rate):
+        """Mock function. Lossless codecs do not need extra quality arguments."""
+        return ""
 
 
 class Vorbis(Converter):
@@ -232,7 +240,7 @@ class Vorbis(Converter):
     container = "ogg"
     default_ffmpeg_arg = "-q:a 6"  # 160, aka the "high" quality profile from Spotify
 
-    def get_quality_arg(self, rate: int) -> str:
+    def get_quality_arg(rate: int) -> str:
         arg = "qscale:a %d"
         if rate <= 128:
             return arg % (rate / 16 - 4)
@@ -256,7 +264,7 @@ class OPUS(Converter):
     container = "opus"
     default_ffmpeg_arg = "-b:a 128k"  # Transparent
 
-    def get_quality_arg(self, _: int) -> str:
+    def get_quality_arg(_rate: int) -> str:
         return ""
 
 
@@ -274,7 +282,7 @@ class AAC(Converter):
     container = "m4a"
     default_ffmpeg_arg = "-b:a 256k"
 
-    def get_quality_arg(self, _: int) -> str:
+    def get_quality_arg(_: int) -> str:
         return ""
 
 

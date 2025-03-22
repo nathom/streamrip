@@ -90,6 +90,7 @@ class Track(Media):
             sampling_rate=c.sampling_rate,
             bit_depth=c.bit_depth,
             remove_source=True,  # always going to delete the old file
+            ffmpeg_arg = engine_class.get_quality_arg(c.lossy_bitrate)
         )
         await engine.convert()
         self.download_path = engine.final_fn  # because the extension changed
