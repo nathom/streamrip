@@ -50,16 +50,30 @@ class PlaylistMetadata:
         logger.debug(resp)
         name = typed(resp["name"], str)
         tracks = []
+        unavailable_count = 0
+        total_tracks = len(resp["tracks"]["items"])
 
         for i, track in enumerate(resp["tracks"]["items"]):
-            meta = TrackMetadata.from_qobuz(
-                AlbumMetadata.from_qobuz(track["album"]),
-                track,
-            )
-            if meta is None:
-                logger.error(f"Track {i+1} in playlist {name} not available for stream")
+            try:
+                meta = TrackMetadata.from_qobuz(
+                    AlbumMetadata.from_qobuz(track["album"]),
+                    track,
+                )
+                if meta is None:
+                    logger.error(f"Track {i+1} in playlist {name} not available for stream")
+                    unavailable_count += 1
+                    continue
+                tracks.append(meta)
+            except Exception as e:
+                logger.error(f"Error processing track {i+1} in playlist {name}: {e}")
+                unavailable_count += 1
                 continue
-            tracks.append(meta)
+
+        if unavailable_count > 0:
+            logger.warning(f"{unavailable_count} out of {total_tracks} tracks in playlist {name} are not available for streaming")
+
+        if not tracks:
+            logger.warning(f"No available tracks found in playlist {name}")
 
         return cls(name, tracks)
 
