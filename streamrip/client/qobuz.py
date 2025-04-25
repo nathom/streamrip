@@ -218,6 +218,9 @@ class QobuzClient(Client):
         if media_type == "label":
             return await self.get_label(item)
 
+        if media_type == "playlist":
+            return await self.get_playlist(item)
+
         c = self.config.session.qobuz
         params = {
             "app_id": str(c.app_id),
@@ -248,6 +251,51 @@ class QobuzClient(Client):
             )
 
         return resp
+
+    async def get_playlist(self, playlist_id: str) -> dict:
+        c = self.config.session.qobuz
+        page_limit = 500
+        params = {
+            "app_id": str(c.app_id),
+            "playlist_id": playlist_id,
+            "limit": page_limit,
+            "offset": 0,
+            "extra": "tracks",
+        }
+        epoint = "playlist/get"
+        status, playlist_resp = await self._api_request(epoint, params)
+        assert status == 200
+
+        # Get the total number of tracks in the playlist
+        tracks_count = playlist_resp["tracks_count"]
+        logger.debug(f"Playlist has {tracks_count} tracks total")
+
+        if tracks_count <= page_limit:
+            return playlist_resp
+
+        # Need to fetch additional pages
+        requests = [
+            self._api_request(
+                epoint,
+                {
+                    "app_id": str(c.app_id),
+                    "playlist_id": playlist_id,
+                    "limit": page_limit,
+                    "offset": offset,
+                    "extra": "tracks",
+                },
+            )
+            for offset in range(page_limit, tracks_count, page_limit)
+        ]
+
+        results = await asyncio.gather(*requests)
+        items = playlist_resp["tracks"]["items"]
+        for status, resp in results:
+            assert status == 200
+            items.extend(resp["tracks"]["items"])
+
+        logger.debug(f"Successfully fetched all {len(items)} tracks from playlist")
+        return playlist_resp
 
     async def get_label(self, label_id: str) -> dict:
         c = self.config.session.qobuz
