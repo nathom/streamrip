@@ -136,7 +136,7 @@ def test_set_download_path_respects_max_length(track_with_long_path: Track) -> N
 
 
 @pytest.mark.parametrize(
-    "truncate_to,expected_truncated",
+    ("truncate_to", "expected_truncated"),
     [
         (50, True),
         (0, False),  # No truncation
@@ -181,7 +181,7 @@ def test_set_download_path_restrict_characters(track_with_normal_path: Track) ->
 
 
 @pytest.mark.parametrize(
-    "folder_length,filename_length",
+    ("folder_length", "filename_length"),
     [
         (50, 100),  # Moderate folder, long filename
         (100, 100),  # Both moderate
