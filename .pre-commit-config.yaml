@@ -15,7 +15,7 @@ repos:
     hooks:
       - id: pytest
         name: pytest
-        entry: uv run pytest ./tests -sx
+        entry: uv run --frozen pytest ./tests -sx
         language: system
         types: [python]
         pass_filenames: false
