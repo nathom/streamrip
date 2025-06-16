@@ -20,9 +20,13 @@ def clean_filename(fn: str, restrict: bool = False) -> str:
     return path
 
 
-def clean_filepath(fn: str, restrict: bool = False) -> str:
+def clean_filepath(fn: str, restrict: bool = False, max_length: int = 200) -> str:
     path = str(sanitize_filepath(fn))
     if restrict:
         path = "".join(c for c in path if c in ALLOWED_CHARS)
+
+    # Truncate path to prevent filesystem issues
+    if len(path) > max_length:
+        path = path[:max_length].rstrip()
 
     return path

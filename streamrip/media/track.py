@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import os
+import tempfile
 from dataclasses import dataclass
 
 from .. import converter
@@ -33,7 +34,17 @@ class Track(Media):
 
     async def preprocess(self):
         self._set_download_path()
-        os.makedirs(self.folder, exist_ok=True)
+        try:
+            os.makedirs(self.folder, exist_ok=True)
+        except OSError as e:
+            logger.error(f"Failed to create directory '{self.folder}': {e}")
+            # Try to create a shorter path as fallback
+            fallback_folder = os.path.join(tempfile.gettempdir(), "streamrip_fallback")
+            os.makedirs(fallback_folder, exist_ok=True)
+            self.folder = fallback_folder
+            self._set_download_path()  # Recalculate with new folder
+            logger.warning(f"Using fallback directory: {self.folder}")
+
         if self.is_single:
             add_title(self.meta.title)
 
@@ -104,10 +115,25 @@ class Track(Media):
         if c.truncate_to > 0 and len(track_path) > c.truncate_to:
             track_path = track_path[: c.truncate_to]
 
-        self.download_path = os.path.join(
+        # Construct the full path
+        full_path = os.path.join(
             self.folder,
             f"{track_path}.{self.downloadable.extension}",
         )
+
+        # Check if the full path is too long and truncate if necessary
+        max_path_length = 250  # Leave some buffer for filesystem limits
+        if len(full_path) > max_path_length:
+            # Calculate how much we need to truncate the track_path
+            excess = len(full_path) - max_path_length
+            if len(track_path) > excess:
+                track_path = track_path[:-excess].rstrip()
+                full_path = os.path.join(
+                    self.folder,
+                    f"{track_path}.{self.downloadable.extension}",
+                )
+
+        self.download_path = full_path
 
 
 @dataclass(slots=True)
