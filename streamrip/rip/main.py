@@ -9,6 +9,13 @@ from .. import db
 from ..client import Client, DeezerClient, QobuzClient, SoundcloudClient, TidalClient
 from ..config import Config
 from ..console import console
+from ..exceptions import (
+    APIError,
+    ClientError,
+    InvalidURLError,
+    NetworkError,
+    StreamripError,
+)
 from ..media import (
     Media,
     Pending,
@@ -77,7 +84,7 @@ class Main:
         """
         parsed = parse_url(url)
         if parsed is None:
-            raise Exception(f"Unable to parse url {url}")
+            raise InvalidURLError(f"Não foi possível analisar a URL: {url}")
 
         client = await self.get_logged_in_client(parsed.source)
         self.pending.append(
@@ -107,7 +114,9 @@ class Main:
         elif media_type == "artist":
             item = PendingArtist(id, client, self.config, self.database)
         else:
-            raise Exception(media_type)
+            # This case should ideally not be reached if media_type is validated before.
+            # Consider adding specific validation or using a more specific error.
+            raise StreamripError(f"Tipo de mídia desconhecido: {media_type}")
 
         self.pending.append(item)
 
@@ -135,8 +144,8 @@ class Main:
         """Return a functioning client instance for `source`."""
         client = self.clients.get(source)
         if client is None:
-            raise Exception(
-                f"No client named {source} available. Only have {self.clients.keys()}",
+            raise ClientError(
+                f"Cliente não encontrado: {source}. Clientes disponíveis: {list(self.clients.keys())}"
             )
         if not client.logged_in:
             prompter = get_prompter(client, self.config)
@@ -170,26 +179,68 @@ class Main:
         )
 
         failed_items = 0
-        for result in results:
-            if isinstance(result, Exception):
-                logger.error(f"Error processing media item: {result}")
+        for i, result in enumerate(results):
+            if isinstance(result, StreamripError):
+                media_item_name = "unknown item"
+                try:
+                    media_item_name = str(self.media[i])
+                except IndexError: # Should not happen if results and self.media align
+                    pass
+                logger.error(
+                    f"Erro ao processar o item de mídia '{media_item_name}': {result.get_display_message()}",
+                    exc_info=True, # Log traceback for StreamripError as well for internal debugging
+                )
+                console.print(
+                    f"[red]Falha ao processar '{media_item_name}': {result.get_display_message()}"
+                )
+                failed_items += 1
+            elif isinstance(result, Exception):
+                media_item_name = "unknown item"
+                try:
+                    media_item_name = str(self.media[i])
+                except IndexError:
+                    pass
+                logger.critical(
+                    f"Erro inesperado ao processar o item de mídia '{media_item_name}': {result}",
+                    exc_info=True,
+                )
+                console.print(
+                    f"[bold red]Erro inesperado ao processar '{media_item_name}'. Verifique os logs para detalhes."
+                )
                 failed_items += 1
 
         if failed_items > 0:
             total_items = len(self.media)
             logger.info(
-                f"Download completed with {failed_items} failed items out of {total_items} total items."
+                f"Download concluído com {failed_items} itens com falha de um total de {total_items} itens."
             )
+        # Ensure self.media is cleared to prevent reprocessing, or manage state differently
+        self.media.clear()
+
 
     async def search_interactive(self, source: str, media_type: str, query: str):
-        client = await self.get_logged_in_client(source)
+        try:
+            client = await self.get_logged_in_client(source)
 
-        with console.status(f"[bold]Searching {source}", spinner="dots"):
-            pages = await client.search(media_type, query, limit=100)
-            if len(pages) == 0:
-                console.print(f"[red]No search results found for query {query}")
-                return
-            search_results = SearchResults.from_pages(source, media_type, pages)
+            with console.status(f"[bold]Searching {source}", spinner="dots"):
+                pages = await client.search(media_type, query, limit=100)
+                if not pages: # More Pythonic check for empty list
+                    console.print(f"[red]Nenhum resultado encontrado para a pesquisa: {query}")
+                    return
+                search_results = SearchResults.from_pages(source, media_type, pages)
+
+        except (APIError, NetworkError) as e:
+            logger.error(f"Erro durante a pesquisa interativa: {e}", exc_info=True)
+            console.print(f"[red]Erro durante a pesquisa: {e.get_display_message()}")
+            return
+        except StreamripError as e:
+            logger.error(f"Erro inesperado do Streamrip durante a pesquisa interativa: {e}", exc_info=True)
+            console.print(f"[red]Erro inesperado: {e.get_display_message()}")
+            return
+        except Exception as e: # Catch any other unexpected errors
+            logger.critical(f"Erro crítico inesperado durante a pesquisa interativa: {e}", exc_info=True)
+            console.print("[bold red]Ocorreu um erro crítico inesperado. Verifique os logs.")
+            return
 
         if platform.system() == "Windows":  # simple term menu not supported for windows
             from pick import pick
@@ -234,38 +285,62 @@ class Main:
                 )
 
     async def search_take_first(self, source: str, media_type: str, query: str):
-        client = await self.get_logged_in_client(source)
-        with console.status(f"[bold]Searching {source}", spinner="dots"):
-            pages = await client.search(media_type, query, limit=1)
+        try:
+            client = await self.get_logged_in_client(source)
+            with console.status(f"[bold]Searching {source}", spinner="dots"):
+                pages = await client.search(media_type, query, limit=1)
 
-        if len(pages) == 0:
-            console.print(f"[red]No search results found for query {query}")
-            return
+            if not pages:
+                console.print(f"[red]Nenhum resultado encontrado para a pesquisa: {query}")
+                return
 
-        search_results = SearchResults.from_pages(source, media_type, pages)
-        assert len(search_results.results) > 0
-        first = search_results.results[0]
-        await self.add_by_id(source, first.media_type(), first.id)
+            search_results = SearchResults.from_pages(source, media_type, pages)
+            if not search_results.results: # Should be guaranteed by 'if not pages' but good for safety
+                console.print(f"[red]Nenhum resultado encontrado para a pesquisa: {query}")
+                return
+            first = search_results.results[0]
+            await self.add_by_id(source, first.media_type(), first.id)
+        except (APIError, NetworkError) as e:
+            logger.error(f"Erro ao buscar o primeiro resultado: {e}", exc_info=True)
+            console.print(f"[red]Erro durante a pesquisa: {e.get_display_message()}")
+        except StreamripError as e:
+            logger.error(f"Erro inesperado do Streamrip ao buscar o primeiro resultado: {e}", exc_info=True)
+            console.print(f"[red]Erro inesperado: {e.get_display_message()}")
+        except Exception as e: # Catch any other unexpected errors
+            logger.critical(f"Erro crítico inesperado ao buscar o primeiro resultado: {e}", exc_info=True)
+            console.print("[bold red]Ocorreu um erro crítico inesperado. Verifique os logs.")
+
 
     async def search_output_file(
         self, source: str, media_type: str, query: str, filepath: str, limit: int
     ):
-        client = await self.get_logged_in_client(source)
-        with console.status(f"[bold]Searching {source}", spinner="dots"):
-            pages = await client.search(media_type, query, limit=limit)
+        try:
+            client = await self.get_logged_in_client(source)
+            with console.status(f"[bold]Searching {source}", spinner="dots"):
+                pages = await client.search(media_type, query, limit=limit)
 
-        if len(pages) == 0:
-            console.print(f"[red]No search results found for query {query}")
-            return
+            if not pages:
+                console.print(f"[red]Nenhum resultado encontrado para a pesquisa: {query}")
+                return
 
-        search_results = SearchResults.from_pages(source, media_type, pages)
-        file_contents = json.dumps(search_results.as_list(source), indent=4)
-        async with aiofiles.open(filepath, "w") as f:
-            await f.write(file_contents)
+            search_results = SearchResults.from_pages(source, media_type, pages)
+            file_contents = json.dumps(search_results.as_list(source), indent=4)
+            async with aiofiles.open(filepath, "w") as f:
+                await f.write(file_contents)
 
-        console.print(
-            f"Wrote [purple]{len(search_results.results)}[/purple] results to [cyan]{filepath} as JSON!"
-        )
+            console.print(
+                f"Wrote [purple]{len(search_results.results)}[/purple] results to [cyan]{filepath} as JSON!"
+            )
+        except (APIError, NetworkError) as e:
+            logger.error(f"Erro ao pesquisar e salvar em arquivo: {e}", exc_info=True)
+            console.print(f"[red]Erro durante a pesquisa: {e.get_display_message()}")
+        except StreamripError as e:
+            logger.error(f"Erro inesperado do Streamrip ao pesquisar e salvar em arquivo: {e}", exc_info=True)
+            console.print(f"[red]Erro inesperado: {e.get_display_message()}")
+        except Exception as e: # Catch any other unexpected errors
+            logger.critical(f"Erro crítico inesperado ao pesquisar e salvar em arquivo: {e}", exc_info=True)
+            console.print("[bold red]Ocorreu um erro crítico inesperado. Verifique os logs.")
+
 
     async def resolve_lastfm(self, playlist_url: str):
         """Resolve a last.fm playlist."""
@@ -294,13 +369,23 @@ class Main:
 
     async def __aexit__(self, *_):
         # Ensure all client sessions are closed
-        for client in self.clients.values():
-            if hasattr(client, "session"):
-                await client.session.close()
+        for source, client in self.clients.items():
+            try:
+                if hasattr(client, "session") and client.session is not None and not client.session.closed:
+                    await client.session.close()
+            except Exception as e:
+                logger.error(f"Erro ao fechar a sessão do cliente {source}: {e}", exc_info=True)
 
-        # close global progress bar manager
-        clear_progress()
-        # We remove artwork tempdirs here because multiple singles
-        # may be able to share downloaded artwork in the same `rip` session
-        # We don't know that a cover will not be used again until end of execution
-        remove_artwork_tempdirs()
+        try:
+            # close global progress bar manager
+            clear_progress()
+        except Exception as e:
+            logger.error(f"Erro ao limpar o progresso: {e}", exc_info=True)
+
+        try:
+            # We remove artwork tempdirs here because multiple singles
+            # may be able to share downloaded artwork in the same `rip` session
+            # We don't know that a cover will not be used again until end of execution
+            remove_artwork_tempdirs()
+        except Exception as e:
+            logger.error(f"Erro ao remover diretórios temporários de arte: {e}", exc_info=True)

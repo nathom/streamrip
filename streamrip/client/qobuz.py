@@ -11,12 +11,18 @@ import aiohttp
 
 from ..config import Config
 from ..exceptions import (
+    APILimitError,
     AuthenticationError,
+    ClientError,
     IneligibleError,
+    InvalidAPIResponseError,
     InvalidAppIdError,
     InvalidAppSecretError,
     MissingCredentialsError,
     NonStreamableError,
+    QobuzAPIError,
+    ResourceNotFoundError,
+    NetworkError,
 )
 from .client import Client
 from .downloadable import BasicDownloadable, Downloadable
@@ -65,23 +71,32 @@ class QobuzSpoofer:
         self.verify_ssl = verify_ssl
 
     async def get_app_id_and_secrets(self) -> tuple[str, list[str]]:
-        assert self.session is not None
-        async with self.session.get("https://play.qobuz.com/login") as req:
-            login_page = await req.text()
+        assert self.session is not None, "Session not initialized in QobuzSpoofer"
+        try:
+            async with self.session.get("https://play.qobuz.com/login") as req:
+                req.raise_for_status() # Check for HTTP errors
+                login_page = await req.text()
+        except aiohttp.ClientError as e:
+            raise NetworkError(f"Erro de rede ao buscar a página de login do Qobuz: {e}") from e
 
         bundle_url_match = re.search(
             r'<script src="(/resources/\d+\.\d+\.\d+-[a-z]\d{3}/bundle\.js)"></script>',
             login_page,
         )
-        assert bundle_url_match is not None
+        if bundle_url_match is None:
+            raise QobuzAPIError("Não foi possível encontrar a URL do bundle na página de login do Qobuz.")
         bundle_url = bundle_url_match.group(1)
 
-        async with self.session.get("https://play.qobuz.com" + bundle_url) as req:
-            self.bundle = await req.text()
+        try:
+            async with self.session.get("https://play.qobuz.com" + bundle_url) as req:
+                req.raise_for_status()
+                self.bundle = await req.text()
+        except aiohttp.ClientError as e:
+            raise NetworkError(f"Erro de rede ao buscar o bundle.js do Qobuz: {e}") from e
 
         match = re.search(self.app_id_regex, self.bundle)
         if match is None:
-            raise Exception("Could not find app id.")
+            raise QobuzAPIError("Não foi possível encontrar o app_id no bundle.js do Qobuz.")
 
         app_id = str(match.group("app_id"))
 
@@ -152,31 +167,45 @@ class QobuzClient(Client):
             config.session.downloads.requests_per_minute,
         )
         self.secret: Optional[str] = None
+        self.max_retries = 3 # Max retries for network/API limit errors
+        self.initial_retry_delay = 1.0 # Initial delay in seconds for retries
 
-    async def login(self):
-        self.session = await self.get_session(
-            verify_ssl=self.config.session.downloads.verify_ssl
-        )
-        """User credentials require either a user token OR a user email & password.
+    async def _fetch_app_id_and_secrets_if_needed(self, force_refetch: bool = False):
+        c = self.config.session.qobuz
+        f = self.config.file
+        should_fetch = force_refetch or not c.app_id or not c.secrets
 
-        A hash of the password is stored in self.config.qobuz.password_or_token.
-        This data as well as the app_id is passed to self._get_user_auth_token() to get
-        the actual credentials for the user.
-        """
+        if should_fetch:
+            action = "Buscando novamente" if force_refetch else "Buscando"
+            logger.info(f"{action} App ID/segredos do Qobuz...")
+            try:
+                fetched_app_id, fetched_secrets = await self._get_app_id_and_secrets()
+                c.app_id = fetched_app_id
+                c.secrets = fetched_secrets
+                f.qobuz.app_id = fetched_app_id # Save to persistent config
+                f.qobuz.secrets = fetched_secrets # Save to persistent config
+                f.set_modified()
+                logger.info("App ID/segredos do Qobuz obtidos e salvos com sucesso.")
+            except (NetworkError, QobuzAPIError) as e:
+                raise QobuzAPIError(f"Falha ao obter app_id/segredos do Qobuz: {e}") from e
+
+    async def login(self, attempt_refetch_on_invalid_app_id: bool = True):
+        try:
+            self.session = await self.get_session(
+                verify_ssl=self.config.session.downloads.verify_ssl
+            )
+        except Exception as e: # Broad exception for session creation issues
+            raise ClientError(f"Falha ao inicializar a sessão HTTP: {e}") from e
+
         c = self.config.session.qobuz
         if not c.email_or_userid or not c.password_or_token:
-            raise MissingCredentialsError
+            raise MissingCredentialsError("E-mail/usuário ou senha/token do Qobuz não configurado.")
 
-        assert not self.logged_in, "Already logged in"
+        if self.logged_in:
+            logger.warning("Tentativa de login quando já estava logado no Qobuz.")
+            return
 
-        if not c.app_id or not c.secrets:
-            logger.info("App id/secrets not found, fetching")
-            c.app_id, c.secrets = await self._get_app_id_and_secrets()
-            # write to file
-            f = self.config.file
-            f.qobuz.app_id = c.app_id
-            f.qobuz.secrets = c.secrets
-            f.set_modified()
+        await self._fetch_app_id_and_secrets_if_needed()
 
         self.session.headers.update({"X-App-Id": str(c.app_id)})
 
@@ -194,24 +223,62 @@ class QobuzClient(Client):
             }
 
         logger.debug("Request params %s", params)
-        status, resp = await self._api_request("user/login", params)
-        logger.debug("Login resp: %s", resp)
 
-        if status == 401:
-            raise AuthenticationError(f"Invalid credentials from params {params}")
-        elif status == 400:
-            raise InvalidAppIdError(f"Invalid app id from params {params}")
+        try:
+            status, resp_data = await self._api_request("user/login", params)
+            logger.debug("Login resp: %s", resp_data)
+
+            if status == 401:
+                raise InvalidCredentialsError(f"Credenciais inválidas do Qobuz. Verifique e-mail/senha ou token.")
+
+            if status == 400:
+                error_message = resp_data.get("message", "app_id inválido ou solicitação malformada.")
+                # Check if it's an app_id issue and if we can refetch
+                if "app_id" in error_message.lower() and attempt_refetch_on_invalid_app_id:
+                    logger.warning(f"App ID do Qobuz parece inválido ('{error_message}'). Tentando buscar novamente...")
+                    await self._fetch_app_id_and_secrets_if_needed(force_refetch=True)
+                    # After refetching, update headers and try login again, but only once.
+                    self.session.headers.update({"X-App-Id": str(c.app_id)})
+                    return await self.login(attempt_refetch_on_invalid_app_id=False)
+                raise InvalidAppIdError(error_message)
+
+            if status != 200:
+                error_message = resp_data.get("message", f"Erro desconhecido durante o login no Qobuz (status: {status}).")
+                raise QobuzAPIError(error_message)
+
+        except InvalidAppIdError as e: # Catch InvalidAppIdError specifically for refetch logic
+            if attempt_refetch_on_invalid_app_id:
+                logger.warning(f"Falha no login do Qobuz devido a app_id inválido: {e}. Tentando buscar novamente...")
+                await self._fetch_app_id_and_secrets_if_needed(force_refetch=True)
+                self.session.headers.update({"X-App-Id": str(c.app_id)})
+                return await self.login(attempt_refetch_on_invalid_app_id=False)
+            raise # Re-raise if we shouldn't refetch or refetch failed
 
         logger.debug("Logged in to Qobuz")
 
-        if not resp["user"]["credential"]["parameters"]:
-            raise IneligibleError("Free accounts are not eligible to download tracks.")
+        user_info = resp_data.get("user")
+        if not isinstance(user_info, dict):
+            raise InvalidAPIResponseError("Campo 'user' ausente ou inválido na resposta de login do Qobuz.")
 
-        uat = resp["user_auth_token"]
+        credential_info = user_info.get("credential")
+        if not isinstance(credential_info, dict):
+            raise InvalidAPIResponseError("Campo 'user.credential' ausente ou inválido na resposta de login do Qobuz.")
+
+        # Qobuz returns an empty list for 'parameters' for free/ineligible accounts.
+        # Checking for 'None' might be too strict if API changes to omit for free accounts.
+        # The original check was `if not resp["user"]["credential"]["parameters"]:`
+        # Let's assume an empty list means ineligible, but presence of key is important.
+        if "parameters" not in credential_info:
+             raise InvalidAPIResponseError("Campo 'user.credential.parameters' ausente na resposta de login do Qobuz.")
+        if not credential_info["parameters"]: # Empty list implies ineligible
+            raise IneligibleError("Conta Qobuz não elegível para streaming/download (parâmetros de credencial vazios).")
+
+        uat = user_info.get("user_auth_token")
+        if not uat:
+            raise InvalidAPIResponseError("Token de autenticação do usuário não encontrado na resposta de login do Qobuz.")
+
         self.session.headers.update({"X-User-Auth-Token": uat})
-
         self.secret = await self._get_valid_secret(c.secrets)
-
         self.logged_in = True
 
     async def get_metadata(self, item: str, media_type: str):
@@ -240,14 +307,22 @@ class QobuzClient(Client):
 
         epoint = f"{media_type}/get"
 
-        status, resp = await self._api_request(epoint, params)
+        status, resp_data = await self._api_request(epoint, params)
 
-        if status != 200:
-            raise NonStreamableError(
-                f'Error fetching metadata. Message: "{resp["message"]}"',
+        if status == 404:
+            raise ResourceNotFoundError(
+                f"Metadados para {media_type} ID {item} não encontrados no Qobuz.", item=item
             )
+        if status != 200:
+            message = resp_data.get("message", f"Erro desconhecido ao buscar metadados (status: {status}) para {media_type} ID {item}.")
+            raise QobuzAPIError(message, item=item)
 
-        return resp
+        # Example of safer access, assuming resp_data is the dict
+        if not isinstance(resp_data, dict):
+            raise InvalidAPIResponseError(f"Resposta de metadados inesperada (não é um dicionário) para {media_type} ID {item}.", item=item)
+        # Further checks can be added here if specific fields are critical for the caller
+
+        return resp_data
 
     async def get_label(self, label_id: str) -> dict:
         c = self.config.session.qobuz
@@ -260,12 +335,31 @@ class QobuzClient(Client):
             "extra": "albums",
         }
         epoint = "label/get"
-        status, label_resp = await self._api_request(epoint, params)
-        assert status == 200
-        albums_count = label_resp["albums_count"]
+        status, label_resp_data = await self._api_request(epoint, params)
+
+        if status == 404:
+            raise ResourceNotFoundError(f"Selo com ID {label_id} não encontrado no Qobuz.", item=label_id)
+        if status != 200:
+            message = label_resp_data.get("message", f"Erro desconhecido ao buscar selo {label_id} (status: {status}).")
+            raise QobuzAPIError(message, item=label_id)
+
+        if not isinstance(label_resp_data, dict):
+            raise InvalidAPIResponseError(f"Resposta de selo inesperada (não é um dicionário) para ID {label_id}.", item=label_id)
+
+        albums_count = label_resp_data.get("albums_count", 0)
 
         if albums_count <= page_limit:
-            return label_resp
+            return label_resp_data
+
+        # Ensure 'albums' and 'items' keys exist and are dict/list respectively
+        albums_section = label_resp_data.get("albums")
+        if not isinstance(albums_section, dict):
+            label_resp_data["albums"] = {"items": []} # Initialize if 'albums' is missing or not a dict
+            albums_section = label_resp_data["albums"]
+
+        if not isinstance(albums_section.get("items"), list):
+            albums_section["items"] = [] # Initialize if 'items' is missing or not a list
+
 
         requests = [
             self._api_request(
@@ -281,17 +375,30 @@ class QobuzClient(Client):
             for offset in range(page_limit, albums_count, page_limit)
         ]
 
-        results = await asyncio.gather(*requests)
-        items = label_resp["albums"]["items"]
-        for status, resp in results:
-            assert status == 200
-            items.extend(resp["albums"]["items"])
+        results = await asyncio.gather(*requests, return_exceptions=True)
 
-        return label_resp
+        current_items = label_resp_data["albums"]["items"]
+        for res_status, resp_page_data in results:
+            if isinstance(resp_page_data, Exception): # Should be caught by gather if not return_exceptions=True
+                # This path might not be hit if _api_request itself raises on error
+                logger.error(f"Erro em uma das solicitações de paginação de selo: {resp_page_data}")
+                continue # Or raise, depending on desired strictness
+
+            if res_status != 200:
+                logger.warning(
+                    f"Erro ao buscar página de álbuns do selo {label_id} (status: {res_status}): {resp_page_data.get('message')}"
+                )
+                continue # Skip this page
+
+            page_items = resp_page_data.get("albums", {}).get("items")
+            if page_items:
+                current_items.extend(page_items)
+
+        return label_resp_data
 
     async def search(self, media_type: str, query: str, limit: int = 500) -> list[dict]:
         if media_type not in ("artist", "album", "track", "playlist"):
-            raise Exception(f"{media_type} not available for search on qobuz")
+            raise QobuzAPIError(f"Tipo de mídia '{media_type}' não disponível para pesquisa no Qobuz.")
 
         params = {
             "query": query,
@@ -304,12 +411,14 @@ class QobuzClient(Client):
         params = {
             "type": query,
         }
-        assert query in QOBUZ_FEATURED_KEYS, f'query "{query}" is invalid.'
+        if query not in QOBUZ_FEATURED_KEYS:
+            raise QobuzAPIError(f'Query de destaque inválida: "{query}". Chaves válidas: {QOBUZ_FEATURED_KEYS}')
         epoint = "album/getFeatured"
         return await self._paginate(epoint, params, limit=limit)
 
     async def get_user_favorites(self, media_type: str, limit: int = 500) -> list[dict]:
-        assert media_type in ("track", "artist", "album")
+        if media_type not in ("track", "artist", "album"):
+            raise QobuzAPIError(f"Tipo de mídia '{media_type}' inválido para buscar favoritos do usuário no Qobuz.")
         params = {"type": f"{media_type}s"}
         epoint = "favorite/getUserFavorites"
 
@@ -320,20 +429,38 @@ class QobuzClient(Client):
         return await self._paginate(epoint, {}, limit=limit)
 
     async def get_downloadable(self, item: str, quality: int) -> Downloadable:
-        assert self.secret is not None and self.logged_in and 1 <= quality <= 4
-        status, resp_json = await self._request_file_url(item, quality, self.secret)
-        assert status == 200
-        stream_url = resp_json.get("url")
+        if not self.logged_in:
+            raise AuthenticationError("Não está logado no Qobuz.", item=item)
+        if self.secret is None:
+            raise ClientError("Segredo do cliente Qobuz não inicializado.", item=item)
+        if not (1 <= quality <= self.max_quality): # Use self.max_quality
+            raise ValueError(f"Qualidade inválida: {quality}. Deve estar entre 1 e {self.max_quality}.", item=item)
 
-        if stream_url is None:
-            restrictions = resp_json["restrictions"]
-            if restrictions:
-                # Turn CamelCase code into a readable sentence
+        status, resp_data = await self._request_file_url(item, quality, self.secret)
+
+        if status == 401:
+             raise AuthenticationError("Não autorizado a obter URL de arquivo do Qobuz (token/segredo pode ter expirado ou ser inválido).", item=item)
+        if status == 403:
+            message = resp_data.get("message", "Proibido obter URL do arquivo (provavelmente restrições regionais/direitos).")
+            raise NonStreamableError(message, item=item)
+        if status == 404:
+            raise ResourceNotFoundError(f"Faixa ID {item} não encontrada para download no Qobuz.", item=item)
+        if status != 200:
+            message = resp_data.get("message", f"Erro desconhecido ({status}) ao solicitar URL do arquivo para faixa ID {item}.")
+            raise QobuzAPIError(message, item=item)
+
+        if not isinstance(resp_data, dict):
+            raise InvalidAPIResponseError(f"Resposta de URL de arquivo inesperada (não é um dicionário) para faixa ID {item}.", item=item)
+
+        stream_url = resp_data.get("url")
+        if not stream_url: # Check if None or empty string
+            restrictions = resp_data.get("restrictions")
+            if isinstance(restrictions, list) and restrictions and isinstance(restrictions[0], dict) and restrictions[0].get("code"):
                 words = re.findall(r"([A-Z][a-z]+)", restrictions[0]["code"])
-                raise NonStreamableError(
-                    words[0] + " " + " ".join(map(str.lower, words[1:])) + ".",
-                )
-            raise NonStreamableError
+                message = (words[0] + " " + " ".join(map(str.lower, words[1:])) + "."
+                           if words else f"Restrição desconhecida: {restrictions[0]['code']}")
+                raise NonStreamableError(message, item=item)
+            raise InvalidAPIResponseError("URL de stream não encontrada ou vazia na resposta da API do Qobuz.", item=item)
 
         return BasicDownloadable(
             self.session, stream_url, "flac" if quality > 1 else "mp3", source="qobuz"
@@ -355,43 +482,84 @@ class QobuzClient(Client):
         -------
             Generator that yields (status code, response) tuples
         """
-        params.update({"limit": limit})
-        status, page = await self._api_request(epoint, params)
-        assert status == 200, status
-        logger.debug("paginate: initial request made with status %d", status)
-        # albums, tracks, etc.
+        params.update({"limit": limit if limit is not None else 500}) # Ensure limit is set
+        status, initial_page_data = await self._api_request(epoint, params)
+
+        if status == 404 and epoint.endswith("/search"):
+            logger.debug(f"Pesquisa para '{params.get('query')}' em '{epoint}' não retornou resultados (404).")
+            return []
+        if status != 200:
+            message = initial_page_data.get("message", f"Erro ao buscar a primeira página de '{epoint}' (status: {status}).")
+            raise QobuzAPIError(message, item=params)
+
+        logger.debug("paginate: initial request made with status %d for %s", status, epoint)
+
         key = epoint.split("/")[0] + "s"
-        items = page.get(key, {})
-        total = items.get("total", 0)
-        if limit is not None and limit < total:
-            total = limit
+        items_section = initial_page_data.get(key) # Ensure this is a dict
+        if not isinstance(items_section, dict):
+            raise InvalidAPIResponseError(
+                f"Seção '{key}' esperada na resposta da API do Qobuz não é um dicionário ou está ausente para {epoint}.",
+                item=params
+            )
 
-        logger.debug("paginate: %d total items requested", total)
+        total_items_available = items_section.get("total", 0)
+        effective_total_to_fetch = total_items_available
+        if limit is not None and limit < total_items_available:
+            effective_total_to_fetch = limit
 
-        if total == 0:
-            logger.debug("Nothing found from %s epoint", epoint)
+        logger.debug(f"paginate: {effective_total_to_fetch} total items to fetch for {epoint}")
+
+        if effective_total_to_fetch == 0:
+            logger.debug(f"Nenhum item encontrado para {epoint} com os parâmetros {params}")
             return []
 
-        limit = int(page.get(key, {}).get("limit", 500))
-        offset = int(page.get(key, {}).get("offset", 0))
+        api_page_limit = int(items_section.get("limit", 500)) # API's limit per page
+        current_offset = int(items_section.get("offset", 0)) # Initial offset from first response
 
-        logger.debug("paginate: from response: limit=%d, offset=%d", limit, offset)
-        params.update({"limit": limit})
+        all_pages_data = [initial_page_data]
 
-        pages = []
-        requests = []
-        assert status == 200, status
-        pages.append(page)
-        while (offset + limit) < total:
-            offset += limit
-            params.update({"offset": offset})
-            requests.append(self._api_request(epoint, params.copy()))
+        # Number of items received in the first page
+        num_items_in_first_page = len(items_section.get("items", []))
 
-        for status, resp in await asyncio.gather(*requests):
-            assert status == 200
-            pages.append(resp)
+        # Update offset for the next potential request
+        # current_offset should be the starting point for the next fetch
+        current_offset += num_items_in_first_page
 
-        return pages
+        api_requests_coroutines = []
+        while current_offset < effective_total_to_fetch and current_offset < total_items_available:
+            params_for_next_page = params.copy()
+            params_for_next_page["offset"] = current_offset
+
+            items_remaining_to_fetch_overall = effective_total_to_fetch - current_offset
+            params_for_next_page["limit"] = min(api_page_limit, items_remaining_to_fetch_overall)
+
+            if params_for_next_page["limit"] <= 0: # Should not happen if logic is correct
+                break
+
+            api_requests_coroutines.append(self._api_request(epoint, params_for_next_page))
+            current_offset += params_for_next_page["limit"]
+
+        if api_requests_coroutines:
+            # Gathers (status, data) tuples or exceptions if _api_request raises them
+            page_results_tuples = await asyncio.gather(*api_requests_coroutines, return_exceptions=True)
+            for result_item in page_results_tuples:
+                if isinstance(result_item, Exception):
+                    # If _api_request now raises on error, this path will catch it
+                    logger.error(f"Erro em uma solicitação de paginação para {epoint}: {result_item}", exc_info=True)
+                    # Depending on strictness, either continue or re-raise/collect errors
+                    # For now, we log and try to get as many pages as possible
+                    continue
+
+                # Unpack tuple if not an exception
+                result_status, page_data = result_item
+                if result_status != 200:
+                    logger.warning(
+                        f"Erro ao buscar página para {epoint} (status: {result_status}): {page_data.get('message')}"
+                    )
+                    continue
+                all_pages_data.append(page_data)
+
+        return all_pages_data
 
     async def _get_app_id_and_secrets(self) -> tuple[str, list[str]]:
         async with QobuzSpoofer(
@@ -400,23 +568,58 @@ class QobuzClient(Client):
             return await spoofer.get_app_id_and_secrets()
 
     async def _test_secret(self, secret: str) -> Optional[str]:
-        status, _ = await self._request_file_url("19512574", 4, secret)
-        if status == 400:
+        # Test with a known public track ID that is generally available
+        # Using a low quality (MP3) for testing might be more reliable if high-quality formats have stricter checks
+        test_track_id = "19512574" # Example: a known public domain or widely available track
+        test_quality = 1 # MP3 quality, often format_id 5 for Qobuz
+
+        try:
+            status, resp_data = await self._request_file_url(test_track_id, test_quality, secret)
+            # A 400 Bad Request might indicate the secret itself is malformed or rejected by the signing process
+            if status == 400:
+                logger.debug(f"Segredo do Qobuz resultou em 400 Bad Request: {secret[:10]}...")
+                return None
+            # 200 OK means the URL was generated, secret is likely valid
+            # 401 Unauthorized might also mean the secret is valid but the UAT is bad or the specific track is restricted
+            # For testing the secret itself, 200 is the primary success indicator.
+            # If we get 401, it's ambiguous whether it's the secret or UAT.
+            # However, Qobuz often uses 401 for bad signatures too.
+            if status == 200:
+                logger.debug(f"Segredo do Qobuz validado com sucesso: {secret[:10]}...")
+                return secret
+            # If status is 401, it could be the secret or the UAT.
+            # Let's assume for secret testing, 401 is a potential positive if not 400.
+            # The original code treated 401 as potentially valid.
+            if status == 401:
+                 logger.warning(f"Segredo do Qobuz resultou em 401 Unauthorized (pode ser válido, mas UAT/permissões são um problema): {secret[:10]}...")
+                 return secret # Tentatively accept, _get_valid_secret will pick the first one that doesn't return None
+
+            logger.warning(f"Teste de segredo do Qobuz com status {status} para {secret[:10]}... Resposta: {resp_data}")
+            return None # Other statuses are likely failures for the secret itself
+        except QobuzAPIError as e: # Catch errors from _request_file_url itself
+            logger.warning(f"Erro de API ao testar o segredo do Qobuz {secret[:10]}...: {e}")
             return None
-        if status == 200 or status == 401:
-            return secret
-        logger.warning("Got status %d when testing secret", status)
-        return None
+        except Exception as e: # Catch any other unexpected error during secret test
+            logger.error(f"Erro inesperado ao testar o segredo do Qobuz {secret[:10]}...: {e}", exc_info=True)
+            return None
+
 
     async def _get_valid_secret(self, secrets: list[str]) -> str:
-        results = await asyncio.gather(
-            *[self._test_secret(secret) for secret in secrets],
-        )
-        working_secrets = [r for r in results if r is not None]
-        if len(working_secrets) == 0:
-            raise InvalidAppSecretError(secrets)
+        if not secrets:
+            raise InvalidAppSecretError("Nenhum segredo do Qobuz fornecido para validação.")
 
-        return working_secrets[0]
+        # Test secrets one by one to find the first working one.
+        # asyncio.gather might be too aggressive if many secrets are invalid and cause rate limiting.
+        for secret in secrets:
+            if await self._test_secret(secret):
+                return secret
+
+        # If no secret worked after individual tests
+        raise InvalidAppSecretError(
+            "Nenhum dos segredos do Qobuz fornecidos é válido ou o teste falhou."
+            f" Segredos testados (parcial): {[s[:10] + '...' for s in secrets]}"
+        )
+
 
     async def _request_file_url(
         self,
@@ -444,10 +647,75 @@ class QobuzClient(Client):
         returns: status code, json parsed response
         """
         url = f"{QOBUZ_BASE_URL}/{epoint}"
-        logger.debug("api_request: endpoint=%s, params=%s", epoint, params)
-        async with self.rate_limiter:
-            async with self.session.get(url, params=params) as response:
-                return response.status, await response.json()
+        item_id_for_logging = params.get("track_id") or params.get(f"{epoint.split('/')[0]}_id")
+
+        current_retry = 0
+        while True:
+            logger.debug("api_request: endpoint=%s, params=%s, attempt=%d", epoint, params, current_retry + 1)
+            try:
+                async with self.rate_limiter:
+                    async with self.session.get(url, params=params) as response:
+                        try:
+                            resp_json = await response.json()
+                        except aiohttp.ContentTypeError:
+                            resp_text = await response.text()
+                            resp_json = {"message": resp_text[:200]}
+                            logger.warning(
+                                f"Resposta não-JSON da API Qobuz para {epoint} (status {response.status}): {resp_text[:100]}"
+                            )
+
+                        if response.status == 429: # Rate limit
+                            # Qobuz might not send Retry-After, so use exponential backoff
+                            delay = (self.initial_retry_delay * (2**current_retry)) + (hashlib.md5(str(params).encode()).digest()[0] / 255.0) # Add jitter
+                            logger.warning(
+                                f"Limite de taxa da API Qobuz atingido para {epoint} (status 429). "
+                                f"Tentando novamente em {delay:.2f}s... (tentativa {current_retry + 1}/{self.max_retries})"
+                            )
+                            if current_retry < self.max_retries:
+                                await asyncio.sleep(delay)
+                                current_retry += 1
+                                continue # Retry the request
+                            else:
+                                raise APILimitError(
+                                    f"Limite de taxa da API Qobuz excedido para {epoint} após {self.max_retries} tentativas.",
+                                    item=item_id_for_logging
+                                )
+
+                        if response.status != 200:
+                             logger.debug(
+                                f"API Qobuz {epoint} respondeu com status {response.status}. "
+                                f"Params: {params}. Resposta: {resp_json}"
+                             )
+                        return response.status, resp_json
+
+            except (aiohttp.ClientConnectorError, aiohttp.ServerDisconnectedError, aiohttp.ClientOSError) as e:
+                logger.warning(
+                    f"Erro de conexão/rede com API Qobuz ({epoint}): {e}. "
+                    f"Tentando novamente em {self.initial_retry_delay * (2**current_retry):.2f}s... "
+                    f"(tentativa {current_retry + 1}/{self.max_retries})",
+                    item=item_id_for_logging
+                )
+                if current_retry < self.max_retries:
+                    await asyncio.sleep(self.initial_retry_delay * (2**current_retry))
+                    current_retry += 1
+                    continue # Retry
+                raise NetworkError(f"Erro de conexão com API Qobuz ({epoint}) após {self.max_retries} tentativas: {e}", item=item_id_for_logging) from e
+            except asyncio.TimeoutError as e:
+                logger.warning(
+                    f"Timeout ao conectar com API Qobuz ({epoint}). "
+                    f"Tentando novamente em {self.initial_retry_delay * (2**current_retry):.2f}s... "
+                    f"(tentativa {current_retry + 1}/{self.max_retries})",
+                    item=item_id_for_logging
+                )
+                if current_retry < self.max_retries:
+                    await asyncio.sleep(self.initial_retry_delay * (2**current_retry))
+                    current_retry += 1
+                    continue # Retry
+                raise NetworkError(f"Timeout ao conectar com API Qobuz ({epoint}) após {self.max_retries} tentativas.", item=item_id_for_logging) from e
+            except aiohttp.ClientError as e: # Catch other aiohttp client errors
+                # For other client errors, might not be safe to retry, raise directly
+                raise NetworkError(f"Erro de cliente HTTP com API Qobuz ({epoint}): {e}", item=item_id_for_logging) from e
+            # If we reach here, it means a successful response or an unhandled error that should propagate
 
     @staticmethod
     def get_quality(quality: int):
