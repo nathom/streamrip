@@ -178,10 +178,24 @@ class Failed(DatabaseBase):
     }
 
 
+class DownloadedAlbums(DatabaseBase):
+    """A table that stores downloaded album IDs for faster library browsing."""
+
+    name = "downloaded_albums"
+    structure: Final[dict] = {
+        "source": ["text"],
+        "album_id": ["text"],
+        "title": ["text"],
+        "artist": ["text"],
+        "downloaded_at": ["text"],  # ISO timestamp
+    }
+
+
 @dataclass(slots=True)
 class Database:
     downloads: DatabaseInterface
     failed: DatabaseInterface
+    downloaded_albums: DatabaseInterface
 
     def downloaded(self, item_id: str) -> bool:
         return self.downloads.contains(id=item_id)
@@ -194,3 +208,19 @@ class Database:
 
     def set_failed(self, source: str, media_type: str, id: str):
         self.failed.add((source, media_type, id))
+
+    def album_downloaded(self, source: str, album_id: str) -> bool:
+        """Check if an album is marked as downloaded."""
+        return self.downloaded_albums.contains(source=source, album_id=album_id)
+
+    def set_album_downloaded(self, source: str, album_id: str, title: str, artist: str):
+        """Mark an album as downloaded."""
+        from datetime import datetime
+        timestamp = datetime.now().isoformat()
+        self.downloaded_albums.add((source, album_id, title, artist, timestamp))
+
+    def get_downloaded_albums(self, source: str) -> list[tuple[str, str, str, str, str]]:
+        """Get all downloaded albums for a source."""
+        # This would need a custom query method, let's implement it differently
+        all_albums = self.downloaded_albums.all()
+        return [album for album in all_albums if album[0] == source]

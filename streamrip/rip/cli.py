@@ -454,25 +454,52 @@ async def id(ctx, source, media_type, id):
     help="Show already downloaded albums as well",
     is_flag=True,
 )
+@click.option(
+    "--offset",
+    default=0,
+    help="Starting position in your library (default: 0)",
+    type=int,
+)
+@click.option(
+    "--limit",
+    default=50,
+    help="Maximum number of albums to show (default: 50)",
+    type=int,
+)
+@click.option(
+    "--sync",
+    help="Force sync downloaded album status from database",
+    is_flag=True,
+)
 @click.argument("source", required=True)
 @click.pass_context
 @coro
-async def browse_library(ctx, redownload, source):
+async def browse_library(ctx, redownload, offset, limit, sync, source):
     """Browse your library and download albums.
     
     Shows albums from your library that haven't been downloaded yet.
     Use --redownload to also show already downloaded albums.
+    Use --offset and --limit to browse in chunks (e.g., 50 albums at a time).
+    Use --sync to force sync downloaded status from track database.
     
-    Example:
+    Examples:
     
-        rip browse-library qobuz
+        rip browse-library qobuz                    # First 50 undownloaded albums
+        rip browse-library qobuz --offset 100 --limit 25  # Albums 100-125  
+        rip browse-library qobuz --sync             # Sync downloaded status first
     """
     if ctx.obj["config"] is None:
         return
         
     with ctx.obj["config"] as cfg:
         async with Main(cfg) as main:
-            await main.browse_library_interactive(source, include_downloaded=redownload)
+            await main.browse_library_interactive(
+                source, 
+                include_downloaded=redownload,
+                offset=offset,
+                limit=limit, 
+                sync=sync
+            )
             await main.resolve()
             await main.rip()
 

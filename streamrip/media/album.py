@@ -50,6 +50,17 @@ class Album(Media):
 
     async def postprocess(self):
         progress.remove_title(self.meta.album)
+        
+        # Mark album as downloaded in the database for faster library browsing
+        try:
+            source = self.meta.source or "unknown"
+            album_id = self.meta.info.id or "unknown"
+            title = self.meta.album or "Unknown Album"
+            artist = (self.meta.albumartist or self.meta.artist) or "Unknown Artist"
+            self.db.set_album_downloaded(source, album_id, title, artist)
+            logger.debug(f"Marked album as downloaded: {artist} - {title} ({source}:{album_id})")
+        except Exception as e:
+            logger.debug(f"Failed to mark album as downloaded: {e}")
 
 
 @dataclass(slots=True)

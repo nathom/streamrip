@@ -60,15 +60,18 @@ class Main:
         c = self.config.session.database
         if c.downloads_enabled:
             downloads_db = db.Downloads(c.downloads_path)
+            # Use same path for downloaded albums table
+            downloaded_albums_db = db.DownloadedAlbums(c.downloads_path.replace('.db', '_albums.db'))
         else:
             downloads_db = db.Dummy()
+            downloaded_albums_db = db.Dummy()
 
         if c.failed_downloads_enabled:
             failed_downloads_db = db.Failed(c.failed_downloads_path)
         else:
             failed_downloads_db = db.Dummy()
 
-        self.database = db.Database(downloads_db, failed_downloads_db)
+        self.database = db.Database(downloads_db, failed_downloads_db, downloaded_albums_db)
 
     async def add(self, url: str):
         """Add url as a pending item.
@@ -294,18 +297,56 @@ class Main:
             # If API call fails, assume not downloaded to be safe
             return False
 
-    async def browse_library_interactive(self, source: str, include_downloaded: bool = False):
-        """Browse user's library and show albums for download."""
+    async def sync_downloaded_albums(self, source: str, client) -> int:
+        """Sync downloaded album status by checking track database. Returns count of synced albums."""
+        console.print("[yellow]Syncing downloaded album status from track database...")
+        
+        # Get all albums from library 
+        with console.status("[bold]Fetching complete library for sync...", spinner="dots"):
+            pages = await client.get_user_favorites("album", limit=2000)  # Get all albums for sync
+            all_albums = []
+            for page in pages:
+                albums_data = page.get("albums", {})
+                albums_items = albums_data.get("items", [])
+                all_albums.extend(albums_items)
+        
+        synced_count = 0
+        with console.status(f"[bold]Syncing {len(all_albums)} albums...", spinner="dots"):
+            for album in all_albums:
+                album_id = str(album.get('id'))
+                
+                # Check if this album has downloaded tracks but isn't in album table
+                if await self.is_album_downloaded(album_id, client):
+                    if not self.database.album_downloaded(source, album_id):
+                        # Add to album table
+                        title = album.get('title', 'Unknown Album')
+                        artist_info = album.get('artist', {})
+                        artist = artist_info.get('name', 'Unknown Artist') if isinstance(artist_info, dict) else 'Unknown Artist'
+                        self.database.set_album_downloaded(source, album_id, title, artist)
+                        synced_count += 1
+        
+        console.print(f"[green]Synced {synced_count} downloaded albums to database")
+        return synced_count
+
+    async def browse_library_interactive(self, source: str, include_downloaded: bool = False, offset: int = 0, limit: int = 50, sync: bool = False):
+        """Browse user's library and show albums for download with pagination support."""
         client = await self.get_logged_in_client(source)
         
         # Check if client supports library browsing
         if not hasattr(client, 'get_user_favorites'):
             console.print(f"[red]Library browsing not supported for {source}[/red]")
             return
+        
+        # Sync downloaded albums if requested
+        if sync:
+            await self.sync_downloaded_albums(source, client)
             
-        with console.status(f"[bold]Fetching {source} library", spinner="dots"):
+        # Fetch the requested page of albums
+        with console.status(f"[bold]Fetching {source} library (offset={offset}, limit={limit})", spinner="dots"):
             try:
-                pages = await client.get_user_favorites("album", limit=500)
+                # Calculate actual API limit needed (we'll filter client-side for now)
+                fetch_limit = min(500, offset + limit * 3)  # Fetch extra in case of filtering
+                pages = await client.get_user_favorites("album", limit=fetch_limit)
                 if len(pages) == 0:
                     console.print(f"[yellow]No albums found in your {source} library")
                     return
@@ -320,32 +361,36 @@ class Main:
             albums_items = albums_data.get("items", [])
             all_albums.extend(albums_items)
         
-        console.print(f"Found [cyan]{len(all_albums)}[/cyan] total albums in your {source} library")
+        console.print(f"Fetched [cyan]{len(all_albums)}[/cyan] albums from {source} library")
         
-        # Filter out downloaded albums unless include_downloaded is True
+        # Filter by download status using fast album table lookup
         if not include_downloaded:
-            undownloaded_albums = []
-            with console.status(f"[bold]Checking download status of {len(all_albums)} albums...", spinner="dots"):
-                for album in all_albums:
-                    album_id = str(album.get('id'))
-                    # Check if album has any downloaded tracks in the database
-                    if not await self.is_album_downloaded(album_id, client):
-                        undownloaded_albums.append(album)
+            filtered_albums = []
+            for album in all_albums:
+                album_id = str(album.get('id'))
+                if not self.database.album_downloaded(source, album_id):
+                    filtered_albums.append(album)
             
-            if len(undownloaded_albums) == 0:
-                console.print(f"[green]All albums in your {source} library have already been downloaded![/green]")
+            if len(filtered_albums) == 0:
+                console.print(f"[green]All fetched albums have been downloaded! Try a different offset or use --redownload")
                 return
-            
-            final_albums = undownloaded_albums
+                
             status_text = "undownloaded albums"
         else:
-            final_albums = all_albums
+            filtered_albums = all_albums
             status_text = "albums"
-            
-        console.print(f"Showing [cyan]{len(final_albums)}[/cyan] {status_text}")
+        
+        # Apply pagination to filtered results
+        paginated_albums = filtered_albums[offset:offset + limit]
+        
+        if len(paginated_albums) == 0:
+            console.print(f"[yellow]No {status_text} found at offset {offset}. Try a lower offset.")
+            return
+        
+        console.print(f"Showing [cyan]{len(paginated_albums)}[/cyan] {status_text} (offset {offset})")
         
         # Convert back to pages format for SearchResults.from_pages
-        result_pages = [{"albums": {"items": final_albums}}]
+        result_pages = [{"albums": {"items": paginated_albums}}]
         search_results = SearchResults.from_pages(source, "album", result_pages)
         
         # Use existing interactive menu system
@@ -355,7 +400,7 @@ class Main:
             choices = pick(
                 search_results.results,
                 title=(
-                    f"{source.capitalize()} library ({len(final_albums)} {status_text}).\n"
+                    f"{source.capitalize()} library ({len(paginated_albums)} {status_text}).\n"
                     "Press SPACE to select, RETURN to download, CTRL-C to exit."
                 ),
                 multiselect=True,
@@ -375,7 +420,7 @@ class Main:
                 preview_command=search_results.preview,
                 preview_size=0.5,
                 title=(
-                    f"{source.capitalize()} library ({len(final_albums)} {status_text})\n"
+                    f"{source.capitalize()} library ({len(paginated_albums)} {status_text})\n"
                     "SPACE - select, ENTER - download, ESC - exit"
                 ),
                 cycle_cursor=True,
