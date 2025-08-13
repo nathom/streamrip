@@ -382,6 +382,7 @@ class QobuzClient(Client):
             
         items = page.get(key, {})
         total = items.get("total", 0)
+        
         if limit is not None and limit < total:
             total = limit
 

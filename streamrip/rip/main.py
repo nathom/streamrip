@@ -313,29 +313,40 @@ class Main:
                 console.print(f"[red]Error fetching library: {e}[/red]")
                 return
         
+        # Extract albums from paginated response
+        all_albums = []
+        for page in pages:
+            albums_data = page.get("albums", {})
+            albums_items = albums_data.get("items", [])
+            all_albums.extend(albums_items)
+        
+        console.print(f"Found [cyan]{len(all_albums)}[/cyan] total albums in your {source} library")
+        
         # Filter out downloaded albums unless include_downloaded is True
         if not include_downloaded:
-            undownloaded_pages = []
-            with console.status(f"[bold]Checking download status of {len(pages)} albums...", spinner="dots"):
-                for album in pages:
+            undownloaded_albums = []
+            with console.status(f"[bold]Checking download status of {len(all_albums)} albums...", spinner="dots"):
+                for album in all_albums:
                     album_id = str(album.get('id'))
                     # Check if album has any downloaded tracks in the database
                     if not await self.is_album_downloaded(album_id, client):
-                        undownloaded_pages.append(album)
+                        undownloaded_albums.append(album)
             
-            if len(undownloaded_pages) == 0:
+            if len(undownloaded_albums) == 0:
                 console.print(f"[green]All albums in your {source} library have already been downloaded![/green]")
                 return
             
-            pages = undownloaded_pages
+            final_albums = undownloaded_albums
             status_text = "undownloaded albums"
         else:
+            final_albums = all_albums
             status_text = "albums"
             
-        console.print(f"Found [cyan]{len(pages)}[/cyan] {status_text} in your {source} library")
+        console.print(f"Showing [cyan]{len(final_albums)}[/cyan] {status_text}")
         
-        # Create SearchResults object for consistent UI
-        search_results = SearchResults.from_pages(source, "album", pages)
+        # Convert back to pages format for SearchResults.from_pages
+        result_pages = [{"albums": {"items": final_albums}}]
+        search_results = SearchResults.from_pages(source, "album", result_pages)
         
         # Use existing interactive menu system
         if platform.system() == "Windows":
@@ -344,7 +355,7 @@ class Main:
             choices = pick(
                 search_results.results,
                 title=(
-                    f"{source.capitalize()} library ({len(pages)} {status_text}).\n"
+                    f"{source.capitalize()} library ({len(final_albums)} {status_text}).\n"
                     "Press SPACE to select, RETURN to download, CTRL-C to exit."
                 ),
                 multiselect=True,
@@ -364,7 +375,7 @@ class Main:
                 preview_command=search_results.preview,
                 preview_size=0.5,
                 title=(
-                    f"{source.capitalize()} library ({len(pages)} {status_text})\n"
+                    f"{source.capitalize()} library ({len(final_albums)} {status_text})\n"
                     "SPACE - select, ENTER - download, ESC - exit"
                 ),
                 cycle_cursor=True,
