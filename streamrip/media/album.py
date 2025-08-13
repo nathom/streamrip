@@ -35,32 +35,46 @@ class Album(Media):
             try:
                 track = await pending.resolve()
                 if track is None:
-                    return
+                    return None  # Track not available
                 await track.rip()
+                return True  # Success
             except Exception as e:
                 logger.error(f"Error downloading track: {e}")
+                return False  # Failed
 
         results = await asyncio.gather(
             *[_resolve_and_download(p) for p in self.tracks], return_exceptions=True
         )
 
+        # Count successful downloads
+        self.successful_tracks = 0
+        self.total_tracks = len(self.tracks)
+        
         for result in results:
             if isinstance(result, Exception):
                 logger.error(f"Album track processing error: {result}")
+            elif result is True:
+                self.successful_tracks += 1
 
     async def postprocess(self):
         progress.remove_title(self.meta.album)
         
         # Mark album as downloaded in the database for faster library browsing
-        try:
-            source = self.meta.source or "unknown"
-            album_id = self.meta.info.id or "unknown"
-            title = self.meta.album or "Unknown Album"
-            artist = (self.meta.albumartist or self.meta.artist) or "Unknown Artist"
-            self.db.set_album_downloaded(source, album_id, title, artist)
-            logger.debug(f"Marked album as downloaded: {artist} - {title} ({source}:{album_id})")
-        except Exception as e:
-            logger.debug(f"Failed to mark album as downloaded: {e}")
+        # Only mark as downloaded if at least 80% of tracks succeeded
+        success_rate = self.successful_tracks / max(1, self.total_tracks)
+        
+        if success_rate >= 0.8:  # 80% success threshold
+            try:
+                source = self.meta.source or "unknown"
+                album_id = self.meta.info.id or "unknown"
+                title = self.meta.album or "Unknown Album"
+                artist = (self.meta.albumartist or self.meta.artist) or "Unknown Artist"
+                self.db.set_album_downloaded(source, album_id, title, artist)
+                logger.debug(f"Marked album as downloaded: {artist} - {title} ({source}:{album_id}) - {self.successful_tracks}/{self.total_tracks} tracks")
+            except Exception as e:
+                logger.debug(f"Failed to mark album as downloaded: {e}")
+        else:
+            logger.debug(f"Album not marked as downloaded due to low success rate: {self.successful_tracks}/{self.total_tracks} tracks ({success_rate:.1%})")
 
 
 @dataclass(slots=True)
