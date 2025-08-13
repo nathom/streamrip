@@ -21,3 +21,13 @@ StreamripDownloads
 /.mypy_cache
 .DS_Store
 pyrightconfig.json
+
+# Build and distribution files
+*.spec
+rip_main.py
+build.sh
+build_optimized.sh
+install-*.sh
+rip-enhanced
+homebrew-formula.rb
+downloads.db
