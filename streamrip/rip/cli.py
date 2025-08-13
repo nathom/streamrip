@@ -448,6 +448,35 @@ async def id(ctx, source, media_type, id):
             await main.rip()
 
 
+@rip.command()
+@click.option(
+    "--redownload",
+    help="Show already downloaded albums as well",
+    is_flag=True,
+)
+@click.argument("source", required=True)
+@click.pass_context
+@coro
+async def browse_library(ctx, redownload, source):
+    """Browse your library and download albums.
+    
+    Shows albums from your library that haven't been downloaded yet.
+    Use --redownload to also show already downloaded albums.
+    
+    Example:
+    
+        rip browse-library qobuz
+    """
+    if ctx.obj["config"] is None:
+        return
+        
+    with ctx.obj["config"] as cfg:
+        async with Main(cfg) as main:
+            await main.browse_library_interactive(source, include_downloaded=redownload)
+            await main.resolve()
+            await main.rip()
+
+
 async def latest_streamrip_version(verify_ssl: bool = True) -> tuple[str, str | None]:
     """Get the latest streamrip version from PyPI and release notes from GitHub.
 

@@ -319,6 +319,18 @@ class QobuzClient(Client):
         epoint = "playlist/getUserPlaylists"
         return await self._paginate(epoint, {}, limit=limit)
 
+    async def get_album(self, album_id: str) -> dict:
+        """Get album metadata including track list.
+        
+        :param album_id: The album ID to fetch
+        :return: Album metadata with tracks
+        """
+        params = {"album_id": album_id}
+        status, resp = await self._api_request("album/get", params)
+        if status != 200:
+            raise Exception(f"Failed to get album {album_id}: status {status}")
+        return resp
+
     async def get_downloadable(self, item: str, quality: int) -> Downloadable:
         assert self.secret is not None and self.logged_in and 1 <= quality <= 4
         status, resp_json = await self._request_file_url(item, quality, self.secret)
@@ -359,8 +371,15 @@ class QobuzClient(Client):
         status, page = await self._api_request(epoint, params)
         assert status == 200, status
         logger.debug("paginate: initial request made with status %d", status)
-        # albums, tracks, etc.
-        key = epoint.split("/")[0] + "s"
+        
+        # Special handling for favorite endpoints
+        if epoint == "favorite/getUserFavorites":
+            media_type = params.get("type", "albums")  # albums, tracks, etc.
+            key = media_type  # Use the type directly as key
+        else:
+            # albums, tracks, etc.
+            key = epoint.split("/")[0] + "s"
+            
         items = page.get(key, {})
         total = items.get("total", 0)
         if limit is not None and limit < total:

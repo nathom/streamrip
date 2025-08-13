@@ -151,6 +151,46 @@ class TidalClient(Client):
             return [resp]
         return []
 
+    async def get_user_favorites(self, media_type: str, limit: int = 500) -> list[dict]:
+        """Get user's favorite albums, tracks, or artists.
+        
+        :param media_type: album, track, or artist
+        :param limit: Maximum number of items to fetch
+        :return: List of favorite items
+        """
+        assert media_type in ("track", "artist", "album")
+        params = {"limit": min(limit, 100)}  # Tidal API limit is usually 100 per request
+        
+        endpoint = f"users/{self.user_id}/favorites/{media_type}s"
+        
+        # Handle pagination for large collections
+        all_items = []
+        offset = 0
+        
+        while len(all_items) < limit:
+            params["offset"] = offset
+            params["limit"] = min(100, limit - len(all_items))
+            
+            try:
+                resp = await self._api_request(endpoint, params=params)
+                items = resp.get("items", [])
+                
+                if not items:
+                    break
+                    
+                all_items.extend(items)
+                offset += len(items)
+                
+                # If we got fewer items than requested, we've reached the end
+                if len(items) < params["limit"]:
+                    break
+                    
+            except Exception as e:
+                logger.error(f"Error fetching Tidal favorites: {e}")
+                break
+        
+        return all_items
+
     async def get_downloadable(self, track_id: str, quality: int):
         params = {
             "audioquality": QUALITY_MAP[quality],

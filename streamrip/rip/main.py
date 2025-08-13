@@ -267,6 +267,119 @@ class Main:
             f"Wrote [purple]{len(search_results.results)}[/purple] results to [cyan]{filepath} as JSON!"
         )
 
+    async def is_album_downloaded(self, album_id: str, client) -> bool:
+        """Check if album has any downloaded tracks by querying the existing database.
+        
+        :param album_id: The album ID to check
+        :param client: The client to use for API calls
+        :return: True if any tracks from the album are downloaded, False otherwise
+        """
+        try:
+            # Get album metadata with tracks
+            album_resp = await client.get_album(album_id)
+            
+            # Extract track IDs from the album response
+            album_data = album_resp.get("album", album_resp)  # Handle different response formats
+            tracks_data = album_data.get("tracks", {})
+            track_items = tracks_data.get("items", [])
+            
+            # Check if any track from this album is in the downloads database
+            for track in track_items:
+                track_id = str(track.get("id", ""))
+                if track_id and self.database.downloaded(track_id):
+                    return True
+            
+            return False
+        except Exception:
+            # If API call fails, assume not downloaded to be safe
+            return False
+
+    async def browse_library_interactive(self, source: str, include_downloaded: bool = False):
+        """Browse user's library and show albums for download."""
+        client = await self.get_logged_in_client(source)
+        
+        # Check if client supports library browsing
+        if not hasattr(client, 'get_user_favorites'):
+            console.print(f"[red]Library browsing not supported for {source}[/red]")
+            return
+            
+        with console.status(f"[bold]Fetching {source} library", spinner="dots"):
+            try:
+                pages = await client.get_user_favorites("album", limit=500)
+                if len(pages) == 0:
+                    console.print(f"[yellow]No albums found in your {source} library")
+                    return
+            except Exception as e:
+                console.print(f"[red]Error fetching library: {e}[/red]")
+                return
+        
+        # Filter out downloaded albums unless include_downloaded is True
+        if not include_downloaded:
+            undownloaded_pages = []
+            with console.status(f"[bold]Checking download status of {len(pages)} albums...", spinner="dots"):
+                for album in pages:
+                    album_id = str(album.get('id'))
+                    # Check if album has any downloaded tracks in the database
+                    if not await self.is_album_downloaded(album_id, client):
+                        undownloaded_pages.append(album)
+            
+            if len(undownloaded_pages) == 0:
+                console.print(f"[green]All albums in your {source} library have already been downloaded![/green]")
+                return
+            
+            pages = undownloaded_pages
+            status_text = "undownloaded albums"
+        else:
+            status_text = "albums"
+            
+        console.print(f"Found [cyan]{len(pages)}[/cyan] {status_text} in your {source} library")
+        
+        # Create SearchResults object for consistent UI
+        search_results = SearchResults.from_pages(source, "album", pages)
+        
+        # Use existing interactive menu system
+        if platform.system() == "Windows":
+            from pick import pick
+
+            choices = pick(
+                search_results.results,
+                title=(
+                    f"{source.capitalize()} library ({len(pages)} {status_text}).\n"
+                    "Press SPACE to select, RETURN to download, CTRL-C to exit."
+                ),
+                multiselect=True,
+                min_selection_count=1,
+            )
+            assert isinstance(choices, list)
+
+            await self.add_all_by_id(
+                [(source, "album", item.id) for item, _ in choices],
+            )
+
+        else:
+            from simple_term_menu import TerminalMenu
+
+            menu = TerminalMenu(
+                search_results.summaries(),
+                preview_command=search_results.preview,
+                preview_size=0.5,
+                title=(
+                    f"{source.capitalize()} library ({len(pages)} {status_text})\n"
+                    "SPACE - select, ENTER - download, ESC - exit"
+                ),
+                cycle_cursor=True,
+                clear_screen=True,
+                multi_select=True,
+            )
+            chosen_ind = menu.show()
+            if chosen_ind is None:
+                console.print("[yellow]No items chosen. Exiting.")
+            else:
+                choices = search_results.get_choices(chosen_ind)
+                await self.add_all_by_id(
+                    [(source, item.media_type(), item.id) for item in choices],
+                )
+
     async def resolve_lastfm(self, playlist_url: str):
         """Resolve a last.fm playlist."""
         c = self.config.session.lastfm
