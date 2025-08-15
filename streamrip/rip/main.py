@@ -221,11 +221,14 @@ class Main:
                 preview_size=0.5,
                 title=(
                     f"Results for {media_type} '{query}' from {source.capitalize()}\n"
-                    "SPACE - select, ENTER - download, ESC - exit"
+                    "SPACE - select, ENTER - download, ESC - exit, / - search (ESC to exit search)"
                 ),
                 cycle_cursor=True,
                 clear_screen=True,
                 multi_select=True,
+                show_search_hint=True,
+                show_search_hint_text="Type to filter, ESC to exit search and enable selection",
+                search_case_sensitive=False,
             )
             chosen_ind = menu.show()
             if chosen_ind is None:
@@ -372,7 +375,7 @@ class Main:
                     filtered_albums.append(album)
             
             if len(filtered_albums) == 0:
-                console.print(f"[green]All fetched albums have been downloaded! Try a different offset or use --redownload")
+                console.print("[green]All fetched albums have been downloaded! Try a different offset or use --redownload")
                 return
                 
             status_text = "undownloaded albums"
@@ -421,11 +424,14 @@ class Main:
                 preview_size=0.5,
                 title=(
                     f"{source.capitalize()} library ({len(paginated_albums)} {status_text})\n"
-                    "SPACE - select, ENTER - download, ESC - exit"
+                    "SPACE - select, ENTER - download, ESC - exit, / - search (ESC to exit search)"
                 ),
                 cycle_cursor=True,
                 clear_screen=True,
                 multi_select=True,
+                show_search_hint=True,
+                show_search_hint_text="Type to filter, ESC to exit search and enable selection",
+                search_case_sensitive=False,
             )
             chosen_ind = menu.show()
             if chosen_ind is None:
