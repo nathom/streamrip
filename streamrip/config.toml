@@ -187,6 +187,11 @@ text_output = true
 progress_bars = true
 # The maximum number of search results to show in the interactive menu
 max_search_results = 100
+# Format string for album display in browse-library and search menus
+# Available keys: "name"/"title", "artist", "albumartist", "year", "id", "num_tracks",
+# "bit_depth", "sampling_rate", "container"
+# Examples: "{title} by {albumartist} ({year}) [{bit_depth}B-{sampling_rate}kHz, {container}]"
+display_album_format = "{name} by {artist}"
 
 [misc]
 # Metadata to identify this config file. Do not change.

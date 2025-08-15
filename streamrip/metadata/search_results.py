@@ -113,25 +113,68 @@ class AlbumSummary(Summary):
     id: str
     name: str
     artist: str
+    albumartist: str | None
     num_tracks: str
     date_released: str | None
-    format_info: str | None
+    year: str | None
+    bit_depth: int | None
+    sampling_rate: int | float | None
+    container: str | None
 
     def media_type(self):
         return "album"
 
-    def summarize(self) -> str:
-        base = f"{clean(self.name)} by {clean(self.artist)}"
-        if self.format_info:
-            return f"{base} {self.format_info}"
-        return base
+    def format_display(self, formatter: str) -> str:
+        """Format album display using a template string similar to folder_format."""
+        from ..filepath_utils import clean_filename
+
+        none_str = "Unknown"
+
+        # Prepare all available format keys
+        info: dict[str, str | int | float] = {
+            "name": clean_filename(self.name),
+            "title": clean_filename(self.name),  # Alias for name
+            "artist": clean_filename(self.artist),
+            "albumartist": clean_filename(self.albumartist or self.artist),
+            "year": self.year or none_str,
+            "id": self.id,
+            "num_tracks": self.num_tracks,
+            "bit_depth": self.bit_depth or none_str,
+            "sampling_rate": self.sampling_rate or none_str,
+            "container": self.container or none_str,
+        }
+
+        try:
+            return formatter.format(**info)
+        except (KeyError, ValueError):
+            # Fallback to original format if template is invalid
+            return f"{clean(self.name)} by {clean(self.artist)}"
+
+    def summarize(self, formatter: str | None = None) -> str:
+        """Generate album summary using either custom formatter or default format."""
+        if formatter:
+            return self.format_display(formatter)
+        else:
+            # Original hardcoded format as fallback
+            return f"{clean(self.name)} by {clean(self.artist)}"
 
     def preview(self) -> str:
         preview_text = (
             f"Date released:\n{self.date_released}\n\n{self.num_tracks} Tracks"
         )
-        if self.format_info:
-            preview_text += f"\nFormat: {self.format_info}"
+        
+        # Show format information if available
+        format_parts = []
+        if self.bit_depth:
+            format_parts.append(f"{self.bit_depth}B")
+        if self.sampling_rate:
+            format_parts.append(f"{self.sampling_rate}kHz")
+        if self.container:
+            format_parts.append(self.container)
+        
+        if format_parts:
+            preview_text += f"\nFormat: {'-'.join(format_parts)}"
+        
         preview_text += f"\n\nID: {self.id}"
         return preview_text
 
@@ -151,6 +194,31 @@ class AlbumSummary(Summary):
             )
             or "Unknown"
         )
+
+        # Extract albumartist (may be different from artist)
+        albumartist = None
+        if isinstance(item.get("artist"), dict):
+            albumartist = item["artist"].get("name")
+        elif isinstance(item.get("artist"), str):
+            albumartist = item["artist"]
+
+        # Extract individual format fields
+        bit_depth = item.get("maximum_bit_depth")
+        sampling_rate = item.get("maximum_sampling_rate")
+
+        # Determine container based on source and quality
+        container = None
+        if bit_depth and sampling_rate:
+            container = "FLAC"  # Qobuz hi-res
+        elif "audioQuality" in item:
+            tidal_quality = item.get("audioQuality", "LOW")
+            if tidal_quality in ["HI_RES", "LOSSLESS"]:
+                container = "FLAC" if tidal_quality == "LOSSLESS" else "MQA"
+            else:
+                container = "AAC"
+        elif item.get("hires") or item.get("hires_streamable"):
+            container = "FLAC"
+
         num_tracks = (
             item.get("tracks_count", 0)
             or item.get("numberOfTracks", 0)
@@ -169,38 +237,23 @@ class AlbumSummary(Summary):
             or "Unknown"
         )
 
-        # Extract format information
-        format_info = None
-        bit_depth = item.get("maximum_bit_depth")
-        sampling_rate = item.get("maximum_sampling_rate")
+        # Extract year from release date
+        year = None
+        if date_released and date_released != "Unknown":
+            year = date_released[:4] if len(str(date_released)) >= 4 else None
 
-        # Handle Qobuz format info
-        if bit_depth and sampling_rate:
-            container = "FLAC"
-            if sampling_rate >= 1000:  # Convert Hz to kHz if needed
-                sampling_rate_khz = sampling_rate / 1000
-            else:
-                sampling_rate_khz = sampling_rate
-            format_info = f"[{bit_depth}B-{sampling_rate_khz}kHz, {container}]"
-        # Handle Tidal format info
-        elif "audioQuality" in item:
-            tidal_quality = item.get("audioQuality", "LOW")
-            if tidal_quality == "HI_RES":
-                format_info = "[24B-96kHz, MQA]"
-            elif tidal_quality == "LOSSLESS":
-                format_info = "[16B-44.1kHz, FLAC]"
-            elif tidal_quality == "HIGH":
-                format_info = "[320kbps, AAC]"
-            else:
-                format_info = "[96kbps, AAC]"
-        # Handle general hi-res indicators
-        elif item.get("hires") or item.get("hires_streamable"):
-            format_info = "[Hi-Res, FLAC]"
-        # Default for streamable content
-        elif item.get("streamable"):
-            format_info = "[FLAC]"
-
-        return cls(id, name, artist, str(num_tracks), date_released, format_info)
+        return cls(
+            id=id,
+            name=name,
+            artist=artist,
+            albumartist=albumartist,
+            num_tracks=str(num_tracks),
+            date_released=date_released,
+            year=year,
+            bit_depth=bit_depth,
+            sampling_rate=sampling_rate,
+            container=container,
+        )
 
 
 @dataclass(slots=True)
@@ -309,8 +362,17 @@ class SearchResults:
 
         return cls(results)
 
-    def summaries(self) -> list[str]:
-        return [f"{i+1}. {r.summarize()}" for i, r in enumerate(self.results)]
+    def summaries(self, formatter: str | None = None) -> list[str]:
+        def _summarize_item(result):
+            if (
+                hasattr(result, "summarize")
+                and "formatter" in result.summarize.__code__.co_varnames
+            ):
+                return result.summarize(formatter)
+            else:
+                return result.summarize()
+
+        return [f"{i+1}. {_summarize_item(r)}" for i, r in enumerate(self.results)]
 
     def get_choices(self, inds: tuple[int, ...] | int):
         if isinstance(inds, int):

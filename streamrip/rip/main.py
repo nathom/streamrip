@@ -61,7 +61,9 @@ class Main:
         if c.downloads_enabled:
             downloads_db = db.Downloads(c.downloads_path)
             # Use same path for downloaded albums table
-            downloaded_albums_db = db.DownloadedAlbums(c.downloads_path.replace('.db', '_albums.db'))
+            downloaded_albums_db = db.DownloadedAlbums(
+                c.downloads_path.replace(".db", "_albums.db")
+            )
         else:
             downloads_db = db.Dummy()
             downloaded_albums_db = db.Dummy()
@@ -71,7 +73,9 @@ class Main:
         else:
             failed_downloads_db = db.Dummy()
 
-        self.database = db.Database(downloads_db, failed_downloads_db, downloaded_albums_db)
+        self.database = db.Database(
+            downloads_db, failed_downloads_db, downloaded_albums_db
+        )
 
     async def add(self, url: str):
         """Add url as a pending item.
@@ -215,8 +219,13 @@ class Main:
         else:
             from simple_term_menu import TerminalMenu
 
+            # Get display format from config
+            display_format = getattr(
+                self.config.session.cli, "display_album_format", "{name} by {artist}"
+            )
+
             menu = TerminalMenu(
-                search_results.summaries(),
+                search_results.summaries(display_format),
                 preview_command=search_results.preview,
                 preview_size=0.5,
                 title=(
@@ -275,7 +284,7 @@ class Main:
 
     async def is_album_downloaded(self, album_id: str, client) -> bool:
         """Check if album has any downloaded tracks by querying the existing database.
-        
+
         :param album_id: The album ID to check
         :param client: The client to use for API calls
         :return: True if any tracks from the album are downloaded, False otherwise
@@ -283,18 +292,20 @@ class Main:
         try:
             # Get album metadata with tracks
             album_resp = await client.get_album(album_id)
-            
+
             # Extract track IDs from the album response
-            album_data = album_resp.get("album", album_resp)  # Handle different response formats
+            album_data = album_resp.get(
+                "album", album_resp
+            )  # Handle different response formats
             tracks_data = album_data.get("tracks", {})
             track_items = tracks_data.get("items", [])
-            
+
             # Check if any track from this album is in the downloads database
             for track in track_items:
                 track_id = str(track.get("id", ""))
                 if track_id and self.database.downloaded(track_id):
                     return True
-            
+
             return False
         except Exception:
             # If API call fails, assume not downloaded to be safe
@@ -303,52 +314,76 @@ class Main:
     async def sync_downloaded_albums(self, source: str, client) -> int:
         """Sync downloaded album status by checking track database. Returns count of synced albums."""
         console.print("[yellow]Syncing downloaded album status from track database...")
-        
-        # Get all albums from library 
-        with console.status("[bold]Fetching complete library for sync...", spinner="dots"):
-            pages = await client.get_user_favorites("album", limit=2000)  # Get all albums for sync
+
+        # Get all albums from library
+        with console.status(
+            "[bold]Fetching complete library for sync...", spinner="dots"
+        ):
+            pages = await client.get_user_favorites(
+                "album", limit=2000
+            )  # Get all albums for sync
             all_albums = []
             for page in pages:
                 albums_data = page.get("albums", {})
                 albums_items = albums_data.get("items", [])
                 all_albums.extend(albums_items)
-        
+
         synced_count = 0
-        with console.status(f"[bold]Syncing {len(all_albums)} albums...", spinner="dots"):
+        with console.status(
+            f"[bold]Syncing {len(all_albums)} albums...", spinner="dots"
+        ):
             for album in all_albums:
-                album_id = str(album.get('id'))
-                
+                album_id = str(album.get("id"))
+
                 # Check if this album has downloaded tracks but isn't in album table
                 if await self.is_album_downloaded(album_id, client):
                     if not self.database.album_downloaded(source, album_id):
                         # Add to album table
-                        title = album.get('title', 'Unknown Album')
-                        artist_info = album.get('artist', {})
-                        artist = artist_info.get('name', 'Unknown Artist') if isinstance(artist_info, dict) else 'Unknown Artist'
-                        self.database.set_album_downloaded(source, album_id, title, artist)
+                        title = album.get("title", "Unknown Album")
+                        artist_info = album.get("artist", {})
+                        artist = (
+                            artist_info.get("name", "Unknown Artist")
+                            if isinstance(artist_info, dict)
+                            else "Unknown Artist"
+                        )
+                        self.database.set_album_downloaded(
+                            source, album_id, title, artist
+                        )
                         synced_count += 1
-        
+
         console.print(f"[green]Synced {synced_count} downloaded albums to database")
         return synced_count
 
-    async def browse_library_interactive(self, source: str, include_downloaded: bool = False, offset: int = 0, limit: int = 50, sync: bool = False):
+    async def browse_library_interactive(
+        self,
+        source: str,
+        include_downloaded: bool = False,
+        offset: int = 0,
+        limit: int = 50,
+        sync: bool = False,
+    ):
         """Browse user's library and show albums for download with pagination support."""
         client = await self.get_logged_in_client(source)
-        
+
         # Check if client supports library browsing
-        if not hasattr(client, 'get_user_favorites'):
+        if not hasattr(client, "get_user_favorites"):
             console.print(f"[red]Library browsing not supported for {source}[/red]")
             return
-        
+
         # Sync downloaded albums if requested
         if sync:
             await self.sync_downloaded_albums(source, client)
-            
+
         # Fetch the requested page of albums
-        with console.status(f"[bold]Fetching {source} library (offset={offset}, limit={limit})", spinner="dots"):
+        with console.status(
+            f"[bold]Fetching {source} library (offset={offset}, limit={limit})",
+            spinner="dots",
+        ):
             try:
                 # Calculate actual API limit needed (we'll filter client-side for now)
-                fetch_limit = min(500, offset + limit * 3)  # Fetch extra in case of filtering
+                fetch_limit = min(
+                    500, offset + limit * 3
+                )  # Fetch extra in case of filtering
                 pages = await client.get_user_favorites("album", limit=fetch_limit)
                 if len(pages) == 0:
                     console.print(f"[yellow]No albums found in your {source} library")
@@ -356,46 +391,54 @@ class Main:
             except Exception as e:
                 console.print(f"[red]Error fetching library: {e}[/red]")
                 return
-        
+
         # Extract albums from paginated response
         all_albums = []
         for page in pages:
             albums_data = page.get("albums", {})
             albums_items = albums_data.get("items", [])
             all_albums.extend(albums_items)
-        
-        console.print(f"Fetched [cyan]{len(all_albums)}[/cyan] albums from {source} library")
-        
+
+        console.print(
+            f"Fetched [cyan]{len(all_albums)}[/cyan] albums from {source} library"
+        )
+
         # Filter by download status using fast album table lookup
         if not include_downloaded:
             filtered_albums = []
             for album in all_albums:
-                album_id = str(album.get('id'))
+                album_id = str(album.get("id"))
                 if not self.database.album_downloaded(source, album_id):
                     filtered_albums.append(album)
-            
+
             if len(filtered_albums) == 0:
-                console.print("[green]All fetched albums have been downloaded! Try a different offset or use --redownload")
+                console.print(
+                    "[green]All fetched albums have been downloaded! Try a different offset or use --redownload"
+                )
                 return
-                
+
             status_text = "undownloaded albums"
         else:
             filtered_albums = all_albums
             status_text = "albums"
-        
+
         # Apply pagination to filtered results
-        paginated_albums = filtered_albums[offset:offset + limit]
-        
+        paginated_albums = filtered_albums[offset : offset + limit]
+
         if len(paginated_albums) == 0:
-            console.print(f"[yellow]No {status_text} found at offset {offset}. Try a lower offset.")
+            console.print(
+                f"[yellow]No {status_text} found at offset {offset}. Try a lower offset."
+            )
             return
-        
-        console.print(f"Showing [cyan]{len(paginated_albums)}[/cyan] {status_text} (offset {offset})")
-        
+
+        console.print(
+            f"Showing [cyan]{len(paginated_albums)}[/cyan] {status_text} (offset {offset})"
+        )
+
         # Convert back to pages format for SearchResults.from_pages
         result_pages = [{"albums": {"items": paginated_albums}}]
         search_results = SearchResults.from_pages(source, "album", result_pages)
-        
+
         # Use existing interactive menu system
         if platform.system() == "Windows":
             from pick import pick
@@ -418,8 +461,13 @@ class Main:
         else:
             from simple_term_menu import TerminalMenu
 
+            # Get display format from config
+            display_format = getattr(
+                self.config.session.cli, "display_album_format", "{name} by {artist}"
+            )
+
             menu = TerminalMenu(
-                search_results.summaries(),
+                search_results.summaries(display_format),
                 preview_command=search_results.preview,
                 preview_size=0.5,
                 title=(

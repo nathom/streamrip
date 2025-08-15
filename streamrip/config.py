@@ -220,6 +220,10 @@ class CliConfig:
     progress_bars: bool
     # The maximum number of search results to show in the interactive menu
     max_search_results: int
+    # Format string for album display in browse-library and search menus
+    # Available keys: "name", "artist", "albumartist", "year", "id", "num_tracks",
+    # "bit_depth", "sampling_rate", "container"
+    display_album_format: str = "{name} by {artist}"
 
 
 @dataclass(slots=True)
