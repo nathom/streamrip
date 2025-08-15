@@ -33,6 +33,11 @@ class Album(Media):
     async def download(self):
         async def _resolve_and_download(pending: Pending):
             try:
+                # Check if track is already downloaded before resolving
+                if pending.db.downloaded(pending.id):
+                    logger.debug(f"Track {pending.id} already downloaded, counting as successful")
+                    return "already_downloaded"  # Already downloaded, count as success
+                
                 track = await pending.resolve()
                 if track is None:
                     return None  # Track not available
@@ -53,7 +58,7 @@ class Album(Media):
         for result in results:
             if isinstance(result, Exception):
                 logger.error(f"Album track processing error: {result}")
-            elif result is True:
+            elif result is True or result == "already_downloaded":
                 self.successful_tracks += 1
 
     async def postprocess(self):
@@ -69,8 +74,16 @@ class Album(Media):
                 album_id = self.meta.info.id or "unknown"
                 title = self.meta.album or "Unknown Album"
                 artist = (self.meta.albumartist or self.meta.artist) or "Unknown Artist"
-                self.db.set_album_downloaded(source, album_id, title, artist)
-                logger.debug(f"Marked album as downloaded: {artist} - {title} ({source}:{album_id}) - {self.successful_tracks}/{self.total_tracks} tracks")
+                
+                # Check if album is already marked before setting
+                already_marked = self.db.album_downloaded(source, album_id)
+                logger.debug(f"Album {source}:{album_id} already marked as downloaded: {already_marked}")
+                
+                if not already_marked:
+                    self.db.set_album_downloaded(source, album_id, title, artist)
+                    logger.info(f"✓ Marked album as downloaded: {artist} - {title} ({source}:{album_id}) - {self.successful_tracks}/{self.total_tracks} tracks")
+                else:
+                    logger.debug(f"Album already marked as downloaded: {artist} - {title} ({source}:{album_id}) - {self.successful_tracks}/{self.total_tracks} tracks")
             except Exception as e:
                 logger.debug(f"Failed to mark album as downloaded: {e}")
         else:

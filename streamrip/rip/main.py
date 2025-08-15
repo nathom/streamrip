@@ -408,8 +408,28 @@ class Main:
             filtered_albums = []
             for album in all_albums:
                 album_id = str(album.get("id"))
-                if not self.database.album_downloaded(source, album_id):
+                
+                # Check if album is downloaded using the current album ID
+                is_downloaded = self.database.album_downloaded(source, album_id)
+                
+                # If not found, also check by fetching actual album metadata
+                # This handles cases where browse-library ID differs from metadata ID
+                if not is_downloaded:
+                    try:
+                        # Get the album metadata to check the "real" album ID
+                        album_resp = await client.get_album(album_id)
+                        # Extract the metadata album ID (may be different from browse ID)
+                        actual_album_id = str(album_resp.get("id", album_id))
+                        if actual_album_id != album_id:
+                            logger.debug(f"Album ID mismatch: browse={album_id}, metadata={actual_album_id}")
+                            is_downloaded = self.database.album_downloaded(source, actual_album_id)
+                    except Exception as e:
+                        logger.debug(f"Failed to check album metadata for {album_id}: {e}")
+                
+                if not is_downloaded:
                     filtered_albums.append(album)
+                else:
+                    logger.debug(f"Filtered out downloaded album: {album.get('title', 'Unknown')} ({source}:{album_id})")
 
             if len(filtered_albums) == 0:
                 console.print(
