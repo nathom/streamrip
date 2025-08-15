@@ -65,7 +65,7 @@ class Album(Media):
         
         if success_rate >= 0.8:  # 80% success threshold
             try:
-                source = self.meta.source or "unknown"
+                source = self.tracks[0].client.source if self.tracks else "unknown"
                 album_id = self.meta.info.id or "unknown"
                 title = self.meta.album or "Unknown Album"
                 artist = (self.meta.albumartist or self.meta.artist) or "Unknown Artist"
