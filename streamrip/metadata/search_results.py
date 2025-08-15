@@ -115,15 +115,25 @@ class AlbumSummary(Summary):
     artist: str
     num_tracks: str
     date_released: str | None
+    format_info: str | None
 
     def media_type(self):
         return "album"
 
     def summarize(self) -> str:
-        return f"{clean(self.name)} by {clean(self.artist)}"
+        base = f"{clean(self.name)} by {clean(self.artist)}"
+        if self.format_info:
+            return f"{base} {self.format_info}"
+        return base
 
     def preview(self) -> str:
-        return f"Date released:\n{self.date_released}\n\n{self.num_tracks} Tracks\n\nID: {self.id}"
+        preview_text = (
+            f"Date released:\n{self.date_released}\n\n{self.num_tracks} Tracks"
+        )
+        if self.format_info:
+            preview_text += f"\nFormat: {self.format_info}"
+        preview_text += f"\n\nID: {self.id}"
+        return preview_text
 
     @classmethod
     def from_item(cls, item: dict):
@@ -158,7 +168,39 @@ class AlbumSummary(Summary):
             or item.get("year")
             or "Unknown"
         )
-        return cls(id, name, artist, str(num_tracks), date_released)
+
+        # Extract format information
+        format_info = None
+        bit_depth = item.get("maximum_bit_depth")
+        sampling_rate = item.get("maximum_sampling_rate")
+
+        # Handle Qobuz format info
+        if bit_depth and sampling_rate:
+            container = "FLAC"
+            if sampling_rate >= 1000:  # Convert Hz to kHz if needed
+                sampling_rate_khz = sampling_rate / 1000
+            else:
+                sampling_rate_khz = sampling_rate
+            format_info = f"[{bit_depth}B-{sampling_rate_khz}kHz, {container}]"
+        # Handle Tidal format info
+        elif "audioQuality" in item:
+            tidal_quality = item.get("audioQuality", "LOW")
+            if tidal_quality == "HI_RES":
+                format_info = "[24B-96kHz, MQA]"
+            elif tidal_quality == "LOSSLESS":
+                format_info = "[16B-44.1kHz, FLAC]"
+            elif tidal_quality == "HIGH":
+                format_info = "[320kbps, AAC]"
+            else:
+                format_info = "[96kbps, AAC]"
+        # Handle general hi-res indicators
+        elif item.get("hires") or item.get("hires_streamable"):
+            format_info = "[Hi-Res, FLAC]"
+        # Default for streamable content
+        elif item.get("streamable"):
+            format_info = "[FLAC]"
+
+        return cls(id, name, artist, str(num_tracks), date_released, format_info)
 
 
 @dataclass(slots=True)
