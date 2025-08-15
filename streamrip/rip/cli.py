@@ -471,10 +471,16 @@ async def id(ctx, source, media_type, id):
     help="Force sync downloaded album status from database",
     is_flag=True,
 )
+@click.option(
+    "--max-id-checks",
+    default=20,
+    help="Maximum number of albums to check for ID mismatches (default: 20, 0 = unlimited)",
+    type=int,
+)
 @click.argument("source", required=True)
 @click.pass_context
 @coro
-async def browse_library(ctx, redownload, offset, limit, sync, source):
+async def browse_library(ctx, redownload, offset, limit, sync, max_id_checks, source):
     """Browse your library and download albums.
     
     Shows albums from your library that haven't been downloaded yet.
@@ -498,7 +504,8 @@ async def browse_library(ctx, redownload, offset, limit, sync, source):
                 include_downloaded=redownload,
                 offset=offset,
                 limit=limit, 
-                sync=sync
+                sync=sync,
+                max_id_checks=max_id_checks
             )
             await main.resolve()
             await main.rip()

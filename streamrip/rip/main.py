@@ -361,6 +361,7 @@ class Main:
         offset: int = 0,
         limit: int = 50,
         sync: bool = False,
+        max_id_checks: int = 20,
     ):
         """Browse user's library and show albums for download with pagination support."""
         client = await self.get_logged_in_client(source)
@@ -403,33 +404,150 @@ class Main:
             f"Fetched [cyan]{len(all_albums)}[/cyan] albums from {source} library"
         )
 
+        # Enhanced debugging - show database contents for problematic case
+        if logger.isEnabledFor(logging.DEBUG):
+            # Check if we have the specific album in question in our fetched results
+            target_album = next((a for a in all_albums if str(a.get("id")) == "eyihaejablvrc"), None)
+            if target_album:
+                logger.info(f"[DETAILED DEBUG] Found target album in fetched results: '{target_album.get('title', 'Unknown')}'")
+                # Show some sample database entries
+                downloaded_albums = self.database.get_downloaded_albums(source)[:10]  # First 10 entries
+                logger.info(f"[DETAILED DEBUG] Sample downloaded albums in database ({len(downloaded_albums)} shown):")
+                for i, (db_source, db_album_id, db_title, db_artist, db_timestamp) in enumerate(downloaded_albums[:5]):
+                    logger.info(f"[DETAILED DEBUG]   {i+1}. ID: {db_album_id}, Title: '{db_title}', Artist: '{db_artist}'")
+                    if db_album_id == "154135061":
+                        logger.info(f"[DETAILED DEBUG]   *** FOUND 154135061 in database! ***")
+        
         # Filter by download status using fast album table lookup
         if not include_downloaded:
             filtered_albums = []
+            api_call_count = 0
+            id_mapping_cache = {}  # Cache for browse_id -> metadata_id mappings
+            mismatches_found = 0
+            albums_checked = 0
+            
+            # Calculate adaptive limits based on CLI parameters
+            max_checks = max_id_checks if max_id_checks > 0 else len(all_albums)
+            # Use a percentage of the limit as a minimum check threshold
+            min_checks = min(max_checks, max(5, limit // 4))
+            
             for album in all_albums:
                 album_id = str(album.get("id"))
+                album_title = album.get("title", "Unknown")
+                
+                # Enhanced debugging for the problematic album
+                if album_id == "eyihaejablvrc":
+                    logger.info(f"[DETAILED DEBUG] Processing album: '{album_title}' (ID: {album_id})")
                 
                 # Check if album is downloaded using the current album ID
                 is_downloaded = self.database.album_downloaded(source, album_id)
                 
-                # If not found, also check by fetching actual album metadata
-                # This handles cases where browse-library ID differs from metadata ID
-                if not is_downloaded:
-                    try:
-                        # Get the album metadata to check the "real" album ID
-                        album_resp = await client.get_album(album_id)
-                        # Extract the metadata album ID (may be different from browse ID)
-                        actual_album_id = str(album_resp.get("id", album_id))
+                # Enhanced debugging for the problematic album
+                if album_id == "eyihaejablvrc":
+                    logger.info(f"[DETAILED DEBUG] Initial database check for {album_id}: {is_downloaded}")
+                
+                # Check for ID mismatches if needed
+                if not is_downloaded and not album_id.isdigit():
+                    should_check_metadata = False
+                    
+                    # Always check if we're under minimum threshold
+                    if albums_checked < min_checks:
+                        should_check_metadata = True
+                    # Continue checking if we're finding mismatches (adaptive)
+                    elif api_call_count < max_checks and mismatches_found > 0:
+                        mismatch_rate = mismatches_found / max(1, albums_checked)
+                        # If >10% mismatch rate, keep checking aggressively
+                        if mismatch_rate > 0.1:
+                            should_check_metadata = True
+                        # If 5-10% mismatch rate, check occasionally  
+                        elif mismatch_rate > 0.05 and albums_checked % 3 == 0:
+                            should_check_metadata = True
+                    
+                    if should_check_metadata:
+                        albums_checked += 1
+                        
+                        # Check cache first
+                        if album_id in id_mapping_cache:
+                            actual_album_id = id_mapping_cache[album_id]
+                            logger.debug(f"Using cached ID mapping: {album_id} -> {actual_album_id}")
+                            
+                            # Enhanced debugging for the problematic album
+                            if album_id == "eyihaejablvrc":
+                                logger.info(f"[DETAILED DEBUG] Cached mapping for eyihaejablvrc: {actual_album_id}")
+                                is_in_db = self.database.album_downloaded(source, actual_album_id)
+                                logger.info(f"[DETAILED DEBUG] Database check for ID {actual_album_id}: {is_in_db}")
+                        else:
+                            try:
+                                # Enhanced debugging for the problematic album
+                                if album_id == "eyihaejablvrc":
+                                    logger.info(f"[DETAILED DEBUG] Making API call for eyihaejablvrc")
+                                
+                                # Get the album metadata to check the "real" album ID
+                                album_resp = await client.get_metadata(album_id, "album")
+                                api_call_count += 1
+                                
+                                # Enhanced debugging for the problematic album
+                                if album_id == "eyihaejablvrc":
+                                    logger.info(f"[DETAILED DEBUG] API response keys: {list(album_resp.keys())}")
+                                    logger.info(f"[DETAILED DEBUG] API response ID field: {album_resp.get('id')}")
+                                    logger.info(f"[DETAILED DEBUG] API response qobuz_id field: {album_resp.get('qobuz_id')}")
+                                
+                                # Extract the metadata album ID - for Qobuz, use qobuz_id field which contains the numerical ID
+                                if source == "qobuz" and "qobuz_id" in album_resp:
+                                    actual_album_id = str(album_resp.get("qobuz_id", album_id))
+                                else:
+                                    actual_album_id = str(album_resp.get("id", album_id))
+                                
+                                # Enhanced debugging for the problematic album
+                                if album_id == "eyihaejablvrc":
+                                    logger.info(f"[DETAILED DEBUG] Extracted actual_album_id: {actual_album_id}")
+                                    logger.info(f"[DETAILED DEBUG] Comparison: '{album_id}' != '{actual_album_id}' = {album_id != actual_album_id}")
+                                    logger.info(f"[DETAILED DEBUG] Used qobuz_id field for Qobuz source")
+                                
+                                # Cache the mapping
+                                id_mapping_cache[album_id] = actual_album_id
+                                
+                                if actual_album_id != album_id:
+                                    mismatches_found += 1
+                                    logger.debug(f"Album ID mismatch #{mismatches_found}: browse={album_id}, metadata={actual_album_id}")
+                                    
+                                    # Enhanced debugging for the problematic album
+                                    if album_id == "eyihaejablvrc":
+                                        logger.info(f"[DETAILED DEBUG] MISMATCH DETECTED! #{mismatches_found}: {album_id} -> {actual_album_id}")
+                                elif album_id == "eyihaejablvrc":
+                                    logger.info(f"[DETAILED DEBUG] NO MISMATCH: Both IDs are '{album_id}'")
+                                    
+                            except Exception as e:
+                                logger.debug(f"Failed to check album metadata for {album_id}: {e}")
+                                if album_id == "eyihaejablvrc":
+                                    logger.info(f"[DETAILED DEBUG] API call failed for eyihaejablvrc: {e}")
+                                actual_album_id = album_id
+                        
+                        # Check if the actual ID is downloaded
                         if actual_album_id != album_id:
-                            logger.debug(f"Album ID mismatch: browse={album_id}, metadata={actual_album_id}")
                             is_downloaded = self.database.album_downloaded(source, actual_album_id)
-                    except Exception as e:
-                        logger.debug(f"Failed to check album metadata for {album_id}: {e}")
+                            
+                            # Enhanced debugging for the problematic album
+                            if album_id == "eyihaejablvrc":
+                                logger.info(f"[DETAILED DEBUG] Database check for actual ID {actual_album_id}: {is_downloaded}")
+                                # Also check if the browse ID is in the database
+                                browse_id_in_db = self.database.album_downloaded(source, album_id)
+                                logger.info(f"[DETAILED DEBUG] Database check for browse ID {album_id}: {browse_id_in_db}")
+                
+                # Enhanced debugging for the problematic album - final decision
+                if album_id == "eyihaejablvrc":
+                    logger.info(f"[DETAILED DEBUG] Final decision for eyihaejablvrc: is_downloaded = {is_downloaded}")
+                    logger.info(f"[DETAILED DEBUG] Will be {'FILTERED OUT' if is_downloaded else 'INCLUDED'} in results")
                 
                 if not is_downloaded:
                     filtered_albums.append(album)
                 else:
                     logger.debug(f"Filtered out downloaded album: {album.get('title', 'Unknown')} ({source}:{album_id})")
+                    if album_id == "eyihaejablvrc":
+                        logger.info(f"[DETAILED DEBUG] eyihaejablvrc was filtered out as downloaded")
+            
+            if api_call_count > 0:
+                logger.info(f"ID mismatch check: {api_call_count} API calls, {mismatches_found} mismatches found, {len(id_mapping_cache)} mappings cached")
 
             if len(filtered_albums) == 0:
                 console.print(
