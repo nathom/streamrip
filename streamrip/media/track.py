@@ -228,7 +228,7 @@ class PendingSingle(Pending):
         assert isinstance(quality, int)
         parent = config.downloads.folder
         if config.filepaths.add_singles_to_folder:
-            folder = os.path.join(parent, self._format_folder(album))
+            folder = self._format_folder(album)
         else:
             folder = parent
 
