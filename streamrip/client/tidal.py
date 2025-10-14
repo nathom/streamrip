@@ -31,7 +31,8 @@ QUALITY_MAP = {
     0: "LOW",  # AAC
     1: "HIGH",  # AAC
     2: "LOSSLESS",  # CD Quality
-    3: "HI_RES",  # MQA
+    3: "HI_RES", # FLAC
+    4: "HI_RES_LOSSLESS", # FLAC Best
 }
 
 
