@@ -169,7 +169,9 @@ class AlbumMetadata:
         year = date[:4]
         _copyright = None
         description = None
-        albumartist = typed(safe_get(resp, "artist", "name"), str)
+        albumartist = ", ".join(
+            c["name"] for c in resp["contributors"] if c["type"] == "artist"
+        )
         albumcomposer = None
         label = resp.get("label")
         booklets = None
