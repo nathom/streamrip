@@ -6,6 +6,7 @@ import random
 import re
 from contextlib import ExitStack
 from dataclasses import dataclass
+from pathlib import Path
 
 import aiohttp
 from rich.text import Text
@@ -28,6 +29,7 @@ from ..utils.ssl_utils import get_aiohttp_connector_kwargs
 from .artwork import download_artwork
 from .media import Media, Pending
 from .track import Track
+from ..client.downloadable import YoutubeDLTrack
 
 logger = logging.getLogger("streamrip")
 
@@ -170,8 +172,8 @@ class PendingPlaylist(Pending):
             logger.error(f"Error creating playlist: {e}")
             return None
         name = meta.name
-        parent = self.config.session.downloads.folder
-        folder = os.path.join(parent, clean_filepath(name))
+        parent = Path(self.config.session.downloads.folder)
+        folder = parent / clean_filepath(name)
         tracks = [
             PendingPlaylistTrack(
                 id,
@@ -242,8 +244,8 @@ class PendingLastfmPlaylist(Pending):
                 requests.append(self._make_query(f"{title} {artist}", s, callback))
             results: list[tuple[str | None, bool]] = await asyncio.gather(*requests)
 
-        parent = self.config.session.downloads.folder
-        folder = os.path.join(parent, clean_filepath(playlist_title))
+        parent = Path(self.config.session.downloads.folder)
+        folder = parent / clean_filepath(playlist_title)
 
         pending_tracks = []
         for pos, (id, from_fallback) in enumerate(results, start=1):
@@ -251,23 +253,44 @@ class PendingLastfmPlaylist(Pending):
                 logger.warning(f"No results found for {titles_artists[pos-1]}")
                 continue
 
-            if from_fallback:
+            if from_fallback and "youtube.com" in id:
+                pending_tracks.append(
+                    YoutubeDLTrack(
+                        id,
+                        self.config,
+                        folder,
+                        playlist_name=playlist_title,
+                        track_number=pos,
+                        db=self.db,
+                    )
+                )
+            elif from_fallback:
                 assert self.fallback_client is not None
                 client = self.fallback_client
+                pending_tracks.append(
+                    PendingPlaylistTrack(
+                        id,
+                        client,
+                        self.config,
+                        folder,
+                        playlist_title,
+                        pos,
+                        self.db,
+                    ),
+                )
             else:
                 client = self.client
-
-            pending_tracks.append(
-                PendingPlaylistTrack(
-                    id,
-                    client,
-                    self.config,
-                    folder,
-                    playlist_title,
-                    pos,
-                    self.db,
-                ),
-            )
+                pending_tracks.append(
+                    PendingPlaylistTrack(
+                        id,
+                        client,
+                        self.config,
+                        folder,
+                        playlist_title,
+                        pos,
+                        self.db,
+                    ),
+                )
 
         return Playlist(playlist_title, self.config, self.client, pending_tracks)
 
@@ -322,8 +345,23 @@ class PendingLastfmPlaylist(Pending):
                 ), True
 
             logger.debug(f"No result found for {query} on {self.client.source}")
-            search_status.failed += 1
-        return None, True
+
+        try:
+            import yt_dlp
+
+            with yt_dlp.YoutubeDL(
+                {"format": "bestaudio", "noplaylist": True, "quiet": True}
+            ) as ydl:
+                info = ydl.extract_info(f"ytsearch:{query}", download=False)
+                if info and "entries" in info and info["entries"]:
+                    video_url = info["entries"][0]["webpage_url"]
+                    search_status.found += 1
+                    return video_url, True
+        except Exception as e:
+            logger.error(f"Error searching on YouTube: {e}")
+
+        search_status.failed += 1
+        return None, False
 
     async def _parse_lastfm_playlist(
         self,

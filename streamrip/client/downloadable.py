@@ -432,3 +432,53 @@ async def concat_audio_files(paths: list[str], out: str, ext: str, max_files_ope
 
     # Recurse on remaining batches
     await concat_audio_files(outpaths, out, ext)
+
+
+class YoutubeDLTrack(Downloadable):
+    def __init__(
+        self,
+        url: str,
+        config,
+        folder: str,
+        playlist_name: str,
+        track_number: int,
+        db,
+    ):
+        self.url = url
+        self.config = config
+        self.folder = folder
+        self.playlist_name = playlist_name
+        self.track_number = track_number
+        self.db = db
+        self.extension = "flac"
+
+    async def _download(self, path: str, callback: Callable[[int], None]):
+        import yt_dlp
+
+        ydl_opts = {
+            "format": "bestaudio/best",
+            "outtmpl": path,
+            "quiet": True,
+            "postprocessors": [
+                {
+                    "key": "FFmpegExtractAudio",
+                    "preferredcodec": "flac",
+                    "preferredquality": "5",
+                }
+            ],
+            "progress_hooks": [lambda d: callback(d["downloaded_bytes"])],
+        }
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            ydl.download([self.url])
+
+    async def size(self) -> int:
+        import yt_dlp
+
+        ydl_opts = {
+            "quiet": True,
+        }
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(self.url, download=False)
+            if info:
+                return info.get("filesize") or info.get("filesize_approx") or 0
+        return 0

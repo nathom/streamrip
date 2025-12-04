@@ -231,13 +231,10 @@ class MiscConfig:
 
 
 HOME = Path.home()
-DEFAULT_DOWNLOADS_FOLDER = os.path.join(HOME, "StreamripDownloads")
-DEFAULT_DOWNLOADS_DB_PATH = os.path.join(APP_DIR, "downloads.db")
-DEFAULT_FAILED_DOWNLOADS_DB_PATH = os.path.join(APP_DIR, "failed_downloads.db")
-DEFAULT_YOUTUBE_VIDEO_DOWNLOADS_FOLDER = os.path.join(
-    DEFAULT_DOWNLOADS_FOLDER,
-    "YouTubeVideos",
-)
+DEFAULT_DOWNLOADS_FOLDER = HOME / "StreamripDownloads"
+DEFAULT_DOWNLOADS_DB_PATH = Path(APP_DIR) / "downloads.db"
+DEFAULT_FAILED_DOWNLOADS_DB_PATH = Path(APP_DIR) / "failed_downloads.db"
+DEFAULT_YOUTUBE_VIDEO_DOWNLOADS_FOLDER = DEFAULT_DOWNLOADS_FOLDER / "YouTubeVideos"
 BLANK_CONFIG_PATH = os.path.join(os.path.dirname(__file__), "config.toml")
 assert os.path.isfile(BLANK_CONFIG_PATH), "Template config not found"
 
@@ -422,10 +419,12 @@ def set_user_defaults(path: str, /):
 
 
 def toml_set_user_defaults(toml: TOMLDocument):
-    toml["downloads"]["folder"] = DEFAULT_DOWNLOADS_FOLDER  # type: ignore
-    toml["database"]["downloads_path"] = DEFAULT_DOWNLOADS_DB_PATH  # type: ignore
-    toml["database"]["failed_downloads_path"] = DEFAULT_FAILED_DOWNLOADS_DB_PATH  # type: ignore
-    toml["youtube"]["video_downloads_folder"] = DEFAULT_YOUTUBE_VIDEO_DOWNLOADS_FOLDER  # type: ignore
+    toml["downloads"]["folder"] = str(DEFAULT_DOWNLOADS_FOLDER)  # type: ignore
+    toml["database"]["downloads_path"] = str(DEFAULT_DOWNLOADS_DB_PATH)  # type: ignore
+    toml["database"]["failed_downloads_path"] = str(DEFAULT_FAILED_DOWNLOADS_DB_PATH)  # type: ignore
+    toml["youtube"]["video_downloads_folder"] = str(
+        DEFAULT_YOUTUBE_VIDEO_DOWNLOADS_FOLDER
+    )  # type: ignore
 
 
 def _get_dict_keys_r(d: dict) -> set[tuple]:

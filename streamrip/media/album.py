@@ -2,6 +2,7 @@ import asyncio
 import logging
 import os
 from dataclasses import dataclass
+from pathlib import Path
 
 from .. import progress
 from ..client import Client
@@ -106,13 +107,14 @@ class PendingAlbum(Pending):
         logger.debug("Pending tracks: %s", pending_tracks)
         return Album(meta, pending_tracks, self.config, album_folder, self.db)
 
-    def _album_folder(self, parent: str, meta: AlbumMetadata) -> str:
+    def _album_folder(self, parent: str, meta: AlbumMetadata) -> Path:
         config = self.config.session
+        parent_path = Path(parent)
         if config.downloads.source_subdirectories:
-            parent = os.path.join(parent, self.client.source.capitalize())
+            parent_path = parent_path / self.client.source.capitalize()
         formatter = config.filepaths.folder_format
         folder = clean_filepath(
             meta.format_folder_path(formatter), config.filepaths.restrict_characters
         )
 
-        return os.path.join(parent, folder)
+        return parent_path / folder
