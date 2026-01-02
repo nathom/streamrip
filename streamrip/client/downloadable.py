@@ -17,7 +17,6 @@ from typing import Any, Callable, Optional
 import aiofiles
 import aiohttp
 import m3u8
-import requests
 from Cryptodome.Cipher import AES, Blowfish
 from Cryptodome.Util import Counter
 
@@ -37,29 +36,27 @@ def generate_temp_path(url: str):
     )
 
 
-async def fast_async_download(path, url, headers, callback):
-    """Synchronous download with yield for every 1MB read.
+async def fast_async_download(path, url, session, callback):
+    """Async download with buffered writes to reduce event loop yields.
 
-    Using aiofiles/aiohttp resulted in a yield to the event loop for every 1KB,
-    which made file downloads CPU-bound. This resulted in a ~10MB max total download
-    speed. This fixes the issue by only yielding to the event loop for every 1MB read.
+    Uses aiohttp for non-blocking HTTP requests and batches file writes
+    to maintain performance while allowing other async tasks to proceed.
+    Includes timeout to prevent indefinite stalls on slow/failed connections.
     """
     chunk_size: int = 2**17  # 131 KB
     counter = 0
-    yield_every = 8  # 1 MB
-    with open(path, "wb") as file:  # noqa: ASYNC101
-        with requests.get(  # noqa: ASYNC100
-            url,
-            headers=headers,
-            allow_redirects=True,
-            stream=True,
-        ) as resp:
-            for chunk in resp.iter_content(chunk_size=chunk_size):
-                file.write(chunk)
+    yield_every = 8  # Yield after ~1 MB (8 chunks)
+    timeout = aiohttp.ClientTimeout(total=300, sock_read=60)  # 5min total, 60s read
+
+    async with aiofiles.open(path, "wb") as file:
+        async with session.get(url, allow_redirects=True, timeout=timeout) as resp:
+            resp.raise_for_status()
+            async for chunk in resp.content.iter_chunked(chunk_size):
+                await file.write(chunk)
                 callback(len(chunk))
+                counter += 1
                 if counter % yield_every == 0:
                     await asyncio.sleep(0)
-                counter += 1
 
 
 @dataclass(slots=True)
@@ -113,7 +110,7 @@ class BasicDownloadable(Downloadable):
         self.source: str = source or "Unknown"
 
     async def _download(self, path: str, callback):
-        await fast_async_download(path, self.url, self.session.headers, callback)
+        await fast_async_download(path, self.url, self.session, callback)
 
 
 class DeezerDownloadable(Downloadable):
@@ -159,9 +156,7 @@ class DeezerDownloadable(Downloadable):
 
             if self.is_encrypted.search(self.url) is None:
                 logger.debug(f"Deezer file at {self.url} not encrypted.")
-                await fast_async_download(
-                    path, self.url, self.session.headers, callback
-                )
+                await fast_async_download(path, self.url, self.session, callback)
             else:
                 blowfish_key = self._generate_blowfish_key(self.id)
                 logger.debug(
