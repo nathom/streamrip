@@ -117,8 +117,9 @@ class AlbumTable(DataTable):
     def _update_selection_display(self) -> None:
         """Update the selection checkmarks in the table."""
         for row_idx in range(self.row_count):
-            # Get the actual RowKey object for this row index
-            row_key = self.ordered_rows[row_idx]
+            # Get the actual RowKey from the Row object at this index
+            row = self.ordered_rows[row_idx]
+            row_key = row.key
             marker = "✓" if row_idx in self.selected_rows else " "
             self.update_cell(row_key, "selected", marker)
 
