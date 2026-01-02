@@ -94,11 +94,11 @@ class AlbumTable(DataTable):
     def action_toggle_select(self) -> None:
         """Toggle selection of current row."""
         if self.cursor_row is not None:
-            row_key = self.cursor_row
-            if row_key in self.selected_rows:
-                self.selected_rows.discard(row_key)
+            row_idx = self.cursor_row
+            if row_idx in self.selected_rows:
+                self.selected_rows.discard(row_idx)
             else:
-                self.selected_rows.add(row_key)
+                self.selected_rows.add(row_idx)
             self._update_selection_display()
             self.post_message(self.SelectionChanged(self.selected_rows.copy()))
 
@@ -117,7 +117,8 @@ class AlbumTable(DataTable):
     def _update_selection_display(self) -> None:
         """Update the selection checkmarks in the table."""
         for row_idx in range(self.row_count):
-            row_key = self.get_row_at(row_idx)
+            # Get the actual RowKey object for this row index
+            row_key = self.ordered_rows[row_idx]
             marker = "✓" if row_idx in self.selected_rows else " "
             self.update_cell(row_key, "selected", marker)
 
@@ -194,24 +195,24 @@ class LibraryBrowser(App):
     """Textual app for browsing and downloading music library."""
 
     CSS = """
-    Screen {
-        layout: grid;
-        grid-size: 2;
-        grid-columns: 2fr 1fr;
+    #main-container {
+        layout: horizontal;
     }
 
     #left-panel {
+        width: 2fr;
         height: 100%;
         border: solid $primary;
     }
 
     #right-panel {
+        width: 1fr;
         height: 100%;
         border: solid $secondary;
     }
 
     #album-table {
-        height: 100%;
+        height: 1fr;
     }
 
     #album-table:focus {
@@ -278,7 +279,7 @@ class LibraryBrowser(App):
 
     def compose(self) -> ComposeResult:
         yield Header()
-        with Horizontal():
+        with Horizontal(id="main-container"):
             with Vertical(id="left-panel"):
                 yield AlbumTable(id="album-table")
                 yield Static("", id="status-bar")
