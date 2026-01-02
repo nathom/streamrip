@@ -224,3 +224,8 @@ class Database:
         # This would need a custom query method, let's implement it differently
         all_albums = self.downloaded_albums.all()
         return [album for album in all_albums if album[0] == source]
+
+    def get_downloaded_album_ids(self, source: str) -> set[str]:
+        """Get set of downloaded album IDs for a source (optimized for bulk lookups)."""
+        all_albums = self.downloaded_albums.all()
+        return {album[1] for album in all_albums if album[0] == source}

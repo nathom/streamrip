@@ -375,17 +375,14 @@ class Main:
         if sync:
             await self.sync_downloaded_albums(source, client)
 
-        # Fetch the requested page of albums
+        # Fetch all albums from the library
         with console.status(
-            f"[bold]Fetching {source} library (offset={offset}, limit={limit})",
+            f"[bold]Fetching {source} library",
             spinner="dots",
         ):
             try:
-                # Calculate actual API limit needed (we'll filter client-side for now)
-                fetch_limit = min(
-                    500, offset + limit * 3
-                )  # Fetch extra in case of filtering
-                pages = await client.get_user_favorites("album", limit=fetch_limit)
+                # Fetch all albums (no limit)
+                pages = await client.get_user_favorites("album", limit=None)
                 if len(pages) == 0:
                     console.print(f"[yellow]No albums found in your {source} library")
                     return

@@ -355,7 +355,7 @@ class QobuzClient(Client):
         self,
         epoint: str,
         params: dict,
-        limit: int = 500,
+        limit: int | None = None,
     ) -> list[dict]:
         """Paginate search results.
 
@@ -367,7 +367,8 @@ class QobuzClient(Client):
         -------
             Generator that yields (status code, response) tuples
         """
-        params.update({"limit": limit})
+        # Use server default per-page limit (500) for API request
+        params.update({"limit": 500})
         status, page = await self._api_request(epoint, params)
         assert status == 200, status
         logger.debug("paginate: initial request made with status %d", status)
