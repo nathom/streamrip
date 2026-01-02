@@ -76,7 +76,10 @@ class AlbumTable(DataTable):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.selected_rows: set[int] = set()
+        # Enable row cursor for navigation
         self.cursor_type = "row"
+        self.zebra_stripes = True
+        self.can_focus = True
 
     def on_mount(self) -> None:
         """Set up table columns."""
@@ -85,6 +88,8 @@ class AlbumTable(DataTable):
         self.add_column("Artist", key="artist", width=30)
         self.add_column("Year", key="year", width=6)
         self.add_column("Format", key="format", width=15)
+        # Focus the table for keyboard navigation
+        self.focus()
 
     def action_toggle_select(self) -> None:
         """Toggle selection of current row."""
@@ -209,6 +214,15 @@ class LibraryBrowser(App):
         height: 100%;
     }
 
+    #album-table:focus {
+        border: solid $accent;
+    }
+
+    #album-table > .datatable--cursor {
+        background: $accent;
+        color: $text;
+    }
+
     #queue-title {
         text-style: bold;
         padding: 1;
@@ -276,6 +290,9 @@ class LibraryBrowser(App):
         """Load albums when app starts."""
         self.title = f"Library Browser - {self.state.source.capitalize()}"
         await self.load_albums()
+        # Ensure table has focus for keyboard navigation
+        table = self.query_one("#album-table", AlbumTable)
+        table.focus()
 
     async def load_albums(self) -> None:
         """Load albums from the library."""
@@ -325,11 +342,14 @@ class LibraryBrowser(App):
                 table.add_row(" ", title, artist, year, format_str)
 
             self._update_status()
+            # Re-focus table after loading
+            table.focus()
 
         except Exception as e:
             self.notify(f"Error loading albums: {e}", severity="error")
         finally:
             table.loading = False
+            table.focus()
 
     def _update_status(self) -> None:
         """Update the status bar."""
