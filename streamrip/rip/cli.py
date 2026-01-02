@@ -477,38 +477,57 @@ async def id(ctx, source, media_type, id):
     help="Maximum number of albums to check for ID mismatches (default: 20, 0 = unlimited)",
     type=int,
 )
+@click.option(
+    "--simple",
+    help="Use simple menu instead of interactive TUI",
+    is_flag=True,
+)
 @click.argument("source", required=True)
 @click.pass_context
 @coro
-async def browse_library(ctx, redownload, offset, limit, sync, max_id_checks, source):
-    """Browse your library and download albums.
-    
-    Shows albums from your library that haven't been downloaded yet.
-    Use --redownload to also show already downloaded albums.
-    Use --offset and --limit to browse in chunks (e.g., 50 albums at a time).
-    Use --sync to force sync downloaded status from track database.
-    
+async def browse_library(
+    ctx, redownload, offset, limit, sync, max_id_checks, simple, source
+):
+    """Browse your library and download albums interactively.
+
+    Opens an interactive TUI where you can browse albums, add them to a queue,
+    and download while continuing to browse. Downloads run in the background.
+
+    Use --simple to use the old single-selection menu instead.
+
     Examples:
-    
-        rip browse-library qobuz                    # First 50 undownloaded albums
-        rip browse-library qobuz --offset 100 --limit 25  # Albums 100-125  
-        rip browse-library qobuz --sync             # Sync downloaded status first
+
+        rip browse-library qobuz                    # Interactive TUI (default)
+        rip browse-library qobuz --simple           # Simple menu mode
+        rip browse-library qobuz --redownload       # Include already downloaded
     """
     if ctx.obj["config"] is None:
         return
-        
+
     with ctx.obj["config"] as cfg:
         async with Main(cfg) as main:
-            await main.browse_library_interactive(
-                source, 
-                include_downloaded=redownload,
-                offset=offset,
-                limit=limit, 
-                sync=sync,
-                max_id_checks=max_id_checks
-            )
-            await main.resolve()
-            await main.rip()
+            if simple:
+                # Use old simple menu behavior
+                await main.browse_library_interactive(
+                    source,
+                    include_downloaded=redownload,
+                    offset=offset,
+                    limit=limit,
+                    sync=sync,
+                    max_id_checks=max_id_checks,
+                )
+                await main.resolve()
+                await main.rip()
+            else:
+                # Use new interactive TUI
+                from ..tui import LibraryBrowser
+
+                app = LibraryBrowser(
+                    main_instance=main,
+                    source=source,
+                    include_downloaded=redownload,
+                )
+                await app.run_async()
 
 
 async def latest_streamrip_version(verify_ssl: bool = True) -> tuple[str, str | None]:
