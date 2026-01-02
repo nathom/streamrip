@@ -870,6 +870,10 @@ class LibraryBrowser(App):
                     continue
 
                 try:
+                    # Clear any leftover state from previous album
+                    self.main.pending.clear()
+                    self.main.media.clear()
+
                     # Check if already downloaded
                     if self.main.database.album_downloaded(item.source, item.album_id):
                         item.status = DownloadStatus.SKIPPED
@@ -912,9 +916,15 @@ class LibraryBrowser(App):
                     # Download with progress tracking
                     await self._download_with_progress(album, item)
 
-                    # Mark complete
-                    item.status = DownloadStatus.COMPLETE
-                    item.completed_tracks = item.total_tracks
+                    # Check if any tracks failed
+                    failed_tracks = sum(1 for t in item.tracks if t.status == TrackStatus.FAILED)
+                    if failed_tracks > 0:
+                        item.status = DownloadStatus.FAILED
+                        item.error = f"{failed_tracks} track(s) failed"
+                    else:
+                        # Mark complete
+                        item.status = DownloadStatus.COMPLETE
+                        item.completed_tracks = item.total_tracks
 
                     # Clear main's media list for next album
                     self.main.media.clear()
