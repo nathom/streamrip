@@ -302,10 +302,11 @@ class TestSortColumn:
         assert SortColumn.ARTIST.value == "artist"
         assert SortColumn.YEAR.value == "year"
         assert SortColumn.FORMAT.value == "format"
+        assert SortColumn.ADDED.value == "added"
 
     def test_column_count(self):
-        """Test there are exactly 4 sort columns."""
-        assert len(list(SortColumn)) == 4
+        """Test there are exactly 5 sort columns."""
+        assert len(list(SortColumn)) == 5
 
 
 class TestSortLogic:
@@ -388,8 +389,9 @@ class TestSortLogic:
             visited.append(columns[current_idx])
             current_idx = (current_idx + 1) % len(columns)
 
-        assert len(visited) == 4
+        assert len(visited) == 5
         assert SortColumn.ALBUM in visited
         assert SortColumn.ARTIST in visited
         assert SortColumn.YEAR in visited
         assert SortColumn.FORMAT in visited
+        assert SortColumn.ADDED in visited

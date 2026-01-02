@@ -88,6 +88,7 @@ class SortColumn(Enum):
     ARTIST = "artist"
     YEAR = "year"
     FORMAT = "format"
+    ADDED = "added"  # Order added to library (original API order)
 
 
 @dataclass
@@ -502,6 +503,7 @@ class LibraryBrowser(App):
         Binding("2", "sort_by_artist", "By Artist", show=False),
         Binding("3", "sort_by_year", "By Year", show=False),
         Binding("4", "sort_by_format", "By Format", show=False),
+        Binding("5", "sort_by_added", "By Added", show=False),
         Binding("escape", "clear_search", "Clear Search", show=False),
     ]
 
@@ -578,6 +580,10 @@ class LibraryBrowser(App):
                     albums_data = page.get("albums", {})
                     albums_items = albums_data.get("items", [])
                     all_albums.extend(albums_items)
+
+                # Add original index to track "added to library" order
+                for idx, album in enumerate(all_albums):
+                    album["_original_index"] = idx
 
                 # Cache the raw album data
                 self.state.album_cache = all_albums
@@ -1143,6 +1149,10 @@ class LibraryBrowser(App):
         """Sort by format."""
         self._set_sort(SortColumn.FORMAT)
 
+    def action_sort_by_added(self) -> None:
+        """Sort by date added to library."""
+        self._set_sort(SortColumn.ADDED)
+
     def _set_sort(self, column: SortColumn) -> None:
         """Set sort column, toggling direction if same column."""
         if self.state.sort_column == column:
@@ -1190,6 +1200,9 @@ class LibraryBrowser(App):
                 bit_depth = album.get("maximum_bit_depth", 16)
                 sample_rate = album.get("maximum_sampling_rate", 44.1)
                 return bit_depth * sample_rate
+            elif self.state.sort_column == SortColumn.ADDED:
+                # Sort by original library order (when added to favorites)
+                return album.get("_original_index", 0)
             return ""
 
         # Sort the filtered albums
