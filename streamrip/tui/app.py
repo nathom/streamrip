@@ -221,13 +221,19 @@ class DownloadQueueWidget(Static):
         yield Static("", id="current-progress")
 
     def update_queue(self, queue: list[DownloadItem]) -> None:
-        """Update the queue display."""
+        """Update the queue display with optimized rendering."""
         self.queue = queue
         list_view = self.query_one("#queue-list", ListView)
-        list_view.clear()
-
-        # Update queue summary
         summary_widget = self.query_one("#queue-summary", Static)
+        progress_widget = self.query_one("#current-progress", Static)
+
+        # Use batch update to reduce repaints
+        with self.app.batch_update():
+            list_view.clear()
+            self._render_queue_items(queue, list_view, summary_widget, progress_widget)
+
+    def _render_queue_items(self, queue: list[DownloadItem], list_view, summary_widget, progress_widget) -> None:
+        """Render queue items (called within batch update)."""
         if queue:
             total = len(queue)
             completed = sum(1 for i in queue if i.status == DownloadStatus.COMPLETE)
@@ -304,8 +310,9 @@ class DownloadQueueWidget(Static):
 
             list_view.append(ListItem(Static(header)))
 
-            # Add individual tracks if available
-            if item.tracks and item.status in (DownloadStatus.DOWNLOADING, DownloadStatus.COMPLETE, DownloadStatus.FAILED):
+            # Only show individual tracks for actively DOWNLOADING albums (performance optimization)
+            # Completed/failed albums just show the summary in the header
+            if item.tracks and item.status == DownloadStatus.DOWNLOADING:
                 for track in item.tracks:
                     track_text = Text()
                     track_text.append("   ")  # Indent
@@ -359,7 +366,6 @@ class DownloadQueueWidget(Static):
         active = next(
             (i for i in queue if i.status == DownloadStatus.DOWNLOADING), None
         )
-        progress_widget = self.query_one("#current-progress", Static)
         if active:
             # Show overall album progress
             progress_text = Text()
@@ -860,7 +866,7 @@ class LibraryBrowser(App):
         async def global_ui_update():
             while ui_update_running:
                 queue_widget.update_queue(self.state.download_queue)
-                await asyncio.sleep(0.3)
+                await asyncio.sleep(0.5)
 
         ui_task = asyncio.create_task(global_ui_update())
 
