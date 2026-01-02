@@ -1184,10 +1184,10 @@ class LibraryBrowser(App):
         table.clear_albums()
 
         for album in self.state.filtered_albums:
-            title = album.get("title", "Unknown")[:33]
+            title = album.get("title", "Unknown")[:68]
             artist_info = album.get("artist", {})
             artist = (
-                artist_info.get("name", "Unknown")[:23]
+                artist_info.get("name", "Unknown")[:28]
                 if isinstance(artist_info, dict)
                 else "Unknown"
             )
