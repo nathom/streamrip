@@ -171,6 +171,10 @@ class DeezerClient(Client):
             raise NonStreamableError(
                 "No item id provided. This can happen when searching for fallback songs.",
             )
+
+        if not (0 <= quality <= 2):
+            raise ValueError(f"Quality must be between 0 and 2, got {quality}")
+
         # TODO: optimize such that all of the ids are requested at once
         dl_info: dict = {"quality": quality, "id": item_id}
 
