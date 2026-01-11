@@ -3,7 +3,10 @@ import binascii
 import hashlib
 import logging
 
+import re
+
 import deezer
+from deezer.errors import DataException
 from Cryptodome.Cipher import AES
 
 from ..config import Config
@@ -89,13 +92,36 @@ class DeezerClient(Client):
         return item
 
     async def get_album(self, item_id: str) -> dict:
-        album_metadata, album_tracks = await asyncio.gather(
-            asyncio.to_thread(self.client.api.get_album, item_id),
-            asyncio.to_thread(self.client.api.get_album_tracks, item_id),
-        )
+        try:
+            album_metadata, album_tracks = await asyncio.gather(
+                asyncio.to_thread(self.client.api.get_album, item_id),
+                asyncio.to_thread(self.client.api.get_album_tracks, item_id),
+            )
+        except DataException:
+            new_id = await self._resolve_redirect("album", item_id)
+            if new_id:
+                return await self.get_album(new_id)
+            raise
+
         album_metadata["tracks"] = album_tracks["data"]
         album_metadata["track_total"] = len(album_tracks["data"])
         return album_metadata
+
+    async def _resolve_redirect(self, media_type: str, item_id: str) -> str | None:
+        url = f"https://www.deezer.com/{media_type}/{item_id}"
+        try:
+            async with self.session.head(url, allow_redirects=True) as response:
+                final_url = str(response.url)
+                if final_url != url:
+                    match = re.search(rf"/{media_type}/(\d+)", final_url)
+                    if match:
+                        new_id = match.group(1)
+                        if new_id != item_id:
+                            logger.info(f"Resolved redirect for {media_type} {item_id} -> {new_id}")
+                            return new_id
+        except Exception as e:
+            logger.warning(f"Failed to resolve redirect for {item_id}: {e}")
+        return None
 
     async def get_playlist(self, item_id: str) -> dict:
         pl_metadata, pl_tracks = await asyncio.gather(
@@ -157,32 +183,12 @@ class DeezerClient(Client):
             (3, "MP3_320"),  # quality 1
             (1, "FLAC"),  # quality 2
         ]
-        size_map = [
-            int(track_info.get(f"FILESIZE_{format}", 0)) for _, format in quality_map
-        ]
-        dl_info["quality_to_size"] = size_map
-        
-        # Check if requested quality is available
-        if size_map[quality] == 0:
-            if self.config.lower_quality_if_not_available:
-                # Fallback to lower quality
-                while size_map[quality] == 0 and quality > 0:
-                    logger.warning(
-                        "The requested quality %s is not available. Falling back to quality %s",
-                        quality,
-                        quality - 1,
-                    )
-                    quality -= 1
-            else:
-                # No fallback - raise error
-                raise NonStreamableError(
-                    f"The requested quality {quality} is not available and fallback is disabled."
-                )
-        
-        # Update the quality in dl_info to reflect the final quality used
-        dl_info["quality"] = quality
 
         _, format_str = quality_map[quality]
+
+        dl_info["quality_to_size"] = [
+            int(track_info.get(f"FILESIZE_{format}", 0)) for _, format in quality_map
+        ]
 
         token = track_info["TRACK_TOKEN"]
         try:
