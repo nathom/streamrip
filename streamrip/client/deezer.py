@@ -191,10 +191,17 @@ class DeezerClient(Client):
         Returns:
             dict: The playlist metadata.
         """
-        pl_metadata, pl_tracks = await asyncio.gather(
-            asyncio.to_thread(self.client.api.get_playlist, item_id),
-            asyncio.to_thread(self.client.api.get_playlist_tracks, item_id),
-        )
+        try:
+            pl_metadata, pl_tracks = await asyncio.gather(
+                asyncio.to_thread(self.client.api.get_playlist, item_id),
+                asyncio.to_thread(self.client.api.get_playlist_tracks, item_id),
+            )
+        except DataException:
+            new_id = await self._resolve_redirect("playlist", item_id)
+            if new_id:
+                return await self.get_playlist(new_id)
+            raise
+
         pl_metadata["tracks"] = pl_tracks["data"]
         pl_metadata["track_total"] = len(pl_tracks["data"])
         return pl_metadata
@@ -209,10 +216,17 @@ class DeezerClient(Client):
         Returns:
             dict: The artist metadata.
         """
-        artist, albums = await asyncio.gather(
-            asyncio.to_thread(self.client.api.get_artist, item_id),
-            asyncio.to_thread(self.client.api.get_artist_albums, item_id),
-        )
+        try:
+            artist, albums = await asyncio.gather(
+                asyncio.to_thread(self.client.api.get_artist, item_id),
+                asyncio.to_thread(self.client.api.get_artist_albums, item_id),
+            )
+        except DataException:
+            new_id = await self._resolve_redirect("artist", item_id)
+            if new_id:
+                return await self.get_artist(new_id)
+            raise
+
         artist["albums"] = albums["data"]
         return artist
 
