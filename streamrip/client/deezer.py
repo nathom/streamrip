@@ -77,16 +77,12 @@ class DeezerClient(Client):
 
         album_id = item["album"]["id"]
         try:
-            album_metadata, album_tracks = await asyncio.gather(
-                asyncio.to_thread(self.client.api.get_album, album_id),
-                asyncio.to_thread(self.client.api.get_album_tracks, album_id),
-            )
+            # reuse get_album to handle redirects
+            album_metadata = await self.get_album(str(album_id))
         except Exception as e:
             logger.error(f"Error fetching album of track {item_id}: {e}")
             return item
 
-        album_metadata["tracks"] = album_tracks["data"]
-        album_metadata["track_total"] = len(album_tracks["data"])
         item["album"] = album_metadata
 
         return item
