@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 import re
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Optional
 
 from ..filepath_utils import clean_filename, clean_filepath
@@ -62,7 +63,7 @@ class AlbumMetadata:
         _copyright = re.sub(r"(?i)\(C\)", COPYRIGHT, _copyright)
         return _copyright
 
-    def format_folder_path(self, formatter: str) -> str:
+    def format_folder_path(self, formatter: str) -> Path:
         # Available keys: "albumartist", "title", "year", "bit_depth", "sampling_rate",
         # "id", and "albumcomposer",
 
