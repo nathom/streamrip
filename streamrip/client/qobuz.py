@@ -146,6 +146,7 @@ class QobuzClient(Client):
     max_quality = 4
 
     def __init__(self, config: Config):
+        super().__init__()
         self.logged_in = False
         self.config = config
         self.rate_limiter = self.get_rate_limiter(

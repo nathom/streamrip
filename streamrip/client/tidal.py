@@ -42,6 +42,7 @@ class TidalClient(Client):
     max_quality = 3
 
     def __init__(self, config: Config):
+        super().__init__()
         self.logged_in = False
         self.global_config = config
         self.config = config.session.tidal

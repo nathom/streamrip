@@ -22,6 +22,7 @@ logger = logging.getLogger("streamrip")
 
 class SoundcloudClient(Client):
     source = "soundcloud"
+    max_quality = 3  # SoundCloud provides whatever quality is available
     logged_in = False
 
     NON_STREAMABLE = "_non_streamable"
@@ -29,6 +30,7 @@ class SoundcloudClient(Client):
     NOT_RESOLVED = "_not_resolved"
 
     def __init__(self, config: Config):
+        super().__init__()
         self.global_config = config
         self.config = config.session.soundcloud
         self.rate_limiter = self.get_rate_limiter(
