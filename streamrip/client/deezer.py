@@ -4,6 +4,7 @@ import hashlib
 import logging
 
 import deezer
+from deezer.errors import PermissionException
 from Cryptodome.Cipher import AES
 
 from ..config import Config
@@ -98,13 +99,145 @@ class DeezerClient(Client):
         return album_metadata
 
     async def get_playlist(self, item_id: str) -> dict:
-        pl_metadata, pl_tracks = await asyncio.gather(
-            asyncio.to_thread(self.client.api.get_playlist, item_id),
-            asyncio.to_thread(self.client.api.get_playlist_tracks, item_id),
-        )
-        pl_metadata["tracks"] = pl_tracks["data"]
-        pl_metadata["track_total"] = len(pl_tracks["data"])
-        return pl_metadata
+        try:
+            # Try public API first
+            pl_metadata, pl_tracks = await asyncio.gather(
+                asyncio.to_thread(self.client.api.get_playlist, item_id),
+                asyncio.to_thread(self.client.api.get_playlist_tracks, item_id),
+            )
+            pl_metadata["tracks"] = pl_tracks["data"]
+            pl_metadata["track_total"] = len(pl_tracks["data"])
+            return pl_metadata
+        except PermissionException as e:
+            # Public API failed - likely a private/user playlist
+            # Try GW (gateway) API which works with private playlists when using ARL
+            logger.debug(f"Public API failed for playlist {item_id}, trying GW API: {e}")
+
+            try:
+                # GW API works with ARL for private playlists
+                logger.info(f"Attempting to fetch private playlist {item_id} using GW API with ARL authentication")
+
+                # Verify client is logged in
+                if not self.logged_in:
+                    raise ValueError("Client not logged in - GW API requires authentication")
+
+                # Call GW API directly (not through asyncio.to_thread to preserve state)
+                def get_gw_playlist():
+                    try:
+                        result = self.client.gw.get_playlist_page(item_id)
+                        logger.debug(f"GW API call succeeded, type: {type(result)}")
+                        return result
+                    except Exception as inner_e:
+                        logger.error(f"GW API call failed inside thread: {type(inner_e).__name__}: {inner_e}")
+                        raise
+
+                gw_response = await asyncio.to_thread(get_gw_playlist)
+
+                logger.debug(f"GW API response type: {type(gw_response)}, keys: {list(gw_response.keys()) if isinstance(gw_response, dict) else 'N/A'}")
+
+                if not isinstance(gw_response, dict):
+                    raise ValueError(f"Unexpected GW API response type: {type(gw_response)}, value: {gw_response}")
+
+                # Convert GW format to regular API format
+                logger.info(f"Successfully fetched private playlist {item_id} via GW API, converting to standard format")
+                return self._convert_gw_playlist_to_api_format(gw_response)
+
+            except Exception as gw_error:
+                # Both APIs failed - provide helpful error message
+                logger.error(
+                    f"Failed to access playlist {item_id}. "
+                    f"This appears to be a private playlist. "
+                    f"Public API error: {e}"
+                )
+                logger.error(
+                    f"GW API also failed: {type(gw_error).__name__}: {gw_error}",
+                    exc_info=True  # Show full traceback
+                )
+                logger.error(
+                    f"Possible causes:\n"
+                    f"  1. Your ARL token may be invalid or expired\n"
+                    f"  2. The playlist owner has restricted sharing\n"
+                    f"  3. The playlist doesn't exist or was deleted\n\n"
+                    f"Workaround: Make the playlist public temporarily in Deezer, "
+                    f"download it, then make it private again."
+                )
+                raise NonStreamableError(
+                    f"Cannot access private playlist {item_id}. "
+                    f"Verify your ARL token is valid, or make the playlist public temporarily."
+                )
+
+    def _convert_gw_playlist_to_api_format(self, gw_response: dict) -> dict:
+        """Convert GW API playlist format to regular API format.
+
+        GW API uses uppercase keys (DATA, SONGS) while regular API uses lowercase (data, tracks).
+        This method transforms the response to match the expected format.
+        """
+        logger.debug(f"Converting GW playlist, top-level keys: {list(gw_response.keys())}")
+
+        data = gw_response.get("DATA", {})
+        logger.debug(f"DATA type: {type(data)}, is dict: {isinstance(data, dict)}")
+
+        songs_container = gw_response.get("SONGS", {})
+        logger.debug(f"SONGS type: {type(songs_container)}, value: {songs_container if not isinstance(songs_container, dict) else 'dict'}")
+
+        # Handle different SONGS formats
+        if isinstance(songs_container, list):
+            songs = songs_container
+        elif isinstance(songs_container, dict):
+            songs = songs_container.get("data", [])
+        else:
+            logger.warning(f"Unexpected SONGS format: {type(songs_container)}, using empty list")
+            songs = []
+
+        # Get creator info - CURATOR is dict for public playlists, bool for private
+        curator = gw_response.get("CURATOR")
+        if isinstance(curator, dict):
+            creator_id = curator.get("USER_ID")
+            creator_name = curator.get("USER_NAME")
+        else:
+            # Private playlist - use PARENT_USER info from DATA
+            creator_id = data.get("PARENT_USER_ID")
+            creator_name = data.get("PARENT_USERNAME")
+
+        # Transform to regular API format
+        playlist = {
+            "id": data.get("PLAYLIST_ID"),
+            "title": data.get("TITLE"),
+            "description": data.get("DESCRIPTION"),
+            "duration": data.get("DURATION"),
+            "public": data.get("STATUS") == 1,  # 1 = public, 0 = private
+            "nb_tracks": data.get("NB_SONG", len(songs)),
+            "track_total": len(songs),
+            "picture": data.get("PLAYLIST_PICTURE"),
+            "picture_small": f"https://e-cdns-images.dzcdn.net/images/cover/{data.get('PLAYLIST_PICTURE')}/250x250-000000-80-0-0.jpg" if data.get("PLAYLIST_PICTURE") else None,
+            "picture_medium": f"https://e-cdns-images.dzcdn.net/images/cover/{data.get('PLAYLIST_PICTURE')}/500x500-000000-80-0-0.jpg" if data.get("PLAYLIST_PICTURE") else None,
+            "picture_big": f"https://e-cdns-images.dzcdn.net/images/cover/{data.get('PLAYLIST_PICTURE')}/1000x1000-000000-80-0-0.jpg" if data.get("PLAYLIST_PICTURE") else None,
+            "picture_xl": f"https://e-cdns-images.dzcdn.net/images/cover/{data.get('PLAYLIST_PICTURE')}/1400x1400-000000-80-0-0.jpg" if data.get("PLAYLIST_PICTURE") else None,
+            "checksum": data.get("CHECKSUM"),
+            "creator": {
+                "id": creator_id,
+                "name": creator_name,
+            },
+            "tracks": [
+                {
+                    "id": track.get("SNG_ID"),
+                    "title": track.get("SNG_TITLE"),
+                    "duration": track.get("DURATION"),
+                    "artist": {
+                        "id": track.get("ART_ID"),
+                        "name": track.get("ART_NAME"),
+                    },
+                    "album": {
+                        "id": track.get("ALB_ID"),
+                        "title": track.get("ALB_TITLE"),
+                    },
+                }
+                for track in songs
+            ],
+        }
+
+        logger.debug(f"Converted GW playlist to API format: {playlist['title']} ({len(playlist['tracks'])} tracks)")
+        return playlist
 
     async def get_artist(self, item_id: str) -> dict:
         artist, albums = await asyncio.gather(
