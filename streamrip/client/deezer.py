@@ -121,17 +121,29 @@ class DeezerClient(Client):
                 if not self.logged_in:
                     raise ValueError("Client not logged in - GW API requires authentication")
 
-                # Call GW API directly (not through asyncio.to_thread to preserve state)
-                def get_gw_playlist():
+                # Fetch both playlist metadata and ALL tracks via GW API
+                # Note: get_playlist_page() only returns first 10 tracks (paginated)
+                # So we use get_playlist_tracks() to get ALL tracks
+                def get_gw_playlist_data():
                     try:
-                        result = self.client.gw.get_playlist_page(item_id)
-                        logger.debug(f"GW API call succeeded, type: {type(result)}")
-                        return result
+                        # Get metadata (contains playlist info but only first page of tracks)
+                        metadata = self.client.gw.get_playlist_page(item_id)
+                        # Get ALL tracks (returns complete list, not paginated)
+                        all_tracks = self.client.gw.get_playlist_tracks(item_id)
+
+                        logger.debug(f"GW API metadata: {len(metadata.get('SONGS', {}).get('data', []))} tracks (page)")
+                        logger.debug(f"GW API all tracks: {len(all_tracks)} tracks (complete)")
+
+                        # Replace paginated tracks with complete track list
+                        if 'SONGS' in metadata and isinstance(metadata['SONGS'], dict):
+                            metadata['SONGS']['data'] = all_tracks
+
+                        return metadata
                     except Exception as inner_e:
                         logger.error(f"GW API call failed inside thread: {type(inner_e).__name__}: {inner_e}")
                         raise
 
-                gw_response = await asyncio.to_thread(get_gw_playlist)
+                gw_response = await asyncio.to_thread(get_gw_playlist_data)
 
                 logger.debug(f"GW API response type: {type(gw_response)}, keys: {list(gw_response.keys()) if isinstance(gw_response, dict) else 'N/A'}")
 
@@ -139,7 +151,7 @@ class DeezerClient(Client):
                     raise ValueError(f"Unexpected GW API response type: {type(gw_response)}, value: {gw_response}")
 
                 # Convert GW format to regular API format
-                logger.info(f"Successfully fetched private playlist {item_id} via GW API, converting to standard format")
+                logger.info(f"Successfully fetched private playlist {item_id} via GW API with {len(gw_response.get('SONGS', {}).get('data', []))} tracks, converting to standard format")
                 return self._convert_gw_playlist_to_api_format(gw_response)
 
             except Exception as gw_error:
