@@ -88,6 +88,7 @@ METADATA_TYPES = (
     "disctotal",
     "date",
     "isrc",
+    "upc",
 )
 
 
