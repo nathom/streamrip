@@ -2,6 +2,10 @@ import asyncio
 import binascii
 import hashlib
 import logging
+import requests
+from datetime import datetime
+from time import sleep
+from collections import OrderedDict
 
 import deezer
 from Cryptodome.Cipher import AES
@@ -39,6 +43,9 @@ class DeezerClient(Client):
         self.client = deezer.Deezer()
         self.logged_in = False
         self.config = config.session.deezer
+        self.jwt_token = None
+
+        self.original_release_dates = OrderedDict()
 
     async def login(self):
         # Used for track downloads
@@ -82,6 +89,12 @@ class DeezerClient(Client):
             logger.error(f"Error fetching album of track {item_id}: {e}")
             return item
 
+        try:
+            date = self.__get_original_release_date(str(album_metadata["id"]))
+            album_metadata["release_date"] = date
+        except Exception as e:
+            logger.warning(f"Error fetching original album release date of album {item_id}: {e}")
+
         album_metadata["tracks"] = album_tracks["data"]
         album_metadata["track_total"] = len(album_tracks["data"])
         item["album"] = album_metadata
@@ -93,6 +106,11 @@ class DeezerClient(Client):
             asyncio.to_thread(self.client.api.get_album, item_id),
             asyncio.to_thread(self.client.api.get_album_tracks, item_id),
         )
+        try:
+            date = self.__get_original_release_date(item_id)
+            album_metadata["release_date"] = date
+        except Exception as e:
+            logger.warning(f"Error fetching original album release date of album {item_id}: {e}")
         album_metadata["tracks"] = album_tracks["data"]
         album_metadata["track_total"] = len(album_tracks["data"])
         return album_metadata
@@ -244,3 +262,55 @@ class DeezerClient(Client):
         url = f"https://e-cdns-proxy-{track_hash[0]}.dzcdn.net/mobile/1/{path}"
         logger.debug("Encrypted file path %s", url)
         return url
+
+    def __get_jwt_token(self):
+        try:
+            jwt_json = self.client.gw.session.post(
+                "https://auth.deezer.com/login/anonymous",
+                params={ 'i': 'p', 'jo': 'p', 'rto': 'p'},
+                timeout=30,
+                json={},
+                headers={},
+            ).json()
+            self.jwt_token = str(jwt_json["jwt"])
+        except Exception as e:
+            logger.warning(f"Failed to get anonymous jwt token: {e}")
+        
+    def __pipe_api_request(self, args, params):
+        if self.jwt_token is None:
+            self.__get_jwt_token()
+        try:   
+            result_json = self.client.gw.session.post(
+                "https://pipe.deezer.com/api",
+                params={},
+                timeout=30,
+                json=args,
+                headers={"Authorization": "Bearer " + str(self.jwt_token)}
+            ).json()
+        except (requests.ConnectionError, requests.Timeout):
+            sleep(2)
+            return self.pipe_api_request(args, params)
+        if "errors" in result_json:
+            if result_json["errors"][0]["type"] == "JwtTokenInvalidError" or result_json["errors"][0]["type"] == "JwtTokenExpiredError":
+                logger.info("Invalid jwt token, generating new one")
+                self.__get_jwt_token()
+                return self.pipe_api_request(args, params)
+            logger.warning(f"Error trying to get data from Deezer internal API: {result_json['errors'][0]['type']}")
+            raise Exception(result_json["errors"][0])
+        return result_json 
+    
+    def __get_original_release_date(self, item_id: str):
+        if item_id in self.original_release_dates:
+            return self.original_release_dates[item_id]
+
+        try:
+            args = {"variables": {"albumId": "0"}, "query": "query AlbumReleaseDate($albumId: String!) { album(albumId: $albumId) { releaseDate } }"}
+            args["variables"]["albumId"] = str(item_id)
+            result_json = self.__pipe_api_request(args,{})
+            release_date = str(datetime.fromisoformat(result_json["data"]["album"]["releaseDate"].replace("Z", "+00:00")).date().isoformat())
+            self.original_release_dates[item_id] = release_date
+            if len(self.original_release_dates) > 10:
+                self.original_release_dates.popitem(last=False)
+            return release_date
+        except Exception as e:
+            raise e
