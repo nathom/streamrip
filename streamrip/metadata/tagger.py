@@ -104,14 +104,22 @@ class Container(Enum):
 
     def get_mutagen_class(self, path: str):
         if self == Container.FLAC:
-            return FLAC(path)
+            flac = FLAC(path)
+            flac.tags.clear()
+            return flac
         elif self == Container.AAC:
-            return MP4(path)
+            mp4 = MP4(path)
+            mp4.tags.clear()
+            return mp4
         elif self == Container.MP3:
             try:
-                return ID3(path)
+                id3 = ID3(path)
+                id3.tags.clear()
+                return id3
             except ID3NoHeaderError:
-                return ID3()
+                id3 = ID3()
+                id3.tags.clear()
+                return id3
         # unreachable
         return {}
 
