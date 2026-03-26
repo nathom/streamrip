@@ -50,6 +50,7 @@ class AlbumMetadata:
     grouping: str | None = None
     lyrics: str | None = None
     purchase_date: str | None = None
+    upc: str | None = None
 
     def get_genres(self) -> str:
         return ", ".join(self.genre)
@@ -156,6 +157,7 @@ class AlbumMetadata:
             lyrics=None,
             purchase_date=None,
             tracktotal=tracktotal,
+            upc=None,
         )
 
     @classmethod
@@ -177,6 +179,7 @@ class AlbumMetadata:
             resp.get("parental_warning", False) or resp.get("explicit_lyrics", False),
             bool,
         )
+        upc = typed(safe_get(resp,"upc"), str | None)
 
         # not embedded
         quality = 2
@@ -216,6 +219,7 @@ class AlbumMetadata:
             lyrics=None,
             purchase_date=None,
             tracktotal=tracktotal,
+            upc=upc,
         )
 
     @classmethod
@@ -277,6 +281,7 @@ class AlbumMetadata:
             lyrics=None,
             purchase_date=None,
             tracktotal=tracktotal,
+            upc=None,
         )
 
     @classmethod
@@ -365,6 +370,7 @@ class AlbumMetadata:
             lyrics=None,
             purchase_date=None,
             tracktotal=tracktotal,
+            upc=None,
         )
 
     @classmethod
@@ -449,6 +455,7 @@ class AlbumMetadata:
             lyrics=None,
             purchase_date=None,
             tracktotal=tracktotal,
+            upc=None,
         )
 
     @classmethod
@@ -461,6 +468,7 @@ class AlbumMetadata:
         year = date[:4]
         albumartist = ", ".join(a["name"] for a in resp["contributors"])
         explicit = resp.get("explicit_lyrics", False)
+        upc = typed(safe_get(resp,"upc"), str | None)
 
         info = AlbumInfo(
             id=album_id,
@@ -491,6 +499,7 @@ class AlbumMetadata:
             lyrics=None,
             purchase_date=None,
             tracktotal=1,
+            upc=upc,
         )
 
     @classmethod
