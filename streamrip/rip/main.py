@@ -9,6 +9,7 @@ from .. import db
 from ..client import Client, DeezerClient, QobuzClient, SoundcloudClient, TidalClient
 from ..config import Config
 from ..console import console
+from ..exceptions import AuthenticationError
 from ..media import (
     Media,
     Pending,
@@ -147,7 +148,17 @@ class Main:
             else:
                 with console.status(f"[cyan]Logging into {source}", spinner="dots"):
                     # Log into client using credentials from config
-                    await client.login()
+                    try:
+                        await client.login()
+                    except AuthenticationError:
+                        if source != "qobuz":
+                            raise
+                        console.print(
+                            "[yellow]Saved Qobuz token appears invalid or expired. "
+                            "Please provide a refreshed token.[/yellow]"
+                        )
+                        await prompter.prompt_and_login()
+                        prompter.save()
 
         assert client.logged_in
         return client

@@ -193,14 +193,21 @@ class QobuzClient(Client):
                 "app_id": str(c.app_id),
             }
 
-        logger.debug("Request params %s", params)
+        logger.debug("Request params %s", self._redact_auth_payload(params))
         status, resp = await self._api_request("user/login", params)
-        logger.debug("Login resp: %s", resp)
+        logger.debug("Login resp: %s", self._redact_auth_payload(resp))
 
         if status == 401:
-            raise AuthenticationError(f"Invalid credentials from params {params}")
+            if c.use_auth_token:
+                raise AuthenticationError(
+                    "Invalid Qobuz token or user id. The token may have expired; "
+                    "refresh user_auth_token from a logged-in browser session."
+                )
+            raise AuthenticationError("Invalid Qobuz credentials.")
         elif status == 400:
-            raise InvalidAppIdError(f"Invalid app id from params {params}")
+            raise InvalidAppIdError(
+                f"Invalid app id from params {self._redact_auth_payload(params)}"
+            )
 
         logger.debug("Logged in to Qobuz")
 
@@ -453,3 +460,11 @@ class QobuzClient(Client):
     def get_quality(quality: int):
         quality_map = (5, 6, 7, 27)
         return quality_map[quality - 1]
+
+    @staticmethod
+    def _redact_auth_payload(payload: dict) -> dict:
+        redacted = dict(payload)
+        for key in ("password", "user_auth_token"):
+            if key in redacted and redacted[key]:
+                redacted[key] = "***REDACTED***"
+        return redacted
