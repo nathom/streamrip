@@ -230,12 +230,15 @@ class AppDatabase:
                     (status, album_id),
                 )
 
-    def count_albums(self, source: str, user_id: int = 1, status: str | None = None) -> int:
+    def count_albums(self, source: str, user_id: int = 1, status: str | None = None, search: str | None = None) -> int:
         conditions = ["source = ?", "user_id = ?"]
         params: list = [source, user_id]
         if status:
             conditions.append("download_status = ?")
             params.append(status)
+        if search:
+            conditions.append("(title LIKE ? OR artist LIKE ?)")
+            params.extend([f"%{search}%", f"%{search}%"])
         where = " AND ".join(conditions)
         with self._connect() as conn:
             row = conn.execute(f"SELECT COUNT(*) as cnt FROM albums WHERE {where}", params).fetchone()
