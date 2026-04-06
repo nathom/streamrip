@@ -147,7 +147,7 @@ class TidalClient(Client):
         }
         assert media_type in ("album", "track", "playlist", "video", "artist")
         resp = await self._api_request(f"search/{media_type}s", params=params)
-        if len(resp["items"]) > 1:
+        if len(resp["items"]) >= 1:
             return [resp]
         return []
 
