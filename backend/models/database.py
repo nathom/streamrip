@@ -86,8 +86,15 @@ class AppDatabase:
 
     def __init__(self, path: str):
         self.path = path
+        self._persistent_conn: sqlite3.Connection | None = None
         if path != ":memory:":
             os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
+        else:
+            # In-memory databases are per-connection; keep one persistent
+            # connection so the schema and data survive across calls.
+            self._persistent_conn = sqlite3.connect(path, check_same_thread=False)
+            self._persistent_conn.execute("PRAGMA foreign_keys=ON")
+            self._persistent_conn.row_factory = sqlite3.Row
         self._init_schema()
 
     def _init_schema(self):
@@ -102,18 +109,28 @@ class AppDatabase:
 
     @contextmanager
     def _connect(self):
-        conn = sqlite3.connect(self.path, timeout=30)
-        conn.execute("PRAGMA journal_mode=WAL")
-        conn.execute("PRAGMA foreign_keys=ON")
-        conn.row_factory = sqlite3.Row
-        try:
-            yield conn
-            conn.commit()
-        except Exception:
-            conn.rollback()
-            raise
-        finally:
-            conn.close()
+        if self._persistent_conn is not None:
+            # Yield the persistent connection without closing it.
+            conn = self._persistent_conn
+            try:
+                yield conn
+                conn.commit()
+            except Exception:
+                conn.rollback()
+                raise
+        else:
+            conn = sqlite3.connect(self.path, timeout=30)
+            conn.execute("PRAGMA journal_mode=WAL")
+            conn.execute("PRAGMA foreign_keys=ON")
+            conn.row_factory = sqlite3.Row
+            try:
+                yield conn
+                conn.commit()
+            except Exception:
+                conn.rollback()
+                raise
+            finally:
+                conn.close()
 
     # ── Albums ──
 
