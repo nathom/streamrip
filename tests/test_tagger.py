@@ -109,3 +109,29 @@ def test_tag_flac_cover(sample_metadata):
         assert file.pictures[0].data == img.read()
     assert "purchase_date" not in file, file["purchase_date"]
     os.remove(TEST_FLAC_COPY)
+
+
+from unittest.mock import MagicMock
+from streamrip.metadata.tagger import Container
+
+
+class TestContainerSaveAudio:
+    """Fix: MP3 save_audio passes string 'v2_version=3' as positional v1 arg."""
+
+    def test_mp3_save_uses_keyword_v2_version(self):
+        """save_audio for MP3 should call audio.save(path, v2_version=3)."""
+        audio = MagicMock()
+        Container.MP3.save_audio(audio, "/tmp/test.mp3")
+        audio.save.assert_called_once_with("/tmp/test.mp3", v2_version=3)
+
+    def test_flac_save_no_args(self):
+        """save_audio for FLAC should call audio.save() with no args."""
+        audio = MagicMock()
+        Container.FLAC.save_audio(audio, "/tmp/test.flac")
+        audio.save.assert_called_once_with()
+
+    def test_aac_save_no_args(self):
+        """save_audio for AAC should call audio.save() with no args."""
+        audio = MagicMock()
+        Container.AAC.save_audio(audio, "/tmp/test.m4a")
+        audio.save.assert_called_once_with()

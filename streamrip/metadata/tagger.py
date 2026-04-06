@@ -235,7 +235,7 @@ class Container(Enum):
         elif self == Container.AAC:
             audio.save()
         elif self == Container.MP3:
-            audio.save(path, "v2_version=3")
+            audio.save(path, v2_version=3)
 
 
 async def tag_file(path: str, meta: TrackMetadata, cover_path: str | None):
