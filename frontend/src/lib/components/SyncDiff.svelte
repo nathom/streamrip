@@ -15,8 +15,15 @@
 
   let { label, icon_color, items, selectable = false }: Props = $props();
 
-  // Track checked state per item id
-  let checked = $state<Set<string | number>>(new Set(items.map((a) => a.id)));
+  // Track checked state per item id — initialised via $derived so it
+  // re-runs when the `items` prop reference changes (Svelte 5 runes rule).
+  let checkedIds = $derived(new Set(items.map((a) => a.id)));
+  let checked = $state<Set<string | number>>(new Set<string | number>());
+
+  // Seed on first render and whenever items change.
+  $effect(() => {
+    checked = new Set(checkedIds);
+  });
 
   function toggle(id: string | number) {
     if (!selectable) return;
@@ -40,29 +47,39 @@
   </div>
 
   {#each items as album (album.id)}
-    <div
-      class="diff-item"
-      role={selectable ? 'checkbox' : 'listitem'}
-      aria-checked={selectable ? checked.has(album.id) : undefined}
-      tabindex={selectable ? 0 : undefined}
-      onclick={() => toggle(album.id)}
-      onkeydown={(e) => { if (selectable && (e.key === ' ' || e.key === 'Enter')) { e.preventDefault(); toggle(album.id); } }}
-    >
-      {#if selectable}
+    {#if selectable}
+      <!-- Use a real button so keyboard/a11y requirements are met natively -->
+      <button
+        type="button"
+        class="diff-item diff-item--selectable"
+        aria-pressed={checked.has(album.id)}
+        onclick={() => toggle(album.id)}
+      >
         <div class="diff-checkbox" class:checked={checked.has(album.id)}></div>
-      {:else}
+
+        <div class="diff-item-info">
+          <div class="diff-item-title">{album.title}</div>
+          <div class="diff-item-artist">{album.artist}</div>
+        </div>
+
+        {#if album.meta}
+          <div class="diff-item-meta">{album.meta}</div>
+        {/if}
+      </button>
+    {:else}
+      <div class="diff-item">
         <div class="diff-spacer"></div>
-      {/if}
 
-      <div class="diff-item-info">
-        <div class="diff-item-title" class:struck={!selectable}>{album.title}</div>
-        <div class="diff-item-artist">{album.artist}</div>
+        <div class="diff-item-info">
+          <div class="diff-item-title struck">{album.title}</div>
+          <div class="diff-item-artist">{album.artist}</div>
+        </div>
+
+        {#if album.meta}
+          <div class="diff-item-meta">{album.meta}</div>
+        {/if}
       </div>
-
-      {#if album.meta}
-        <div class="diff-item-meta">{album.meta}</div>
-      {/if}
-    </div>
+    {/if}
   {/each}
 </div>
 
@@ -112,8 +129,19 @@
     transition: background-color 80ms;
   }
 
-  /* Selectable items get pointer cursor */
-  [role='checkbox'] { cursor: pointer; }
+  /* Selectable rows are rendered as buttons — reset button defaults */
+  .diff-item--selectable {
+    font-family: var(--font-family);
+    font-size: var(--text-sm);
+    color: var(--text-primary);
+    background: none;
+    border: none;
+    border-bottom: 1px solid var(--border-subtle);
+    border-radius: 0;
+    width: 100%;
+    text-align: left;
+    cursor: pointer;
+  }
 
   .diff-checkbox {
     width: 20px;
