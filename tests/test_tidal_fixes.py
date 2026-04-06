@@ -60,3 +60,55 @@ class TestTidalGetUserFavorites:
         # This should not raise TypeError
         result = await client.get_user_favorites("album", limit=None)
         assert len(result) == 3
+
+
+class TestTidalAlbumMetadata:
+    """Fix: from_tidal crashes when releaseDate is absent."""
+
+    def test_from_tidal_missing_release_date(self):
+        """Should handle missing releaseDate without crashing."""
+        from streamrip.metadata.album import AlbumMetadata
+
+        resp = {
+            "id": 12345,
+            "title": "Test Album",
+            "numberOfTracks": 10,
+            "copyright": "(C) 2024",
+            "artists": [{"name": "Test Artist", "id": 1}],
+            "artist": {"name": "Test Artist"},
+            "duration": 3600,
+            "streamReady": True,
+            "allowStreaming": True,
+            "numberOfVolumes": 1,
+            "cover": "abc123",
+            "explicit": False,
+        }
+
+        result = AlbumMetadata.from_tidal(resp)
+        assert result is not None
+        assert result.year == "Unknown"
+
+
+from json import JSONDecodeError
+
+
+class TestTidalGetDownloadable:
+    """Fix: get_downloadable recurses infinitely when quality hits 0."""
+
+    async def test_raises_at_quality_zero(self):
+        """Should raise NonStreamableError instead of recursing below quality 0."""
+        from streamrip.client.tidal import TidalClient
+        from streamrip.exceptions import NonStreamableError
+
+        client = TidalClient.__new__(TidalClient)
+        client.session = MagicMock()
+        client.rate_limiter = AsyncMock()
+        client.config = MagicMock()
+        client.config.access_token = "fake"
+
+        client._api_request = AsyncMock(return_value={
+            "manifest": "bm90LWpzb24=",  # base64 of "not-json"
+        })
+
+        with pytest.raises(NonStreamableError):
+            await client.get_downloadable("track_123", quality=0)

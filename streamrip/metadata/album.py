@@ -299,8 +299,8 @@ class AlbumMetadata:
         album = typed(resp.get("title", "Unknown Album"), str)
         tracktotal = typed(resp.get("numberOfTracks", 1), int)
         # genre not returned by API
-        date = typed(resp.get("releaseDate"), str)
-        year = date[:4]
+        date = typed(resp.get("releaseDate"), str | None)
+        year = date[:4] if date is not None else "Unknown"
         _copyright = typed(resp.get("copyright", ""), str)
 
         artists = typed(resp.get("artists", []), list)
