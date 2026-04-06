@@ -1,7 +1,10 @@
 """FastAPI application for streamrip web UI."""
 import logging
+import os
 from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
+
 from .api import auth, config, downloads, library, websocket
 from .api import sync
 from .api.websocket import manager
@@ -14,6 +17,65 @@ from .services.sync import SyncService
 logger = logging.getLogger("streamrip")
 
 
+def _init_clients(db: AppDatabase) -> dict:
+    """Initialize streaming clients from stored config."""
+    clients = {}
+
+    # Qobuz
+    qobuz_token = db.get_config("qobuz_token")
+    qobuz_user_id = db.get_config("qobuz_user_id")
+    if qobuz_token and qobuz_user_id:
+        try:
+            from streamrip.config import Config
+
+            config_path = os.environ.get(
+                "STREAMRIP_CONFIG_PATH",
+                os.path.expanduser("~/.config/streamrip/config.toml"),
+            )
+            if os.path.exists(config_path):
+                cfg = Config(config_path)
+            else:
+                cfg = Config.defaults()
+
+            # Override with DB values
+            cfg.session.qobuz.use_auth_token = True
+            cfg.session.qobuz.email_or_userid = qobuz_user_id
+            cfg.session.qobuz.password_or_token = qobuz_token
+
+            from streamrip.client.qobuz import QobuzClient
+
+            clients["qobuz"] = QobuzClient(cfg)
+            logger.info("Qobuz client initialized for user %s", qobuz_user_id)
+        except Exception:
+            logger.exception("Failed to initialize Qobuz client")
+
+    # Tidal
+    tidal_token = db.get_config("tidal_access_token")
+    if tidal_token:
+        try:
+            from streamrip.config import Config
+
+            config_path = os.environ.get(
+                "STREAMRIP_CONFIG_PATH",
+                os.path.expanduser("~/.config/streamrip/config.toml"),
+            )
+            if os.path.exists(config_path):
+                cfg = Config(config_path)
+            else:
+                cfg = Config.defaults()
+
+            cfg.session.tidal.access_token = tidal_token
+
+            from streamrip.client.tidal import TidalClient
+
+            clients["tidal"] = TidalClient(cfg)
+            logger.info("Tidal client initialized")
+        except Exception:
+            logger.exception("Failed to initialize Tidal client")
+
+    return clients
+
+
 def create_app(db_path: str = "data/streamrip.db") -> FastAPI:
     db = AppDatabase(db_path)
     event_bus = EventBus()
@@ -24,14 +86,28 @@ def create_app(db_path: str = "data/streamrip.db") -> FastAPI:
             await manager.broadcast(et, data)
         event_bus.subscribe(event_type, _handler)
 
-    library_service = LibraryService(db, event_bus, clients={})
-    download_service = DownloadService(db, event_bus, clients={}, download_path="/tmp")
-    sync_service = SyncService(db, event_bus, clients={}, library_service=library_service)
+    clients = _init_clients(db)
+
+    download_path = db.get_config("downloads_path") or os.environ.get("STREAMRIP_DOWNLOADS_PATH", "/music")
+    library_service = LibraryService(db, event_bus, clients=clients)
+    download_service = DownloadService(db, event_bus, clients=clients, download_path=download_path)
+    sync_service = SyncService(db, event_bus, clients=clients, library_service=library_service)
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
-        logger.info("streamrip web UI started")
+        # Login clients that need async initialization
+        for name, client in clients.items():
+            try:
+                if not client.logged_in:
+                    await client.login()
+                    logger.info("Logged in to %s", name)
+            except Exception:
+                logger.exception("Failed to login to %s", name)
         yield
+        # Cleanup sessions
+        for client in clients.values():
+            if hasattr(client, 'session') and client.session:
+                await client.session.close()
         logger.info("streamrip web UI shutting down")
 
     app = FastAPI(title="streamrip", version="3.0.0", lifespan=lifespan)
