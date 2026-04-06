@@ -39,3 +39,24 @@ class TestTidalSearch:
 
         result = await client.search("album", "nonexistent", limit=10)
         assert result == []
+
+
+class TestTidalGetUserFavorites:
+    """Fix: get_user_favorites crashes when limit=None."""
+
+    async def test_favorites_with_limit_none(self):
+        """get_user_favorites should handle limit=None (fetch all)."""
+        from streamrip.client.tidal import TidalClient
+
+        client = TidalClient.__new__(TidalClient)
+        client.session = MagicMock()
+        client.rate_limiter = AsyncMock()
+        client.config = MagicMock()
+        client.config.user_id = "12345"
+
+        mock_resp = {"items": [{"id": i} for i in range(3)]}
+        client._api_request = AsyncMock(return_value=mock_resp)
+
+        # This should not raise TypeError
+        result = await client.get_user_favorites("album", limit=None)
+        assert len(result) == 3
