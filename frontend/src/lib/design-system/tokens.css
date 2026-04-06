@@ -1,0 +1,196 @@
+/* ═══════════════════════════════════════════════
+   STREAMRIP DESIGN SYSTEM — Arthur Soares Design System
+   Hard edges, solid shadows, warm tones, Atkinson Hyperlegible
+   ═══════════════════════════════════════════════ */
+
+:root {
+  /* Dark mode is default for a music app */
+  --canvas:         #1a1918;
+  --canvas-raised:  #242320;
+  --canvas-inset:   #131210;
+
+  --text-primary:   #e8e6e1;
+  --text-secondary: #9a9790;
+  --text-tertiary:  #5e5b55;
+  --text-inverse:   #1a1918;
+
+  --accent:         #7b82d4;
+  --accent-hover:   #9198e0;
+  --accent-subtle:  rgba(123, 130, 212, 0.12);
+
+  --pop:            #e8a217;
+  --pop-light:      rgba(232, 162, 23, 0.15);
+  --pop-subtle:     rgba(232, 162, 23, 0.08);
+
+  --destructive:    #c53030;
+  --positive:       #38a169;
+  --warning:        #d69e2e;
+
+  --border:         #3e3c38;
+  --border-subtle:  rgba(232, 230, 225, 0.08);
+
+  --shadow-sm:      3px 3px 0px rgba(0, 0, 0, 0.40);
+  --shadow-md:      5px 5px 0px rgba(0, 0, 0, 0.50);
+  --shadow-lg:      8px 8px 0px rgba(0, 0, 0, 0.55);
+  --shadow-accent:  5px 5px 0px rgba(123, 130, 212, 0.30);
+  --shadow-pop:     5px 5px 0px rgba(232, 162, 23, 0.30);
+
+  --space-1: 4px;  --space-2: 8px;  --space-3: 12px;  --space-4: 16px;
+  --space-5: 20px; --space-6: 24px; --space-8: 32px;  --space-10: 40px;
+  --space-12: 48px; --space-16: 64px; --space-20: 80px;
+
+  --font-family: 'Atkinson Hyperlegible Next', 'Atkinson Hyperlegible', sans-serif;
+  --font-mono: 'SF Mono', 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+
+  --text-xs: 12px; --text-sm: 14px; --text-base: 16px; --text-lg: 18px;
+  --text-xl: 22px; --text-2xl: 28px; --text-3xl: 36px;
+
+  --leading-tight: 1.15; --leading-normal: 1.5;
+  --tracking-tight: -0.02em; --tracking-wide: 0.06em; --tracking-mono: 0.06em;
+}
+
+[data-theme="light"] {
+  --canvas:         #f6f5f2;
+  --canvas-raised:  #edecea;
+  --canvas-inset:   #e8e7e4;
+  --text-primary:   #1c1b18;
+  --text-secondary: #6b6860;
+  --text-tertiary:  #9e9b93;
+  --text-inverse:   #f6f5f2;
+  --accent:         #262b7d;
+  --accent-hover:   #1e2266;
+  --accent-subtle:  rgba(38, 43, 125, 0.08);
+  --pop:            #e8a217;
+  --pop-light:      #fdf0d0;
+  --pop-subtle:     rgba(232, 162, 23, 0.12);
+  --destructive:    #9b2c2c;
+  --positive:       #2c6e49;
+  --warning:        #92600a;
+  --border:         #1c1b18;
+  --border-subtle:  rgba(28, 27, 24, 0.18);
+  --shadow-sm:      3px 3px 0px rgba(28, 27, 24, 0.18);
+  --shadow-md:      5px 5px 0px rgba(28, 27, 24, 0.20);
+  --shadow-lg:      8px 8px 0px rgba(28, 27, 24, 0.22);
+  --shadow-accent:  5px 5px 0px rgba(38, 43, 125, 0.30);
+  --shadow-pop:     5px 5px 0px rgba(232, 162, 23, 0.35);
+}
+
+::selection { background: var(--pop); color: var(--text-inverse); }
+
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+html { font-size: 16px; -webkit-font-smoothing: antialiased; }
+body {
+  font-family: var(--font-family);
+  font-size: var(--text-base);
+  line-height: var(--leading-normal);
+  color: var(--text-primary);
+  background: var(--canvas);
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* ── Buttons ── */
+.btn {
+  font-family: var(--font-family);
+  font-size: var(--text-sm);
+  font-weight: 700;
+  padding: var(--space-2) var(--space-5);
+  border: 2px solid var(--border);
+  border-radius: 0;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.btn-primary { background: var(--accent); color: var(--text-inverse); box-shadow: var(--shadow-accent); }
+.btn-primary:hover { box-shadow: var(--shadow-lg); }
+.btn-primary:active { box-shadow: 1px 1px 0 rgba(0,0,0,0.3); transform: translate(1px, 1px); }
+
+.btn-secondary { background: var(--canvas-raised); color: var(--text-primary); box-shadow: var(--shadow-sm); }
+.btn-pop { background: var(--pop); color: var(--text-inverse); box-shadow: var(--shadow-pop); }
+.btn-ghost { background: transparent; border-color: transparent; box-shadow: none; color: var(--text-secondary); }
+.btn-ghost:hover { background: var(--accent-subtle); color: var(--text-primary); }
+.btn-destructive { background: var(--destructive); color: var(--text-primary); box-shadow: var(--shadow-sm); }
+.btn-sm { font-size: var(--text-xs); padding: var(--space-1) var(--space-3); }
+
+/* ── Tags ── */
+.tag {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px var(--space-2);
+  border: 1.5px solid var(--border);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wide);
+  display: inline-block;
+}
+.tag-accent { background: var(--accent); color: var(--text-inverse); box-shadow: 2px 2px 0 rgba(0,0,0,0.2); }
+.tag-positive { background: var(--positive); color: var(--text-primary); }
+.tag-warning { background: var(--warning); color: var(--text-inverse); }
+.tag-default { background: var(--canvas-raised); color: var(--text-secondary); }
+.tag-pop { background: var(--pop); color: var(--text-inverse); }
+
+/* ── Inputs ── */
+.input {
+  font-family: var(--font-family);
+  font-size: var(--text-sm);
+  padding: var(--space-2) var(--space-3);
+  border: 2px solid var(--border-subtle);
+  border-radius: 0;
+  background: var(--canvas-inset);
+  color: var(--text-primary);
+  outline: none;
+}
+.input:focus { border-color: var(--accent); box-shadow: var(--shadow-accent); }
+.input::placeholder { color: var(--text-tertiary); }
+
+/* ── Section title ── */
+.section-title {
+  font-size: var(--text-xs);
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wide);
+  border-bottom: 2px solid var(--border);
+  padding-bottom: var(--space-2);
+  margin-bottom: var(--space-6);
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+.section-title .decoration {
+  font-family: var(--font-mono);
+  font-weight: 400;
+  color: var(--text-tertiary);
+  font-size: 11px;
+}
+
+/* ── Overline ── */
+.overline {
+  font-size: var(--text-xs);
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wide);
+  color: var(--text-tertiary);
+}
+
+/* ── Progress bar ── */
+.progress-bar {
+  height: 6px;
+  background: var(--canvas-inset);
+  border: 1px solid var(--border-subtle);
+  position: relative;
+}
+.progress-fill {
+  height: 100%;
+  background: var(--accent);
+  position: absolute;
+  left: 0;
+  top: 0;
+}
+.progress-fill.complete { background: var(--positive); }
+
+/* ── Mono text ── */
+.mono {
+  font-family: var(--font-mono);
+  letter-spacing: var(--tracking-mono);
+}

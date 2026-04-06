@@ -31,3 +31,6 @@ install-*.sh
 rip-enhanced
 homebrew-formula.rb
 downloads.db
+frontend/node_modules/
+frontend/build/
+frontend/.svelte-kit/
