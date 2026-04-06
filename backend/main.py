@@ -128,7 +128,6 @@ def create_app(db_path: str = "data/streamrip.db") -> FastAPI:
     app.include_router(websocket.router)
     app.include_router(sync.router)
 
-    import os
     from fastapi.responses import FileResponse
 
     static_dir = os.path.join(os.path.dirname(__file__), "static")
