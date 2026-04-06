@@ -394,6 +394,16 @@ class TidalClient(Client):
 
         async with self.rate_limiter:
             async with self.session.get(f"{base}/{path}", params=params) as resp:
+                if resp.status == 401 and getattr(self, "refresh_token", None):
+                    logger.info("Tidal access token expired, refreshing...")
+                    await self._refresh_access_token()
+                    # Retry with the new token
+                    async with self.session.get(f"{base}/{path}", params=params) as retry_resp:
+                        if retry_resp.status == 404:
+                            logger.warning("TIDAL: track not found", retry_resp)
+                            raise NonStreamableError("TIDAL: Track not found")
+                        retry_resp.raise_for_status()
+                        return await retry_resp.json()
                 if resp.status == 404:
                     logger.warning("TIDAL: track not found", resp)
                     raise NonStreamableError("TIDAL: Track not found")
