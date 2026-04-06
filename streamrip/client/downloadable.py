@@ -341,26 +341,29 @@ class SoundcloudDownloadable(Downloadable):
 
         parsed_m3u = m3u8.loads(content)
         self._size = len(parsed_m3u.segments)
+        segment_count = len(parsed_m3u.segments)
         tasks = [
-            asyncio.create_task(self._download_segment(segment.uri))
-            for segment in parsed_m3u.segments
+            asyncio.create_task(self._download_segment(i, segment.uri))
+            for i, segment in enumerate(parsed_m3u.segments)
         ]
 
-        segment_paths = []
+        segment_paths: dict[int, str] = {}
         for coro in asyncio.as_completed(tasks):
-            segment_paths.append(await coro)
+            index, downloaded_path = await coro
+            segment_paths[index] = downloaded_path
             callback(1)
 
-        await concat_audio_files(segment_paths, path, "mp3")
+        ordered_paths = [segment_paths[i] for i in range(segment_count)]
+        await concat_audio_files(ordered_paths, path, "mp3")
 
-    async def _download_segment(self, segment_uri: str) -> str:
+    async def _download_segment(self, index: int, segment_uri: str) -> tuple[int, str]:
         tmp = generate_temp_path(segment_uri)
         async with self.session.get(segment_uri) as resp:
             resp.raise_for_status()
             async with aiofiles.open(tmp, "wb") as file:
                 content = await resp.content.read()
                 await file.write(content)
-        return tmp
+        return index, tmp
 
     async def size(self) -> int:
         if self.file_type == "mp3":

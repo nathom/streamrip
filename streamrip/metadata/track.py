@@ -232,6 +232,7 @@ class TrackMetadata:
         # and "explicit", "albumcomposer"
         none_text = "Unknown"
         info = {
+            "id": self.info.id,
             "title": self.title,
             "tracknumber": self.tracknumber,
             "artist": self.artist,
