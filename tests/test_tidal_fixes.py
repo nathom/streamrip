@@ -112,3 +112,42 @@ class TestTidalGetDownloadable:
 
         with pytest.raises(NonStreamableError):
             await client.get_downloadable("track_123", quality=0)
+
+
+class TestTidalVideoUrl:
+    """Fix: get_video_file_url treats aiohttp JSON response as requests.Response."""
+
+    async def test_video_url_parses_hls_manifest(self):
+        """Should fetch manifest as text and extract highest resolution URL."""
+        from streamrip.client.tidal import TidalClient
+        import base64, json
+
+        client = TidalClient.__new__(TidalClient)
+        client.session = MagicMock()
+        client.rate_limiter = AsyncMock()
+        client.config = MagicMock()
+        client.config.access_token = "fake"
+
+        manifest_data = json.dumps({"urls": ["https://example.com/manifest.m3u8"]})
+        manifest_b64 = base64.b64encode(manifest_data.encode()).decode()
+
+        client._api_request = AsyncMock(return_value={
+            "manifest": manifest_b64,
+        })
+
+        # Mock the HLS manifest fetch — returns text, not JSON
+        hls_content = (
+            "#EXTM3U\n"
+            '#EXT-X-STREAM-INF:BANDWIDTH=500000,AVERAGE-BANDWIDTH=450000,CODECS="avc1.640028,mp4a.40.2",RESOLUTION=640x360\n'
+            "https://cdn.example.com/low.m3u8\n"
+            '#EXT-X-STREAM-INF:BANDWIDTH=2000000,AVERAGE-BANDWIDTH=1900000,CODECS="avc1.640028,mp4a.40.2",RESOLUTION=1280x720\n'
+            "https://cdn.example.com/high.m3u8\n"
+        )
+        mock_hls_resp = AsyncMock()
+        mock_hls_resp.text = AsyncMock(return_value=hls_content)
+        mock_hls_resp.__aenter__ = AsyncMock(return_value=mock_hls_resp)
+        mock_hls_resp.__aexit__ = AsyncMock(return_value=False)
+        client.session.get = MagicMock(return_value=mock_hls_resp)
+
+        url = await client.get_video_file_url("video_123")
+        assert "high.m3u8" in url

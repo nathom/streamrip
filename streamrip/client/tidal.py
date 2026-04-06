@@ -245,11 +245,10 @@ class TidalClient(Client):
         )
         manifest = json.loads(base64.b64decode(resp["manifest"]).decode("utf-8"))
         async with self.session.get(manifest["urls"][0]) as resp:
-            available_urls = await resp.json()
-        available_urls.encoding = "utf-8"
+            available_urls = await resp.text()
 
         # Highest resolution is last
-        *_, last_match = STREAM_URL_REGEX.finditer(available_urls.text)
+        *_, last_match = STREAM_URL_REGEX.finditer(available_urls)
 
         return last_match.group(1)
 
