@@ -116,6 +116,7 @@ def create_app(db_path: str = "data/streamrip.db") -> FastAPI:
     app.state.library_service = library_service
     app.state.download_service = download_service
     app.state.sync_service = sync_service
+    app.state._clients_ref = clients
 
     @app.get("/api/health")
     async def health():

@@ -52,7 +52,7 @@ class LibraryService:
     async def search(self, source, query, limit=20):
         client = self.clients.get(source)
         if client is None:
-            raise ValueError(f"No client configured for {source}")
+            return []
 
         raw_results = await client.search("album", query, limit=limit)
         if not raw_results:
