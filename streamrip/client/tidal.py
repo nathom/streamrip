@@ -205,6 +205,10 @@ class TidalClient(Client):
         except KeyError:
             raise Exception(resp["userMessage"])
         except JSONDecodeError:
+            if quality <= 0:
+                raise NonStreamableError(
+                    f"Track {track_id} is not available at any quality."
+                )
             logger.warning(
                 f"Failed to get manifest for {track_id}. Retrying with lower quality."
             )
