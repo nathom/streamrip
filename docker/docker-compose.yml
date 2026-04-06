@@ -1,0 +1,16 @@
+services:
+  streamrip:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    ports:
+      - "8080:8080"
+    volumes:
+      - /mnt/music:/music
+      - streamrip-data:/data
+    environment:
+      - STREAMRIP_DB_PATH=/data/streamrip.db
+    restart: unless-stopped
+
+volumes:
+  streamrip-data:
