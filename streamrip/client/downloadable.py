@@ -341,9 +341,8 @@ class SoundcloudDownloadable(Downloadable):
             for segment in parsed_m3u.segments
         ]
 
-        segment_paths = []
-        for coro in asyncio.as_completed(tasks):
-            segment_paths.append(await coro)
+        segment_paths = await asyncio.gather(*tasks)
+        for _ in segment_paths:
             callback(1)
 
         await concat_audio_files(segment_paths, path, "mp3")
