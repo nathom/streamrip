@@ -5,7 +5,7 @@
   // Config state
   let qobuzUserId = $state('');
   let qobuzAuthToken = $state('');
-  let qobuzQuality = $state('5');
+  let qobuzQuality = $state('3');
   let qobuzConnected = $state(false);
 
   let tidalConnected = $state(false);
@@ -162,10 +162,10 @@
       <div class="settings-label">Quality</div>
     </div>
     <select class="settings-select" bind:value={qobuzQuality} style="max-width: 220px;">
-      <option value="5">320kbps MP3</option>
-      <option value="6">16-bit / 44.1kHz</option>
-      <option value="7">24-bit / up to 96kHz</option>
-      <option value="27">24-bit / up to 192kHz</option>
+      <option value="1">320kbps MP3</option>
+      <option value="2">16-bit / 44.1kHz</option>
+      <option value="3">24-bit / up to 96kHz</option>
+      <option value="4">24-bit / up to 192kHz</option>
     </select>
   </div>
 </div>
