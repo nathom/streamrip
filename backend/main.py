@@ -19,55 +19,29 @@ logger = logging.getLogger("streamrip")
 
 def _init_clients(db: AppDatabase) -> dict:
     """Initialize streaming clients from stored config."""
+    from .services.config_bridge import build_streamrip_config
+
     clients = {}
 
+    try:
+        cfg = build_streamrip_config(db)
+    except Exception:
+        logger.exception("Failed to build streamrip config")
+        return clients
+
     # Qobuz
-    qobuz_token = db.get_config("qobuz_token")
-    qobuz_user_id = db.get_config("qobuz_user_id")
-    if qobuz_token and qobuz_user_id:
+    if cfg.session.qobuz.password_or_token:
         try:
-            from streamrip.config import Config
-
-            config_path = os.environ.get(
-                "STREAMRIP_CONFIG_PATH",
-                os.path.expanduser("~/.config/streamrip/config.toml"),
-            )
-            if os.path.exists(config_path):
-                cfg = Config(config_path)
-            else:
-                cfg = Config.defaults()
-
-            # Override with DB values
-            cfg.session.qobuz.use_auth_token = True
-            cfg.session.qobuz.email_or_userid = qobuz_user_id
-            cfg.session.qobuz.password_or_token = qobuz_token
-
             from streamrip.client.qobuz import QobuzClient
-
             clients["qobuz"] = QobuzClient(cfg)
-            logger.info("Qobuz client initialized for user %s", qobuz_user_id)
+            logger.info("Qobuz client initialized")
         except Exception:
             logger.exception("Failed to initialize Qobuz client")
 
     # Tidal
-    tidal_token = db.get_config("tidal_access_token")
-    if tidal_token:
+    if cfg.session.tidal.access_token:
         try:
-            from streamrip.config import Config
-
-            config_path = os.environ.get(
-                "STREAMRIP_CONFIG_PATH",
-                os.path.expanduser("~/.config/streamrip/config.toml"),
-            )
-            if os.path.exists(config_path):
-                cfg = Config(config_path)
-            else:
-                cfg = Config.defaults()
-
-            cfg.session.tidal.access_token = tidal_token
-
             from streamrip.client.tidal import TidalClient
-
             clients["tidal"] = TidalClient(cfg)
             logger.info("Tidal client initialized")
         except Exception:

@@ -101,8 +101,8 @@ class DownloadService:
 
     async def _download_album(self, item: dict):
         """Download an album using the existing streamrip pipeline."""
-        from streamrip.config import Config
         from streamrip.rip.main import Main
+        from .config_bridge import build_streamrip_config
 
         client = self.clients.get(item["source"])
         if client is None:
@@ -111,28 +111,12 @@ class DownloadService:
         logger.info("Downloading album: %s - %s (id: %s)",
                      item["artist"], item["title"], item["source_album_id"])
 
-        # Build a Config from the stored settings
-        config_path = os.environ.get(
-            "STREAMRIP_CONFIG_PATH",
-            os.path.expanduser("~/.config/streamrip/config.toml"),
-        )
-        if os.path.exists(config_path):
-            config = Config(config_path)
-        else:
-            config = Config.defaults()
+        # Build config from the same DB source as everything else
+        config = build_streamrip_config(self.db)
 
-        # Override download path
+        # Override download path if set on this service
         if self.download_path:
             config.session.downloads.folder = self.download_path
-
-        # Ensure database paths are set
-        db_dir = os.environ.get("STREAMRIP_DB_PATH", "data/streamrip.db")
-        db_dir = os.path.dirname(db_dir) or "data"
-        os.makedirs(db_dir, exist_ok=True)
-        if not config.session.database.downloads_path:
-            config.session.database.downloads_path = os.path.join(db_dir, "downloads.db")
-        if not config.session.database.failed_downloads_path:
-            config.session.database.failed_downloads_path = os.path.join(db_dir, "failed.db")
 
         # Create a Main instance and inject the already-logged-in client
         main = Main(config)
