@@ -122,6 +122,14 @@ class DownloadService:
         main = Main(config)
         main.clients[item["source"]] = client
 
+        # Verify client state before passing to pipeline
+        logger.info(
+            "Client state: logged_in=%s, secret=%s, session=%s",
+            getattr(client, 'logged_in', None),
+            'set' if getattr(client, 'secret', None) else 'None',
+            'open' if getattr(client, 'session', None) else 'None',
+        )
+
         # Use the existing pipeline: add by ID → resolve → rip
         main._add_by_id_client(client, "album", item["source_album_id"])
         await main.resolve()

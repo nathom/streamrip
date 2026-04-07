@@ -264,6 +264,39 @@ class TestDownloadServicePipeline:
             # Should not raise — 80% meets the threshold
             await service._download_album(item)
 
+    async def test_client_state_preserved_through_pipeline(self, db, event_bus):
+        """The logged-in client should retain secret and logged_in through the pipeline."""
+        from streamrip.client.qobuz import QobuzClient
+        from streamrip.config import Config
+
+        config = build_streamrip_config(db)
+        real_client = QobuzClient(config)
+        # Simulate logged-in state
+        real_client.logged_in = True
+        real_client.secret = "test-secret-abc"
+
+        service = DownloadService(
+            db, event_bus,
+            clients={"qobuz": real_client},
+            download_path="/tmp",
+        )
+
+        # Verify the client we pass is the same one that has the secret
+        assert service.clients["qobuz"].secret == "test-secret-abc"
+        assert service.clients["qobuz"].logged_in is True
+
+        # Now check that Main construction doesn't destroy our client's state
+        from streamrip.rip.main import Main
+        main = Main(config)
+        main.clients["qobuz"] = real_client
+        main._add_by_id_client(real_client, "album", "test-id-123")
+
+        # The pending item should reference our client
+        pending = main.pending[0]
+        assert pending.client is real_client
+        assert pending.client.secret == "test-secret-abc"
+        assert pending.client.logged_in is True
+
     async def test_queue_marks_failed_on_error(self, db, event_bus):
         """Queue processor should mark album as failed when download raises."""
         db.upsert_album("qobuz", "fail-album", "Fail Album", "Artist")
