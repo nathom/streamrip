@@ -49,6 +49,11 @@ def build_streamrip_config(db):
     downloads_path = db.get_config("downloads_path")
     if downloads_path:
         config.session.downloads.folder = downloads_path
+    elif not config.session.downloads.folder:
+        # Fallback to /music (Docker mount) or ~/Music
+        config.session.downloads.folder = os.environ.get(
+            "STREAMRIP_DOWNLOADS_PATH", "/music"
+        )
 
     max_connections = db.get_config("max_connections")
     if max_connections:

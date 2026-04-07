@@ -125,6 +125,25 @@ class DownloadService:
         # Use the existing pipeline: add by ID → resolve → rip
         main._add_by_id_client(client, "album", item["source_album_id"])
         await main.resolve()
+
+        if not main.media:
+            raise ValueError(f"Failed to resolve album {item['source_album_id']}")
+
         await main.rip()
+
+        # Check if any tracks actually succeeded
+        # main.rip() swallows exceptions via return_exceptions=True
+        # so we check the media items for success indicators
+        for media in main.media:
+            if hasattr(media, 'successful_tracks') and hasattr(media, 'total_tracks'):
+                if media.total_tracks > 0 and media.successful_tracks == 0:
+                    raise RuntimeError(
+                        f"All {media.total_tracks} tracks failed to download"
+                    )
+                logger.info(
+                    "Downloaded %d/%d tracks for %s - %s",
+                    media.successful_tracks, media.total_tracks,
+                    item["artist"], item["title"],
+                )
 
         logger.info("Download complete: %s - %s", item["artist"], item["title"])
