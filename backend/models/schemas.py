@@ -61,6 +61,7 @@ class SearchResponse(BaseModel):
 class DownloadRequest(BaseModel):
     source: str
     album_ids: list[str]
+    force: bool = False
 
 
 class QueueItem(BaseModel):

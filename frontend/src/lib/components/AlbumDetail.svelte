@@ -165,14 +165,18 @@
 
   let downloadQueued = $state(false);
 
-  async function handleDownload() {
+  async function handleDownload(force: boolean = false) {
     if (!album) return;
     const albumId = album.source_album_id || String(album.id);
     downloading = true;
     downloadError = '';
     downloadQueued = false;
     try {
-      await api.downloads.enqueue(source, [albumId]);
+      await fetch('/api/downloads/queue', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ source, album_ids: [albumId], force }),
+      });
       downloadQueued = true;
       setTimeout(() => { downloadQueued = false; }, 3000);
     } catch (e: any) {
@@ -237,8 +241,11 @@
     </div>
 
     <div class="detail-actions">
-      <button class="btn btn-primary btn-sm" onclick={handleDownload} disabled={downloading || downloadQueued}>
+      <button class="btn btn-primary btn-sm" onclick={() => handleDownload(false)} disabled={downloading || downloadQueued}>
         {#if downloading}Queuing...{:else if downloadQueued}Queued ✓{:else}▸ Download{/if}
+      </button>
+      <button class="btn btn-secondary btn-sm" onclick={() => handleDownload(true)} disabled={downloading} title="Re-download even if already in library">
+        ▸ Force
       </button>
       {#if downloadError}
         <span class="download-error">{downloadError}</span>

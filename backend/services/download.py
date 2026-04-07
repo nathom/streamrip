@@ -25,7 +25,7 @@ class DownloadService:
         self._cancel_requested: set[str] = set()
         self._worker_task: asyncio.Task | None = None
 
-    async def enqueue(self, source: str, album_ids: list[str]) -> list[dict]:
+    async def enqueue(self, source: str, album_ids: list[str], force: bool = False) -> list[dict]:
         items = []
         for source_album_id in album_ids:
             album = self.db.get_album_by_source_id(source, source_album_id)
@@ -46,6 +46,7 @@ class DownloadService:
                 "bytes_total": 0,
                 "speed": 0.0,
                 "status": "pending",
+                "force": force,
             }
             self._queue.append(item)
             self.db.update_album_status(album["id"], "queued")
@@ -141,7 +142,13 @@ class DownloadService:
         if self.download_path:
             config.session.downloads.folder = self.download_path
 
-        database = build_database(config)
+        if item.get("force"):
+            # Force re-download: use Dummy DB so no tracks are skipped
+            from streamrip.db import Dummy, Database as SRDatabase
+            database = SRDatabase(Dummy(), Dummy(), Dummy())
+            logger.info("Force download — skipping download history checks")
+        else:
+            database = build_database(config)
 
         pending = PendingAlbum(item["source_album_id"], client, config, database)
 

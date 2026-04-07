@@ -14,7 +14,7 @@ async def get_queue(request: Request):
 @router.post("/queue")
 async def enqueue(request: Request, body: DownloadRequest):
     service = request.app.state.download_service
-    return await service.enqueue(body.source, body.album_ids)
+    return await service.enqueue(body.source, body.album_ids, force=body.force)
 
 @router.delete("/queue/{item_id}")
 async def remove_from_queue(request: Request, item_id: str):
