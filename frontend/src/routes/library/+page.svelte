@@ -360,6 +360,8 @@
 
   .general-search-section {
     margin-top: var(--space-12);
+    padding-top: var(--space-8);
+    border-top: 3px solid var(--border);
   }
 
   .loading-state, .empty-search {

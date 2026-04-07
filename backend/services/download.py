@@ -125,6 +125,15 @@ class DownloadService:
         if self.download_path:
             config.session.downloads.folder = self.download_path
 
+        # Ensure database paths are set
+        db_dir = os.environ.get("STREAMRIP_DB_PATH", "data/streamrip.db")
+        db_dir = os.path.dirname(db_dir) or "data"
+        os.makedirs(db_dir, exist_ok=True)
+        if not config.session.database.downloads_path:
+            config.session.database.downloads_path = os.path.join(db_dir, "downloads.db")
+        if not config.session.database.failed_downloads_path:
+            config.session.database.failed_downloads_path = os.path.join(db_dir, "failed.db")
+
         # Create a Main instance and inject the already-logged-in client
         main = Main(config)
         main.clients[item["source"]] = client
