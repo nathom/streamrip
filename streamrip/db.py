@@ -191,6 +191,26 @@ class DownloadedAlbums(DatabaseBase):
     }
 
 
+def build_database(config) -> "Database":
+    """Construct a Database from a Config object's database settings."""
+    c = config.session.database
+    if c.downloads_enabled:
+        downloads_db = Downloads(c.downloads_path)
+        downloaded_albums_db = DownloadedAlbums(
+            c.downloads_path.replace(".db", "_albums.db")
+        )
+    else:
+        downloads_db = Dummy()
+        downloaded_albums_db = Dummy()
+
+    if c.failed_downloads_enabled:
+        failed_db = Failed(c.failed_downloads_path)
+    else:
+        failed_db = Dummy()
+
+    return Database(downloads_db, failed_db, downloaded_albums_db)
+
+
 @dataclass(slots=True)
 class Database:
     downloads: DatabaseInterface

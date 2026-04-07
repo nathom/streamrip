@@ -24,13 +24,13 @@ class SyncService:
         if client is None or not getattr(client, 'logged_in', False):
             return {"new_albums": [], "removed_albums": [], "source": source, "last_sync": None}
 
-        # Fetch current streaming library
-        albums_data = await client.get_user_favorites("album", limit=None)
+        raw_pages = await client.get_user_favorites("album", limit=None)
+        all_items = self.library_service._extract_items_from_pages(source, raw_pages)
 
         streaming_ids = set()
         new_albums = []
 
-        for item in albums_data:
+        for item in all_items:
             parsed = self.library_service._extract_album_data(source, item)
             if parsed is None:
                 continue

@@ -55,27 +55,7 @@ class Main:
             "soundcloud": SoundcloudClient(config),
         }
 
-        self.database: db.Database
-
-        c = self.config.session.database
-        if c.downloads_enabled:
-            downloads_db = db.Downloads(c.downloads_path)
-            # Use same path for downloaded albums table
-            downloaded_albums_db = db.DownloadedAlbums(
-                c.downloads_path.replace(".db", "_albums.db")
-            )
-        else:
-            downloads_db = db.Dummy()
-            downloaded_albums_db = db.Dummy()
-
-        if c.failed_downloads_enabled:
-            failed_downloads_db = db.Failed(c.failed_downloads_path)
-        else:
-            failed_downloads_db = db.Dummy()
-
-        self.database = db.Database(
-            downloads_db, failed_downloads_db, downloaded_albums_db
-        )
+        self.database = db.build_database(config)
 
     async def add(self, url: str):
         """Add url as a pending item.

@@ -106,7 +106,7 @@ class DownloadService:
         We pass the already-logged-in client directly to PendingAlbum.
         """
         from streamrip.media import PendingAlbum
-        from streamrip import db as sdb
+        from streamrip.db import build_database
         from .config_bridge import build_streamrip_config
 
         client = self.clients.get(item["source"])
@@ -129,22 +129,7 @@ class DownloadService:
         if self.download_path:
             config.session.downloads.folder = self.download_path
 
-        c = config.session.database
-        if c.downloads_enabled:
-            downloads_db = sdb.Downloads(c.downloads_path)
-            downloaded_albums_db = sdb.DownloadedAlbums(
-                c.downloads_path.replace(".db", "_albums.db")
-            )
-        else:
-            downloads_db = sdb.Dummy()
-            downloaded_albums_db = sdb.Dummy()
-
-        if c.failed_downloads_enabled:
-            failed_db = sdb.Failed(c.failed_downloads_path)
-        else:
-            failed_db = sdb.Dummy()
-
-        database = sdb.Database(downloads_db, failed_db, downloaded_albums_db)
+        database = build_database(config)
 
         pending = PendingAlbum(item["source_album_id"], client, config, database)
 
