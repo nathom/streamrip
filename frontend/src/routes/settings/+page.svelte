@@ -160,7 +160,7 @@
     <input
       class="settings-input"
       type="text"
-      placeholder="2113276"
+      placeholder="Your numeric user ID"
       bind:value={qobuzUserId}
       style="max-width: 200px;"
     />
@@ -174,7 +174,7 @@
     <input
       class="settings-input"
       type="password"
-      placeholder="kwycOGex9OgEhfym8MFUxf…"
+      placeholder="Paste token from browser DevTools"
       bind:value={qobuzAuthToken}
       style="max-width: 400px;"
     />

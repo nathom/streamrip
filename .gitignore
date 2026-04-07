@@ -36,3 +36,10 @@ frontend/build/
 frontend/.svelte-kit/
 backend/static/
 data/
+.claude/
+.ai-assistant/
+.ai-project/
+data/
+backend/static/
+*.db
+debug_*.py
