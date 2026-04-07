@@ -1,12 +1,30 @@
 <script lang="ts">
   interface Album {
     id: number;
+    source_album_id?: string;
     title: string;
     artist: string;
     year?: number | string;
+    release_date?: string;
     format?: string;
+    quality?: string;
     cover_url?: string;
     status?: string;
+    download_status?: string;
+  }
+
+  function getYear(album: Album): string {
+    if (album.year) return String(album.year);
+    if (album.release_date) return album.release_date.slice(0, 4);
+    return '—';
+  }
+
+  function getFormat(album: Album): string | undefined {
+    return album.format || album.quality;
+  }
+
+  function getStatus(album: Album): string | undefined {
+    return album.status || album.download_status;
   }
 
   let {
@@ -58,16 +76,16 @@
       <span class="placeholder-icon">♪</span>
     {/if}
     <div class="album-status">
-      <span class="tag {statusTagClass(album.status)}">{statusLabel(album.status)}</span>
+      <span class="tag {statusTagClass(getStatus(album))}">{statusLabel(getStatus(album))}</span>
     </div>
   </div>
   <div class="album-info">
     <div class="album-title" title={album.title}>{album.title}</div>
     <div class="album-artist" title={album.artist}>{album.artist}</div>
     <div class="album-meta">
-      <span class="album-year">{album.year ?? '—'}</span>
-      {#if album.format}
-        <span class="album-format">{album.format}</span>
+      <span class="album-year">{getYear(album)}</span>
+      {#if getFormat(album)}
+        <span class="album-format">{getFormat(album)}</span>
       {/if}
     </div>
   </div>

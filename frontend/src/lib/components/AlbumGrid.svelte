@@ -11,7 +11,7 @@
 </script>
 
 <div class="album-grid">
-  {#each albums as album (album.id)}
+  {#each albums as album, i (album.source_album_id ?? album.id ?? i)}
     <AlbumCard {album} onclick={() => onselect?.(album)} />
   {/each}
 

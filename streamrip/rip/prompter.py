@@ -1,11 +1,10 @@
 import asyncio
-import hashlib
 import logging
 import time
 from abc import ABC, abstractmethod
 
 from click import launch
-from rich.prompt import Prompt
+from rich.prompt import Confirm, Prompt
 
 from ..client import Client, DeezerClient, QobuzClient, SoundcloudClient, TidalClient
 from ..config import Config
@@ -48,39 +47,80 @@ class QobuzPrompter(CredentialPrompter):
 
     def has_creds(self) -> bool:
         c = self.config.session.qobuz
-        return c.email_or_userid != "" and c.password_or_token != ""
+        if not c.email_or_userid or not c.password_or_token:
+            return False
+        # Legacy email+md5 credentials no longer work — force re-prompt
+        if not c.use_auth_token:
+            return False
+        return True
 
     async def prompt_and_login(self):
         if not self.has_creds():
-            self._prompt_creds_and_set_session_config()
+            await self._prompt_creds_and_set_session_config()
 
         while True:
             try:
                 await self.client.login()
                 break
             except AuthenticationError:
-                console.print("[yellow]Invalid credentials, try again.")
-                self._prompt_creds_and_set_session_config()
+                console.print(
+                    "[yellow]Invalid Qobuz token or user id. "
+                    "The token may have expired, please refresh it from your browser.[/yellow]"
+                )
+                await self._prompt_creds_and_set_session_config()
             except MissingCredentialsError:
-                self._prompt_creds_and_set_session_config()
+                await self._prompt_creds_and_set_session_config()
 
-    def _prompt_creds_and_set_session_config(self):
-        email = Prompt.ask("Enter your Qobuz email")
-        pwd_input = Prompt.ask("Enter your Qobuz password (invisible)", password=True)
+    async def _prompt_creds_and_set_session_config(self):
+        console.print(
+            "[cyan]Qobuz now requires token-based login.[/cyan]\n"
+            "1) Log in at qobuz.com or play.qobuz.com\n"
+            "2) Open browser DevTools -> Network\n"
+            "3) Find a request to [bold]www.qobuz.com/api.json[/bold]\n"
+            "4) Copy [bold]X-User-Auth-Token[/bold] from the request headers"
+        )
+        if Confirm.ask("Open Qobuz login page in your browser now?", default=True):
+            launch("https://play.qobuz.com/login")
 
-        pwd = hashlib.md5(pwd_input.encode("utf-8")).hexdigest()
+        # Ensure we have an app_id to resolve the user ID
+        c = self.config.session.qobuz
+        if not c.app_id or not c.secrets:
+            console.print("[cyan]Fetching app credentials...[/cyan]")
+            c.app_id, c.secrets = await self.client._get_app_id_and_secrets()
+            f = self.config.file
+            f.qobuz.app_id = c.app_id
+            f.qobuz.secrets = c.secrets
+            f.set_modified()
+
+        verify_ssl = self.config.session.downloads.verify_ssl
+
+        while True:
+            token = Prompt.ask("Enter your Qobuz user_auth_token", password=True)
+            console.print("[cyan]Resolving user ID from token...[/cyan]")
+            try:
+                user_id = await QobuzClient.resolve_user_id(
+                    token, str(c.app_id), verify_ssl=verify_ssl
+                )
+            except AuthenticationError:
+                console.print(
+                    "[yellow]Token appears invalid or expired. Please try again.[/yellow]"
+                )
+                continue
+            break
+
+        console.print(f"[green]Found user ID: {user_id}[/green]")
+
+        c.use_auth_token = True
+        c.email_or_userid = user_id
+        c.password_or_token = token
         console.print(
             f"[green]Credentials saved to config file at [bold cyan]{self.config.path}",
         )
-        c = self.config.session.qobuz
-        c.use_auth_token = False
-        c.email_or_userid = email
-        c.password_or_token = pwd
 
     def save(self):
         c = self.config.session.qobuz
         cf = self.config.file.qobuz
-        cf.use_auth_token = False
+        cf.use_auth_token = True
         cf.email_or_userid = c.email_or_userid
         cf.password_or_token = c.password_or_token
         self.config.file.set_modified()
