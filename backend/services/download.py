@@ -113,10 +113,22 @@ class DownloadService:
         if client is None:
             raise ValueError(f"No client for source {item['source']}")
 
-        if not getattr(client, 'logged_in', False):
-            raise ValueError(f"Client {item['source']} is not logged in")
-        if item["source"] == "qobuz" and not getattr(client, 'secret', None):
-            raise ValueError("Qobuz client has no secret — login may have failed")
+        # Ensure client is logged in — login if needed
+        if not getattr(client, 'logged_in', False) or (
+            item["source"] == "qobuz" and not getattr(client, 'secret', None)
+        ):
+            logger.warning(
+                "Client %s not ready (logged_in=%s, secret=%s). Attempting login...",
+                item["source"],
+                getattr(client, 'logged_in', None),
+                'set' if getattr(client, 'secret', None) else 'None',
+            )
+            try:
+                await client.login()
+                logger.info("Login successful for %s", item["source"])
+            except Exception:
+                logger.exception("Login failed for %s", item["source"])
+                raise ValueError(f"Client {item['source']} failed to login")
 
         logger.info(
             "Downloading album: %s - %s (id: %s) [logged_in=%s, secret=%s]",

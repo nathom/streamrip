@@ -217,3 +217,51 @@ class TestDownloadPipelineE2E:
 
         if client.session:
             await client.session.close()
+
+    @skip_no_creds
+    async def test_download_with_unlogged_client(self, db, event_bus):
+        """DownloadService should auto-login if client isn't logged in yet.
+
+        Reproduces the Docker scenario where credentials are saved
+        via Settings but the client hasn't been logged in yet.
+        """
+        db.set_config("qobuz_token", QOBUZ_TOKEN)
+        db.set_config("qobuz_user_id", QOBUZ_USER_ID)
+
+        config = build_streamrip_config(db)
+
+        from streamrip.client.qobuz import QobuzClient
+        client = QobuzClient(config)
+        assert not client.logged_in
+        assert client.secret is None
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            db.set_config("downloads_path", tmpdir)
+
+            service = DownloadService(
+                db, event_bus,
+                clients={"qobuz": client},
+                download_path=tmpdir,
+            )
+
+            db.upsert_album("qobuz", TEST_ALBUM_ID, "Test Album", "Test Artist")
+
+            items = await service.enqueue("qobuz", [TEST_ALBUM_ID])
+            assert len(items) == 1
+
+            for _ in range(120):
+                await asyncio.sleep(1)
+                queue = service.get_queue()
+                item = next((q for q in queue if q["source_album_id"] == TEST_ALBUM_ID), None)
+                if item and item["status"] in ("complete", "failed"):
+                    break
+
+            queue = service.get_queue()
+            item = next(q for q in queue if q["source_album_id"] == TEST_ALBUM_ID)
+
+            assert item["status"] == "complete", (
+                f"Download with auto-login should have completed but status is '{item['status']}'"
+            )
+
+        if client.session:
+            await client.session.close()
