@@ -44,7 +44,7 @@ class Album(Media):
                 await track.rip()
                 return True  # Success
             except Exception as e:
-                logger.error(f"Error downloading track: {e}")
+                logger.error(f"Error downloading track: {type(e).__name__}: {e}", exc_info=True)
                 return False  # Failed
 
         results = await asyncio.gather(
