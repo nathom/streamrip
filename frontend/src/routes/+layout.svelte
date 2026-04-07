@@ -5,6 +5,7 @@
   import { activeCount } from '$lib/stores/downloads';
   import { onMount } from 'svelte';
   import { connectWebSocket } from '$lib/stores/websocket';
+  import { api } from '$lib/api/client';
   import { page } from '$app/state';
 
   let { children }: { children: Snippet } = $props();
@@ -12,6 +13,9 @@
   let activePage = $derived(page.url.pathname.split('/')[1] || 'library');
   let source = $derived($currentSource);
   let downloadCount = $derived($activeCount);
+  let authStatuses = $state<any[]>([]);
+  let sourceAuth = $derived(authStatuses.find(a => a.source === source));
+  let isConnected = $derived(sourceAuth?.authenticated ?? false);
 
   function setSource(s: string) {
     $currentSource = s;
@@ -23,10 +27,19 @@
     html.setAttribute('data-theme', current === 'dark' ? 'light' : 'dark');
   }
 
+  async function loadAuthStatus() {
+    try {
+      authStatuses = await api.auth.status();
+    } catch {
+      // ignore
+    }
+  }
+
   onMount(() => {
     if (typeof window !== 'undefined') {
       connectWebSocket();
     }
+    loadAuthStatus();
   });
 </script>
 
@@ -67,8 +80,8 @@
 
     <div class="sidebar-footer">
       <div class="connection-status">
-        <span class="status-dot"></span>
-        {source.charAt(0).toUpperCase() + source.slice(1)} connected
+        <span class="status-dot" class:disconnected={!isConnected}></span>
+        {source.charAt(0).toUpperCase() + source.slice(1)} {isConnected ? 'connected' : 'not connected'}
       </div>
       <button class="theme-toggle" onclick={toggleTheme}>░ toggle theme</button>
     </div>
@@ -200,6 +213,9 @@
     height: 8px;
     background: var(--positive);
     border: 1.5px solid var(--border);
+  }
+  .status-dot.disconnected {
+    background: var(--destructive);
   }
 
   .theme-toggle {

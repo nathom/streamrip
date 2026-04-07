@@ -32,9 +32,17 @@
         qobuzUserId = config.qobuz_user_id ?? '';
         qobuzAuthToken = config.qobuz_token ?? '';
         qobuzQuality = String(config.qobuz_quality ?? 3);
-        qobuzConnected = !!config.qobuz_token;
-
-        tidalConnected = !!config.tidal_access_token;
+        // Check actual auth status, not just whether token exists
+        try {
+          const statuses = await api.auth.status();
+          const qobuz = statuses.find((s: any) => s.source === 'qobuz');
+          const tidal = statuses.find((s: any) => s.source === 'tidal');
+          qobuzConnected = qobuz?.authenticated ?? false;
+          tidalConnected = tidal?.authenticated ?? false;
+        } catch {
+          qobuzConnected = !!config.qobuz_token;
+          tidalConnected = !!config.tidal_access_token;
+        }
 
         downloadPath = config.downloads_path ?? '';
         maxConnections = config.max_connections ?? 6;
@@ -70,6 +78,18 @@
         auto_sync_enabled: autoSyncEnabled,
         auto_sync_interval: syncInterval,
       });
+
+      // Refresh auth status after save (backend hot-reloads clients)
+      try {
+        const statuses = await api.auth.status();
+        const qobuz = statuses.find((s: any) => s.source === 'qobuz');
+        const tidal = statuses.find((s: any) => s.source === 'tidal');
+        qobuzConnected = qobuz?.authenticated ?? false;
+        tidalConnected = tidal?.authenticated ?? false;
+      } catch {
+        // ignore auth check failure
+      }
+
       saveSuccess = true;
       setTimeout(() => { saveSuccess = false; }, 2500);
     } catch (e: any) {
