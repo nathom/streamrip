@@ -8,8 +8,10 @@
   let active = $derived($activeCount);
   let speed = $derived($totalSpeed);
 
-  let activeItems = $derived(queueItems.filter((i: any) => i.status !== 'complete'));
+  let activeItems = $derived(queueItems.filter((i: any) => ['pending', 'downloading'].includes(i.status)));
   let completedItems = $derived(queueItems.filter((i: any) => i.status === 'complete'));
+  let failedItems = $derived(queueItems.filter((i: any) => i.status === 'failed'));
+  let cancelledItems = $derived(queueItems.filter((i: any) => i.status === 'cancelled'));
 
   // Derived stats
   let downloadedTracks = $derived(

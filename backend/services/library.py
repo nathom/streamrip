@@ -26,7 +26,91 @@ class LibraryService:
         if album is None:
             return None
         tracks = self.db.get_tracks(album_id)
+
+        # If no tracks cached, fetch from API
+        if not tracks:
+            source = album["source"]
+            client = self.clients.get(source)
+            if client and getattr(client, 'logged_in', False):
+                try:
+                    tracks = await self._fetch_and_cache_tracks(
+                        client, source, album["source_album_id"], album_id
+                    )
+                except Exception:
+                    logger.exception("Failed to fetch tracks for album %s", album_id)
+
         return {**album, "tracks": tracks}
+
+    async def _fetch_and_cache_tracks(self, client, source, source_album_id, album_id):
+        """Fetch track list from API and cache in DB."""
+        if source == "qobuz":
+            return await self._fetch_qobuz_tracks(client, source_album_id, album_id)
+        elif source == "tidal":
+            return await self._fetch_tidal_tracks(client, source_album_id, album_id)
+        return []
+
+    async def _fetch_qobuz_tracks(self, client, source_album_id, album_id):
+        """Fetch tracks from Qobuz album/get endpoint."""
+        try:
+            resp = await client.get_album(source_album_id)
+        except Exception:
+            logger.exception("Failed to fetch Qobuz album %s", source_album_id)
+            return []
+
+        track_items = resp.get("tracks", {}).get("items", [])
+        tracks = []
+        for t in track_items:
+            artist = t.get("performer", {})
+            if isinstance(artist, dict):
+                artist_name = artist.get("name", "Unknown")
+            else:
+                artist_name = str(artist) if artist else "Unknown"
+
+            track_id = self.db.upsert_track(
+                album_id=album_id,
+                source_track_id=str(t["id"]),
+                title=t.get("title", "Unknown"),
+                artist=artist_name,
+                track_number=t.get("track_number"),
+                disc_number=t.get("media_number", 1),
+                duration_seconds=t.get("duration"),
+                explicit=t.get("parental_warning", False),
+                isrc=t.get("isrc"),
+            )
+            tracks.append(self.db.get_tracks(album_id)[-1])
+
+        # Re-fetch all tracks to get consistent format
+        return self.db.get_tracks(album_id)
+
+    async def _fetch_tidal_tracks(self, client, source_album_id, album_id):
+        """Fetch tracks from Tidal album endpoint."""
+        try:
+            resp = await client.get_metadata(source_album_id, "album")
+        except Exception:
+            logger.exception("Failed to fetch Tidal album %s", source_album_id)
+            return []
+
+        track_items = resp.get("tracks", resp.get("items", []))
+        if isinstance(track_items, dict):
+            track_items = track_items.get("items", [])
+
+        for t in track_items:
+            artists = t.get("artists", [])
+            artist_name = ", ".join(a["name"] for a in artists) if artists else t.get("artist", {}).get("name", "Unknown")
+
+            self.db.upsert_track(
+                album_id=album_id,
+                source_track_id=str(t["id"]),
+                title=t.get("title", "Unknown"),
+                artist=artist_name,
+                track_number=t.get("trackNumber"),
+                disc_number=t.get("volumeNumber", 1),
+                duration_seconds=t.get("duration"),
+                explicit=t.get("explicit", False),
+                isrc=t.get("isrc"),
+            )
+
+        return self.db.get_tracks(album_id)
 
     async def refresh_library(self, source):
         client = self.clients.get(source)

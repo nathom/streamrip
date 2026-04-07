@@ -6,12 +6,12 @@
     title: string;
     artist: string;
     track_count?: number;
-    downloaded_tracks?: number;
+    tracks_done?: number;
     cover_url?: string;
-    progress?: number;
+    bytes_done?: number;
+    bytes_total?: number;
     speed?: number;
     status?: string;
-    size_mb?: number;
   }
 
   let { items = [], mode = 'active' }: { items: QueueItem[]; mode?: 'active' | 'completed' } = $props();
@@ -24,26 +24,51 @@
     }
   }
 
-  function progressText(item: QueueItem): string {
-    if (item.status === 'complete') {
-      return `Complete${item.size_mb ? ` · ${item.size_mb} MB` : ''}`;
+  function statusLabel(item: QueueItem): string {
+    switch (item.status) {
+      case 'complete': return 'Done';
+      case 'failed': return 'Failed';
+      case 'cancelled': return 'Cancelled';
+      case 'downloading': return 'Downloading';
+      default: return 'Pending';
     }
+  }
+
+  function progressText(item: QueueItem): string {
+    if (item.status === 'complete') return 'Complete';
     if (item.status === 'failed') return 'Failed';
-    if (!item.progress || item.progress === 0) return 'Pending';
-    const trackInfo = (item.downloaded_tracks !== undefined && item.track_count)
-      ? `${item.downloaded_tracks}/${item.track_count} tracks`
-      : '';
-    const speedInfo = item.speed ? `${item.speed.toFixed(1)} MB/s` : '';
-    return [trackInfo, speedInfo].filter(Boolean).join(' · ');
+    if (item.status === 'cancelled') return 'Cancelled';
+    if (item.status === 'pending') return 'Pending';
+
+    const parts: string[] = [];
+    if (item.tracks_done !== undefined && item.track_count) {
+      parts.push(`${item.tracks_done}/${item.track_count} tracks`);
+    }
+    if (item.speed && item.speed > 0) {
+      parts.push(`${item.speed.toFixed(1)} MB/s`);
+    }
+    return parts.length > 0 ? parts.join(' · ') : 'Downloading...';
   }
 
   function progressPct(item: QueueItem): number {
     if (item.status === 'complete') return 100;
-    return item.progress ?? 0;
+    if (item.tracks_done && item.track_count && item.track_count > 0) {
+      return Math.round((item.tracks_done / item.track_count) * 100);
+    }
+    if (item.bytes_done && item.bytes_total && item.bytes_total > 0) {
+      return Math.round((item.bytes_done / item.bytes_total) * 100);
+    }
+    if (item.status === 'downloading') return 5; // Show a sliver for "in progress"
+    return 0;
   }
 
-  function isComplete(item: QueueItem): boolean {
-    return item.status === 'complete';
+  function statusTagClass(item: QueueItem): string {
+    switch (item.status) {
+      case 'complete': return 'tag-positive';
+      case 'failed': return 'tag-destructive';
+      case 'cancelled': return 'tag-default';
+      default: return 'tag-accent';
+    }
   }
 </script>
 
@@ -72,7 +97,8 @@
         <div class="progress-bar">
           <div
             class="progress-fill"
-            class:complete={isComplete(item)}
+            class:complete={item.status === 'complete'}
+            class:failed={item.status === 'failed'}
             style="width: {progressPct(item)}%;"
           ></div>
         </div>
@@ -80,8 +106,8 @@
       </div>
 
       <div class="queue-actions">
-        {#if isComplete(item)}
-          <span class="tag tag-positive" style="font-size: 10px;">Done</span>
+        {#if item.status === 'complete' || item.status === 'failed' || item.status === 'cancelled'}
+          <span class="tag {statusTagClass(item)}" style="font-size: 10px;">{statusLabel(item)}</span>
         {:else}
           <button class="btn btn-ghost btn-sm" onclick={() => cancelItem(item.id)} title="Cancel">✕</button>
         {/if}
@@ -193,6 +219,15 @@
 
   .progress-fill.complete {
     background: var(--positive);
+  }
+
+  .progress-fill.failed {
+    background: var(--destructive);
+  }
+
+  .tag-destructive {
+    background: var(--destructive);
+    color: var(--text-primary);
   }
 
   .progress-text {
