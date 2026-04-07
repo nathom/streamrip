@@ -76,7 +76,9 @@ def _init_clients(db: AppDatabase) -> dict:
     return clients
 
 
-def create_app(db_path: str = "data/streamrip.db") -> FastAPI:
+def create_app(db_path: str | None = None) -> FastAPI:
+    if db_path is None:
+        db_path = os.environ.get("STREAMRIP_DB_PATH", "data/streamrip.db")
     db = AppDatabase(db_path)
     event_bus = EventBus()
 
