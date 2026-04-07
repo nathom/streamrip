@@ -6,17 +6,25 @@
   let qobuzUserId = $state('');
   let qobuzAuthToken = $state('');
   let qobuzQuality = $state('3');
+  let qobuzDownloadBooklets = $state(true);
   let qobuzConnected = $state(false);
 
   let tidalConnected = $state(false);
 
   let downloadPath = $state('');
   let maxConnections = $state(6);
+  let sourceSubdirectories = $state(false);
+  let discSubdirectories = $state(true);
   let folderFormat = $state('{albumartist} - {title} ({year}) [{container}]');
   let trackFormat = $state('{tracknumber:02}. {artist} - {title}{explicit}');
 
+  let embedArtwork = $state(true);
+  let artworkSize = $state('large');
+
   let conversionEnabled = $state(false);
   let conversionCodec = $state('FLAC');
+  let conversionSamplingRate = $state(48000);
+  let conversionBitDepth = $state(24);
 
   let autoSyncEnabled = $state(false);
   let syncInterval = $state('6h');
@@ -32,6 +40,7 @@
         qobuzUserId = config.qobuz_user_id ?? '';
         qobuzAuthToken = config.qobuz_token ?? '';
         qobuzQuality = String(config.qobuz_quality ?? 3);
+        qobuzDownloadBooklets = config.qobuz_download_booklets ?? true;
         // Check actual auth status, not just whether token exists
         try {
           const statuses = await api.auth.status();
@@ -46,11 +55,18 @@
 
         downloadPath = config.downloads_path ?? '';
         maxConnections = config.max_connections ?? 6;
+        sourceSubdirectories = config.source_subdirectories ?? false;
+        discSubdirectories = config.disc_subdirectories ?? true;
         folderFormat = config.folder_format ?? '{albumartist} - {title} ({year}) [{container}]';
         trackFormat = config.track_format ?? '{tracknumber:02}. {artist} - {title}{explicit}';
 
+        embedArtwork = config.embed_artwork ?? true;
+        artworkSize = config.artwork_size ?? 'large';
+
         conversionEnabled = config.conversion_enabled ?? false;
         conversionCodec = config.conversion_codec ?? 'FLAC';
+        conversionSamplingRate = config.conversion_sampling_rate ?? 48000;
+        conversionBitDepth = config.conversion_bit_depth ?? 24;
 
         autoSyncEnabled = config.auto_sync_enabled ?? false;
         syncInterval = config.auto_sync_interval ?? '6h';
@@ -69,12 +85,19 @@
         qobuz_user_id: qobuzUserId,
         qobuz_token: qobuzAuthToken,
         qobuz_quality: parseInt(qobuzQuality),
+        qobuz_download_booklets: qobuzDownloadBooklets,
         downloads_path: downloadPath,
         max_connections: maxConnections,
+        source_subdirectories: sourceSubdirectories,
+        disc_subdirectories: discSubdirectories,
         folder_format: folderFormat,
         track_format: trackFormat,
+        embed_artwork: embedArtwork,
+        artwork_size: artworkSize,
         conversion_enabled: conversionEnabled,
         conversion_codec: conversionCodec,
+        conversion_sampling_rate: conversionSamplingRate,
+        conversion_bit_depth: conversionBitDepth,
         auto_sync_enabled: autoSyncEnabled,
         auto_sync_interval: syncInterval,
       });
@@ -168,6 +191,15 @@
       <option value="4">24-bit / up to 192kHz</option>
     </select>
   </div>
+  <div class="settings-row">
+    <div>
+      <div class="settings-label">Download Booklets</div>
+      <div class="settings-label-sub">Download PDF booklets included with albums</div>
+    </div>
+    <div class="toggle-track" class:on={qobuzDownloadBooklets} onclick={() => qobuzDownloadBooklets = !qobuzDownloadBooklets}>
+      <div class="toggle-thumb"></div>
+    </div>
+  </div>
 </div>
 
 <!-- ── Tidal ── -->
@@ -234,7 +266,7 @@
     />
   </div>
 
-  <div class="settings-row" style="border-bottom: none;">
+  <div class="settings-row">
     <div>
       <div class="settings-label">Track Format</div>
     </div>
@@ -243,6 +275,51 @@
       type="text"
       bind:value={trackFormat}
     />
+  </div>
+  <div class="settings-row">
+    <div>
+      <div class="settings-label">Source Subdirectories</div>
+      <div class="settings-label-sub">Put albums in Qobuz/, Tidal/ subfolders</div>
+    </div>
+    <div class="toggle-track" class:on={sourceSubdirectories} onclick={() => sourceSubdirectories = !sourceSubdirectories}>
+      <div class="toggle-thumb"></div>
+    </div>
+  </div>
+  <div class="settings-row" style="border-bottom: none;">
+    <div>
+      <div class="settings-label">Disc Subdirectories</div>
+      <div class="settings-label-sub">Create Disc N subfolders for multi-disc albums</div>
+    </div>
+    <div class="toggle-track" class:on={discSubdirectories} onclick={() => discSubdirectories = !discSubdirectories}>
+      <div class="toggle-thumb"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Artwork ── -->
+<div class="settings-section">
+  <div class="settings-section-header">
+    <span>◆ Artwork</span>
+  </div>
+  <div class="settings-row">
+    <div>
+      <div class="settings-label">Embed Artwork</div>
+      <div class="settings-label-sub">Write cover art into audio file tags</div>
+    </div>
+    <div class="toggle-track" class:on={embedArtwork} onclick={() => embedArtwork = !embedArtwork}>
+      <div class="toggle-thumb"></div>
+    </div>
+  </div>
+  <div class="settings-row" style="border-bottom: none;">
+    <div>
+      <div class="settings-label">Artwork Size</div>
+    </div>
+    <select class="settings-select" bind:value={artworkSize} style="max-width: 160px;">
+      <option value="thumbnail">Thumbnail</option>
+      <option value="small">Small</option>
+      <option value="large">Large</option>
+      <option value="original">Original (up to 30MB)</option>
+    </select>
   </div>
 </div>
 
@@ -267,7 +344,7 @@
     </button>
   </div>
 
-  <div class="settings-row" style="border-bottom: none;">
+  <div class="settings-row">
     <div>
       <div class="settings-label">Codec</div>
     </div>
@@ -277,6 +354,27 @@
       <option value="OGG">OGG Vorbis</option>
       <option value="MP3">MP3</option>
       <option value="AAC">AAC</option>
+    </select>
+  </div>
+  <div class="settings-row">
+    <div>
+      <div class="settings-label">Max Sampling Rate</div>
+      <div class="settings-label-sub">Downsample if higher (Hz)</div>
+    </div>
+    <select class="settings-select" bind:value={conversionSamplingRate} style="max-width: 160px;">
+      <option value={44100}>44.1 kHz</option>
+      <option value={48000}>48 kHz</option>
+      <option value={96000}>96 kHz</option>
+      <option value={192000}>192 kHz</option>
+    </select>
+  </div>
+  <div class="settings-row" style="border-bottom: none;">
+    <div>
+      <div class="settings-label">Max Bit Depth</div>
+    </div>
+    <select class="settings-select" bind:value={conversionBitDepth} style="max-width: 160px;">
+      <option value={16}>16-bit</option>
+      <option value={24}>24-bit</option>
     </select>
   </div>
 </div>

@@ -14,9 +14,11 @@ async def get_config(request: Request) -> AppConfig:
     raw = db.get_all_config()
     config_dict = {}
     for key, value in raw.items():
-        if key in ("qobuz_quality", "tidal_quality", "max_connections"):
+        if key in ("qobuz_quality", "tidal_quality", "max_connections",
+                    "conversion_sampling_rate", "conversion_bit_depth"):
             config_dict[key] = int(value)
-        elif key in ("conversion_enabled", "auto_sync_enabled"):
+        elif key in ("conversion_enabled", "auto_sync_enabled", "qobuz_download_booklets",
+                      "source_subdirectories", "disc_subdirectories", "embed_artwork"):
             config_dict[key] = value.lower() in ("true", "1", "yes")
         else:
             config_dict[key] = value

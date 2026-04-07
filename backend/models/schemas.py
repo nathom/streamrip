@@ -115,14 +115,21 @@ class AppConfig(BaseModel):
     qobuz_quality: int = 3
     qobuz_user_id: str = ""
     qobuz_token: str = ""
+    qobuz_download_booklets: bool = True
     tidal_quality: int = 3
     tidal_access_token: str = ""
     downloads_path: str = ""
     max_connections: int = 6
+    source_subdirectories: bool = False
+    disc_subdirectories: bool = True
     folder_format: str = "{albumartist} - {title} ({year}) [{container}]"
     track_format: str = "{tracknumber:02}. {artist} - {title}{explicit}"
+    embed_artwork: bool = True
+    artwork_size: str = "large"
     conversion_enabled: bool = False
     conversion_codec: str = "ALAC"
+    conversion_sampling_rate: int = 48000
+    conversion_bit_depth: int = 24
     auto_sync_enabled: bool = False
     auto_sync_interval: str = "6h"
 
@@ -131,13 +138,20 @@ class ConfigUpdate(BaseModel):
     qobuz_quality: int | None = None
     qobuz_user_id: str | None = None
     qobuz_token: str | None = None
+    qobuz_download_booklets: bool | None = None
     tidal_quality: int | None = None
     downloads_path: str | None = None
     max_connections: int | None = None
+    source_subdirectories: bool | None = None
+    disc_subdirectories: bool | None = None
     folder_format: str | None = None
     track_format: str | None = None
+    embed_artwork: bool | None = None
+    artwork_size: str | None = None
     conversion_enabled: bool | None = None
     conversion_codec: str | None = None
+    conversion_sampling_rate: int | None = None
+    conversion_bit_depth: int | None = None
     auto_sync_enabled: bool | None = None
     auto_sync_interval: str | None = None
 

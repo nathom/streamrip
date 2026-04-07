@@ -36,6 +36,10 @@ def build_streamrip_config(db):
     if qobuz_quality:
         config.session.qobuz.quality = int(qobuz_quality)
 
+    booklets = db.get_config("qobuz_download_booklets")
+    if booklets is not None:
+        config.session.qobuz.download_booklets = booklets.lower() in ("true", "1")
+
     # Tidal credentials
     tidal_token = db.get_config("tidal_access_token")
     if tidal_token:
@@ -59,6 +63,23 @@ def build_streamrip_config(db):
     if max_connections:
         config.session.downloads.max_connections = int(max_connections)
 
+    source_sub = db.get_config("source_subdirectories")
+    if source_sub is not None:
+        config.session.downloads.source_subdirectories = source_sub.lower() in ("true", "1")
+
+    disc_sub = db.get_config("disc_subdirectories")
+    if disc_sub is not None:
+        config.session.downloads.disc_subdirectories = disc_sub.lower() in ("true", "1")
+
+    # Artwork
+    embed_art = db.get_config("embed_artwork")
+    if embed_art is not None:
+        config.session.artwork.embed = embed_art.lower() in ("true", "1")
+
+    art_size = db.get_config("artwork_size")
+    if art_size:
+        config.session.artwork.embed_size = art_size
+
     # File paths
     folder_format = db.get_config("folder_format")
     if folder_format:
@@ -76,6 +97,14 @@ def build_streamrip_config(db):
     conversion_codec = db.get_config("conversion_codec")
     if conversion_codec:
         config.session.conversion.codec = conversion_codec
+
+    sampling_rate = db.get_config("conversion_sampling_rate")
+    if sampling_rate:
+        config.session.conversion.sampling_rate = int(sampling_rate)
+
+    bit_depth = db.get_config("conversion_bit_depth")
+    if bit_depth:
+        config.session.conversion.bit_depth = int(bit_depth)
 
     # Database paths — ensure they're set
     db_dir = os.path.dirname(
