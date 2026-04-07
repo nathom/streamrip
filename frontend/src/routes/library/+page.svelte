@@ -22,6 +22,8 @@
   let filter = $state('all');
   let loading = $state(false);
   let refreshing = $state(false);
+  let isConnected = $state(false);
+  let refreshResult = $state<string | null>(null);
 
   // Library filter (local DB search)
   let librarySearch = $state('');
@@ -54,14 +56,26 @@
 
   async function refreshLibrary() {
     refreshing = true;
+    refreshResult = null;
     try {
-      await api.library.refresh(source);
+      const result = await api.library.refresh(source);
       await fetchAlbums();
+      refreshResult = `Synced: ${result.total} albums, ${result.new} new`;
+      setTimeout(() => { refreshResult = null; }, 5000);
     } catch (err) {
+      refreshResult = 'Sync failed — check Settings';
       console.error('Failed to refresh library', err);
     } finally {
       refreshing = false;
     }
+  }
+
+  async function checkAuth() {
+    try {
+      const statuses = await api.auth.status();
+      const s = statuses.find((a: any) => a.source === source);
+      isConnected = s?.authenticated ?? false;
+    } catch { /* ignore */ }
   }
 
   function handleLibrarySearch(e: Event) {
@@ -132,6 +146,7 @@
   });
 
   onMount(() => {
+    checkAuth();
     fetchAlbums();
   });
 </script>
@@ -148,11 +163,23 @@
     </div>
   </div>
   <div class="header-actions">
-    <button class="btn btn-secondary btn-sm" onclick={refreshLibrary} disabled={refreshing}>
+    {#if refreshResult}
+      <span class="refresh-result">{refreshResult}</span>
+    {/if}
+    <button class="btn btn-secondary btn-sm" onclick={refreshLibrary} disabled={refreshing || !isConnected}>
       {#if refreshing}Syncing...{:else}▸ Refresh Library{/if}
     </button>
   </div>
 </div>
+
+{#if !isConnected}
+  <div class="connect-banner">
+    <span class="banner-icon">★</span>
+    <span>No {source.charAt(0).toUpperCase() + source.slice(1)} account connected. </span>
+    <a href="/settings" class="banner-link">Go to Settings</a>
+    <span> to add your credentials.</span>
+  </div>
+{/if}
 
 <!-- ═══ MY LIBRARY ═══ -->
 <div class="section-title">
@@ -345,6 +372,36 @@
     font-family: var(--font-mono);
     font-size: var(--text-sm);
     color: var(--text-tertiary);
+    letter-spacing: var(--tracking-mono);
+  }
+
+  .connect-banner {
+    border: 2px solid var(--pop);
+    background: var(--pop-subtle);
+    padding: var(--space-3) var(--space-4);
+    margin-bottom: var(--space-6);
+    font-size: var(--text-sm);
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+  }
+
+  .banner-icon {
+    color: var(--pop);
+    font-size: var(--text-base);
+  }
+
+  .banner-link {
+    color: var(--accent);
+    font-weight: 700;
+    text-decoration: none;
+    border-bottom: 1px solid var(--accent);
+  }
+
+  .refresh-result {
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    color: var(--positive);
     letter-spacing: var(--tracking-mono);
   }
 

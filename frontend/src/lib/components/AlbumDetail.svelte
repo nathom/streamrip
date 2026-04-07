@@ -1,9 +1,15 @@
 <script lang="ts">
   interface Track {
     number?: number;
+    track_number?: number;
     title: string;
+    artist?: string;
     duration?: string;
+    duration_seconds?: number;
     status?: string;
+    download_status?: string;
+    disc_number?: number;
+    explicit?: boolean;
   }
 
   interface AlbumFull {
@@ -74,20 +80,6 @@
     return '—';
   }
 
-  async function handleDownload() {
-    if (!album) return;
-    const albumId = album.source_album_id || String(album.id);
-    downloading = true;
-    downloadError = '';
-    try {
-      await api.downloads.enqueue(source, [albumId]);
-    } catch (e: any) {
-      downloadError = e?.message ?? 'Download failed';
-    } finally {
-      downloading = false;
-    }
-  }
-
   function trackStatusClass(status?: string): string {
     switch (status?.toLowerCase()) {
       case 'downloaded':
@@ -150,10 +142,44 @@
     }
   }
 
-  function formatTrackNumber(n?: number, total?: number): string {
+  function formatTrackNumber(track: Track, total?: number): string {
+    const n = track.track_number ?? track.number;
     if (n == null) return '—';
     const pad = total && total >= 100 ? 3 : 2;
     return String(n).padStart(pad, '0');
+  }
+
+  function formatTrackDuration(track: Track): string {
+    if (track.duration) return track.duration;
+    if (track.duration_seconds) {
+      const m = Math.floor(track.duration_seconds / 60);
+      const s = track.duration_seconds % 60;
+      return `${m}:${String(s).padStart(2, '0')}`;
+    }
+    return '—';
+  }
+
+  function getTrackStatus(track: Track): string | undefined {
+    return track.status || track.download_status;
+  }
+
+  let downloadQueued = $state(false);
+
+  async function handleDownload() {
+    if (!album) return;
+    const albumId = album.source_album_id || String(album.id);
+    downloading = true;
+    downloadError = '';
+    downloadQueued = false;
+    try {
+      await api.downloads.enqueue(source, [albumId]);
+      downloadQueued = true;
+      setTimeout(() => { downloadQueued = false; }, 3000);
+    } catch (e: any) {
+      downloadError = e?.message ?? 'Download failed';
+    } finally {
+      downloading = false;
+    }
   }
 </script>
 
@@ -211,11 +237,14 @@
     </div>
 
     <div class="detail-actions">
-      <button class="btn btn-primary btn-sm" onclick={handleDownload} disabled={downloading}>
-        {#if downloading}Queuing...{:else}▸ Download{/if}
+      <button class="btn btn-primary btn-sm" onclick={handleDownload} disabled={downloading || downloadQueued}>
+        {#if downloading}Queuing...{:else if downloadQueued}Queued ✓{:else}▸ Download{/if}
       </button>
       {#if downloadError}
         <span class="download-error">{downloadError}</span>
+      {/if}
+      {#if downloadQueued}
+        <span class="download-success">Added to queue</span>
       {/if}
     </div>
 
@@ -229,13 +258,21 @@
         </div>
         {#each album.tracks as track, i}
           <div class="track-row">
-            <span class="track-num">{formatTrackNumber(track.number ?? i + 1, album.tracks?.length)}</span>
+            <span class="track-num">{formatTrackNumber(track, album.tracks?.length)}</span>
             <div class="track-title-col">
-              <div class="track-title">{track.title}</div>
+              <div class="track-title">
+                {track.title}
+                {#if track.explicit}
+                  <span class="explicit-tag">E</span>
+                {/if}
+              </div>
+              {#if track.artist && track.artist !== album.artist}
+                <div class="track-artist-sub">{track.artist}</div>
+              {/if}
             </div>
-            <span class="track-duration">{track.duration ?? '—'}</span>
+            <span class="track-duration">{formatTrackDuration(track)}</span>
             <span class="track-status">
-              <span class="tag {trackStatusClass(track.status)}" style="font-size:10px;">{trackStatusLabel(track.status)}</span>
+              <span class="tag {trackStatusClass(getTrackStatus(track))}" style="font-size:10px;">{trackStatusLabel(getTrackStatus(track))}</span>
             </span>
           </div>
         {/each}
@@ -411,6 +448,34 @@
     font-size: var(--text-xs);
     color: var(--destructive);
     align-self: center;
+  }
+
+  .download-success {
+    font-size: var(--text-xs);
+    color: var(--positive);
+    align-self: center;
+    font-weight: 600;
+  }
+
+  .explicit-tag {
+    font-size: 9px;
+    font-weight: 800;
+    padding: 0 3px;
+    border: 1.5px solid var(--border);
+    background: var(--canvas-inset);
+    color: var(--text-tertiary);
+    margin-left: var(--space-1);
+    vertical-align: middle;
+    text-transform: uppercase;
+    letter-spacing: var(--tracking-wide);
+  }
+
+  .track-artist-sub {
+    font-size: var(--text-xs);
+    color: var(--text-tertiary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   /* Track list */
