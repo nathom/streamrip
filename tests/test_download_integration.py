@@ -165,7 +165,6 @@ class TestDownloadServicePipeline:
             download_path="/tmp",
         )
 
-        # Mock Main with media that has 0 successful tracks
         mock_media = MagicMock()
         mock_media.successful_tracks = 0
         mock_media.total_tracks = 10
@@ -188,11 +187,11 @@ class TestDownloadServicePipeline:
                 "track_count": 10,
                 "status": "downloading",
             }
-            with pytest.raises(RuntimeError, match="All 10 tracks failed"):
+            with pytest.raises(RuntimeError, match="below 80% threshold"):
                 await service._download_album(item)
 
-    async def test_download_succeeds_with_partial_tracks(self, db, event_bus):
-        """Should not raise when some tracks succeed."""
+    async def test_download_fails_below_80_percent(self, db, event_bus):
+        """Should raise when less than 80% of tracks succeed (matching TUI behavior)."""
         mock_client = AsyncMock()
         mock_client.source = "qobuz"
         mock_client.logged_in = True
@@ -204,7 +203,7 @@ class TestDownloadServicePipeline:
         )
 
         mock_media = MagicMock()
-        mock_media.successful_tracks = 7
+        mock_media.successful_tracks = 7  # 70% — below threshold
         mock_media.total_tracks = 10
 
         mock_main = MagicMock()
@@ -225,7 +224,44 @@ class TestDownloadServicePipeline:
                 "track_count": 10,
                 "status": "downloading",
             }
-            # Should not raise
+            with pytest.raises(RuntimeError, match="below 80% threshold"):
+                await service._download_album(item)
+
+    async def test_download_succeeds_at_80_percent(self, db, event_bus):
+        """Should succeed when exactly 80% of tracks download (matching TUI threshold)."""
+        mock_client = AsyncMock()
+        mock_client.source = "qobuz"
+        mock_client.logged_in = True
+
+        service = DownloadService(
+            db, event_bus,
+            clients={"qobuz": mock_client},
+            download_path="/tmp",
+        )
+
+        mock_media = MagicMock()
+        mock_media.successful_tracks = 8  # 80% — at threshold
+        mock_media.total_tracks = 10
+
+        mock_main = MagicMock()
+        mock_main.resolve = AsyncMock()
+        mock_main.rip = AsyncMock()
+        mock_main.media = [mock_media]
+        mock_main.pending = []
+        mock_main.clients = {}
+
+        with patch("streamrip.rip.main.Main", return_value=mock_main):
+            item = {
+                "id": "test-id",
+                "album_db_id": 1,
+                "source": "qobuz",
+                "source_album_id": "123",
+                "title": "Test",
+                "artist": "Artist",
+                "track_count": 10,
+                "status": "downloading",
+            }
+            # Should not raise — 80% meets the threshold
             await service._download_album(item)
 
     async def test_queue_marks_failed_on_error(self, db, event_bus):

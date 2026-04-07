@@ -131,19 +131,22 @@ class DownloadService:
 
         await main.rip()
 
-        # Check if any tracks actually succeeded
-        # main.rip() swallows exceptions via return_exceptions=True
-        # so we check the media items for success indicators
+        # Check success using the same 80% threshold as Album.postprocess()
         for media in main.media:
             if hasattr(media, 'successful_tracks') and hasattr(media, 'total_tracks'):
-                if media.total_tracks > 0 and media.successful_tracks == 0:
-                    raise RuntimeError(
-                        f"All {media.total_tracks} tracks failed to download"
+                total = media.total_tracks
+                success = media.successful_tracks
+                if total > 0:
+                    success_rate = success / total
+                    logger.info(
+                        "Downloaded %d/%d tracks (%.0f%%) for %s - %s",
+                        success, total, success_rate * 100,
+                        item["artist"], item["title"],
                     )
-                logger.info(
-                    "Downloaded %d/%d tracks for %s - %s",
-                    media.successful_tracks, media.total_tracks,
-                    item["artist"], item["title"],
-                )
+                    if success_rate < 0.8:
+                        raise RuntimeError(
+                            f"Only {success}/{total} tracks downloaded "
+                            f"({success_rate:.0%}), below 80% threshold"
+                        )
 
         logger.info("Download complete: %s - %s", item["artist"], item["title"])
