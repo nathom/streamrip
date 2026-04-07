@@ -29,23 +29,23 @@
     try {
       const config = await api.config.get();
       if (config) {
-        qobuzUserId = config.qobuz?.user_id ?? '';
-        qobuzAuthToken = config.qobuz?.auth_token ?? '';
-        qobuzQuality = String(config.qobuz?.quality ?? '5');
-        qobuzConnected = !!config.qobuz?.auth_token;
+        qobuzUserId = config.qobuz_user_id ?? '';
+        qobuzAuthToken = config.qobuz_token ?? '';
+        qobuzQuality = String(config.qobuz_quality ?? 3);
+        qobuzConnected = !!config.qobuz_token;
 
-        tidalConnected = config.tidal?.connected ?? false;
+        tidalConnected = !!config.tidal_access_token;
 
-        downloadPath = config.downloads?.folder ?? '';
-        maxConnections = config.downloads?.max_connections ?? 6;
-        folderFormat = config.downloads?.folder_format ?? '{albumartist} - {title} ({year}) [{container}]';
-        trackFormat = config.downloads?.track_format ?? '{tracknumber:02}. {artist} - {title}{explicit}';
+        downloadPath = config.downloads_path ?? '';
+        maxConnections = config.max_connections ?? 6;
+        folderFormat = config.folder_format ?? '{albumartist} - {title} ({year}) [{container}]';
+        trackFormat = config.track_format ?? '{tracknumber:02}. {artist} - {title}{explicit}';
 
-        conversionEnabled = config.conversion?.enabled ?? false;
-        conversionCodec = config.conversion?.codec ?? 'FLAC';
+        conversionEnabled = config.conversion_enabled ?? false;
+        conversionCodec = config.conversion_codec ?? 'FLAC';
 
-        autoSyncEnabled = config.sync?.auto_sync ?? false;
-        syncInterval = config.sync?.interval ?? '6h';
+        autoSyncEnabled = config.auto_sync_enabled ?? false;
+        syncInterval = config.auto_sync_interval ?? '6h';
       }
     } catch (e) {
       // Config not yet set — use defaults
@@ -58,25 +58,17 @@
     saveSuccess = false;
     try {
       await api.config.update({
-        qobuz: {
-          user_id: qobuzUserId,
-          auth_token: qobuzAuthToken,
-          quality: parseInt(qobuzQuality),
-        },
-        downloads: {
-          folder: downloadPath,
-          max_connections: maxConnections,
-          folder_format: folderFormat,
-          track_format: trackFormat,
-        },
-        conversion: {
-          enabled: conversionEnabled,
-          codec: conversionCodec,
-        },
-        sync: {
-          auto_sync: autoSyncEnabled,
-          interval: syncInterval,
-        },
+        qobuz_user_id: qobuzUserId,
+        qobuz_token: qobuzAuthToken,
+        qobuz_quality: parseInt(qobuzQuality),
+        downloads_path: downloadPath,
+        max_connections: maxConnections,
+        folder_format: folderFormat,
+        track_format: trackFormat,
+        conversion_enabled: conversionEnabled,
+        conversion_codec: conversionCodec,
+        auto_sync_enabled: autoSyncEnabled,
+        auto_sync_interval: syncInterval,
       });
       saveSuccess = true;
       setTimeout(() => { saveSuccess = false; }, 2500);
