@@ -100,61 +100,78 @@ class DownloadService:
                 await self.event_bus.publish("download_failed", {"item_id": item["id"], "error": str(e)})
 
     async def _download_album(self, item: dict):
-        """Download an album using the existing streamrip pipeline."""
-        from streamrip.rip.main import Main
+        """Download an album using PendingAlbum directly (no Main).
+
+        This avoids Main.__init__ creating new un-logged-in clients.
+        We pass the already-logged-in client directly to PendingAlbum.
+        """
+        from streamrip.media import PendingAlbum
+        from streamrip import db as sdb
         from .config_bridge import build_streamrip_config
 
         client = self.clients.get(item["source"])
         if client is None:
             raise ValueError(f"No client for source {item['source']}")
 
-        logger.info("Downloading album: %s - %s (id: %s)",
-                     item["artist"], item["title"], item["source_album_id"])
+        if not getattr(client, 'logged_in', False):
+            raise ValueError(f"Client {item['source']} is not logged in")
+        if item["source"] == "qobuz" and not getattr(client, 'secret', None):
+            raise ValueError("Qobuz client has no secret — login may have failed")
 
-        # Build config from the same DB source as everything else
+        logger.info(
+            "Downloading album: %s - %s (id: %s) [logged_in=%s, secret=%s]",
+            item["artist"], item["title"], item["source_album_id"],
+            client.logged_in,
+            "set" if getattr(client, "secret", None) else "None",
+        )
+
+        # Build config from DB
         config = build_streamrip_config(self.db)
-
-        # Override download path if set on this service
         if self.download_path:
             config.session.downloads.folder = self.download_path
 
-        # Create a Main instance and inject the already-logged-in client
-        main = Main(config)
-        main.clients[item["source"]] = client
+        # Set up streamrip database (for track dedup)
+        c = config.session.database
+        if c.downloads_enabled:
+            downloads_db = sdb.Downloads(c.downloads_path)
+            downloaded_albums_db = sdb.DownloadedAlbums(
+                c.downloads_path.replace(".db", "_albums.db")
+            )
+        else:
+            downloads_db = sdb.Dummy()
+            downloaded_albums_db = sdb.Dummy()
 
-        # Verify client state before passing to pipeline
-        logger.info(
-            "Client state: logged_in=%s, secret=%s, session=%s",
-            getattr(client, 'logged_in', None),
-            'set' if getattr(client, 'secret', None) else 'None',
-            'open' if getattr(client, 'session', None) else 'None',
-        )
+        if c.failed_downloads_enabled:
+            failed_db = sdb.Failed(c.failed_downloads_path)
+        else:
+            failed_db = sdb.Dummy()
 
-        # Use the existing pipeline: add by ID → resolve → rip
-        main._add_by_id_client(client, "album", item["source_album_id"])
-        await main.resolve()
+        database = sdb.Database(downloads_db, failed_db, downloaded_albums_db)
 
-        if not main.media:
+        # Create PendingAlbum directly with the logged-in client
+        pending = PendingAlbum(item["source_album_id"], client, config, database)
+
+        media = await pending.resolve()
+        if media is None:
             raise ValueError(f"Failed to resolve album {item['source_album_id']}")
 
-        await main.rip()
+        await media.rip()
 
         # Check success using the same 80% threshold as Album.postprocess()
-        for media in main.media:
-            if hasattr(media, 'successful_tracks') and hasattr(media, 'total_tracks'):
-                total = media.total_tracks
-                success = media.successful_tracks
-                if total > 0:
-                    success_rate = success / total
-                    logger.info(
-                        "Downloaded %d/%d tracks (%.0f%%) for %s - %s",
-                        success, total, success_rate * 100,
-                        item["artist"], item["title"],
+        if hasattr(media, 'successful_tracks') and hasattr(media, 'total_tracks'):
+            total = media.total_tracks
+            success = media.successful_tracks
+            if total > 0:
+                success_rate = success / total
+                logger.info(
+                    "Downloaded %d/%d tracks (%.0f%%) for %s - %s",
+                    success, total, success_rate * 100,
+                    item["artist"], item["title"],
+                )
+                if success_rate < 0.8:
+                    raise RuntimeError(
+                        f"Only {success}/{total} tracks downloaded "
+                        f"({success_rate:.0%}), below 80% threshold"
                     )
-                    if success_rate < 0.8:
-                        raise RuntimeError(
-                            f"Only {success}/{total} tracks downloaded "
-                            f"({success_rate:.0%}), below 80% threshold"
-                        )
 
         logger.info("Download complete: %s - %s", item["artist"], item["title"])

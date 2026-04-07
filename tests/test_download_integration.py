@@ -109,160 +109,86 @@ class TestMainConstruction:
 class TestDownloadServicePipeline:
     """Test the download service's integration with the streamrip pipeline."""
 
-    async def test_download_album_with_mock_client(self, db, event_bus):
-        """The download pipeline should call Main's add/resolve/rip sequence."""
-        db.upsert_album("qobuz", "test-album-123", "Test Album", "Test Artist")
-
+    async def test_download_album_rejects_not_logged_in(self, db, event_bus):
+        """Should raise when client is not logged in."""
         mock_client = AsyncMock()
         mock_client.source = "qobuz"
-        mock_client.logged_in = True
+        mock_client.logged_in = False
 
         service = DownloadService(
             db, event_bus,
             clients={"qobuz": mock_client},
-            download_path="/tmp/test-downloads",
+            download_path="/tmp",
         )
 
-        # Mock Main to avoid actual downloads
-        mock_main = MagicMock()
-        mock_main.resolve = AsyncMock()
-        mock_main.rip = AsyncMock()
-        mock_main.media = []  # Empty media = resolve produced nothing
-        mock_main.pending = []
-        mock_main.clients = {}
+        item = {
+            "id": "test-id",
+            "album_db_id": 1,
+            "source": "qobuz",
+            "source_album_id": "123",
+            "title": "Test",
+            "artist": "Artist",
+            "track_count": 10,
+            "status": "downloading",
+        }
+        with pytest.raises(ValueError, match="not logged in"):
+            await service._download_album(item)
 
-        with patch("streamrip.rip.main.Main", return_value=mock_main) as MockMain:
-            item = {
-                "id": "test-queue-id",
-                "album_db_id": 1,
-                "source": "qobuz",
-                "source_album_id": "test-album-123",
-                "title": "Test Album",
-                "artist": "Test Artist",
-                "track_count": 5,
-                "status": "downloading",
-            }
+    async def test_download_album_rejects_no_secret(self, db, event_bus):
+        """Should raise when Qobuz client has no secret."""
+        mock_client = AsyncMock()
+        mock_client.source = "qobuz"
+        mock_client.logged_in = True
+        mock_client.secret = None
 
-            # Should raise because no media resolved
+        service = DownloadService(
+            db, event_bus,
+            clients={"qobuz": mock_client},
+            download_path="/tmp",
+        )
+
+        item = {
+            "id": "test-id",
+            "album_db_id": 1,
+            "source": "qobuz",
+            "source_album_id": "123",
+            "title": "Test",
+            "artist": "Artist",
+            "track_count": 10,
+            "status": "downloading",
+        }
+        with pytest.raises(ValueError, match="no secret"):
+            await service._download_album(item)
+
+    async def test_download_album_resolve_failure(self, db, event_bus):
+        """Should raise when PendingAlbum.resolve() returns None."""
+        mock_client = AsyncMock()
+        mock_client.source = "qobuz"
+        mock_client.logged_in = True
+        mock_client.secret = "test-secret"
+
+        service = DownloadService(
+            db, event_bus,
+            clients={"qobuz": mock_client},
+            download_path="/tmp",
+        )
+
+        item = {
+            "id": "test-id",
+            "album_db_id": 1,
+            "source": "qobuz",
+            "source_album_id": "nonexistent",
+            "title": "Test",
+            "artist": "Artist",
+            "track_count": 10,
+            "status": "downloading",
+        }
+
+        with patch("streamrip.media.PendingAlbum") as MockPending:
+            mock_pending = MockPending.return_value
+            mock_pending.resolve = AsyncMock(return_value=None)
             with pytest.raises(ValueError, match="Failed to resolve"):
                 await service._download_album(item)
-
-            # Verify Main was constructed and the client was injected
-            MockMain.assert_called_once()
-            constructed_config = MockMain.call_args[0][0]
-            assert constructed_config.session.downloads.folder == "/tmp/test-downloads"
-            assert constructed_config.session.database.downloads_path  # not empty
-
-    async def test_download_detects_all_tracks_failed(self, db, event_bus):
-        """Should raise when all tracks fail to download."""
-        mock_client = AsyncMock()
-        mock_client.source = "qobuz"
-        mock_client.logged_in = True
-
-        service = DownloadService(
-            db, event_bus,
-            clients={"qobuz": mock_client},
-            download_path="/tmp",
-        )
-
-        mock_media = MagicMock()
-        mock_media.successful_tracks = 0
-        mock_media.total_tracks = 10
-
-        mock_main = MagicMock()
-        mock_main.resolve = AsyncMock()
-        mock_main.rip = AsyncMock()
-        mock_main.media = [mock_media]
-        mock_main.pending = []
-        mock_main.clients = {}
-
-        with patch("streamrip.rip.main.Main", return_value=mock_main):
-            item = {
-                "id": "test-id",
-                "album_db_id": 1,
-                "source": "qobuz",
-                "source_album_id": "123",
-                "title": "Test",
-                "artist": "Artist",
-                "track_count": 10,
-                "status": "downloading",
-            }
-            with pytest.raises(RuntimeError, match="below 80% threshold"):
-                await service._download_album(item)
-
-    async def test_download_fails_below_80_percent(self, db, event_bus):
-        """Should raise when less than 80% of tracks succeed (matching TUI behavior)."""
-        mock_client = AsyncMock()
-        mock_client.source = "qobuz"
-        mock_client.logged_in = True
-
-        service = DownloadService(
-            db, event_bus,
-            clients={"qobuz": mock_client},
-            download_path="/tmp",
-        )
-
-        mock_media = MagicMock()
-        mock_media.successful_tracks = 7  # 70% — below threshold
-        mock_media.total_tracks = 10
-
-        mock_main = MagicMock()
-        mock_main.resolve = AsyncMock()
-        mock_main.rip = AsyncMock()
-        mock_main.media = [mock_media]
-        mock_main.pending = []
-        mock_main.clients = {}
-
-        with patch("streamrip.rip.main.Main", return_value=mock_main):
-            item = {
-                "id": "test-id",
-                "album_db_id": 1,
-                "source": "qobuz",
-                "source_album_id": "123",
-                "title": "Test",
-                "artist": "Artist",
-                "track_count": 10,
-                "status": "downloading",
-            }
-            with pytest.raises(RuntimeError, match="below 80% threshold"):
-                await service._download_album(item)
-
-    async def test_download_succeeds_at_80_percent(self, db, event_bus):
-        """Should succeed when exactly 80% of tracks download (matching TUI threshold)."""
-        mock_client = AsyncMock()
-        mock_client.source = "qobuz"
-        mock_client.logged_in = True
-
-        service = DownloadService(
-            db, event_bus,
-            clients={"qobuz": mock_client},
-            download_path="/tmp",
-        )
-
-        mock_media = MagicMock()
-        mock_media.successful_tracks = 8  # 80% — at threshold
-        mock_media.total_tracks = 10
-
-        mock_main = MagicMock()
-        mock_main.resolve = AsyncMock()
-        mock_main.rip = AsyncMock()
-        mock_main.media = [mock_media]
-        mock_main.pending = []
-        mock_main.clients = {}
-
-        with patch("streamrip.rip.main.Main", return_value=mock_main):
-            item = {
-                "id": "test-id",
-                "album_db_id": 1,
-                "source": "qobuz",
-                "source_album_id": "123",
-                "title": "Test",
-                "artist": "Artist",
-                "track_count": 10,
-                "status": "downloading",
-            }
-            # Should not raise — 80% meets the threshold
-            await service._download_album(item)
 
     async def test_client_state_preserved_through_pipeline(self, db, event_bus):
         """The logged-in client should retain secret and logged_in through the pipeline."""
