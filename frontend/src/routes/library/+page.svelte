@@ -6,57 +6,75 @@
     albums,
     totalAlbums,
     currentSource,
-    searchQuery,
-    sortBy,
-    filterStatus,
     selectedAlbum,
-    loadAlbums,
     loadAlbumDetail,
   } from '$lib/stores/library';
   import { api } from '$lib/api/client';
 
-  // Reactive store values (Svelte 5 runes)
   let albumList = $derived($albums);
   let total = $derived($totalAlbums);
   let source = $derived($currentSource);
   let detail = $derived($selectedAlbum);
 
-  // Local UI state
   let detailOpen = $state(false);
-  let searchValue = $state($searchQuery);
-  let sort = $state($sortBy);
-  let filter = $state($filterStatus);
+  let searchValue = $state('');
+  let sort = $state('added_to_library_at');
+  let filter = $state('all');
+  let loading = $state(false);
+  let refreshing = $state(false);
+  let searchMode = $state(false);
   let searchDebounce: ReturnType<typeof setTimeout> | null = null;
 
-  // Reload albums when source, sort, or filter changes
-  $effect(() => {
-    const s = source;
-    const so = sort;
-    const f = filter;
-    const params: Record<string, string> = { sort: so };
-    if (f !== 'all') params['status'] = f;
-    loadAlbums(s, params).catch(console.error);
-  });
+  async function fetchAlbums() {
+    loading = true;
+    searchMode = false;
+    try {
+      const params: Record<string, string> = {
+        sort_by: sort,
+        page_size: '500',
+      };
+      if (filter !== 'all') params['status'] = filter;
+      const data = await api.library.getAlbums(source, params);
+      $albums = data.albums;
+      $totalAlbums = data.total;
+    } catch (err) {
+      console.error('Failed to load albums', err);
+    } finally {
+      loading = false;
+    }
+  }
 
-  // Debounced search
+  async function refreshLibrary() {
+    refreshing = true;
+    try {
+      await api.library.refresh(source);
+      await fetchAlbums();
+    } catch (err) {
+      console.error('Failed to refresh library', err);
+    } finally {
+      refreshing = false;
+    }
+  }
+
   function handleSearch(e: Event) {
     const value = (e.target as HTMLInputElement).value;
     searchValue = value;
-    $searchQuery = value;
     if (searchDebounce) clearTimeout(searchDebounce);
     searchDebounce = setTimeout(async () => {
       if (value.trim().length === 0) {
-        // Restore library view
-        const params: Record<string, string> = { sort };
-        if (filter !== 'all') params['status'] = filter;
-        await loadAlbums(source, params);
+        await fetchAlbums();
       } else {
+        loading = true;
+        searchMode = true;
         try {
           const data = await api.library.search(source, value.trim());
-          $albums = data.albums ?? data;
-          $totalAlbums = Array.isArray(data.albums) ? data.albums.length : (data.total ?? $albums.length);
+          const results = Array.isArray(data) ? data : (data.albums ?? []);
+          $albums = results;
+          $totalAlbums = results.length;
         } catch (err) {
           console.error('Search failed', err);
+        } finally {
+          loading = false;
         }
       }
     }, 300);
@@ -65,10 +83,12 @@
   async function handleSelectAlbum(album: any) {
     $selectedAlbum = album;
     detailOpen = true;
-    try {
-      await loadAlbumDetail(source, album.id);
-    } catch (err) {
-      console.error('Failed to load album detail', err);
+    if (album.id && album.id > 0) {
+      try {
+        await loadAlbumDetail(source, album.id);
+      } catch (err) {
+        console.error('Failed to load album detail', err);
+      }
     }
   }
 
@@ -78,30 +98,54 @@
 
   async function downloadAllNew() {
     const newAlbums = albumList.filter(
-      (a) => !a.status || a.status.toLowerCase() === 'not downloaded'
+      (a) => {
+        const status = (a.download_status || a.status || '').toLowerCase();
+        return !status || status === 'not_downloaded';
+      }
     );
     if (newAlbums.length === 0) return;
     try {
       await api.downloads.enqueue(
         source,
-        newAlbums.map((a) => String(a.id))
+        newAlbums.map((a) => a.source_album_id || String(a.id))
       );
     } catch (err) {
       console.error('Failed to queue downloads', err);
     }
   }
 
+  // Reload when source, sort, or filter changes
+  $effect(() => {
+    // Touch reactive values to subscribe
+    const _s = source;
+    const _so = sort;
+    const _f = filter;
+    if (!searchMode) {
+      fetchAlbums();
+    }
+  });
+
   onMount(() => {
-    const params: Record<string, string> = { sort };
-    if (filter !== 'all') params['status'] = filter;
-    loadAlbums(source, params).catch(console.error);
+    fetchAlbums();
   });
 </script>
 
 <div class="page-header">
   <div>
     <div class="page-title">Library</div>
-    <div class="page-subtitle">{total} albums · {source.charAt(0).toUpperCase() + source.slice(1)}</div>
+    <div class="page-subtitle">
+      {#if loading}
+        Loading...
+      {:else}
+        {total} albums · {source.charAt(0).toUpperCase() + source.slice(1)}
+        {#if searchMode} · search results{/if}
+      {/if}
+    </div>
+  </div>
+  <div class="header-actions">
+    <button class="btn btn-secondary btn-sm" onclick={refreshLibrary} disabled={refreshing}>
+      {#if refreshing}Syncing...{:else}▸ Refresh Library{/if}
+    </button>
   </div>
 </div>
 
@@ -109,7 +153,7 @@
   <input
     class="search-input"
     type="text"
-    placeholder="Search albums, artists…"
+    placeholder="Search Qobuz albums, artists..."
     value={searchValue}
     oninput={handleSearch}
   />
@@ -117,29 +161,24 @@
   <select
     class="toolbar-select"
     value={sort}
-    onchange={(e) => {
-      sort = (e.target as HTMLSelectElement).value;
-      $sortBy = sort;
-    }}
+    onchange={(e) => { sort = (e.target as HTMLSelectElement).value; }}
   >
     <option value="added_to_library_at">Sort: Added</option>
     <option value="artist">Sort: Artist</option>
     <option value="title">Sort: Title</option>
-    <option value="year">Sort: Year</option>
+    <option value="release_date">Sort: Year</option>
   </select>
 
   <select
     class="toolbar-select"
     value={filter}
-    onchange={(e) => {
-      filter = (e.target as HTMLSelectElement).value;
-      $filterStatus = filter;
-    }}
+    onchange={(e) => { filter = (e.target as HTMLSelectElement).value; }}
   >
     <option value="all">All</option>
-    <option value="downloaded">Downloaded</option>
+    <option value="complete">Downloaded</option>
     <option value="not_downloaded">Not Downloaded</option>
     <option value="partial">Partial</option>
+    <option value="queued">Queued</option>
   </select>
 
   <div class="toolbar-right">
@@ -148,11 +187,17 @@
 </div>
 
 <div class="section-title">
-  <span>Albums</span>
+  <span>{searchMode ? 'Search Results' : 'Albums'}</span>
   <span class="decoration">░▒▓</span>
 </div>
 
-<AlbumGrid albums={albumList} onselect={handleSelectAlbum} />
+{#if loading}
+  <div class="loading-state">
+    <span class="loading-text">Loading albums...</span>
+  </div>
+{:else}
+  <AlbumGrid albums={albumList} onselect={handleSelectAlbum} />
+{/if}
 
 <AlbumDetail album={detail} open={detailOpen} onclose={closeDetail} />
 
@@ -176,6 +221,11 @@
     font-size: var(--text-xs);
     color: var(--text-tertiary);
     letter-spacing: var(--tracking-mono);
+  }
+
+  .header-actions {
+    display: flex;
+    gap: var(--space-2);
   }
 
   .toolbar {
@@ -244,7 +294,19 @@
     font-size: 11px;
   }
 
-  /* Buttons (local scope) */
+  .loading-state {
+    display: flex;
+    justify-content: center;
+    padding: var(--space-16);
+  }
+
+  .loading-text {
+    font-family: var(--font-mono);
+    font-size: var(--text-sm);
+    color: var(--text-tertiary);
+    letter-spacing: var(--tracking-mono);
+  }
+
   .btn {
     font-family: var(--font-family);
     font-size: var(--text-sm);
@@ -257,6 +319,8 @@
     align-items: center;
     gap: var(--space-2);
   }
+  .btn:disabled { opacity: 0.5; cursor: default; }
+  .btn-secondary { background: var(--canvas-raised); color: var(--text-primary); box-shadow: var(--shadow-sm); }
   .btn-pop { background: var(--pop); color: var(--text-inverse); box-shadow: var(--shadow-pop); }
   .btn-sm  { font-size: var(--text-xs); padding: var(--space-1) var(--space-3); }
 </style>

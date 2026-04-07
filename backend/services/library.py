@@ -35,9 +35,13 @@ class LibraryService:
         if not client.logged_in:
             raise ValueError(f"Client {source} is not authenticated")
 
-        albums_data = await client.get_user_favorites("album", limit=None)
+        raw_pages = await client.get_user_favorites("album", limit=None)
+
+        # Extract album items from paginated response
+        all_items = self._extract_items_from_pages(source, raw_pages)
+
         new_count = 0
-        for item in albums_data:
+        for item in all_items:
             album_resp = self._extract_album_data(source, item)
             if album_resp is None:
                 continue
@@ -46,8 +50,38 @@ class LibraryService:
                 new_count += 1
             self.db.upsert_album(**album_resp)
 
-        await self.event_bus.publish("library_updated", {"source": source, "new_count": new_count, "total": len(albums_data)})
-        return {"total": len(albums_data), "new": new_count}
+        await self.event_bus.publish("library_updated", {"source": source, "new_count": new_count, "total": len(all_items)})
+        return {"total": len(all_items), "new": new_count}
+
+    def _extract_items_from_pages(self, source: str, pages) -> list:
+        """Extract individual album items from paginated API responses."""
+        if not pages:
+            return []
+
+        # If it's already a flat list of items (Tidal), return as-is
+        if isinstance(pages, list) and pages and not isinstance(pages[0], dict):
+            return pages
+
+        # Tidal returns flat list of items directly
+        if isinstance(pages, list) and pages and "id" in pages[0] and "albums" not in pages[0]:
+            return pages
+
+        # Qobuz returns pages with nested structure: {albums: {items: [...]}}
+        all_items = []
+        for page in pages:
+            if not isinstance(page, dict):
+                continue
+            # Try common nesting patterns
+            for key in ("albums", "tracks", "artists"):
+                container = page.get(key, {})
+                if isinstance(container, dict) and "items" in container:
+                    all_items.extend(container["items"])
+                    break
+            else:
+                # If no known key, treat the page itself as an item
+                if "id" in page:
+                    all_items.append(page)
+        return all_items
 
     async def search(self, source, query, limit=20):
         client = self.clients.get(source)

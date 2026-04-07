@@ -2,6 +2,7 @@
 
 import asyncio
 import logging
+import os
 import uuid
 from datetime import datetime
 from typing import Any
@@ -99,8 +100,38 @@ class DownloadService:
                 await self.event_bus.publish("download_failed", {"item_id": item["id"], "error": str(e)})
 
     async def _download_album(self, item: dict):
-        # Integration point: wire to existing streamrip.rip.main.Main pipeline.
+        """Download an album using the existing streamrip pipeline."""
+        from streamrip.config import Config
+        from streamrip.rip.main import Main
+
         client = self.clients.get(item["source"])
         if client is None:
             raise ValueError(f"No client for source {item['source']}")
-        logger.info("Downloading album: %s - %s", item["artist"], item["title"])
+
+        logger.info("Downloading album: %s - %s (id: %s)",
+                     item["artist"], item["title"], item["source_album_id"])
+
+        # Build a Config from the stored settings
+        config_path = os.environ.get(
+            "STREAMRIP_CONFIG_PATH",
+            os.path.expanduser("~/.config/streamrip/config.toml"),
+        )
+        if os.path.exists(config_path):
+            config = Config(config_path)
+        else:
+            config = Config.defaults()
+
+        # Override download path
+        if self.download_path:
+            config.session.downloads.folder = self.download_path
+
+        # Create a Main instance and inject the already-logged-in client
+        main = Main(config)
+        main.clients[item["source"]] = client
+
+        # Use the existing pipeline: add by ID → resolve → rip
+        main._add_by_id_client(client, "album", item["source_album_id"])
+        await main.resolve()
+        await main.rip()
+
+        logger.info("Download complete: %s - %s", item["artist"], item["title"])
