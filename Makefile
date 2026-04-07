@@ -31,11 +31,22 @@ run-docker:
 # Build and run
 docker: build-docker run-docker
 
-# Local dev server (backend only)
-dev:
-	poetry run uvicorn backend.main:create_app --factory --port 8080 --reload
+# Build frontend and copy to backend/static for local serving
+build-local: build-frontend
+	rm -rf backend/static
+	cp -r frontend/build backend/static
 
-# Local dev server (frontend)
+# Local dev server (backend with static frontend)
+dev: build-local
+	mkdir -p data
+	STREAMRIP_DB_PATH=data/streamrip.db STREAMRIP_DOWNLOADS_PATH=~/Downloads/Music poetry run uvicorn backend.main:create_app --factory --port 8080 --reload
+
+# Local dev server (backend only, no frontend rebuild)
+dev-backend:
+	mkdir -p data
+	STREAMRIP_DB_PATH=data/streamrip.db STREAMRIP_DOWNLOADS_PATH=~/Downloads/Music poetry run uvicorn backend.main:create_app --factory --port 8080 --reload
+
+# Local dev server (frontend hot-reload, proxied to backend)
 dev-frontend:
 	cd frontend && npm run dev
 
