@@ -156,23 +156,71 @@ class DownloadService:
         if media is None:
             raise ValueError(f"Failed to resolve album {item['source_album_id']}")
 
+        # Update queue with actual track count from resolved album
+        item["track_count"] = len(media.tracks) if hasattr(media, 'tracks') else 0
+        await self.event_bus.publish("download_progress", {
+            "item_id": item["id"],
+            "status": "downloading",
+            "tracks_done": 0,
+            "track_count": item["track_count"],
+        })
+
         await media.rip()
 
-        # Check success using the same 80% threshold as Album.postprocess()
+        # Get results and update web DB track statuses
+        success = 0
+        total = 0
         if hasattr(media, 'successful_tracks') and hasattr(media, 'total_tracks'):
             total = media.total_tracks
             success = media.successful_tracks
-            if total > 0:
-                success_rate = success / total
-                logger.info(
-                    "Downloaded %d/%d tracks (%.0f%%) for %s - %s",
-                    success, total, success_rate * 100,
-                    item["artist"], item["title"],
+
+        item["tracks_done"] = success
+
+        # Update track download_status in web DB
+        self._update_track_statuses(item, media)
+
+        await self.event_bus.publish("download_progress", {
+            "item_id": item["id"],
+            "status": "downloading",
+            "tracks_done": success,
+            "track_count": total,
+        })
+
+        if total > 0:
+            success_rate = success / total
+            logger.info(
+                "Downloaded %d/%d tracks (%.0f%%) for %s - %s",
+                success, total, success_rate * 100,
+                item["artist"], item["title"],
+            )
+            if success_rate < 0.8:
+                raise RuntimeError(
+                    f"Only {success}/{total} tracks downloaded "
+                    f"({success_rate:.0%}), below 80% threshold"
                 )
-                if success_rate < 0.8:
-                    raise RuntimeError(
-                        f"Only {success}/{total} tracks downloaded "
-                        f"({success_rate:.0%}), below 80% threshold"
-                    )
 
         logger.info("Download complete: %s - %s", item["artist"], item["title"])
+
+    def _update_track_statuses(self, item: dict, media):
+        """Update track download_status in the web DB after rip completes.
+
+        Checks the streamrip downloads DB to see which track IDs were
+        actually downloaded, then updates the web DB accordingly.
+        """
+        album = self.db.get_album_by_source_id(item["source"], item["source_album_id"])
+        if not album:
+            return
+
+        tracks = self.db.get_tracks(album["id"])
+        if not tracks:
+            return
+
+        # Check the streamrip downloads DB for which tracks were downloaded
+        from .config_bridge import build_streamrip_config
+        from streamrip.db import build_database
+        config = build_streamrip_config(self.db)
+        sr_db = build_database(config)
+
+        for track in tracks:
+            if sr_db.downloaded(track["source_track_id"]):
+                self.db.update_track_status(track["id"], "complete")

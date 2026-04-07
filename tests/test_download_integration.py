@@ -109,11 +109,12 @@ class TestMainConstruction:
 class TestDownloadServicePipeline:
     """Test the download service's integration with the streamrip pipeline."""
 
-    async def test_download_album_rejects_not_logged_in(self, db, event_bus):
-        """Should raise when client is not logged in."""
+    async def test_download_album_auto_logins_when_not_logged_in(self, db, event_bus):
+        """Should attempt login when client is not logged in."""
         mock_client = AsyncMock()
         mock_client.source = "qobuz"
         mock_client.logged_in = False
+        mock_client.login = AsyncMock(side_effect=ValueError("Login failed in test"))
 
         service = DownloadService(
             db, event_bus,
@@ -131,15 +132,17 @@ class TestDownloadServicePipeline:
             "track_count": 10,
             "status": "downloading",
         }
-        with pytest.raises(ValueError, match="not logged in"):
+        with pytest.raises(ValueError, match="failed to login"):
             await service._download_album(item)
+        mock_client.login.assert_called_once()
 
-    async def test_download_album_rejects_no_secret(self, db, event_bus):
-        """Should raise when Qobuz client has no secret."""
+    async def test_download_album_auto_logins_when_no_secret(self, db, event_bus):
+        """Should attempt login when Qobuz client has no secret."""
         mock_client = AsyncMock()
         mock_client.source = "qobuz"
         mock_client.logged_in = True
         mock_client.secret = None
+        mock_client.login = AsyncMock(side_effect=ValueError("Login failed in test"))
 
         service = DownloadService(
             db, event_bus,
@@ -157,8 +160,9 @@ class TestDownloadServicePipeline:
             "track_count": 10,
             "status": "downloading",
         }
-        with pytest.raises(ValueError, match="no secret"):
+        with pytest.raises(ValueError, match="failed to login"):
             await service._download_album(item)
+        mock_client.login.assert_called_once()
 
     async def test_download_album_resolve_failure(self, db, event_bus):
         """Should raise when PendingAlbum.resolve() returns None."""
