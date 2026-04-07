@@ -58,15 +58,11 @@ class LibraryService:
             return []
 
         track_items = resp.get("tracks", {}).get("items", [])
-        tracks = []
         for t in track_items:
             artist = t.get("performer", {})
-            if isinstance(artist, dict):
-                artist_name = artist.get("name", "Unknown")
-            else:
-                artist_name = str(artist) if artist else "Unknown"
+            artist_name = artist.get("name", "Unknown") if isinstance(artist, dict) else (str(artist) if artist else "Unknown")
 
-            track_id = self.db.upsert_track(
+            self.db.upsert_track(
                 album_id=album_id,
                 source_track_id=str(t["id"]),
                 title=t.get("title", "Unknown"),
@@ -77,9 +73,7 @@ class LibraryService:
                 explicit=t.get("parental_warning", False),
                 isrc=t.get("isrc"),
             )
-            tracks.append(self.db.get_tracks(album_id)[-1])
 
-        # Re-fetch all tracks to get consistent format
         return self.db.get_tracks(album_id)
 
     async def _fetch_tidal_tracks(self, client, source_album_id, album_id):
@@ -124,13 +118,13 @@ class LibraryService:
         # Extract album items from paginated response
         all_items = self._extract_items_from_pages(source, raw_pages)
 
+        existing_ids = {a["source_album_id"] for a in self.db.get_albums(source, limit=100000)}
         new_count = 0
         for item in all_items:
             album_resp = self._extract_album_data(source, item)
             if album_resp is None:
                 continue
-            existing = self.db.get_album_by_source_id(source, album_resp["source_album_id"])
-            if existing is None:
+            if album_resp["source_album_id"] not in existing_ids:
                 new_count += 1
             self.db.upsert_album(**album_resp)
 
@@ -138,31 +132,30 @@ class LibraryService:
         return {"total": len(all_items), "new": new_count}
 
     def _extract_items_from_pages(self, source: str, pages) -> list:
-        """Extract individual album items from paginated API responses."""
+        """Extract individual album items from paginated API responses.
+
+        Handles two formats:
+        - Tidal: flat list of dicts with 'id' keys
+        - Qobuz: list of page dicts containing {albums: {items: [...]}}
+        """
         if not pages:
             return []
 
-        # If it's already a flat list of items (Tidal), return as-is
-        if isinstance(pages, list) and pages and not isinstance(pages[0], dict):
+        # Flat list of items (Tidal) — no nested structure
+        if isinstance(pages[0], dict) and "id" in pages[0] and "albums" not in pages[0]:
             return pages
 
-        # Tidal returns flat list of items directly
-        if isinstance(pages, list) and pages and "id" in pages[0] and "albums" not in pages[0]:
-            return pages
-
-        # Qobuz returns pages with nested structure: {albums: {items: [...]}}
+        # Paginated response (Qobuz) — extract items from nested containers
         all_items = []
         for page in pages:
             if not isinstance(page, dict):
                 continue
-            # Try common nesting patterns
             for key in ("albums", "tracks", "artists"):
                 container = page.get(key, {})
                 if isinstance(container, dict) and "items" in container:
                     all_items.extend(container["items"])
                     break
             else:
-                # If no known key, treat the page itself as an item
                 if "id" in page:
                     all_items.append(page)
         return all_items

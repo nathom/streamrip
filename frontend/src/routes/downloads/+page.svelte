@@ -4,21 +4,15 @@
   import { queue, activeCount, totalSpeed, loadQueue } from '$lib/stores/downloads';
   import { api } from '$lib/api/client';
 
-  let queueItems = $derived($queue);
   let active = $derived($activeCount);
   let speed = $derived($totalSpeed);
 
-  let activeItems = $derived(queueItems.filter((i: any) => ['pending', 'downloading'].includes(i.status)));
-  let completedItems = $derived(queueItems.filter((i: any) => i.status === 'complete'));
-  let failedItems = $derived(queueItems.filter((i: any) => i.status === 'failed'));
-  let cancelledItems = $derived(queueItems.filter((i: any) => i.status === 'cancelled'));
+  let activeItems = $derived($queue.filter((i: any) => ['pending', 'downloading'].includes(i.status)));
+  let completedItems = $derived($queue.filter((i: any) => i.status === 'complete'));
+  let failedItems = $derived($queue.filter((i: any) => ['failed', 'cancelled'].includes(i.status)));
 
-  // Derived stats
   let downloadedTracks = $derived(
-    queueItems.reduce((sum: number, i: any) => sum + (i.downloaded_tracks ?? 0), 0)
-  );
-  let diskUsageGB = $derived(
-    Math.round(queueItems.reduce((sum: number, i: any) => sum + (i.size_mb ?? 0), 0) / 1024)
+    $queue.reduce((sum: number, i: any) => sum + (i.tracks_done ?? 0), 0)
   );
 
   async function cancelAll() {
@@ -64,9 +58,9 @@
       <div class="stat-sub">tracks total</div>
     </div>
     <div class="stat-card">
-      <div class="stat-label">Disk Usage</div>
-      <div class="stat-value">{diskUsageGB || '—'}</div>
-      <div class="stat-sub">GB</div>
+      <div class="stat-label">Completed</div>
+      <div class="stat-value">{completedItems.length}</div>
+      <div class="stat-sub">albums</div>
     </div>
   </div>
 
@@ -79,8 +73,18 @@
     <DownloadQueue items={activeItems} mode="active" />
   </div>
 
+  {#if failedItems.length > 0}
+    <div class="section-title">
+      <span>Failed</span>
+      <span class="decoration">░▒▓</span>
+    </div>
+    <div style="margin-bottom: var(--space-8);">
+      <DownloadQueue items={failedItems} mode="completed" />
+    </div>
+  {/if}
+
   <div class="section-title">
-    <span>Completed Today</span>
+    <span>Completed</span>
     <span class="decoration">░▒▓</span>
   </div>
 

@@ -125,12 +125,10 @@ class DownloadService:
             "set" if getattr(client, "secret", None) else "None",
         )
 
-        # Build config from DB
         config = build_streamrip_config(self.db)
         if self.download_path:
             config.session.downloads.folder = self.download_path
 
-        # Set up streamrip database (for track dedup)
         c = config.session.database
         if c.downloads_enabled:
             downloads_db = sdb.Downloads(c.downloads_path)
@@ -148,7 +146,6 @@ class DownloadService:
 
         database = sdb.Database(downloads_db, failed_db, downloaded_albums_db)
 
-        # Create PendingAlbum directly with the logged-in client
         pending = PendingAlbum(item["source_album_id"], client, config, database)
 
         media = await pending.resolve()
