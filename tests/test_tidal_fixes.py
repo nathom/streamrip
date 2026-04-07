@@ -151,3 +151,45 @@ class TestTidalVideoUrl:
 
         url = await client.get_video_file_url("video_123")
         assert "high.m3u8" in url
+
+
+class TestTidalAutoRefresh:
+    """Test that _api_request auto-refreshes on 401."""
+
+    async def test_retries_on_401_with_refresh_token(self):
+        """Should refresh token and retry when getting 401."""
+        from streamrip.client.tidal import TidalClient
+
+        client = TidalClient.__new__(TidalClient)
+        client.session = MagicMock()
+        client.rate_limiter = AsyncMock()
+        client.config = MagicMock()
+        client.config.access_token = "old-token"
+        client.config.country_code = "US"
+        client.refresh_token = "refresh-token"
+        client.logged_in = True
+        client._retried_401 = False
+
+        # First call returns 401, second returns 200
+        mock_resp_401 = AsyncMock()
+        mock_resp_401.status = 401
+        mock_resp_401.json = AsyncMock(return_value={"status": 401})
+        mock_resp_401.__aenter__ = AsyncMock(return_value=mock_resp_401)
+        mock_resp_401.__aexit__ = AsyncMock(return_value=False)
+
+        mock_resp_200 = AsyncMock()
+        mock_resp_200.status = 200
+        mock_resp_200.json = AsyncMock(return_value={"items": [{"id": 1}]})
+        mock_resp_200.raise_for_status = MagicMock()  # sync, not async
+        mock_resp_200.__aenter__ = AsyncMock(return_value=mock_resp_200)
+        mock_resp_200.__aexit__ = AsyncMock(return_value=False)
+
+        client.session.get = MagicMock(side_effect=[mock_resp_401, mock_resp_200])
+        client._refresh_access_token = AsyncMock()
+        client._update_authorization_from_config = MagicMock()
+
+        result = await client._api_request("test/endpoint", {"key": "value"})
+
+        # Should have called refresh
+        client._refresh_access_token.assert_called_once()
+        assert result["items"][0]["id"] == 1

@@ -68,3 +68,39 @@ class TestLibraryServiceSearch:
         unknown = next(r for r in results if r["source_album_id"] == "new_id")
         assert known["in_library"] is True
         assert unknown["in_library"] is False
+
+
+class TestExtractItemsFromPages:
+    def test_qobuz_paginated_response(self):
+        """Should extract album items from Qobuz paginated {albums: {items: [...]}} format."""
+        service = LibraryService(None, EventBus(), clients={})
+        pages = [
+            {"albums": {"items": [
+                {"id": "a1", "title": "Album 1", "artist": {"name": "A"}},
+                {"id": "a2", "title": "Album 2", "artist": {"name": "B"}},
+            ], "total": 4}},
+            {"albums": {"items": [
+                {"id": "a3", "title": "Album 3", "artist": {"name": "C"}},
+                {"id": "a4", "title": "Album 4", "artist": {"name": "D"}},
+            ], "total": 4}},
+        ]
+        result = service._extract_items_from_pages("qobuz", pages)
+        assert len(result) == 4
+        assert result[0]["id"] == "a1"
+        assert result[3]["id"] == "a4"
+
+    def test_tidal_flat_list(self):
+        """Should pass through flat list of items (Tidal format)."""
+        service = LibraryService(None, EventBus(), clients={})
+        items = [
+            {"id": 1, "title": "Album 1"},
+            {"id": 2, "title": "Album 2"},
+        ]
+        result = service._extract_items_from_pages("tidal", items)
+        assert len(result) == 2
+
+    def test_empty_pages(self):
+        """Should return empty list for empty input."""
+        service = LibraryService(None, EventBus(), clients={})
+        assert service._extract_items_from_pages("qobuz", []) == []
+        assert service._extract_items_from_pages("qobuz", None) == []

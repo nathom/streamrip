@@ -67,3 +67,21 @@ class TestDownloadServiceQueue:
         queue = service.get_queue()
         cancelled = [q for q in queue if q["id"] == item_id]
         assert cancelled[0]["status"] == "cancelled"
+
+
+class TestDownloadAlbumIntegration:
+    async def test_download_album_raises_without_client(self, db, event_bus):
+        """_download_album should raise ValueError when no client for source."""
+        service = DownloadService(db, event_bus, clients={}, download_path="/tmp")
+        item = {
+            "id": "test-id",
+            "album_db_id": 1,
+            "source": "qobuz",
+            "source_album_id": "123",
+            "title": "Test",
+            "artist": "Test Artist",
+            "track_count": 10,
+            "status": "downloading",
+        }
+        with pytest.raises(ValueError, match="No client for source"):
+            await service._download_album(item)
