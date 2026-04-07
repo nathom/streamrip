@@ -16,24 +16,32 @@
   let source = $derived($currentSource);
   let detail = $derived($selectedAlbum);
 
+  // UI state
   let detailOpen = $state(false);
-  let searchValue = $state('');
   let sort = $state('added_to_library_at');
   let filter = $state('all');
   let loading = $state(false);
   let refreshing = $state(false);
-  let searchMode = $state(false);
-  let searchDebounce: ReturnType<typeof setTimeout> | null = null;
+
+  // Library filter (local DB search)
+  let librarySearch = $state('');
+  let libraryDebounce: ReturnType<typeof setTimeout> | null = null;
+
+  // General search (streaming API)
+  let generalSearch = $state('');
+  let generalResults = $state<any[]>([]);
+  let generalLoading = $state(false);
+  let generalDebounce: ReturnType<typeof setTimeout> | null = null;
 
   async function fetchAlbums() {
     loading = true;
-    searchMode = false;
     try {
       const params: Record<string, string> = {
         sort_by: sort,
         page_size: '500',
       };
       if (filter !== 'all') params['status'] = filter;
+      if (librarySearch.trim()) params['search'] = librarySearch.trim();
       const data = await api.library.getAlbums(source, params);
       $albums = data.albums;
       $totalAlbums = data.total;
@@ -56,28 +64,31 @@
     }
   }
 
-  function handleSearch(e: Event) {
+  function handleLibrarySearch(e: Event) {
+    librarySearch = (e.target as HTMLInputElement).value;
+    if (libraryDebounce) clearTimeout(libraryDebounce);
+    libraryDebounce = setTimeout(() => fetchAlbums(), 300);
+  }
+
+  function handleGeneralSearch(e: Event) {
     const value = (e.target as HTMLInputElement).value;
-    searchValue = value;
-    if (searchDebounce) clearTimeout(searchDebounce);
-    searchDebounce = setTimeout(async () => {
-      if (value.trim().length === 0) {
-        await fetchAlbums();
-      } else {
-        loading = true;
-        searchMode = true;
-        try {
-          const data = await api.library.search(source, value.trim());
-          const results = Array.isArray(data) ? data : (data.albums ?? []);
-          $albums = results;
-          $totalAlbums = results.length;
-        } catch (err) {
-          console.error('Search failed', err);
-        } finally {
-          loading = false;
-        }
+    generalSearch = value;
+    if (generalDebounce) clearTimeout(generalDebounce);
+    if (value.trim().length === 0) {
+      generalResults = [];
+      return;
+    }
+    generalDebounce = setTimeout(async () => {
+      generalLoading = true;
+      try {
+        const data = await api.library.search(source, value.trim());
+        generalResults = Array.isArray(data) ? data : (data.albums ?? []);
+      } catch (err) {
+        console.error('Search failed', err);
+      } finally {
+        generalLoading = false;
       }
-    }, 300);
+    }, 400);
   }
 
   async function handleSelectAlbum(album: any) {
@@ -97,12 +108,10 @@
   }
 
   async function downloadAllNew() {
-    const newAlbums = albumList.filter(
-      (a) => {
-        const status = (a.download_status || a.status || '').toLowerCase();
-        return !status || status === 'not_downloaded';
-      }
-    );
+    const newAlbums = albumList.filter((a) => {
+      const status = (a.download_status || a.status || '').toLowerCase();
+      return !status || status === 'not_downloaded';
+    });
     if (newAlbums.length === 0) return;
     try {
       await api.downloads.enqueue(
@@ -116,13 +125,10 @@
 
   // Reload when source, sort, or filter changes
   $effect(() => {
-    // Touch reactive values to subscribe
     const _s = source;
     const _so = sort;
     const _f = filter;
-    if (!searchMode) {
-      fetchAlbums();
-    }
+    fetchAlbums();
   });
 
   onMount(() => {
@@ -138,7 +144,6 @@
         Loading...
       {:else}
         {total} albums · {source.charAt(0).toUpperCase() + source.slice(1)}
-        {#if searchMode} · search results{/if}
       {/if}
     </div>
   </div>
@@ -149,13 +154,19 @@
   </div>
 </div>
 
+<!-- ═══ MY LIBRARY ═══ -->
+<div class="section-title">
+  <span>My Library</span>
+  <span class="decoration">░▒▓</span>
+</div>
+
 <div class="toolbar">
   <input
     class="search-input"
     type="text"
-    placeholder="Search Qobuz albums, artists..."
-    value={searchValue}
-    oninput={handleSearch}
+    placeholder="Filter library..."
+    value={librarySearch}
+    oninput={handleLibrarySearch}
   />
 
   <select
@@ -186,11 +197,6 @@
   </div>
 </div>
 
-<div class="section-title">
-  <span>{searchMode ? 'Search Results' : 'Albums'}</span>
-  <span class="decoration">░▒▓</span>
-</div>
-
 {#if loading}
   <div class="loading-state">
     <span class="loading-text">Loading albums...</span>
@@ -198,6 +204,36 @@
 {:else}
   <AlbumGrid albums={albumList} onselect={handleSelectAlbum} />
 {/if}
+
+<!-- ═══ GENERAL SEARCH ═══ -->
+<div class="general-search-section">
+  <div class="section-title">
+    <span>Search {source.charAt(0).toUpperCase() + source.slice(1)}</span>
+    <span class="decoration">░▒▓</span>
+  </div>
+
+  <div class="toolbar">
+    <input
+      class="search-input search-input-wide"
+      type="text"
+      placeholder="Search all of {source.charAt(0).toUpperCase() + source.slice(1)}..."
+      value={generalSearch}
+      oninput={handleGeneralSearch}
+    />
+  </div>
+
+  {#if generalLoading}
+    <div class="loading-state">
+      <span class="loading-text">Searching {source}...</span>
+    </div>
+  {:else if generalResults.length > 0}
+    <AlbumGrid albums={generalResults} onselect={handleSelectAlbum} />
+  {:else if generalSearch.trim().length > 0}
+    <div class="empty-search">
+      <span class="loading-text">No results for "{generalSearch}"</span>
+    </div>
+  {/if}
+</div>
 
 <AlbumDetail album={detail} open={detailOpen} onclose={closeDetail} />
 
@@ -247,6 +283,7 @@
     outline: none;
     width: 280px;
   }
+  .search-input-wide { width: 400px; }
   .search-input:focus {
     border-color: var(--accent);
     box-shadow: var(--shadow-accent);
@@ -294,10 +331,14 @@
     font-size: 11px;
   }
 
-  .loading-state {
+  .general-search-section {
+    margin-top: var(--space-12);
+  }
+
+  .loading-state, .empty-search {
     display: flex;
     justify-content: center;
-    padding: var(--space-16);
+    padding: var(--space-10);
   }
 
   .loading-text {
