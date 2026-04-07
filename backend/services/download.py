@@ -156,7 +156,6 @@ class DownloadService:
         if media is None:
             raise ValueError(f"Failed to resolve album {item['source_album_id']}")
 
-        # Update queue with actual track count from resolved album
         item["track_count"] = len(media.tracks) if hasattr(media, 'tracks') else 0
         await self.event_bus.publish("download_progress", {
             "item_id": item["id"],
@@ -165,7 +164,13 @@ class DownloadService:
             "track_count": item["track_count"],
         })
 
+        # Install progress hooks to emit real-time events
+        self._install_progress_hooks(item, config)
+
         await media.rip()
+
+        # Restore default progress manager
+        self._uninstall_progress_hooks()
 
         # Get results and update web DB track statuses
         success = 0
@@ -200,6 +205,86 @@ class DownloadService:
                 )
 
         logger.info("Download complete: %s - %s", item["artist"], item["title"])
+
+    def _install_progress_hooks(self, item: dict, config):
+        """Replace streamrip's Rich progress manager with one that emits WebSocket events."""
+        import streamrip.progress as prog
+        from streamrip.progress import Handle
+        import time
+
+        self._original_progress_manager = prog._p
+        event_bus = self.event_bus
+        queue_item = item
+
+        class WebProgressManager:
+            def __init__(self):
+                self.started = False
+                self.tracks_completed = 0
+                self.current_track_bytes = 0
+                self.current_track_total = 0
+                self.last_emit_time = 0
+                self.task_titles = []
+
+            def get_callback(self, total: int, desc: str):
+                self.started = True
+                self.current_track_bytes = 0
+                self.current_track_total = total
+                start_time = time.monotonic()
+
+                def _update(x: int):
+                    self.current_track_bytes += x
+                    now = time.monotonic()
+                    # Emit at most every 0.5 seconds
+                    if now - self.last_emit_time >= 0.5:
+                        self.last_emit_time = now
+                        elapsed = now - start_time
+                        speed = self.current_track_bytes / elapsed if elapsed > 0 else 0
+                        queue_item["bytes_done"] = self.current_track_bytes
+                        queue_item["bytes_total"] = self.current_track_total
+                        queue_item["speed"] = round(speed / (1024 * 1024), 2)
+                        queue_item["tracks_done"] = self.tracks_completed
+                        # Fire-and-forget async publish
+                        import asyncio
+                        try:
+                            loop = asyncio.get_event_loop()
+                            if loop.is_running():
+                                loop.create_task(event_bus.publish("download_progress", {
+                                    "item_id": queue_item["id"],
+                                    "status": "downloading",
+                                    "tracks_done": self.tracks_completed,
+                                    "track_count": queue_item.get("track_count", 0),
+                                    "bytes_done": self.current_track_bytes,
+                                    "bytes_total": self.current_track_total,
+                                    "speed": queue_item["speed"],
+                                }))
+                        except Exception:
+                            pass
+
+                def _done():
+                    self.tracks_completed += 1
+                    queue_item["tracks_done"] = self.tracks_completed
+
+                return Handle(_update, _done)
+
+            def cleanup(self):
+                pass
+
+            def add_title(self, title: str):
+                self.task_titles.append(title.strip())
+
+            def remove_title(self, title: str):
+                try:
+                    self.task_titles.remove(title.strip())
+                except ValueError:
+                    pass
+
+        prog._p = WebProgressManager()
+
+    def _uninstall_progress_hooks(self):
+        """Restore the original Rich progress manager."""
+        import streamrip.progress as prog
+        if hasattr(self, '_original_progress_manager'):
+            prog._p = self._original_progress_manager
 
     def _update_track_statuses(self, item: dict, media):
         """Update track download_status in the web DB after rip completes.
