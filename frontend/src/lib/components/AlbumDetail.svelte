@@ -8,18 +8,28 @@
 
   interface AlbumFull {
     id: number;
+    source_album_id?: string;
+    source?: string;
     title: string;
     artist: string;
     year?: number | string;
+    release_date?: string;
     label?: string;
     format?: string;
+    quality?: string;
     size?: string;
     tracks?: Track[];
+    track_count?: number;
     duration?: string;
+    duration_seconds?: number;
     genre?: string;
     status?: string;
+    download_status?: string;
     cover_url?: string;
   }
+
+  import { api } from '$lib/api/client';
+  import { currentSource } from '$lib/stores/library';
 
   let {
     album,
@@ -30,6 +40,53 @@
     open: boolean;
     onclose?: () => void;
   } = $props();
+
+  let downloading = $state(false);
+  let downloadError = $state('');
+  let source = $derived($currentSource);
+
+  function getYear(a: AlbumFull): string {
+    if (a.year) return String(a.year);
+    if (a.release_date) return a.release_date.slice(0, 4);
+    return '—';
+  }
+
+  function getFormat(a: AlbumFull): string {
+    return a.format || a.quality || '—';
+  }
+
+  function getStatus(a: AlbumFull): string | undefined {
+    return a.status || a.download_status;
+  }
+
+  function getTrackCount(a: AlbumFull): number | string {
+    if (a.tracks && a.tracks.length > 0) return a.tracks.length;
+    return a.track_count ?? '—';
+  }
+
+  function formatDuration(a: AlbumFull): string {
+    if (a.duration) return a.duration;
+    if (a.duration_seconds) {
+      const m = Math.floor(a.duration_seconds / 60);
+      const s = a.duration_seconds % 60;
+      return `${m}:${String(s).padStart(2, '0')}`;
+    }
+    return '—';
+  }
+
+  async function handleDownload() {
+    if (!album) return;
+    const albumId = album.source_album_id || String(album.id);
+    downloading = true;
+    downloadError = '';
+    try {
+      await api.downloads.enqueue(source, [albumId]);
+    } catch (e: any) {
+      downloadError = e?.message ?? 'Download failed';
+    } finally {
+      downloading = false;
+    }
+  }
 
   function trackStatusClass(status?: string): string {
     switch (status?.toLowerCase()) {
@@ -122,7 +179,7 @@
       <div class="detail-meta-grid">
         <div>
           <div class="detail-meta-label">Year</div>
-          <div class="detail-meta-value mono">{album.year ?? '—'}</div>
+          <div class="detail-meta-value mono">{getYear(album)}</div>
         </div>
         <div>
           <div class="detail-meta-label">Label</div>
@@ -130,19 +187,15 @@
         </div>
         <div>
           <div class="detail-meta-label">Format</div>
-          <div class="detail-meta-value mono">{album.format ?? '—'}</div>
-        </div>
-        <div>
-          <div class="detail-meta-label">Size</div>
-          <div class="detail-meta-value mono">{album.size ?? '—'}</div>
+          <div class="detail-meta-value mono">{getFormat(album)}</div>
         </div>
         <div>
           <div class="detail-meta-label">Tracks</div>
-          <div class="detail-meta-value mono">{album.tracks?.length ?? '—'}</div>
+          <div class="detail-meta-value mono">{getTrackCount(album)}</div>
         </div>
         <div>
           <div class="detail-meta-label">Duration</div>
-          <div class="detail-meta-value mono">{album.duration ?? '—'}</div>
+          <div class="detail-meta-value mono">{formatDuration(album)}</div>
         </div>
         <div>
           <div class="detail-meta-label">Genre</div>
@@ -151,15 +204,19 @@
         <div>
           <div class="detail-meta-label">Status</div>
           <div class="detail-meta-value">
-            <span class="tag {albumStatusClass(album.status)}">{albumStatusLabel(album.status)}</span>
+            <span class="tag {albumStatusClass(getStatus(album))}">{albumStatusLabel(getStatus(album))}</span>
           </div>
         </div>
       </div>
     </div>
 
     <div class="detail-actions">
-      <button class="btn btn-primary btn-sm">▸ Download</button>
-      <button class="btn btn-secondary btn-sm">Open Folder</button>
+      <button class="btn btn-primary btn-sm" onclick={handleDownload} disabled={downloading}>
+        {#if downloading}Queuing...{:else}▸ Download{/if}
+      </button>
+      {#if downloadError}
+        <span class="download-error">{downloadError}</span>
+      {/if}
     </div>
 
     {#if album.tracks && album.tracks.length > 0}
@@ -347,8 +404,14 @@
   .btn-primary  { background: var(--accent); color: var(--text-inverse); box-shadow: var(--shadow-accent); }
   .btn-primary:hover { box-shadow: var(--shadow-lg); }
   .btn-primary:active { box-shadow: 1px 1px 0 rgba(0,0,0,0.3); transform: translate(1px,1px); }
-  .btn-secondary { background: var(--canvas-raised); color: var(--text-primary); box-shadow: var(--shadow-sm); }
+  .btn:disabled { opacity: 0.5; cursor: default; }
   .btn-sm { font-size: var(--text-xs); padding: var(--space-1) var(--space-3); }
+
+  .download-error {
+    font-size: var(--text-xs);
+    color: var(--destructive);
+    align-self: center;
+  }
 
   /* Track list */
   .track-list {
