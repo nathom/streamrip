@@ -29,11 +29,6 @@
   let librarySearch = $state('');
   let libraryDebounce: ReturnType<typeof setTimeout> | null = null;
 
-  // General search (streaming API)
-  let generalSearch = $state('');
-  let generalResults = $state<any[]>([]);
-  let generalLoading = $state(false);
-  let generalDebounce: ReturnType<typeof setTimeout> | null = null;
 
   async function fetchAlbums() {
     loading = true;
@@ -84,26 +79,6 @@
     libraryDebounce = setTimeout(() => fetchAlbums(), 300);
   }
 
-  function handleGeneralSearch(e: Event) {
-    const value = (e.target as HTMLInputElement).value;
-    generalSearch = value;
-    if (generalDebounce) clearTimeout(generalDebounce);
-    if (value.trim().length === 0) {
-      generalResults = [];
-      return;
-    }
-    generalDebounce = setTimeout(async () => {
-      generalLoading = true;
-      try {
-        const data = await api.library.search(source, value.trim());
-        generalResults = Array.isArray(data) ? data : (data.albums ?? []);
-      } catch (err) {
-        console.error('Search failed', err);
-      } finally {
-        generalLoading = false;
-      }
-    }, 400);
-  }
 
   async function handleSelectAlbum(album: any) {
     $selectedAlbum = album;
@@ -232,36 +207,6 @@
   <AlbumGrid albums={albumList} onselect={handleSelectAlbum} />
 {/if}
 
-<!-- ═══ GENERAL SEARCH ═══ -->
-<div class="general-search-section">
-  <div class="section-title">
-    <span>Search {source.charAt(0).toUpperCase() + source.slice(1)}</span>
-    <span class="decoration">░▒▓</span>
-  </div>
-
-  <div class="toolbar">
-    <input
-      class="search-input search-input-wide"
-      type="text"
-      placeholder="Search all of {source.charAt(0).toUpperCase() + source.slice(1)}..."
-      value={generalSearch}
-      oninput={handleGeneralSearch}
-    />
-  </div>
-
-  {#if generalLoading}
-    <div class="loading-state">
-      <span class="loading-text">Searching {source}...</span>
-    </div>
-  {:else if generalResults.length > 0}
-    <AlbumGrid albums={generalResults} onselect={handleSelectAlbum} />
-  {:else if generalSearch.trim().length > 0}
-    <div class="empty-search">
-      <span class="loading-text">No results for "{generalSearch}"</span>
-    </div>
-  {/if}
-</div>
-
 <AlbumDetail album={detail} open={detailOpen} onclose={closeDetail} />
 
 <style>
@@ -310,7 +255,6 @@
     outline: none;
     width: 280px;
   }
-  .search-input-wide { width: 400px; }
   .search-input:focus {
     border-color: var(--accent);
     box-shadow: var(--shadow-accent);
@@ -358,13 +302,7 @@
     font-size: 11px;
   }
 
-  .general-search-section {
-    margin-top: var(--space-12);
-    padding-top: var(--space-8);
-    border-top: 3px solid var(--border);
-  }
-
-  .loading-state, .empty-search {
+  .loading-state {
     display: flex;
     justify-content: center;
     padding: var(--space-10);

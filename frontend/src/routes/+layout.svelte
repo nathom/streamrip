@@ -64,14 +64,14 @@
       <a href="/library" class="nav-item" class:active={activePage === 'library' || activePage === ''}>
         <span class="nav-icon">◧</span> Library
       </a>
+      <a href="/search" class="nav-item" class:active={activePage === 'search'}>
+        <span class="nav-icon">◆</span> Search
+      </a>
       <a href="/downloads" class="nav-item" class:active={activePage === 'downloads'}>
         <span class="nav-icon">▸</span> Downloads
         {#if downloadCount > 0}
           <span class="nav-badge">{downloadCount}</span>
         {/if}
-      </a>
-      <a href="/sync" class="nav-item" class:active={activePage === 'sync'}>
-        <span class="nav-icon">═</span> Sync
       </a>
       <a href="/settings" class="nav-item" class:active={activePage === 'settings'}>
         <span class="nav-icon">★</span> Settings
