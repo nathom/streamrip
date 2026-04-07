@@ -150,6 +150,8 @@ class DownloadService:
         else:
             database = build_database(config)
 
+        logger.info("Download folder: %s", config.session.downloads.folder)
+
         pending = PendingAlbum(item["source_album_id"], client, config, database)
 
         media = await pending.resolve()
