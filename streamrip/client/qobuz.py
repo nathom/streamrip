@@ -164,7 +164,9 @@ class QobuzClient(Client):
         the actual credentials for the user.
         """
         c = self.config.session.qobuz
-        if not c.email_or_userid or not c.password_or_token:
+        if not c.password_or_token:
+            raise MissingCredentialsError
+        if not c.use_auth_token and not c.email_or_userid:
             raise MissingCredentialsError
 
         assert not self.logged_in, "Already logged in"
@@ -181,6 +183,19 @@ class QobuzClient(Client):
         self.session.headers.update({"X-App-Id": str(c.app_id)})
 
         if c.use_auth_token:
+            # Auto-resolve user ID from token if not provided
+            if not c.email_or_userid:
+                logger.info("No user ID provided, resolving from token")
+                verify_ssl = self.config.session.downloads.verify_ssl
+                c.email_or_userid = await self.resolve_user_id(
+                    c.password_or_token, str(c.app_id), verify_ssl=verify_ssl
+                )
+                logger.info("Resolved user ID: %s", c.email_or_userid)
+                # Persist the resolved user ID
+                f = self.config.file
+                f.qobuz.email_or_userid = c.email_or_userid
+                f.set_modified()
+
             params = {
                 "user_id": c.email_or_userid,
                 "user_auth_token": c.password_or_token,
@@ -193,14 +208,21 @@ class QobuzClient(Client):
                 "app_id": str(c.app_id),
             }
 
-        logger.debug("Request params %s", params)
+        logger.debug("Request params %s", self._redact_auth_payload(params))
         status, resp = await self._api_request("user/login", params)
-        logger.debug("Login resp: %s", resp)
+        logger.debug("Login resp: %s", self._redact_auth_payload(resp))
 
         if status == 401:
-            raise AuthenticationError(f"Invalid credentials from params {params}")
+            if c.use_auth_token:
+                raise AuthenticationError(
+                    "Invalid Qobuz token or user id. The token may have expired; "
+                    "refresh user_auth_token from a logged-in browser session."
+                )
+            raise AuthenticationError("Invalid Qobuz credentials.")
         elif status == 400:
-            raise InvalidAppIdError(f"Invalid app id from params {params}")
+            raise InvalidAppIdError(
+                f"Invalid app id from params {self._redact_auth_payload(params)}"
+            )
 
         logger.debug("Logged in to Qobuz")
 
@@ -474,3 +496,40 @@ class QobuzClient(Client):
     def get_quality(quality: int):
         quality_map = (5, 6, 7, 27)
         return quality_map[quality - 1]
+
+    @staticmethod
+    def _redact_auth_payload(payload: dict) -> dict:
+        redacted = dict(payload)
+        for key in ("password", "user_auth_token"):
+            if key in redacted and redacted[key]:
+                redacted[key] = "***REDACTED***"
+        return redacted
+
+    @staticmethod
+    async def resolve_user_id(token: str, app_id: str, verify_ssl: bool = True) -> str:
+        """Fetch the numeric user ID from a user_auth_token."""
+        from ..utils.ssl_utils import get_aiohttp_connector_kwargs
+
+        connector_kwargs = get_aiohttp_connector_kwargs(verify_ssl=verify_ssl)
+        connector = aiohttp.TCPConnector(**connector_kwargs)
+        async with aiohttp.ClientSession(connector=connector) as session:
+            async with session.get(
+                f"{QOBUZ_BASE_URL}/user/get",
+                params={"app_id": app_id},
+                headers={
+                    "X-App-Id": app_id,
+                    "X-User-Auth-Token": token,
+                },
+            ) as resp:
+                if resp.status != 200:
+                    raise AuthenticationError(
+                        "Could not resolve user ID from token. "
+                        "The token may be invalid or expired."
+                    )
+                data = await resp.json()
+                user_id = data.get("id")
+                if user_id is None:
+                    raise AuthenticationError(
+                        "Token is valid but user ID not found in response."
+                    )
+                return str(user_id)
