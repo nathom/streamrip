@@ -14,11 +14,16 @@ export async function loadQueue() {
 }
 
 onEvent('download_progress', (data) => {
-  queue.update(items =>
-    items.map(item =>
+  queue.update(items => {
+    const updated = items.map(item =>
       item.id === data.item_id ? { ...item, ...data } : item
-    )
-  );
+    );
+    // Update speed from all downloading items
+    const downloading = updated.filter(i => i.status === 'downloading');
+    totalSpeed.set(downloading.reduce((sum: number, i: any) => sum + (i.speed ?? 0), 0));
+    activeCount.set(downloading.length);
+    return updated;
+  });
 });
 
 onEvent('download_complete', (data) => {

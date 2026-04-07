@@ -222,19 +222,27 @@ class DownloadService:
                 self.tracks_completed = 0
                 self.current_track_bytes = 0
                 self.current_track_total = 0
+                self.current_track_name = ""
                 self.last_emit_time = 0
                 self.task_titles = []
+                self.track_statuses: list[dict] = []
 
             def get_callback(self, total: int, desc: str):
                 self.started = True
                 self.current_track_bytes = 0
                 self.current_track_total = total
+                self.current_track_name = desc
                 start_time = time.monotonic()
+
+                track_entry = {"name": desc, "status": "downloading", "progress": 0}
+                self.track_statuses.append(track_entry)
 
                 def _update(x: int):
                     self.current_track_bytes += x
                     now = time.monotonic()
-                    # Emit at most every 0.5 seconds
+                    if self.current_track_total > 0:
+                        track_entry["progress"] = round(self.current_track_bytes / self.current_track_total * 100)
+
                     if now - self.last_emit_time >= 0.5:
                         self.last_emit_time = now
                         elapsed = now - start_time
@@ -243,7 +251,6 @@ class DownloadService:
                         queue_item["bytes_total"] = self.current_track_total
                         queue_item["speed"] = round(speed / (1024 * 1024), 2)
                         queue_item["tracks_done"] = self.tracks_completed
-                        # Fire-and-forget async publish
                         import asyncio
                         try:
                             loop = asyncio.get_event_loop()
@@ -256,12 +263,18 @@ class DownloadService:
                                     "bytes_done": self.current_track_bytes,
                                     "bytes_total": self.current_track_total,
                                     "speed": queue_item["speed"],
+                                    "current_track": self.current_track_name,
+                                    "track_statuses": [
+                                        {**t} for t in self.track_statuses
+                                    ],
                                 }))
                         except Exception:
                             pass
 
                 def _done():
                     self.tracks_completed += 1
+                    track_entry["status"] = "complete"
+                    track_entry["progress"] = 100
                     queue_item["tracks_done"] = self.tracks_completed
 
                 return Handle(_update, _done)
