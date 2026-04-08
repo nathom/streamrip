@@ -416,6 +416,24 @@ class AlbumDownloader:
         albumartist = _build_albumartist(album)
         genres = _build_genres(raw_album) if raw_album else ([album.genre.name] if album.genre else [])
 
+        # Extract additional metadata from raw responses
+        # Composer comes from the TRACK response (per-track), not album
+        composer = ""
+        if raw_track:
+            composer_data = raw_track.get("composer", {})
+            if isinstance(composer_data, dict):
+                composer = composer_data.get("name", "")
+            elif isinstance(composer_data, str):
+                composer = composer_data
+
+        copyright_text = ""
+        description = ""
+        disctotal = 1
+        if raw_album:
+            copyright_text = raw_album.get("copyright", "")
+            description = raw_album.get("description", "")
+            disctotal = raw_album.get("media_count", 1) or 1
+
         audio = FLAC(path)
         audio["title"] = title
         audio["artist"] = track.performer.name
@@ -424,6 +442,7 @@ class AlbumDownloader:
         audio["tracknumber"] = _zero_pad(track.track_number)
         audio["discnumber"] = _zero_pad(track.disc_number)
         audio["tracktotal"] = str(album.tracks_count)
+        audio["disctotal"] = _zero_pad(disctotal)
         if genres:
             audio["genre"] = ", ".join(genres)
         if album.release_date_original:
@@ -435,6 +454,12 @@ class AlbumDownloader:
             audio["isrc"] = track.isrc
         if album.upc:
             audio["barcode"] = album.upc
+        if composer:
+            audio["composer"] = composer
+        if copyright_text:
+            audio["copyright"] = copyright_text
+        if description:
+            audio["description"] = description
 
         if cover_path and self.config.embed_cover:
             pic = Picture()

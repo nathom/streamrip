@@ -96,35 +96,19 @@ async def download_with_sdk(album_id: str, output_dir: str) -> list[str]:
     return sorted(flacs)
 
 
-# Tags to compare — all fields both taggers should write
-FLAC_TAGS = [
-    "title",
-    "artist",
-    "albumartist",
-    "album",
-    "tracknumber",
-    "discnumber",
-    "genre",
-    "date",
-    "year",
-    "isrc",
-]
-
-# Tags the SDK writes but streamrip doesn't (intentional improvements)
-SDK_EXTRA_TAGS = [
-    "organization",  # label — SDK writes it, streamrip doesn't
-    "barcode",       # UPC — SDK writes it, streamrip doesn't
-]
+# Tags the SDK writes that streamrip doesn't — these are improvements, not regressions
+SDK_EXTRA_TAGS = {"organization", "barcode"}
 
 
-def read_flac_tags(path: str) -> dict[str, str]:
-    """Read all relevant tags from a FLAC file."""
+def read_all_flac_tags(path: str) -> dict[str, str]:
+    """Read ALL tags from a FLAC file."""
     audio = FLAC(path)
     tags = {}
-    for key in FLAC_TAGS + SDK_EXTRA_TAGS:
+    for key in audio.keys():
         values = audio.get(key, [])
         tags[key] = values[0] if values else ""
-    tags["_has_cover"] = len(audio.pictures) > 0
+    tags["_has_cover"] = str(len(audio.pictures) > 0)
+    tags["_cover_size"] = str(len(audio.pictures[0].data)) if audio.pictures else "0"
     tags["_filename"] = os.path.basename(path)
     return tags
 
@@ -178,21 +162,27 @@ async def test_tagging_parity():
         print(f"  SDK: {sdk_folder}")
         folder_match = sr_folder == sdk_folder
 
-        # Compare tags
-        print(f"\n=== Comparing {len(sr_flacs)} tracks tags ===\n")
+        # Compare ALL tags
+        print(f"\n=== Comparing {len(sr_flacs)} tracks — ALL tags ===\n")
         tag_mismatches = []
+        sdk_extras_found = []
         for i, (sr_path, sdk_path) in enumerate(zip(sr_flacs, sdk_flacs)):
-            sr_tags = read_flac_tags(sr_path)
-            sdk_tags = read_flac_tags(sdk_path)
+            sr_tags = read_all_flac_tags(sr_path)
+            sdk_tags = read_all_flac_tags(sdk_path)
 
-            track_name = sr_tags.get("title", f"Track {i+1}")
+            all_keys = sorted(set(list(sr_tags.keys()) + list(sdk_tags.keys())))
+            track_name = sr_tags.get("title", sdk_tags.get("title", f"Track {i+1}"))
             track_diffs = []
 
-            for key in FLAC_TAGS + ["_has_cover"]:
+            for key in all_keys:
                 sr_val = str(sr_tags.get(key, "")).strip()
                 sdk_val = str(sdk_tags.get(key, "")).strip()
 
-                if sr_val.lower() != sdk_val.lower():
+                if sr_val != sdk_val:
+                    # SDK extra tags (present in SDK, absent in streamrip) are improvements
+                    if key in SDK_EXTRA_TAGS and sdk_val and not sr_val:
+                        sdk_extras_found.append({"tag": key, "value": sdk_val})
+                        continue
                     track_diffs.append({"tag": key, "streamrip": sr_val, "sdk": sdk_val})
 
             if track_diffs:
@@ -209,18 +199,11 @@ async def test_tagging_parity():
         print(f"  File name mismatches: {len(name_mismatches)}")
         print(f"  Folder name match: {folder_match}")
         print(f"  Tag mismatches: {len(tag_mismatches)}")
+        if sdk_extras_found:
+            unique_extras = {e["tag"] for e in sdk_extras_found}
+            print(f"  SDK extras (improvements): {', '.join(sorted(unique_extras))}")
 
-        # SDK extras (not failures)
-        for i, (sr_path, sdk_path) in enumerate(zip(sr_flacs, sdk_flacs)):
-            sr_tags = read_flac_tags(sr_path)
-            sdk_tags = read_flac_tags(sdk_path)
-            for key in SDK_EXTRA_TAGS:
-                sr_val = sr_tags.get(key, "")
-                sdk_val = sdk_tags.get(key, "")
-                if sdk_val and not sr_val:
-                    pass  # SDK adds data streamrip doesn't — that's fine
-
-        # Enforce parity on core tags (excluding SDK extras)
+        # Enforce parity — zero mismatches on all tags
         assert len(tag_mismatches) == 0, (
-            f"{len(tag_mismatches)} tracks have core tag mismatches"
+            f"{len(tag_mismatches)} tracks have tag mismatches"
         )
