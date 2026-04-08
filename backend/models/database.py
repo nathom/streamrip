@@ -236,6 +236,19 @@ class AppDatabase:
             ).fetchone()
             return dict(row) if row else None
 
+    def get_recent_downloads(self, limit: int = 50) -> list[dict]:
+        """Get recently downloaded/failed albums for download history."""
+        with self._connect() as conn:
+            rows = conn.execute(
+                """SELECT * FROM albums
+                   WHERE download_status IN ('complete', 'failed')
+                   AND downloaded_at IS NOT NULL
+                   ORDER BY downloaded_at DESC
+                   LIMIT ?""",
+                (limit,),
+            ).fetchall()
+            return [dict(r) for r in rows]
+
     def update_album_status(self, album_id: int, status: str, downloaded_at: str | None = None):
         with self._connect() as conn:
             if downloaded_at:

@@ -195,6 +195,6 @@ display_album_format = "{name} by {artist}"
 
 [misc]
 # Metadata to identify this config file. Do not change.
-version = "2.0.6"
+version = "2.1.0"
 # Print a message if a new version of streamrip is available 
 check_for_updates = true

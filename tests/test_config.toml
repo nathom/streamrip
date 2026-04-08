@@ -189,5 +189,5 @@ max_search_results = 100
 
 [misc]
 # Metadata to identify this config file. Do not change.
-version = "2.0.6"
+version = "2.1.0"
 check_for_updates = true
