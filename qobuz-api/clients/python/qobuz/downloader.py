@@ -393,10 +393,10 @@ class AlbumDownloader:
                 return  # Success
             except Exception as e:
                 if attempt < retries - 1:
-                    logger.warning("Download attempt %d failed, retrying: %s", attempt + 1, e)
-                    # Remove partial file
+                    logger.warning("Download attempt %d failed, retrying in 2s: %s", attempt + 1, e)
                     if os.path.exists(path):
                         os.remove(path)
+                    await asyncio.sleep(2)  # Brief pause before retry
                 else:
                     raise
 

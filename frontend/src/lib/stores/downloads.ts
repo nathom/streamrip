@@ -9,11 +9,21 @@ export const totalSpeed = writable(0);
 // Exported so components can subscribe to download_complete events
 export const lastCompletedDownload = writable<Record<string, unknown> | null>(null);
 
+let loadQueueDebounce: ReturnType<typeof setTimeout> | null = null;
+
 export async function loadQueue() {
-  const data = await api.downloads.getQueue();
-  queue.set(data.items);
-  activeCount.set(data.active_count);
-  totalSpeed.set(data.total_speed);
+  // Debounce — multiple events can fire simultaneously
+  if (loadQueueDebounce) clearTimeout(loadQueueDebounce);
+  loadQueueDebounce = setTimeout(async () => {
+    try {
+      const data = await api.downloads.getQueue();
+      queue.set(data.items);
+      activeCount.set(data.active_count);
+      totalSpeed.set(data.total_speed);
+    } catch {
+      // ignore — API may be unavailable briefly
+    }
+  }, 300);
 }
 
 onEvent('download_progress', (data) => {
