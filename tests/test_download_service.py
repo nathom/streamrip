@@ -69,6 +69,28 @@ class TestDownloadServiceQueue:
         assert cancelled[0]["status"] == "cancelled"
 
 
+class TestDownloadQueue:
+    async def test_cancel_all(self, db, event_bus):
+        db.upsert_album("qobuz", "a1", "Album A", "Artist A")
+        db.upsert_album("qobuz", "a2", "Album B", "Artist B")
+        service = DownloadService(db, event_bus, clients={}, download_path="/tmp")
+        await service.enqueue("qobuz", ["a1", "a2"])
+        await service.cancel_all()
+        queue = service.get_queue()
+        assert all(q["status"] == "cancelled" for q in queue)
+
+    async def test_enqueue_skips_unknown_album(self, db, event_bus):
+        service = DownloadService(db, event_bus, clients={}, download_path="/tmp")
+        items = await service.enqueue("qobuz", ["nonexistent"])
+        assert len(items) == 0
+
+    async def test_force_flag_preserved(self, db, event_bus):
+        db.upsert_album("qobuz", "a1", "Album", "Artist")
+        service = DownloadService(db, event_bus, clients={}, download_path="/tmp")
+        items = await service.enqueue("qobuz", ["a1"], force=True)
+        assert items[0]["force"] is True
+
+
 class TestDownloadAlbumIntegration:
     async def test_download_album_raises_without_client(self, db, event_bus):
         """_download_album should raise ValueError when no client for source."""

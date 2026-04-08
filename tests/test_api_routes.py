@@ -70,3 +70,44 @@ class TestAuthRoutes:
         assert len(data) == 2
         assert data[0]["source"] == "qobuz"
         assert data[1]["source"] == "tidal"
+
+
+class TestSyncRoutes:
+    async def test_sync_status(self, client, app):
+        resp = await client.get("/api/sync/status/qobuz")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "new_albums" in data
+        assert "removed_albums" in data
+        assert data["source"] == "qobuz"
+
+    async def test_sync_history(self, client):
+        resp = await client.get("/api/sync/history?source=qobuz")
+        assert resp.status_code == 200
+        assert isinstance(resp.json(), list)
+
+
+class TestAuthOAuthRoutes:
+    async def test_oauth_url(self, client):
+        resp = await client.get("/api/auth/qobuz/oauth-url")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "url" in data
+        assert "qobuz.com" in data["url"]
+
+
+class TestConfigReload:
+    async def test_update_config_saves_values(self, client, app):
+        resp = await client.patch("/api/config", json={"downloads_path": "/test/path"})
+        assert resp.status_code == 200
+        # Verify persisted
+        get_resp = await client.get("/api/config")
+        assert get_resp.json()["downloads_path"] == "/test/path"
+
+    async def test_config_type_conversion(self, client, app):
+        app.state.db.set_config("qobuz_quality", "3")
+        app.state.db.set_config("conversion_enabled", "true")
+        resp = await client.get("/api/config")
+        data = resp.json()
+        assert isinstance(data["qobuz_quality"], int)
+        assert isinstance(data["conversion_enabled"], bool)

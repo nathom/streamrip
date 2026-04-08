@@ -30,6 +30,7 @@ class TestSyncService:
         diff = await service.get_diff("qobuz")
         assert diff["new_albums"] == []
         assert diff["removed_albums"] == []
+        assert diff["source"] == "qobuz"
 
     async def test_run_sync_records_history(self, db, event_bus):
         mock_client = AsyncMock(spec=[])  # No SDK attributes
