@@ -2,6 +2,7 @@
 
 from .client import QobuzClient
 from .downloader import AlbumDownloader, AlbumResult, DownloadConfig, TrackResult
+from .spoofer import fetch_app_credentials, find_working_secret
 from .errors import (
     AuthenticationError,
     ForbiddenError,

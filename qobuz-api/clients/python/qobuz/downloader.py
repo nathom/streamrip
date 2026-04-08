@@ -72,6 +72,8 @@ class DownloadConfig:
     disc_subdirectories: bool = True
     tag_files: bool = True
     download_booklets: bool = True
+    skip_downloaded: bool = True  # Skip tracks already in download history
+    downloads_db_path: str | None = None  # Path to SQLite downloads DB
 
 
 @dataclass
@@ -132,6 +134,9 @@ class AlbumDownloader:
         self._on_track_progress = on_track_progress  # (track_num, bytes_done, bytes_total)
         self._on_track_complete = on_track_complete  # (track_num, title, success)
         self._semaphore = asyncio.Semaphore(config.max_connections)
+        self._downloaded_ids: set[str] = set()
+        if config.skip_downloaded and config.downloads_db_path:
+            self._load_downloaded_ids()
 
     async def download(self, album_id: str) -> AlbumResult:
         """Download an entire album by ID."""
@@ -191,6 +196,38 @@ class AlbumDownloader:
             booklet_paths=booklet_paths,
         )
 
+    def _load_downloaded_ids(self) -> None:
+        """Load previously downloaded track IDs from SQLite DB."""
+        import sqlite3
+        path = self.config.downloads_db_path
+        if not path or not os.path.exists(path):
+            return
+        try:
+            conn = sqlite3.connect(path)
+            rows = conn.execute("SELECT id FROM downloads").fetchall()
+            self._downloaded_ids = {str(row[0]) for row in rows}
+            conn.close()
+            logger.info("Loaded %d downloaded track IDs from %s", len(self._downloaded_ids), path)
+        except Exception as e:
+            logger.warning("Failed to load downloads DB: %s", e)
+
+    def _mark_downloaded(self, track_id: int) -> None:
+        """Mark a track as downloaded in the SQLite DB."""
+        path = self.config.downloads_db_path
+        if not path:
+            return
+        try:
+            import sqlite3
+            os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
+            conn = sqlite3.connect(path)
+            conn.execute("CREATE TABLE IF NOT EXISTS downloads (id TEXT UNIQUE NOT NULL)")
+            conn.execute("INSERT OR IGNORE INTO downloads (id) VALUES (?)", (str(track_id),))
+            conn.commit()
+            conn.close()
+            self._downloaded_ids.add(str(track_id))
+        except Exception as e:
+            logger.warning("Failed to update downloads DB: %s", e)
+
     async def _download_track(
         self,
         track_num: int,
@@ -203,6 +240,16 @@ class AlbumDownloader:
     ) -> TrackResult:
         """Download, tag, and save a single track."""
         async with self._semaphore:
+            # Check dedup — skip if already downloaded
+            if self.config.skip_downloaded and str(track.id) in self._downloaded_ids:
+                logger.info("Skipping track %d — already downloaded", track.id)
+                if self._on_track_complete:
+                    self._on_track_complete(track_num, track.title, True)
+                return TrackResult(
+                    track_id=track.id, title=track.title, success=True,
+                    path=None, error="skipped (already downloaded)",
+                )
+
             if self._on_track_start:
                 self._on_track_start(track_num, track.title)
 
@@ -236,6 +283,8 @@ class AlbumDownloader:
                         raw_album=raw_album, raw_track=raw_track,
                     )
 
+                self._mark_downloaded(track.id)
+
                 if self._on_track_complete:
                     self._on_track_complete(track_num, track.title, True)
 
@@ -258,21 +307,32 @@ class AlbumDownloader:
                 )
 
     async def _download_file(
-        self, url: str, path: str, track_num: int
+        self, url: str, path: str, track_num: int, retries: int = 2
     ) -> None:
-        """Stream download a file from URL to disk."""
-        async with aiohttp.ClientSession() as session:
-            async with session.get(url) as resp:
-                resp.raise_for_status()
-                total = int(resp.headers.get("Content-Length", 0))
-                downloaded = 0
+        """Stream download a file from URL to disk with retry on failure."""
+        for attempt in range(retries):
+            try:
+                async with aiohttp.ClientSession() as session:
+                    async with session.get(url) as resp:
+                        resp.raise_for_status()
+                        total = int(resp.headers.get("Content-Length", 0))
+                        downloaded = 0
 
-                with open(path, "wb") as f:
-                    async for chunk in resp.content.iter_chunked(8192):
-                        f.write(chunk)
-                        downloaded += len(chunk)
-                        if self._on_track_progress:
-                            self._on_track_progress(track_num, downloaded, total)
+                        with open(path, "wb") as f:
+                            async for chunk in resp.content.iter_chunked(8192):
+                                f.write(chunk)
+                                downloaded += len(chunk)
+                                if self._on_track_progress:
+                                    self._on_track_progress(track_num, downloaded, total)
+                return  # Success
+            except Exception as e:
+                if attempt < retries - 1:
+                    logger.warning("Download attempt %d failed, retrying: %s", attempt + 1, e)
+                    # Remove partial file
+                    if os.path.exists(path):
+                        os.remove(path)
+                else:
+                    raise
 
     async def _download_booklets(self, goodies: list[dict], folder: str) -> list[str]:
         """Download PDF booklets from the goodies list."""

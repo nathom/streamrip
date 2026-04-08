@@ -26,26 +26,10 @@ async def test_download_album_e2e():
     # For simplicity, we'll skip the secret-fetching and use the streaming module
     # which requires an app_secret
 
-    # Get app_id and secrets via streamrip's spoofer
-    from streamrip.client.qobuz import QobuzSpoofer
+    from qobuz.spoofer import fetch_app_credentials, find_working_secret
 
-    async with QobuzSpoofer() as spoofer:
-        app_id, secrets = await spoofer.get_app_id_and_secrets()
-
-    # Find a working secret by trying each one
-    app_secret = None
-    for secret in secrets:
-        try:
-            async with QobuzClient(
-                app_id=app_id, user_auth_token=QOBUZ_TOKEN, app_secret=secret
-            ) as test_client:
-                await test_client.streaming.get_file_url(19512574, quality=3)
-                app_secret = secret
-                break
-        except Exception:
-            continue
-
-    assert app_secret is not None, f"No working secret found from {len(secrets)} candidates"
+    app_id, secrets = await fetch_app_credentials()
+    app_secret = await find_working_secret(app_id, secrets, QOBUZ_TOKEN)
 
     # Now download
     progress_events = []
