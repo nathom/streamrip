@@ -17,6 +17,7 @@
   let source = $derived($currentSource);
   let downloadCount = $derived($activeCount);
   let authStatuses = $state<any[]>([]);
+  let sidebarOpen = $state(false);
   let sourceAuth = $derived(authStatuses.find(a => a.source === source));
   let isConnected = $derived(sourceAuth?.authenticated ?? false);
 
@@ -108,8 +109,16 @@
   });
 </script>
 
+<button class="mobile-menu-toggle" onclick={() => sidebarOpen = !sidebarOpen} aria-label="Toggle menu">
+  {#if sidebarOpen}✕{:else}☰{/if}
+</button>
+
+{#if sidebarOpen}
+  <div class="sidebar-overlay" onclick={() => sidebarOpen = false} role="presentation"></div>
+{/if}
+
 <div class="app-shell">
-  <aside class="sidebar">
+  <aside class="sidebar" class:open={sidebarOpen}>
     <div class="sidebar-header">
       <div class="sidebar-logo">
         <span class="logo-accent">◆</span> streamrip
@@ -126,19 +135,22 @@
     </div>
 
     <nav class="sidebar-nav">
-      <a href="/library" class="nav-item" class:active={activePage === 'library' || activePage === ''}>
+      <a href="/library" class="nav-item" onclick={() => sidebarOpen = false} class:active={activePage === 'library' || activePage === ''}>
         <span class="nav-icon">◧</span> Library
       </a>
-      <a href="/search" class="nav-item" class:active={activePage === 'search'}>
+      <a href="/search" class="nav-item" onclick={() => sidebarOpen = false} class:active={activePage === 'search'}>
         <span class="nav-icon">◆</span> Search
       </a>
-      <a href="/downloads" class="nav-item" class:active={activePage === 'downloads'}>
+      <a href="/downloads" class="nav-item" onclick={() => sidebarOpen = false} class:active={activePage === 'downloads'}>
         <span class="nav-icon">▸</span> Downloads
         {#if downloadCount > 0}
           <span class="nav-badge">{downloadCount}</span>
         {/if}
       </a>
-      <a href="/settings" class="nav-item" class:active={activePage === 'settings'}>
+      <a href="/sync" class="nav-item" onclick={() => sidebarOpen = false} class:active={activePage === 'sync'}>
+        <span class="nav-icon">═</span> Sync
+      </a>
+      <a href="/settings" class="nav-item" onclick={() => sidebarOpen = false} class:active={activePage === 'settings'}>
         <span class="nav-icon">★</span> Settings
       </a>
     </nav>
@@ -302,5 +314,57 @@
     overflow-y: auto;
     padding: var(--space-6) var(--space-8);
     background: var(--canvas);
+  }
+  /* ── Mobile menu toggle ── */
+  .mobile-menu-toggle {
+    display: none;
+    position: fixed;
+    top: var(--space-3);
+    left: var(--space-3);
+    z-index: 200;
+    font-size: var(--text-xl);
+    background: var(--canvas-raised);
+    border: 2px solid var(--border);
+    color: var(--text-primary);
+    padding: var(--space-1) var(--space-2);
+    cursor: pointer;
+    border-radius: 0;
+    box-shadow: var(--shadow-sm);
+  }
+
+  .sidebar-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 99;
+  }
+
+  /* ── Responsive ── */
+  @media (max-width: 768px) {
+    .mobile-menu-toggle { display: block; }
+    .sidebar-overlay { display: block; }
+
+    .app-shell {
+      grid-template-columns: 1fr;
+    }
+
+    .sidebar {
+      position: fixed;
+      left: -260px;
+      top: 0;
+      width: 260px;
+      height: 100vh;
+      z-index: 100;
+    }
+
+    .sidebar.open {
+      left: 0;
+    }
+
+    .main-content {
+      padding: var(--space-4);
+      padding-top: var(--space-12);
+    }
   }
 </style>

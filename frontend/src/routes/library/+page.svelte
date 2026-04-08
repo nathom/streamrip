@@ -21,33 +21,54 @@
   let sort = $state('added_to_library_at');
   let filter = $state('all');
   let loading = $state(false);
+  let loadingMore = $state(false);
   let refreshing = $state(false);
   let isConnected = $state(false);
   let refreshResult = $state<string | null>(null);
+  let currentPage = $state(1);
+  const PAGE_SIZE = 60;
 
   // Library filter (local DB search)
   let librarySearch = $state('');
   let libraryDebounce: ReturnType<typeof setTimeout> | null = null;
 
 
-  async function fetchAlbums() {
-    loading = true;
+  async function fetchAlbums(append = false) {
+    if (append) {
+      loadingMore = true;
+    } else {
+      loading = true;
+      currentPage = 1;
+    }
     try {
       const params: Record<string, string> = {
         sort_by: sort,
-        page_size: '500',
+        page_size: String(PAGE_SIZE),
+        page: String(currentPage),
       };
       if (filter !== 'all') params['status'] = filter;
       if (librarySearch.trim()) params['search'] = librarySearch.trim();
       const data = await api.library.getAlbums(source, params);
-      $albums = data.albums;
+      if (append) {
+        $albums = [...$albums, ...data.albums];
+      } else {
+        $albums = data.albums;
+      }
       $totalAlbums = data.total;
     } catch (err) {
       console.error('Failed to load albums', err);
     } finally {
       loading = false;
+      loadingMore = false;
     }
   }
+
+  async function loadMore() {
+    currentPage += 1;
+    await fetchAlbums(true);
+  }
+
+  let hasMore = $derived($totalAlbums > $albums.length);
 
   async function refreshLibrary() {
     refreshing = true;
@@ -205,6 +226,14 @@
   </div>
 {:else}
   <AlbumGrid albums={albumList} onselect={handleSelectAlbum} />
+
+  {#if hasMore}
+    <div class="load-more">
+      <button class="btn btn-secondary btn-sm" onclick={loadMore} disabled={loadingMore}>
+        {#if loadingMore}Loading...{:else}Load More ({total - albumList.length} remaining){/if}
+      </button>
+    </div>
+  {/if}
 {/if}
 
 <AlbumDetail album={detail} open={detailOpen} onclose={closeDetail} />
@@ -343,6 +372,12 @@
     font-size: var(--text-xs);
     color: var(--positive);
     letter-spacing: var(--tracking-mono);
+  }
+
+  .load-more {
+    display: flex;
+    justify-content: center;
+    padding: var(--space-8) 0;
   }
 
   .btn {
