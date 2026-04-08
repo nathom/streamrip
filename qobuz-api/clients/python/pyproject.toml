@@ -15,6 +15,9 @@ dev = [
     "aioresponses>=0.7",
 ]
 
+[project.scripts]
+qobuz = "qobuz.cli:main"
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"

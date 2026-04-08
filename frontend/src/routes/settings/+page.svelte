@@ -33,6 +33,79 @@
   let saveError = $state('');
   let saveSuccess = $state(false);
 
+  // OAuth state
+  let oauthLoading = $state(false);
+  let oauthError = $state('');
+  let showHeadlessInput = $state(false);
+  let headlessRedirectUrl = $state('');
+
+  async function startQobuzOAuth() {
+    oauthLoading = true;
+    oauthError = '';
+    try {
+      const resp = await fetch('/api/auth/qobuz/oauth-url');
+      const data = await resp.json();
+      const oauthUrl = data.url;
+
+      // Open OAuth URL in new tab
+      const popup = window.open(oauthUrl, '_blank');
+
+      // Listen for the callback — the OAuth redirect goes to localhost:11111
+      // which won't work in Docker. Show a message to paste the URL instead.
+      oauthError = 'After logging in, if the page doesn\'t load, copy the URL and use "Headless Login"';
+      showHeadlessInput = true;
+    } catch (e: any) {
+      oauthError = e?.message ?? 'Failed to start OAuth';
+    } finally {
+      oauthLoading = false;
+    }
+  }
+
+  async function startQobuzOAuthHeadless() {
+    oauthLoading = true;
+    oauthError = '';
+    try {
+      const resp = await fetch('/api/auth/qobuz/oauth-url');
+      const data = await resp.json();
+      // Show the URL and input for redirect URL
+      showHeadlessInput = true;
+      oauthError = `Open this URL: ${data.url}`;
+    } catch (e: any) {
+      oauthError = e?.message ?? 'Failed to get OAuth URL';
+    } finally {
+      oauthLoading = false;
+    }
+  }
+
+  async function submitHeadlessUrl() {
+    if (!headlessRedirectUrl.trim()) return;
+    oauthLoading = true;
+    oauthError = '';
+    try {
+      const resp = await fetch('/api/auth/qobuz/oauth-from-url', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ redirect_url: headlessRedirectUrl.trim() }),
+      });
+      const data = await resp.json();
+      if (data.success) {
+        qobuzUserId = String(data.user_id);
+        qobuzConnected = true;
+        showHeadlessInput = false;
+        oauthError = '';
+        // Reload config to get the token
+        const config = await api.config.get();
+        qobuzAuthToken = config.qobuz_token ?? '';
+      } else {
+        oauthError = data.error || 'OAuth failed';
+      }
+    } catch (e: any) {
+      oauthError = e?.message ?? 'Failed to exchange OAuth code';
+    } finally {
+      oauthLoading = false;
+    }
+  }
+
   onMount(async () => {
     try {
       const config = await api.config.get();
@@ -154,8 +227,51 @@
 
   <div class="settings-row">
     <div>
+      <div class="settings-label">Login with Qobuz</div>
+      <div class="settings-label-sub">OAuth login — no need to find tokens manually</div>
+    </div>
+    <div style="display: flex; gap: var(--space-2); align-items: center;">
+      <button class="btn btn-primary btn-sm" onclick={startQobuzOAuth} disabled={oauthLoading}>
+        {#if oauthLoading}Waiting...{:else}▸ Login with Browser{/if}
+      </button>
+      <button class="btn btn-secondary btn-sm" onclick={startQobuzOAuthHeadless} disabled={oauthLoading}>
+        Headless Login
+      </button>
+    </div>
+  </div>
+
+  {#if oauthError}
+    <div class="settings-row" style="border-bottom: none;">
+      <div></div>
+      <span style="color: var(--destructive); font-size: var(--text-xs);">{oauthError}</span>
+    </div>
+  {/if}
+
+  {#if showHeadlessInput}
+    <div class="settings-row">
+      <div>
+        <div class="settings-label">Redirect URL</div>
+        <div class="settings-label-sub">Paste the URL from your browser after login</div>
+      </div>
+      <div style="display: flex; gap: var(--space-2); align-items: center;">
+        <input
+          class="settings-input"
+          type="text"
+          placeholder="http://localhost:11111/callback?code_autorisation=..."
+          bind:value={headlessRedirectUrl}
+          style="max-width: 400px;"
+        />
+        <button class="btn btn-primary btn-sm" onclick={submitHeadlessUrl} disabled={oauthLoading}>
+          Submit
+        </button>
+      </div>
+    </div>
+  {/if}
+
+  <div class="settings-row">
+    <div>
       <div class="settings-label">User ID</div>
-      <div class="settings-label-sub">Numeric ID from API</div>
+      <div class="settings-label-sub">Auto-filled after OAuth login</div>
     </div>
     <input
       class="settings-input"
@@ -169,7 +285,7 @@
   <div class="settings-row">
     <div>
       <div class="settings-label">Auth Token</div>
-      <div class="settings-label-sub">From browser DevTools</div>
+      <div class="settings-label-sub">Auto-filled after OAuth login</div>
     </div>
     <input
       class="settings-input"
