@@ -7,6 +7,48 @@
     onselect?: (album: any) => void;
   } = $props();
 
+  let sortKey = $state<string>('');
+  let sortDir = $state<'asc' | 'desc'>('asc');
+
+  function toggleSort(key: string) {
+    if (sortKey === key) {
+      sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+    } else {
+      sortKey = key;
+      sortDir = key === 'added_to_library_at' ? 'desc' : 'asc';
+    }
+  }
+
+  function getSortValue(album: any, key: string): string | number {
+    switch (key) {
+      case 'title': return (album.title || '').toLowerCase();
+      case 'artist': return (album.artist || '').toLowerCase();
+      case 'year': return getYear(album);
+      case 'format': return getFormat(album);
+      case 'track_count': return album.track_count ?? 0;
+      case 'status': return getStatus(album);
+      case 'added_to_library_at': return album.added_to_library_at || '';
+      default: return '';
+    }
+  }
+
+  let sortedAlbums = $derived(() => {
+    if (!sortKey) return albums;
+    const sorted = [...albums].sort((a, b) => {
+      const va = getSortValue(a, sortKey);
+      const vb = getSortValue(b, sortKey);
+      if (va < vb) return sortDir === 'asc' ? -1 : 1;
+      if (va > vb) return sortDir === 'asc' ? 1 : -1;
+      return 0;
+    });
+    return sorted;
+  });
+
+  function sortIndicator(key: string): string {
+    if (sortKey !== key) return '';
+    return sortDir === 'asc' ? ' ▴' : ' ▾';
+  }
+
   function getYear(a: any): string {
     if (a.year) return String(a.year);
     if (a.release_date) return a.release_date.slice(0, 4);
@@ -39,11 +81,14 @@
     }
   }
 
-  function formatDuration(seconds: number | undefined): string {
-    if (!seconds) return '—';
-    const m = Math.floor(seconds / 60);
-    const s = seconds % 60;
-    return `${m}:${String(s).padStart(2, '0')}`;
+  function formatDateAdded(ts: string | null | undefined): string {
+    if (!ts) return '—';
+    try {
+      const d = new Date(ts);
+      return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+    } catch {
+      return '—';
+    }
   }
 </script>
 
@@ -52,16 +97,17 @@
     <thead>
       <tr>
         <th class="col-cover"></th>
-        <th class="col-title">Title</th>
-        <th class="col-artist">Artist</th>
-        <th class="col-year">Year</th>
-        <th class="col-format">Format</th>
-        <th class="col-tracks">Tracks</th>
-        <th class="col-status">Status</th>
+        <th class="col-title sortable" onclick={() => toggleSort('title')}>Title{sortIndicator('title')}</th>
+        <th class="col-artist sortable" onclick={() => toggleSort('artist')}>Artist{sortIndicator('artist')}</th>
+        <th class="col-year sortable" onclick={() => toggleSort('year')}>Year{sortIndicator('year')}</th>
+        <th class="col-format sortable" onclick={() => toggleSort('format')}>Format{sortIndicator('format')}</th>
+        <th class="col-tracks sortable" onclick={() => toggleSort('track_count')}>Tracks{sortIndicator('track_count')}</th>
+        <th class="col-added sortable" onclick={() => toggleSort('added_to_library_at')}>Added{sortIndicator('added_to_library_at')}</th>
+        <th class="col-status sortable" onclick={() => toggleSort('status')}>Status{sortIndicator('status')}</th>
       </tr>
     </thead>
     <tbody>
-      {#each albums as album, i (album.source_album_id ?? album.id ?? i)}
+      {#each sortedAlbums() as album, i (album.source_album_id ?? album.id ?? i)}
         <tr class="album-row" onclick={() => onselect?.(album)} tabindex="0" onkeydown={(e) => e.key === 'Enter' && onselect?.(album)}>
           <td class="col-cover">
             {#if album.cover_url}
@@ -77,6 +123,7 @@
           <td class="col-year mono">{getYear(album)}</td>
           <td class="col-format mono">{getFormat(album)}</td>
           <td class="col-tracks mono">{album.track_count ?? '—'}</td>
+          <td class="col-added mono">{formatDateAdded(album.added_to_library_at)}</td>
           <td class="col-status">
             <span class="status-dot {statusClass(getStatus(album))}"></span>
             <span class="status-text">{statusLabel(getStatus(album))}</span>
@@ -122,6 +169,14 @@
     letter-spacing: var(--tracking-wide);
     color: var(--text-tertiary);
     white-space: nowrap;
+    user-select: none;
+  }
+
+  th.sortable {
+    cursor: pointer;
+  }
+  th.sortable:hover {
+    color: var(--text-primary);
   }
 
   .album-row {
@@ -146,6 +201,7 @@
   .col-cover { width: 40px; padding: var(--space-1) var(--space-2); }
   .col-year, .col-tracks { width: 60px; }
   .col-format { width: 120px; }
+  .col-added { width: 100px; }
   .col-status { width: 100px; }
 
   .row-cover {
@@ -168,13 +224,8 @@
     font-size: 16px;
   }
 
-  .title-text {
-    font-weight: 600;
-  }
-
-  .col-artist {
-    color: var(--text-secondary);
-  }
+  .title-text { font-weight: 600; }
+  .col-artist { color: var(--text-secondary); }
 
   .mono {
     font-family: var(--font-mono);
@@ -191,15 +242,10 @@
     margin-right: var(--space-1);
     vertical-align: middle;
   }
-
   .status-complete { background: var(--positive); }
   .status-active { background: var(--accent); }
   .status-none { background: var(--canvas-inset); }
-
-  .status-text {
-    font-size: var(--text-xs);
-    color: var(--text-tertiary);
-  }
+  .status-text { font-size: var(--text-xs); color: var(--text-tertiary); }
 
   .empty-state {
     display: flex;
@@ -209,7 +255,6 @@
     gap: var(--space-3);
     color: var(--text-tertiary);
   }
-
   .empty-icon { font-size: 48px; opacity: 0.3; }
   .empty-label { font-family: var(--font-mono); font-size: var(--text-sm); letter-spacing: var(--tracking-mono); }
 </style>
