@@ -15,7 +15,7 @@
   let maxConnections = $state(6);
   let sourceSubdirectories = $state(false);
   let discSubdirectories = $state(true);
-  let folderFormat = $state('{albumartist} - {title} ({year}) [{container}]');
+  let folderFormat = $state('{albumartist}/({year}) {title} [{container}-{bit_depth}-{sampling_rate}]');
   let trackFormat = $state('{tracknumber:02}. {artist} - {title}{explicit}');
 
   let embedArtwork = $state(true);
@@ -205,7 +205,7 @@
         maxConnections = config.max_connections ?? 6;
         sourceSubdirectories = config.source_subdirectories ?? false;
         discSubdirectories = config.disc_subdirectories ?? true;
-        folderFormat = config.folder_format ?? '{albumartist} - {title} ({year}) [{container}]';
+        folderFormat = config.folder_format ?? '{albumartist}/({year}) {title} [{container}-{bit_depth}-{sampling_rate}]';
         trackFormat = config.track_format ?? '{tracknumber:02}. {artist} - {title}{explicit}';
 
         embedArtwork = config.embed_artwork ?? true;
