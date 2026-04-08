@@ -1,3 +1,5 @@
+import { addToast } from '$lib/stores/toast';
+
 const BASE = '/api';
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
@@ -5,7 +7,11 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
     headers: { 'Content-Type': 'application/json' },
     ...options,
   });
-  if (!resp.ok) throw new Error(`API error: ${resp.status}`);
+  if (!resp.ok) {
+    const errorText = await resp.text().catch(() => `HTTP ${resp.status}`);
+    addToast(`API error: ${errorText}`, 'error');
+    throw new Error(`API error: ${resp.status}`);
+  }
   return resp.json();
 }
 

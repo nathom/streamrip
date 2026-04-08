@@ -34,6 +34,41 @@
   let librarySearch = $state('');
   let libraryDebounce: ReturnType<typeof setTimeout> | null = null;
 
+  // Multi-select state
+  let selectMode = $state(false);
+  let selectedAlbums = $state<Set<string>>(new Set());
+  let batchDownloading = $state(false);
+
+  function toggleSelectMode() {
+    selectMode = !selectMode;
+    if (!selectMode) selectedAlbums = new Set();
+  }
+
+  function toggleAlbumSelect(id: string) {
+    const next = new Set(selectedAlbums);
+    if (next.has(id)) {
+      next.delete(id);
+    } else {
+      next.add(id);
+    }
+    selectedAlbums = next;
+  }
+
+  function clearSelection() {
+    selectedAlbums = new Set();
+  }
+
+  async function downloadSelected() {
+    if (selectedAlbums.size === 0) return;
+    batchDownloading = true;
+    try {
+      await api.downloads.enqueue(source, [...selectedAlbums]);
+      selectedAlbums = new Set();
+      selectMode = false;
+    } finally {
+      batchDownloading = false;
+    }
+  }
 
   async function fetchAlbums(append = false) {
     if (append) {
@@ -222,6 +257,12 @@
       <button class="view-btn" class:active={viewMode === 'grid'} onclick={() => viewMode = 'grid'} title="Grid view">◧</button>
       <button class="view-btn" class:active={viewMode === 'table'} onclick={() => viewMode = 'table'} title="Table view">═</button>
     </div>
+    <button
+      class="view-btn select-toggle"
+      class:active={selectMode}
+      onclick={toggleSelectMode}
+      title="Multi-select"
+    >☑</button>
     <button class="btn btn-pop btn-sm" onclick={downloadAllNew}>▸ Download All New</button>
   </div>
 </div>
@@ -232,9 +273,21 @@
   </div>
 {:else}
   {#if viewMode === 'grid'}
-    <AlbumGrid albums={albumList} onselect={handleSelectAlbum} />
+    <AlbumGrid
+      albums={albumList}
+      onselect={handleSelectAlbum}
+      selectable={selectMode}
+      selectedIds={selectedAlbums}
+      ontoggleselect={toggleAlbumSelect}
+    />
   {:else}
-    <AlbumTable albums={albumList} onselect={handleSelectAlbum} />
+    <AlbumTable
+      albums={albumList}
+      onselect={handleSelectAlbum}
+      selectable={selectMode}
+      selectedIds={selectedAlbums}
+      ontoggleselect={toggleAlbumSelect}
+    />
   {/if}
 
   {#if hasMore}
@@ -247,6 +300,19 @@
 {/if}
 
 <AlbumDetail album={detail} open={detailOpen} onclose={closeDetail} />
+
+<!-- Floating batch action bar -->
+{#if selectMode && selectedAlbums.size > 0}
+  <div class="batch-bar">
+    <span class="batch-count">{selectedAlbums.size} selected</span>
+    <div class="batch-actions">
+      <button class="btn btn-pop btn-sm" onclick={downloadSelected} disabled={batchDownloading}>
+        {#if batchDownloading}Queuing...{:else}▸ Download{/if}
+      </button>
+      <button class="btn btn-secondary btn-sm" onclick={clearSelection}>Clear</button>
+    </div>
+  </div>
+{/if}
 
 <style>
   .page-header {
@@ -394,13 +460,18 @@
     font-size: var(--text-sm);
     background: var(--canvas-raised);
     color: var(--text-secondary);
-    border: none;
+    border: 2px solid var(--border);
     border-radius: 0;
     cursor: pointer;
     font-family: var(--font-family);
   }
-  .view-btn + .view-btn { border-left: 2px solid var(--border); }
+  .view-toggle .view-btn { border: none; }
+  .view-toggle .view-btn + .view-btn { border-left: 2px solid var(--border); }
   .view-btn.active { background: var(--accent); color: var(--text-inverse); }
+
+  .select-toggle {
+    font-size: var(--text-sm);
+  }
 
   .load-more {
     display: flex;
@@ -424,4 +495,34 @@
   .btn-secondary { background: var(--canvas-raised); color: var(--text-primary); box-shadow: var(--shadow-sm); }
   .btn-pop { background: var(--pop); color: var(--text-inverse); box-shadow: var(--shadow-pop); }
   .btn-sm  { font-size: var(--text-xs); padding: var(--space-1) var(--space-3); }
+
+  /* Floating batch action bar */
+  .batch-bar {
+    position: fixed;
+    bottom: var(--space-6);
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+    background: var(--canvas-raised);
+    border: 2px solid var(--accent);
+    box-shadow: var(--shadow-md);
+    padding: var(--space-3) var(--space-5);
+    z-index: 100;
+    white-space: nowrap;
+  }
+
+  .batch-count {
+    font-family: var(--font-mono);
+    font-size: var(--text-sm);
+    font-weight: 700;
+    letter-spacing: var(--tracking-mono);
+    color: var(--text-primary);
+  }
+
+  .batch-actions {
+    display: flex;
+    gap: var(--space-2);
+  }
 </style>

@@ -2,13 +2,23 @@
   let {
     albums,
     onselect,
+    selectable = false,
+    selectedIds = new Set<string>(),
+    ontoggleselect,
   }: {
     albums: any[];
     onselect?: (album: any) => void;
+    selectable?: boolean;
+    selectedIds?: Set<string>;
+    ontoggleselect?: (id: string) => void;
   } = $props();
 
   let sortKey = $state<string>('');
   let sortDir = $state<'asc' | 'desc'>('asc');
+
+  function albumId(album: any): string {
+    return album.source_album_id || String(album.id);
+  }
 
   function toggleSort(key: string) {
     if (sortKey === key) {
@@ -90,12 +100,51 @@
       return '—';
     }
   }
+
+  function handleRowClick(album: any) {
+    if (selectable) {
+      ontoggleselect?.(albumId(album));
+    } else {
+      onselect?.(album);
+    }
+  }
+
+  // Select-all derived state
+  let allSelected = $derived(
+    albums.length > 0 && albums.every((a) => selectedIds.has(albumId(a)))
+  );
+
+  function toggleAll() {
+    const listed = sortedAlbums();
+    if (allSelected) {
+      listed.forEach((a) => {
+        if (selectedIds.has(albumId(a))) ontoggleselect?.(albumId(a));
+      });
+    } else {
+      listed.forEach((a) => {
+        if (!selectedIds.has(albumId(a))) ontoggleselect?.(albumId(a));
+      });
+    }
+  }
 </script>
 
 <div class="album-table-wrapper">
   <table class="album-table">
     <thead>
       <tr>
+        {#if selectable}
+          <th class="col-check">
+            <label class="checkbox-label">
+              <input
+                type="checkbox"
+                class="sr-only"
+                checked={allSelected}
+                onchange={toggleAll}
+              />
+              <span class="checkbox-visual" class:checked={allSelected}></span>
+            </label>
+          </th>
+        {/if}
         <th class="col-cover"></th>
         <th class="col-title sortable" onclick={() => toggleSort('title')}>Title{sortIndicator('title')}</th>
         <th class="col-artist sortable" onclick={() => toggleSort('artist')}>Artist{sortIndicator('artist')}</th>
@@ -108,7 +157,26 @@
     </thead>
     <tbody>
       {#each sortedAlbums() as album, i (album.source_album_id ?? album.id ?? i)}
-        <tr class="album-row" onclick={() => onselect?.(album)} tabindex="0" onkeydown={(e) => e.key === 'Enter' && onselect?.(album)}>
+        <tr
+          class="album-row"
+          class:row-selected={selectable && selectedIds.has(albumId(album))}
+          onclick={() => handleRowClick(album)}
+          tabindex="0"
+          onkeydown={(e) => e.key === 'Enter' && handleRowClick(album)}
+        >
+          {#if selectable}
+            <td class="col-check" onclick={(e) => e.stopPropagation()}>
+              <label class="checkbox-label">
+                <input
+                  type="checkbox"
+                  class="sr-only"
+                  checked={selectedIds.has(albumId(album))}
+                  onchange={() => ontoggleselect?.(albumId(album))}
+                />
+                <span class="checkbox-visual" class:checked={selectedIds.has(albumId(album))}></span>
+              </label>
+            </td>
+          {/if}
           <td class="col-cover">
             {#if album.cover_url}
               <img src={album.cover_url} alt="" class="row-cover" />
@@ -189,6 +257,14 @@
     transition: background-color 80ms;
   }
 
+  .album-row.row-selected {
+    background: color-mix(in srgb, var(--accent) 12%, transparent);
+  }
+
+  .album-row.row-selected:hover {
+    background: color-mix(in srgb, var(--accent) 20%, transparent);
+  }
+
   td {
     padding: var(--space-2) var(--space-3);
     vertical-align: middle;
@@ -198,6 +274,7 @@
     max-width: 300px;
   }
 
+  .col-check { width: 36px; padding: var(--space-1) var(--space-2); }
   .col-cover { width: 40px; padding: var(--space-1) var(--space-2); }
   .col-year, .col-tracks { width: 60px; }
   .col-format { width: 120px; }
@@ -246,6 +323,41 @@
   .status-active { background: var(--accent); }
   .status-none { background: var(--canvas-inset); }
   .status-text { font-size: var(--text-xs); color: var(--text-tertiary); }
+
+  /* Checkbox */
+  .checkbox-label {
+    display: inline-flex;
+    cursor: pointer;
+  }
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0,0,0,0);
+    white-space: nowrap;
+  }
+  .checkbox-visual {
+    display: block;
+    width: 16px;
+    height: 16px;
+    border: 2px solid var(--border);
+    background: var(--canvas-raised);
+    flex-shrink: 0;
+  }
+  .checkbox-visual.checked {
+    background: var(--accent);
+    border-color: var(--accent);
+  }
+  .checkbox-visual.checked::after {
+    content: '✓';
+    display: block;
+    color: var(--text-inverse);
+    font-size: 11px;
+    line-height: 1;
+    text-align: center;
+    font-weight: 800;
+  }
 
   .empty-state {
     display: flex;
