@@ -74,6 +74,8 @@
 
   let scanning = $state(false);
   let scanResult = $state<string | null>(null);
+  let confirmFlush = $state(false);
+  let flushResult = $state<string | null>(null);
 
   async function scanDownloads() {
     scanning = true;
@@ -87,6 +89,18 @@
       scanResult = 'Scan failed';
     } finally {
       scanning = false;
+    }
+  }
+
+  async function flushDatabase() {
+    try {
+      const resp = await fetch('/api/config/reset', { method: 'POST' });
+      const data = await resp.json();
+      flushResult = data.message || 'Database reset';
+      confirmFlush = false;
+      setTimeout(() => { flushResult = null; }, 5000);
+    } catch {
+      flushResult = 'Reset failed';
     }
   }
 
@@ -430,6 +444,24 @@
       </button>
       {#if scanResult}
         <span class="scan-result">{scanResult}</span>
+      {/if}
+    </div>
+  </div>
+
+  <div class="settings-row">
+    <div>
+      <div class="settings-label">Reset Database</div>
+      <div class="settings-label-sub">Clear all library data, download history, and config. Files on disk are not affected.</div>
+    </div>
+    <div style="display: flex; gap: var(--space-2); align-items: center;">
+      {#if confirmFlush}
+        <button class="btn btn-destructive btn-sm" onclick={flushDatabase}>Confirm Reset</button>
+        <button class="btn btn-secondary btn-sm" onclick={() => confirmFlush = false}>Cancel</button>
+      {:else}
+        <button class="btn btn-secondary btn-sm" onclick={() => confirmFlush = true}>▸ Reset</button>
+      {/if}
+      {#if flushResult}
+        <span class="scan-result">{flushResult}</span>
       {/if}
     </div>
   </div>

@@ -40,6 +40,19 @@ async def update_config(request: Request, body: ConfigUpdate):
     return await get_config(request)
 
 
+@router.post("/reset")
+async def reset_database(request: Request):
+    """Reset all library data, download history, and config. Files on disk are not affected."""
+    db = request.app.state.db
+    with db._connect() as conn:
+        conn.execute("DELETE FROM albums")
+        conn.execute("DELETE FROM tracks")
+        conn.execute("DELETE FROM sync_runs")
+        conn.execute("DELETE FROM config")
+    logger.info("Database reset — all library data cleared")
+    return {"message": "Database reset. Library, tracks, and config cleared. Files on disk unchanged."}
+
+
 async def _reload_clients(request: Request):
     """Re-initialize streaming clients after credential changes."""
     from ..main import _init_clients
