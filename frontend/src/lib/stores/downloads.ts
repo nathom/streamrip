@@ -1,10 +1,14 @@
 import { writable } from 'svelte/store';
 import { api } from '$lib/api/client';
 import { onEvent } from './websocket';
+import { selectedAlbum } from './library';
 
 export const queue = writable<any[]>([]);
 export const activeCount = writable(0);
 export const totalSpeed = writable(0);
+
+// Exported so components can subscribe to download_complete events
+export const lastCompletedDownload = writable<Record<string, unknown> | null>(null);
 
 export async function loadQueue() {
   const data = await api.downloads.getQueue();
@@ -32,6 +36,12 @@ onEvent('download_complete', (data) => {
       item.id === data.item_id ? { ...item, status: 'complete' } : item
     )
   );
+  // Refresh full queue state from server after completion
+  loadQueue();
+  // Notify subscribers (e.g. AlbumDetail) about the completed download
+  lastCompletedDownload.set(data);
+  // Clear selectedAlbum cache so the next open fetches fresh data
+  selectedAlbum.set(null);
 });
 
 onEvent('download_failed', (data) => {
@@ -40,4 +50,6 @@ onEvent('download_failed', (data) => {
       item.id === data.item_id ? { ...item, status: 'failed' } : item
     )
   );
+  // Refresh full queue state from server after failure
+  loadQueue();
 });

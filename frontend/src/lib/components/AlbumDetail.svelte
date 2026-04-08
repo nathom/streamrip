@@ -34,8 +34,10 @@
     cover_url?: string;
   }
 
+  import { onDestroy } from 'svelte';
   import { api } from '$lib/api/client';
-  import { currentSource } from '$lib/stores/library';
+  import { currentSource, loadAlbumDetail } from '$lib/stores/library';
+  import { lastCompletedDownload } from '$lib/stores/downloads';
 
   let {
     album,
@@ -50,6 +52,22 @@
   let downloading = $state(false);
   let downloadError = $state('');
   let source = $derived($currentSource);
+
+  // Re-fetch album detail when a download completes for this album
+  const unsubscribeDownloadComplete = lastCompletedDownload.subscribe((completed) => {
+    if (!completed || !album || !open) return;
+    const completedAlbumId = completed.album_id ?? completed.source_album_id ?? completed.item_id;
+    const currentAlbumId = album.source_album_id ?? String(album.id);
+    if (completedAlbumId && currentAlbumId && String(completedAlbumId) === String(currentAlbumId)) {
+      if (album.id && album.id > 0) {
+        loadAlbumDetail(source, album.id).catch(() => {});
+      }
+    }
+  });
+
+  onDestroy(() => {
+    unsubscribeDownloadComplete();
+  });
 
   function getYear(a: AlbumFull): string {
     if (a.year) return String(a.year);
@@ -283,6 +301,10 @@
             </span>
           </div>
         {/each}
+      </div>
+    {:else}
+      <div class="track-list-empty">
+        <span class="mono">Download this album to see the full track list</span>
       </div>
     {/if}
   {:else}
@@ -571,5 +593,15 @@
     justify-content: center;
     padding: var(--space-16);
     color: var(--text-tertiary);
+  }
+
+  .track-list-empty {
+    border-top: 2px solid var(--border);
+    padding: var(--space-8) var(--space-5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-tertiary);
+    font-size: var(--text-sm);
   }
 </style>

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, onDestroy } from 'svelte';
   import DownloadQueue from '$lib/components/DownloadQueue.svelte';
   import { queue, activeCount, totalSpeed, loadQueue } from '$lib/stores/downloads';
   import { api } from '$lib/api/client';
@@ -23,8 +23,19 @@
     }
   }
 
+  function handleVisibilityChange() {
+    if (document.visibilityState === 'visible') {
+      loadQueue();
+    }
+  }
+
   onMount(() => {
     loadQueue();
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+  });
+
+  onDestroy(() => {
+    document.removeEventListener('visibilitychange', handleVisibilityChange);
   });
 </script>
 
