@@ -4,9 +4,12 @@
   import { currentSource } from '$lib/stores/library';
   import { activeCount } from '$lib/stores/downloads';
   import { onMount } from 'svelte';
-  import { connectWebSocket } from '$lib/stores/websocket';
+  import { connectWebSocket, onEvent } from '$lib/stores/websocket';
   import { api } from '$lib/api/client';
   import { page } from '$app/state';
+  import { goto } from '$app/navigation';
+  import { addToast } from '$lib/stores/toast';
+  import Toast from '$lib/components/Toast.svelte';
 
   let { children }: { children: Snippet } = $props();
 
@@ -24,7 +27,9 @@
   function toggleTheme() {
     const html = document.documentElement;
     const current = html.getAttribute('data-theme');
-    html.setAttribute('data-theme', current === 'dark' ? 'light' : 'dark');
+    const next = current === 'dark' ? 'light' : 'dark';
+    html.setAttribute('data-theme', next);
+    localStorage.setItem('theme', next);
   }
 
   async function loadAuthStatus() {
@@ -35,11 +40,71 @@
     }
   }
 
+  function isInputFocused(): boolean {
+    const el = document.activeElement;
+    if (!el) return false;
+    const tag = el.tagName.toLowerCase();
+    return tag === 'input' || tag === 'textarea' || tag === 'select' || (el as HTMLElement).isContentEditable;
+  }
+
+  function handleKeydown(e: KeyboardEvent) {
+    // / or Ctrl+K → navigate to /search, focus search input
+    if (e.key === '/' || (e.ctrlKey && e.key === 'k')) {
+      if (e.key === '/' && isInputFocused()) return;
+      e.preventDefault();
+      goto('/search').then(() => {
+        const input = document.querySelector<HTMLInputElement>('.search-input');
+        input?.focus();
+      });
+      return;
+    }
+
+    // Escape → close album detail panel
+    if (e.key === 'Escape') {
+      window.dispatchEvent(new CustomEvent('close-detail'));
+      return;
+    }
+
+    // Number shortcuts — only when no input is focused
+    if (isInputFocused()) return;
+
+    if (e.key === '1') goto('/library');
+    else if (e.key === '2') goto('/search');
+    else if (e.key === '3') goto('/downloads');
+    else if (e.key === '4') goto('/settings');
+  }
+
   onMount(() => {
+    // Task 2: Persist theme preference
+    const saved = localStorage.getItem('theme') ?? 'dark';
+    document.documentElement.setAttribute('data-theme', saved);
+
     if (typeof window !== 'undefined') {
       connectWebSocket();
     }
     loadAuthStatus();
+
+    // Task 1: Wire up WebSocket events to toasts
+    onEvent('download_complete', (data) => {
+      const title = (data.title as string) ?? 'Unknown';
+      addToast(`Downloaded: ${title}`, 'success');
+    });
+
+    onEvent('download_failed', (data) => {
+      const title = (data.title as string) ?? 'Unknown';
+      addToast(`Download failed: ${title}`, 'error');
+    });
+
+    onEvent('library_updated', (data) => {
+      const count = (data.new_count as number) ?? 0;
+      addToast(`Library synced: ${count} new albums`, 'info');
+    });
+
+    // Task 3: Keyboard shortcuts
+    window.addEventListener('keydown', handleKeydown);
+    return () => {
+      window.removeEventListener('keydown', handleKeydown);
+    };
   });
 </script>
 
@@ -91,6 +156,8 @@
     {@render children()}
   </main>
 </div>
+
+<Toast />
 
 <style>
   .app-shell {
