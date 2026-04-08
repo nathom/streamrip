@@ -16,7 +16,12 @@ async def auth_status(request: Request):
     sources = []
     for source in ("qobuz", "tidal"):
         client = clients.get(source)
-        authenticated = client is not None and getattr(client, 'logged_in', False)
+        # SDK clients are authenticated when session is open (they have _transport)
+        # Streamrip clients use logged_in attribute
+        if client is not None and hasattr(client, '_transport'):
+            authenticated = client._transport._session is not None
+        else:
+            authenticated = client is not None and getattr(client, 'logged_in', False)
         token_key = f"{source}_token" if source == "qobuz" else f"{source}_access_token"
         sources.append({
             "source": source,

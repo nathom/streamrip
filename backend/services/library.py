@@ -31,7 +31,7 @@ class LibraryService:
         if not tracks:
             source = album["source"]
             client = self.clients.get(source)
-            if client and getattr(client, 'logged_in', False):
+            if client and (hasattr(client, 'favorites') or getattr(client, 'logged_in', False)):
                 try:
                     tracks = await self._fetch_and_cache_tracks(
                         client, source, album["source_album_id"], album_id
@@ -44,13 +44,38 @@ class LibraryService:
     async def _fetch_and_cache_tracks(self, client, source, source_album_id, album_id):
         """Fetch track list from API and cache in DB."""
         if source == "qobuz":
+            if hasattr(client, 'catalog'):
+                return await self._fetch_qobuz_tracks_sdk(client, source_album_id, album_id)
             return await self._fetch_qobuz_tracks(client, source_album_id, album_id)
         elif source == "tidal":
             return await self._fetch_tidal_tracks(client, source_album_id, album_id)
         return []
 
+    async def _fetch_qobuz_tracks_sdk(self, client, source_album_id, album_id):
+        """Fetch tracks from Qobuz using SDK client."""
+        try:
+            album, tracks = await client.catalog.get_album_with_tracks(source_album_id)
+        except Exception:
+            logger.exception("Failed to fetch Qobuz album %s via SDK", source_album_id)
+            return []
+
+        for t in tracks:
+            self.db.upsert_track(
+                album_id=album_id,
+                source_track_id=str(t.id),
+                title=t.title,
+                artist=t.performer.name,
+                track_number=t.track_number,
+                disc_number=t.disc_number,
+                duration_seconds=t.duration,
+                explicit=t.explicit,
+                isrc=t.isrc,
+            )
+
+        return self.db.get_tracks(album_id)
+
     async def _fetch_qobuz_tracks(self, client, source_album_id, album_id):
-        """Fetch tracks from Qobuz album/get endpoint."""
+        """Fetch tracks from Qobuz album/get endpoint (streamrip client)."""
         try:
             resp = await client.get_album(source_album_id)
         except Exception:
@@ -110,13 +135,16 @@ class LibraryService:
         client = self.clients.get(source)
         if client is None:
             raise ValueError(f"No client configured for {source}")
-        if not client.logged_in:
-            raise ValueError(f"Client {source} is not authenticated")
 
-        raw_pages = await client.get_user_favorites("album", limit=None)
-
-        # Extract album items from paginated response
-        all_items = self._extract_items_from_pages(source, raw_pages)
+        if source == "qobuz" and hasattr(client, 'favorites'):
+            # SDK client
+            all_items = await self._fetch_qobuz_favorites_sdk(client)
+        else:
+            # Streamrip client (Tidal)
+            if not client.logged_in:
+                raise ValueError(f"Client {source} is not authenticated")
+            raw_pages = await client.get_user_favorites("album", limit=None)
+            all_items = self._extract_items_from_pages(source, raw_pages)
 
         existing_ids = {a["source_album_id"] for a in self.db.get_albums(source, limit=100000)}
         new_count = 0
@@ -130,6 +158,65 @@ class LibraryService:
 
         await self.event_bus.publish("library_updated", {"source": source, "new_count": new_count, "total": len(all_items)})
         return {"total": len(all_items), "new": new_count}
+
+    async def _fetch_qobuz_favorites_sdk(self, client) -> list[dict]:
+        """Fetch all favorite albums using the SDK client with pagination."""
+        all_items = []
+        offset = 0
+        while True:
+            result = await client.favorites.get_albums(limit=500, offset=offset)
+            for album in result.items:
+                # Convert SDK Album to dict for _extract_album_data
+                all_items.append(self._sdk_album_to_dict(album))
+            if offset + result.limit >= result.total:
+                break
+            offset += result.limit
+        return all_items
+
+    def _sdk_album_to_dict_from_raw(self, item: dict) -> dict:
+        """Convert a raw dict from SDK PaginatedResult to extract format.
+
+        Search results come as raw dicts (not Album dataclasses).
+        """
+        artist = item.get("artist", {})
+        image = item.get("image", {})
+        bit_depth = item.get("maximum_bit_depth", 16)
+        sample_rate = item.get("maximum_sampling_rate", 44.1)
+        return {
+            "id": str(item["id"]),
+            "title": item.get("title", "Unknown"),
+            "artist": artist if isinstance(artist, dict) else {"name": str(artist)},
+            "artists": item.get("artists", []),
+            "release_date_original": item.get("release_date_original"),
+            "label": item.get("label"),
+            "genre": item.get("genre"),
+            "tracks_count": item.get("tracks_count"),
+            "duration": item.get("duration"),
+            "image": image,
+            "maximum_bit_depth": bit_depth,
+            "maximum_sampling_rate": sample_rate,
+        }
+
+    def _sdk_album_to_dict(self, album) -> dict:
+        """Convert SDK Album dataclass to a dict matching the extract format."""
+        return {
+            "id": album.id,
+            "title": album.title,
+            "artist": {"name": album.artist.name},
+            "artists": [{"name": a.name} for a in album.artists],
+            "release_date_original": album.release_date_original,
+            "label": {"name": album.label.name} if album.label else None,
+            "genre": {"name": album.genre.name} if album.genre else None,
+            "tracks_count": album.tracks_count,
+            "duration": album.duration,
+            "image": {
+                "large": album.image.large,
+                "small": album.image.small,
+                "thumbnail": album.image.thumbnail,
+            },
+            "maximum_bit_depth": album.maximum_bit_depth,
+            "maximum_sampling_rate": album.maximum_sampling_rate,
+        }
 
     def _extract_items_from_pages(self, source: str, pages) -> list:
         """Extract individual album items from paginated API responses.
@@ -165,16 +252,21 @@ class LibraryService:
         if client is None:
             return []
 
-        raw_results = await client.search("album", query, limit=limit)
-        if not raw_results:
-            return []
-
-        albums = []
-        for page in raw_results:
-            if isinstance(page, dict) and "albums" in page:
-                albums.extend(page["albums"].get("items", []))
-            elif isinstance(page, dict) and "items" in page:
-                albums.extend(page["items"])
+        if source == "qobuz" and hasattr(client, 'catalog'):
+            # SDK client
+            result = await client.catalog.search_albums(query, limit=limit)
+            albums = [self._sdk_album_to_dict_from_raw(item) for item in result.items]
+        else:
+            # Streamrip client
+            raw_results = await client.search("album", query, limit=limit)
+            if not raw_results:
+                return []
+            albums = []
+            for page in raw_results:
+                if isinstance(page, dict) and "albums" in page:
+                    albums.extend(page["albums"].get("items", []))
+                elif isinstance(page, dict) and "items" in page:
+                    albums.extend(page["items"])
 
         enriched = []
         for album in albums:

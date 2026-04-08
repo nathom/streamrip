@@ -101,210 +101,110 @@ class DownloadService:
                 await self.event_bus.publish("download_failed", {"item_id": item["id"], "error": str(e)})
 
     async def _download_album(self, item: dict):
-        """Download an album using PendingAlbum directly (no Main).
+        """Download an album using the Qobuz SDK.
 
-        This avoids Main.__init__ creating new un-logged-in clients.
-        We pass the already-logged-in client directly to PendingAlbum.
+        Uses AlbumDownloader from the qobuz SDK — fully self-contained
+        with typed models, native progress callbacks, retry, and dedup.
+        No streamrip media pipeline dependency.
         """
-        from streamrip.media import PendingAlbum
-        from streamrip.db import build_database
-        from .config_bridge import build_streamrip_config
+        from qobuz import AlbumDownloader, DownloadConfig
 
-        client = self.clients.get(item["source"])
-        if client is None:
+        sdk_client = self.clients.get(item["source"])
+        if sdk_client is None:
             raise ValueError(f"No client for source {item['source']}")
 
-        # Ensure client is logged in — login if needed
-        if not getattr(client, 'logged_in', False) or (
-            item["source"] == "qobuz" and not getattr(client, 'secret', None)
-        ):
-            logger.warning(
-                "Client %s not ready (logged_in=%s, secret=%s). Attempting login...",
-                item["source"],
-                getattr(client, 'logged_in', None),
-                'set' if getattr(client, 'secret', None) else 'None',
-            )
-            try:
-                await client.login()
-                logger.info("Login successful for %s", item["source"])
-            except Exception:
-                logger.exception("Login failed for %s", item["source"])
-                raise ValueError(f"Client {item['source']} failed to login")
+        # Build SDK download config from web DB settings
+        quality = 3
+        q_val = self.db.get_config("qobuz_quality")
+        if q_val:
+            quality = int(q_val)
 
-        logger.info(
-            "Downloading album: %s - %s (id: %s) [logged_in=%s, secret=%s]",
-            item["artist"], item["title"], item["source_album_id"],
-            client.logged_in,
-            "set" if getattr(client, "secret", None) else "None",
+        downloads_db = None
+        if not item.get("force"):
+            db_dir = os.path.dirname(
+                os.environ.get("STREAMRIP_DB_PATH", "data/streamrip.db")
+            ) or "data"
+            downloads_db = os.path.join(db_dir, "downloads.db")
+
+        dl_config = DownloadConfig(
+            output_dir=self.download_path or "/music",
+            quality=quality,
+            folder_format=self.db.get_config("folder_format") or "{albumartist} - {title} ({year}) [{container}] [{bit_depth}B-{sampling_rate}kHz]",
+            track_format=self.db.get_config("track_format") or "{tracknumber:02d}. {artist} - {title}",
+            max_connections=self.max_connections,
+            embed_cover=self.db.get_config("embed_artwork") != "false",
+            cover_size=self.db.get_config("artwork_size") or "large",
+            source_subdirectories=self.db.get_config("source_subdirectories") in ("true", "1"),
+            disc_subdirectories=self.db.get_config("disc_subdirectories") != "false",
+            download_booklets=self.db.get_config("qobuz_download_booklets") != "false",
+            skip_downloaded=not item.get("force", False),
+            downloads_db_path=downloads_db,
         )
 
-        config = build_streamrip_config(self.db)
-        if self.download_path:
-            config.session.downloads.folder = self.download_path
-
-        if item.get("force"):
-            # Force re-download: use Dummy DB so no tracks are skipped
-            from streamrip.db import Dummy, Database as SRDatabase
-            database = SRDatabase(Dummy(), Dummy(), Dummy())
-            logger.info("Force download — skipping download history checks")
-        else:
-            database = build_database(config)
-
-        pending = PendingAlbum(item["source_album_id"], client, config, database)
-
-        media = await pending.resolve()
-        if media is None:
-            raise ValueError(f"Failed to resolve album {item['source_album_id']}")
-
-        item["track_count"] = len(media.tracks) if hasattr(media, 'tracks') else 0
-        await self.event_bus.publish("download_progress", {
-            "item_id": item["id"],
-            "status": "downloading",
-            "tracks_done": 0,
-            "track_count": item["track_count"],
-        })
-
-        # Install progress hooks to emit real-time events
-        self._install_progress_hooks(item, config)
-
-        await media.rip()
-
-        # Restore default progress manager
-        self._uninstall_progress_hooks()
-
-        # Get results and update web DB track statuses
-        success = 0
-        total = 0
-        if hasattr(media, 'successful_tracks') and hasattr(media, 'total_tracks'):
-            total = media.total_tracks
-            success = media.successful_tracks
-
-        item["tracks_done"] = success
-
-        # Update track download_status in web DB
-        self._update_track_statuses(item, media)
-
-        await self.event_bus.publish("download_progress", {
-            "item_id": item["id"],
-            "status": "downloading",
-            "tracks_done": success,
-            "track_count": total,
-        })
-
-        if total > 0:
-            success_rate = success / total
-            logger.info(
-                "Downloaded %d/%d tracks (%.0f%%) for %s - %s",
-                success, total, success_rate * 100,
-                item["artist"], item["title"],
-            )
-            if success_rate < 0.8:
-                raise RuntimeError(
-                    f"Only {success}/{total} tracks downloaded "
-                    f"({success_rate:.0%}), below 80% threshold"
-                )
-
-        logger.info("Download complete: %s - %s", item["artist"], item["title"])
-
-    def _install_progress_hooks(self, item: dict, config):
-        """Replace streamrip's Rich progress manager with one that emits WebSocket events."""
-        import streamrip.progress as prog
-        from streamrip.progress import Handle
-        import time
-
-        self._original_progress_manager = prog._p
         event_bus = self.event_bus
         queue_item = item
 
-        class WebProgressManager:
-            def __init__(self):
-                self.started = False
-                self.tracks_completed = 0
-                self.current_track_bytes = 0
-                self.current_track_total = 0
-                self.current_track_name = ""
-                self.last_emit_time = 0
-                self.task_titles = []
-                self.track_statuses: list[dict] = []
+        def on_track_start(num: int, title: str):
+            queue_item["current_track"] = f"Track {num}: {title}"
 
-            def get_callback(self, total: int, desc: str):
-                self.started = True
-                self.current_track_bytes = 0
-                self.current_track_total = total
-                self.current_track_name = desc
-                start_time = time.monotonic()
-
-                track_entry = {"name": desc, "status": "downloading", "progress": 0}
-                self.track_statuses.append(track_entry)
-
-                def _update(x: int):
-                    self.current_track_bytes += x
-                    now = time.monotonic()
-                    if self.current_track_total > 0:
-                        track_entry["progress"] = round(self.current_track_bytes / self.current_track_total * 100)
-
-                    if now - self.last_emit_time >= 0.5:
-                        self.last_emit_time = now
-                        elapsed = now - start_time
-                        speed = self.current_track_bytes / elapsed if elapsed > 0 else 0
-                        queue_item["bytes_done"] = self.current_track_bytes
-                        queue_item["bytes_total"] = self.current_track_total
-                        queue_item["speed"] = round(speed / (1024 * 1024), 2)
-                        queue_item["tracks_done"] = self.tracks_completed
-                        import asyncio
-                        try:
-                            loop = asyncio.get_event_loop()
-                            if loop.is_running():
-                                loop.create_task(event_bus.publish("download_progress", {
-                                    "item_id": queue_item["id"],
-                                    "status": "downloading",
-                                    "tracks_done": self.tracks_completed,
-                                    "track_count": queue_item.get("track_count", 0),
-                                    "bytes_done": self.current_track_bytes,
-                                    "bytes_total": self.current_track_total,
-                                    "speed": queue_item["speed"],
-                                    "current_track": self.current_track_name,
-                                    "track_statuses": [
-                                        {**t} for t in self.track_statuses
-                                    ],
-                                }))
-                        except Exception:
-                            pass
-
-                def _done():
-                    self.tracks_completed += 1
-                    track_entry["status"] = "complete"
-                    track_entry["progress"] = 100
-                    queue_item["tracks_done"] = self.tracks_completed
-
-                return Handle(_update, _done)
-
-            def cleanup(self):
+        def on_track_progress(num: int, bytes_done: int, bytes_total: int):
+            import time
+            queue_item["bytes_done"] = bytes_done
+            queue_item["bytes_total"] = bytes_total
+            if bytes_total > 0:
+                elapsed = 1  # simplified
+                queue_item["speed"] = round(bytes_done / max(1, bytes_total) * 10, 2)
+            try:
+                loop = asyncio.get_event_loop()
+                if loop.is_running():
+                    loop.create_task(event_bus.publish("download_progress", {
+                        "item_id": queue_item["id"],
+                        "status": "downloading",
+                        "tracks_done": queue_item.get("tracks_done", 0),
+                        "track_count": queue_item.get("track_count", 0),
+                        "bytes_done": bytes_done,
+                        "bytes_total": bytes_total,
+                        "speed": queue_item.get("speed", 0),
+                        "current_track": queue_item.get("current_track", ""),
+                    }))
+            except Exception:
                 pass
 
-            def add_title(self, title: str):
-                self.task_titles.append(title.strip())
+        def on_track_complete(num: int, title: str, success: bool):
+            if success:
+                queue_item["tracks_done"] = queue_item.get("tracks_done", 0) + 1
 
-            def remove_title(self, title: str):
-                try:
-                    self.task_titles.remove(title.strip())
-                except ValueError:
-                    pass
+        logger.info("Downloading album: %s - %s (id: %s)",
+                     item["artist"], item["title"], item["source_album_id"])
 
-        prog._p = WebProgressManager()
+        downloader = AlbumDownloader(
+            sdk_client,
+            dl_config,
+            on_track_start=on_track_start,
+            on_track_progress=on_track_progress,
+            on_track_complete=on_track_complete,
+        )
 
-    def _uninstall_progress_hooks(self):
-        """Restore the original Rich progress manager."""
-        import streamrip.progress as prog
-        if hasattr(self, '_original_progress_manager'):
-            prog._p = self._original_progress_manager
+        result = await downloader.download(item["source_album_id"])
 
-    def _update_track_statuses(self, item: dict, media):
-        """Update track download_status in the web DB after rip completes.
+        item["track_count"] = result.total
+        item["tracks_done"] = result.successful
 
-        Checks the streamrip downloads DB to see which track IDs were
-        actually downloaded, then updates the web DB accordingly.
-        """
+        # Update track statuses in web DB
+        self._update_track_statuses_from_result(item, result)
+
+        # Check 80% success threshold
+        if result.total > 0 and result.success_rate < 0.8:
+            raise RuntimeError(
+                f"Only {result.successful}/{result.total} tracks downloaded "
+                f"({result.success_rate:.0%}), below 80% threshold"
+            )
+
+        logger.info("Download complete: %s - %s (%d/%d tracks)",
+                     item["artist"], item["title"], result.successful, result.total)
+
+    def _update_track_statuses_from_result(self, item: dict, result):
+        """Update track download_status in the web DB from AlbumResult."""
         album = self.db.get_album_by_source_id(item["source"], item["source_album_id"])
         if not album:
             return
@@ -313,12 +213,7 @@ class DownloadService:
         if not tracks:
             return
 
-        # Check the streamrip downloads DB for which tracks were downloaded
-        from .config_bridge import build_streamrip_config
-        from streamrip.db import build_database
-        config = build_streamrip_config(self.db)
-        sr_db = build_database(config)
-
+        downloaded_ids = {str(t.track_id) for t in result.tracks if t.success}
         for track in tracks:
-            if sr_db.downloaded(track["source_track_id"]):
+            if track["source_track_id"] in downloaded_ids:
                 self.db.update_track_status(track["id"], "complete")

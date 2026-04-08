@@ -19,28 +19,35 @@ logger = logging.getLogger("streamrip")
 
 def _init_clients(db: AppDatabase) -> dict:
     """Initialize streaming clients from stored config."""
-    from .services.config_bridge import build_streamrip_config
-
     clients = {}
 
-    try:
-        cfg = build_streamrip_config(db)
-    except Exception:
-        logger.exception("Failed to build streamrip config")
-        return clients
-
-    # Qobuz
-    if cfg.session.qobuz.password_or_token:
+    # Qobuz — uses the standalone SDK client
+    qobuz_token = db.get_config("qobuz_token")
+    if qobuz_token:
         try:
-            from streamrip.client.qobuz import QobuzClient
-            clients["qobuz"] = QobuzClient(cfg)
-            logger.info("Qobuz client initialized")
+            from qobuz import QobuzClient
+            from qobuz.spoofer import fetch_app_credentials, find_working_secret
+            import asyncio
+
+            # We need app_id — check if cached, otherwise use default
+            app_id = db.get_config("qobuz_app_id") or "798273057"
+
+            client = QobuzClient(
+                app_id=app_id,
+                user_auth_token=qobuz_token,
+            )
+            # Note: client session opens on __aenter__, done in lifespan
+            clients["qobuz"] = client
+            logger.info("Qobuz SDK client initialized")
         except Exception:
             logger.exception("Failed to initialize Qobuz client")
 
-    # Tidal
-    if cfg.session.tidal.access_token:
+    # Tidal — still uses streamrip's client for now
+    tidal_token = db.get_config("tidal_access_token")
+    if tidal_token:
         try:
+            from .services.config_bridge import build_streamrip_config
+            cfg = build_streamrip_config(db)
             from streamrip.client.tidal import TidalClient
             clients["tidal"] = TidalClient(cfg)
             logger.info("Tidal client initialized")
@@ -71,19 +78,46 @@ def create_app(db_path: str | None = None) -> FastAPI:
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
-        # Login clients that need async initialization
+        # Open client sessions
         for name, client in clients.items():
             try:
-                if not client.logged_in:
+                # SDK clients use async context manager
+                if hasattr(client, '__aenter__'):
+                    await client.__aenter__()
+                    logger.info("Opened session for %s", name)
+                # Streamrip clients use login()
+                elif hasattr(client, 'logged_in') and not client.logged_in:
                     await client.login()
                     logger.info("Logged in to %s", name)
             except Exception:
-                logger.exception("Failed to login to %s", name)
+                logger.exception("Failed to initialize %s", name)
+
+        # Fetch and cache app_secret for Qobuz downloads
+        qobuz = clients.get("qobuz")
+        if qobuz and not getattr(qobuz, '_app_secret_cached', False):
+            try:
+                from qobuz.spoofer import fetch_app_credentials, find_working_secret
+                app_id, secrets = await fetch_app_credentials()
+                secret = await find_working_secret(app_id, secrets, db.get_config("qobuz_token"))
+                qobuz.streaming._app_secret = secret
+                qobuz._app_secret_cached = True
+                # Cache app_id
+                db.set_config("qobuz_app_id", app_id)
+                logger.info("Qobuz app secret resolved and cached")
+            except Exception:
+                logger.exception("Failed to resolve Qobuz app secret")
+
         yield
+
         # Cleanup sessions
         for client in clients.values():
-            if hasattr(client, 'session') and client.session:
-                await client.session.close()
+            try:
+                if hasattr(client, '__aexit__'):
+                    await client.__aexit__(None, None, None)
+                elif hasattr(client, 'session') and client.session:
+                    await client.session.close()
+            except Exception:
+                pass
         logger.info("streamrip web UI shutting down")
 
     app = FastAPI(title="streamrip", version="3.0.0", lifespan=lifespan)

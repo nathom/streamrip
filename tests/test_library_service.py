@@ -44,7 +44,7 @@ class TestLibraryServiceGetAlbums:
 class TestLibraryServiceSearch:
     async def test_search_enriches_with_library_status(self, db, event_bus):
         db.upsert_album("qobuz", "existing_id", "Known Album", "Artist")
-        mock_client = AsyncMock()
+        mock_client = AsyncMock(spec=[])  # Empty spec — no attributes by default
         mock_client.source = "qobuz"
         mock_client.logged_in = True
         mock_client.search = AsyncMock(return_value=[{

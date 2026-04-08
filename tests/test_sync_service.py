@@ -32,7 +32,7 @@ class TestSyncService:
         assert diff["removed_albums"] == []
 
     async def test_run_sync_records_history(self, db, event_bus):
-        mock_client = AsyncMock()
+        mock_client = AsyncMock(spec=[])  # No SDK attributes
         mock_client.source = "qobuz"
         mock_client.logged_in = True
         mock_client.get_user_favorites = AsyncMock(return_value=[])

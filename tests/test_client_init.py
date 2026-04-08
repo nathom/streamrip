@@ -31,44 +31,23 @@ class TestInitClients:
         assert "qobuz" not in clients
 
     def test_creates_qobuz_client_with_credentials(self, db):
-        """Should create QobuzClient when both token and user_id exist."""
+        """Should create SDK QobuzClient when token exists."""
         db.set_config("qobuz_token", "fake-token")
         db.set_config("qobuz_user_id", "12345")
 
-        mock_cfg = MagicMock()
-        mock_cfg.session.qobuz.use_auth_token = True
-        mock_cfg.session.qobuz.email_or_userid = ""
-        mock_cfg.session.qobuz.password_or_token = ""
-
-        mock_config_cls = MagicMock()
-        mock_config_cls.defaults.return_value = mock_cfg
-
-        mock_qobuz_client = MagicMock()
-
-        # Config and QobuzClient are imported locally inside _init_clients,
-        # so we patch them in their source modules.
-        with patch("streamrip.config.Config", mock_config_cls), \
-             patch("streamrip.client.qobuz.QobuzClient", mock_qobuz_client):
+        with patch("qobuz.QobuzClient") as MockClient:
+            MockClient.return_value = MagicMock()
             clients = _init_clients(db)
 
         assert "qobuz" in clients
-        assert mock_cfg.session.qobuz.use_auth_token is True
-        assert mock_cfg.session.qobuz.email_or_userid == "12345"
-        assert mock_cfg.session.qobuz.password_or_token == "fake-token"
+        MockClient.assert_called_once()
+        call_kwargs = MockClient.call_args[1]
+        assert call_kwargs["user_auth_token"] == "fake-token"
 
     def test_handles_import_error_gracefully(self, db):
-        """Should not crash if streamrip config import raises."""
+        """Should not crash if qobuz SDK import fails."""
         db.set_config("qobuz_token", "fake-token")
-        db.set_config("qobuz_user_id", "12345")
 
-        real_import = __builtins__.__import__ if hasattr(__builtins__, "__import__") else __import__
-
-        def fail_streamrip_config(name, *args, **kwargs):
-            if name == "streamrip.config":
-                raise ImportError("no module")
-            return real_import(name, *args, **kwargs)
-
-        with patch("builtins.__import__", side_effect=fail_streamrip_config):
-            # Should log error but not crash
+        with patch("qobuz.QobuzClient", side_effect=ImportError("no module")):
             clients = _init_clients(db)
-            assert clients == {}
+            assert "qobuz" not in clients
