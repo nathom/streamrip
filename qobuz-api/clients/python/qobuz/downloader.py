@@ -534,53 +534,69 @@ class AlbumDownloader:
         audio.save()
 
     def _build_album_folder(self, album: Album) -> str:
-        """Build the album output folder path from the format template."""
+        """Build the album output folder path from the format template.
+
+        Supports '/' in the format to create nested directories, e.g.
+        '{albumartist}/({year}) {title}' → 'Artist/(2024) Album Title'
+        """
         base = self.config.output_dir
         if self.config.source_subdirectories:
             base = os.path.join(base, "Qobuz")
 
         replacements = {
-            "albumartist": _safe_filename(_build_albumartist(album)),
-            "title": _safe_filename(album.title),
+            "albumartist": _build_albumartist(album),
+            "title": album.title,
             "year": album.release_date_original[:4] if album.release_date_original else "Unknown",
             "container": "FLAC" if self.config.quality >= 2 else "MP3",
             "bit_depth": str(album.maximum_bit_depth),
-            "sampling_rate": str(album.maximum_sampling_rate),
+            "sampling_rate": str(album.maximum_sampling_rate).rstrip('0').rstrip('.'),
             "id": album.id,
         }
 
-        folder_name = self.config.folder_format
-        for key, value in replacements.items():
-            folder_name = folder_name.replace(f"{{{key}}}", value)
-        # Clean any remaining unresolved placeholders
-        folder_name = re.sub(r"\{[^}]+\}", "", folder_name).strip()
+        try:
+            folder_path = self.config.folder_format.format(**replacements)
+        except (KeyError, ValueError):
+            # Fallback to manual replacement if format() fails
+            folder_path = self.config.folder_format
+            for key, value in replacements.items():
+                folder_path = folder_path.replace(f"{{{key}}}", str(value))
+            folder_path = re.sub(r"\{[^}]+\}", "", folder_path).strip()
 
-        return os.path.join(base, _safe_filename(folder_name))
+        # Split on / to create nested directories, clean each segment
+        segments = [_safe_filename(seg.strip()) for seg in folder_path.split("/") if seg.strip()]
+        return os.path.join(base, *segments)
 
     def _build_track_filename(
         self, track: Track, album: Album, ext: str,
         raw_track: dict | None = None,
     ) -> str:
-        """Build track filename from the format template."""
+        """Build track filename from the format template.
+
+        Uses Python str.format() to handle format specifiers like
+        {tracknumber:02} natively, matching streamrip's behavior.
+        """
         title = _build_track_title(track, raw_track)
+        explicit = " (Explicit)" if track.explicit else ""
+
         replacements = {
-            "tracknumber": str(track.track_number).zfill(2),
-            "artist": _safe_filename(track.performer.name),
-            "albumartist": _safe_filename(_build_albumartist(album)),
-            "title": _safe_filename(title),
+            "tracknumber": track.track_number,
+            "artist": track.performer.name,
+            "albumartist": _build_albumartist(album),
+            "title": title,
+            "explicit": explicit,
         }
 
-        filename = self.config.track_format
-        # Handle {tracknumber:02d} format
-        filename = re.sub(r"\{tracknumber:\d+d\}", replacements["tracknumber"], filename)
-        for key, value in replacements.items():
-            filename = filename.replace(f"{{{key}}}", value)
+        try:
+            filename = self.config.track_format.format(**replacements)
+        except (KeyError, ValueError):
+            # Fallback to manual replacement
+            filename = self.config.track_format
+            replacements["tracknumber"] = str(track.track_number).zfill(2)
+            for key, value in replacements.items():
+                filename = filename.replace(f"{{{key}}}", str(value))
+            filename = re.sub(r"\{[^}]+\}", "", filename).strip()
 
-        explicit = " (Explicit)" if track.explicit else ""
-        filename = filename.replace("{explicit}", explicit)
-        filename = re.sub(r"\{[^}]+\}", "", filename).strip()
-
-        return f"{filename}.{ext}"
+        return f"{_safe_filename(filename)}.{ext}"
 
 
 def _safe_filename(s: str) -> str:
