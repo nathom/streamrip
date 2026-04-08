@@ -79,10 +79,14 @@ class TestDownloadQueue:
         queue = service.get_queue()
         assert all(q["status"] == "cancelled" for q in queue)
 
-    async def test_enqueue_skips_unknown_album(self, db, event_bus):
+    async def test_enqueue_auto_creates_unknown_album(self, db, event_bus):
+        """Should auto-create a DB entry for albums not in the library (search results)."""
         service = DownloadService(db, event_bus, clients={}, download_path="/tmp")
-        items = await service.enqueue("qobuz", ["nonexistent"])
-        assert len(items) == 0
+        items = await service.enqueue("qobuz", ["new-search-result"])
+        assert len(items) == 1
+        assert items[0]["source_album_id"] == "new-search-result"
+        album = db.get_album_by_source_id("qobuz", "new-search-result")
+        assert album is not None
 
     async def test_force_flag_preserved(self, db, event_bus):
         db.upsert_album("qobuz", "a1", "Album", "Artist")

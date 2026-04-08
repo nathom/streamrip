@@ -46,6 +46,44 @@ async def remove_from_queue(request: Request, item_id: str):
     await service.cancel([item_id])
     return {"status": "cancelled"}
 
+@router.post("/scan")
+async def scan_downloads(request: Request):
+    """Scan the download directory for .streamrip.json files and reconcile with DB."""
+    from qobuz.downloader import AlbumDownloader
+    from datetime import datetime
+
+    db = request.app.state.db
+    download_path = db.get_config("downloads_path") or "/music"
+
+    albums = AlbumDownloader.scan_downloaded_albums(download_path)
+    reconciled = 0
+
+    for meta in albums:
+        source = meta.get("source", "qobuz")
+        album_id = meta.get("album_id")
+        if not album_id:
+            continue
+
+        existing = db.get_album_by_source_id(source, album_id)
+        if existing is None:
+            db.upsert_album(
+                source=source,
+                source_album_id=album_id,
+                title=meta.get("title", "Unknown"),
+                artist=meta.get("artist", "Unknown"),
+                track_count=meta.get("tracks_count"),
+                added_to_library_at=meta.get("downloaded_at", datetime.now().isoformat()),
+            )
+
+        db.update_album_status(
+            db.get_album_by_source_id(source, album_id)["id"],
+            "complete",
+            downloaded_at=meta.get("downloaded_at"),
+        )
+        reconciled += 1
+
+    return {"scanned": len(albums), "reconciled": reconciled}
+
 @router.post("/cancel")
 async def cancel_all(request: Request):
     service = request.app.state.download_service

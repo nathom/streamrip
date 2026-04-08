@@ -190,7 +190,7 @@ class AlbumDownloader:
             else:
                 track_results.append(result)
 
-        return AlbumResult(
+        album_result = AlbumResult(
             album_id=album.id,
             title=album.title,
             artist=album.artist.name,
@@ -198,6 +198,69 @@ class AlbumDownloader:
             cover_path=cover_path,
             booklet_paths=booklet_paths,
         )
+
+        # Write metadata file for filesystem-based dedup
+        if album_result.successful > 0:
+            self._write_metadata_file(album, album_folder, album_result)
+
+        return album_result
+
+    METADATA_FILENAME = ".streamrip.json"
+
+    def _write_metadata_file(self, album: Album, folder: str, result: AlbumResult) -> None:
+        """Write a .streamrip.json file in the album folder for filesystem-based dedup."""
+        import json
+        from datetime import datetime
+
+        metadata = {
+            "source": "qobuz",
+            "album_id": album.id,
+            "title": album.title,
+            "artist": album.artist.name,
+            "tracks_count": result.total,
+            "tracks_downloaded": result.successful,
+            "quality": self.config.quality,
+            "downloaded_at": datetime.now().isoformat(),
+            "tracks": [
+                {
+                    "id": t.track_id,
+                    "title": t.title,
+                    "success": t.success,
+                    "path": os.path.basename(t.path) if t.path else None,
+                }
+                for t in result.tracks
+            ],
+        }
+
+        path = os.path.join(folder, self.METADATA_FILENAME)
+        try:
+            with open(path, "w") as f:
+                json.dump(metadata, f, indent=2)
+            logger.info("Wrote metadata file: %s", path)
+        except Exception as e:
+            logger.warning("Failed to write metadata file: %s", e)
+
+    @staticmethod
+    def scan_downloaded_albums(download_dir: str) -> list[dict]:
+        """Scan a download directory for .streamrip.json files.
+
+        Returns a list of album metadata dicts from all found metadata files.
+        Use this to reconcile the DB with what's actually on disk.
+        """
+        import json
+
+        albums = []
+        for root, dirs, files in os.walk(download_dir):
+            if AlbumDownloader.METADATA_FILENAME in files:
+                meta_path = os.path.join(root, AlbumDownloader.METADATA_FILENAME)
+                try:
+                    with open(meta_path) as f:
+                        meta = json.load(f)
+                    meta["_folder"] = root
+                    albums.append(meta)
+                except Exception:
+                    pass
+        return albums
 
     def _load_downloaded_ids(self) -> None:
         """Load previously downloaded track IDs from SQLite DB."""
