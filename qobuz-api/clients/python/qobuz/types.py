@@ -139,7 +139,7 @@ class Award:
 
     @classmethod
     def from_dict(cls, d: dict) -> Award:
-        return cls(id=d["id"], name=d.get("name", ""), awarded_at=d.get("awarded_at"))
+        return cls(id=d.get("id", 0), name=d.get("name", ""), awarded_at=d.get("awarded_at"))
 
 
 @dataclass

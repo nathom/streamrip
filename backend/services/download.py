@@ -30,8 +30,20 @@ class DownloadService:
         for source_album_id in album_ids:
             album = self.db.get_album_by_source_id(source, source_album_id)
             if album is None:
-                logger.warning("Album %s not found in DB", source_album_id)
-                continue
+                # Auto-create a minimal album entry for search results not in library
+                from datetime import datetime
+                album_id = self.db.upsert_album(
+                    source=source,
+                    source_album_id=source_album_id,
+                    title=f"Album {source_album_id}",
+                    artist="Unknown",
+                    added_to_library_at=datetime.now().isoformat(),
+                )
+                album = self.db.get_album(album_id)
+                if album is None:
+                    logger.warning("Failed to create album entry for %s", source_album_id)
+                    continue
+                logger.info("Auto-created album entry for search result %s", source_album_id)
             item = {
                 "id": str(uuid.uuid4()),
                 "album_db_id": album["id"],
@@ -216,6 +228,18 @@ class DownloadService:
 
         item["track_count"] = result.total
         item["tracks_done"] = result.successful
+
+        # Update album metadata in DB with resolved data from download
+        if result.title and result.artist:
+            self.db.upsert_album(
+                source=item["source"],
+                source_album_id=item["source_album_id"],
+                title=result.title,
+                artist=result.artist,
+                track_count=result.total,
+            )
+            item["title"] = result.title
+            item["artist"] = result.artist
 
         # Update track statuses in web DB
         self._update_track_statuses_from_result(item, result)
