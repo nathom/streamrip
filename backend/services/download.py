@@ -149,10 +149,29 @@ class DownloadService:
         last_emit = [0.0]
         track_start_time = [_time.monotonic()]
 
+        def _emit_progress():
+            try:
+                loop = asyncio.get_event_loop()
+                if loop.is_running():
+                    loop.create_task(event_bus.publish("download_progress", {
+                        "item_id": queue_item["id"],
+                        "status": "downloading",
+                        "tracks_done": queue_item.get("tracks_done", 0),
+                        "track_count": queue_item.get("track_count", 0),
+                        "bytes_done": queue_item.get("bytes_done", 0),
+                        "bytes_total": queue_item.get("bytes_total", 0),
+                        "speed": queue_item.get("speed", 0),
+                        "current_track": queue_item.get("current_track", ""),
+                        "track_statuses": [dict(t) for t in track_statuses],
+                    }))
+            except Exception:
+                pass
+
         def on_track_start(num: int, title: str):
             queue_item["current_track"] = f"Track {num}: {title}"
             track_statuses.append({"name": title, "status": "downloading", "progress": 0})
             track_start_time[0] = _time.monotonic()
+            _emit_progress()
 
         def on_track_progress(num: int, bytes_done: int, bytes_total: int):
             queue_item["bytes_done"] = bytes_done
@@ -172,23 +191,7 @@ class DownloadService:
             if now - last_emit[0] < 0.5:
                 return
             last_emit[0] = now
-
-            try:
-                loop = asyncio.get_event_loop()
-                if loop.is_running():
-                    loop.create_task(event_bus.publish("download_progress", {
-                        "item_id": queue_item["id"],
-                        "status": "downloading",
-                        "tracks_done": queue_item.get("tracks_done", 0),
-                        "track_count": queue_item.get("track_count", 0),
-                        "bytes_done": bytes_done,
-                        "bytes_total": bytes_total,
-                        "speed": queue_item["speed"],
-                        "current_track": queue_item.get("current_track", ""),
-                        "track_statuses": [dict(t) for t in track_statuses],
-                    }))
-            except Exception:
-                pass
+            _emit_progress()
 
         def on_track_complete(num: int, title: str, success: bool):
             if track_statuses:
@@ -196,6 +199,7 @@ class DownloadService:
                 track_statuses[-1]["progress"] = 100 if success else track_statuses[-1]["progress"]
             if success:
                 queue_item["tracks_done"] = queue_item.get("tracks_done", 0) + 1
+            _emit_progress()
 
         logger.info("Downloading album: %s - %s (id: %s)",
                      item["artist"], item["title"], item["source_album_id"])

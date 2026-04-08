@@ -135,9 +135,9 @@
         </div>
       </div>
 
-      {#if expandedItems.has(item.id) && item.track_statuses && item.track_statuses.length > 0}
+      {#if (expandedItems.has(item.id) || item.status === 'downloading') && item.track_statuses && item.track_statuses.length > 0}
         <div class="track-breakdown">
-          {#each item.track_statuses as track, i}
+          {#each item.track_statuses as track, i (track.name + i)}
             <div class="track-row">
               <span class="track-num">{String(i + 1).padStart(2, '0')}</span>
               <span class="track-name">{track.name}</span>
