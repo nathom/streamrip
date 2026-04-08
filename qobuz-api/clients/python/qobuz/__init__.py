@@ -1,6 +1,7 @@
 """Async Python client for the Qobuz API."""
 
 from .client import QobuzClient
+from .downloader import AlbumDownloader, AlbumResult, DownloadConfig, TrackResult
 from .errors import (
     AuthenticationError,
     ForbiddenError,

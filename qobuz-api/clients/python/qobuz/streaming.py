@@ -13,19 +13,18 @@ QUALITY_MAP = {1: 5, 2: 6, 3: 7, 4: 27}
 
 
 def _compute_signature(
-    endpoint: str,
     track_id: str,
     format_id: str,
     intent: str,
     timestamp: str,
     app_secret: str,
 ) -> str:
-    """Compute the MD5 request signature for file URL endpoints.
+    """Compute the MD5 request signature for track/getFileUrl.
 
-    The raw string is:
-        ``{endpoint}format_id{format_id}intent{intent}track_id{track_id}{timestamp}{app_secret}``
+    The raw string matches the Qobuz API's expected format:
+        ``trackgetFileUrlformat_id{format_id}intent{intent}track_id{track_id}{timestamp}{app_secret}``
     """
-    raw = f"{endpoint}format_id{format_id}intent{intent}track_id{track_id}{timestamp}{app_secret}"
+    raw = f"trackgetFileUrlformat_id{format_id}intent{intent}track_id{track_id}{timestamp}{app_secret}"
     return hashlib.md5(raw.encode()).hexdigest()
 
 
@@ -67,13 +66,12 @@ class StreamingAPI:
             raise ValueError("app_secret is required for get_file_url")
 
         format_id = QUALITY_MAP.get(quality, 7)
-        timestamp = str(int(time.time()))
+        unix_ts = time.time()
         sig = _compute_signature(
-            endpoint="fileUrl",
             track_id=str(track_id),
             format_id=str(format_id),
             intent=intent,
-            timestamp=timestamp,
+            timestamp=str(unix_ts),
             app_secret=self._app_secret,
         )
 
@@ -81,7 +79,7 @@ class StreamingAPI:
             "track_id": track_id,
             "format_id": format_id,
             "intent": intent,
-            "request_ts": timestamp,
+            "request_ts": unix_ts,
             "request_sig": sig,
         }
 

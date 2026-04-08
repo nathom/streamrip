@@ -26,6 +26,23 @@ class CatalogAPI:
         _, body = await self._t.get("album/get", {"album_id": album_id, "extra": extra})
         return Album.from_dict(body)
 
+    async def get_album_with_tracks(
+        self,
+        album_id: str,
+    ) -> tuple[Album, list[Track]]:
+        """GET album/get — fetch album metadata and inline track list.
+
+        Returns (Album, list[Track]) parsed from the response's
+        ``tracks.items`` array.
+        """
+        _, body = await self._t.get(
+            "album/get", {"album_id": album_id, "extra": "track_ids"}
+        )
+        album = Album.from_dict(body)
+        track_items = body.get("tracks", {}).get("items", [])
+        tracks = [Track.from_dict(t) for t in track_items]
+        return album, tracks
+
     async def search_albums(
         self,
         query: str,

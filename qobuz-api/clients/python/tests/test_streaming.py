@@ -20,10 +20,9 @@ SAMPLE_FILE_URL = {
     "format_id": 7,
     "mime_type": "audio/flac",
     "sampling_rate": 44100,
-    "bits_depth": 16,
+    "bit_depth": 16,
     "duration": 133.0,
-    "url_template": "https://streaming.qobuz.com/file?uid=...",
-    "n_segments": 1,
+    "url": "https://streaming.qobuz.com/file?uid=...",
     "restrictions": [],
 }
 
@@ -41,20 +40,19 @@ SAMPLE_SESSION = {
 class TestComputeSignature:
     def test_produces_correct_md5(self):
         sig = _compute_signature(
-            endpoint="fileUrl",
             track_id="33967376",
             format_id="7",
             intent="stream",
             timestamp="1700000000",
             app_secret="mysecret",
         )
-        raw = "fileUrlformat_id7intentstreamtrack_id339673761700000000mysecret"
+        raw = "trackgetFileUrlformat_id7intentstreamtrack_id339673761700000000mysecret"
         expected = hashlib.md5(raw.encode()).hexdigest()
         assert sig == expected
 
     def test_different_inputs_produce_different_hashes(self):
-        sig1 = _compute_signature("fileUrl", "1", "7", "stream", "100", "secret")
-        sig2 = _compute_signature("fileUrl", "2", "7", "stream", "100", "secret")
+        sig1 = _compute_signature("1", "7", "stream", "100", "secret")
+        sig2 = _compute_signature("2", "7", "stream", "100", "secret")
         assert sig1 != sig2
 
 
