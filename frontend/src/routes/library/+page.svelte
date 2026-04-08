@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import AlbumGrid from '$lib/components/AlbumGrid.svelte';
+  import AlbumTable from '$lib/components/AlbumTable.svelte';
   import AlbumDetail from '$lib/components/AlbumDetail.svelte';
   import {
     albums,
@@ -27,6 +28,7 @@
   let refreshResult = $state<string | null>(null);
   let currentPage = $state(1);
   const PAGE_SIZE = 60;
+  let viewMode = $state<'grid' | 'table'>('grid');
 
   // Library filter (local DB search)
   let librarySearch = $state('');
@@ -216,6 +218,10 @@
   </select>
 
   <div class="toolbar-right">
+    <div class="view-toggle">
+      <button class="view-btn" class:active={viewMode === 'grid'} onclick={() => viewMode = 'grid'} title="Grid view">◧</button>
+      <button class="view-btn" class:active={viewMode === 'table'} onclick={() => viewMode = 'table'} title="Table view">═</button>
+    </div>
     <button class="btn btn-pop btn-sm" onclick={downloadAllNew}>▸ Download All New</button>
   </div>
 </div>
@@ -225,7 +231,11 @@
     <span class="loading-text">Loading albums...</span>
   </div>
 {:else}
-  <AlbumGrid albums={albumList} onselect={handleSelectAlbum} />
+  {#if viewMode === 'grid'}
+    <AlbumGrid albums={albumList} onselect={handleSelectAlbum} />
+  {:else}
+    <AlbumTable albums={albumList} onselect={handleSelectAlbum} />
+  {/if}
 
   {#if hasMore}
     <div class="load-more">
@@ -373,6 +383,24 @@
     color: var(--positive);
     letter-spacing: var(--tracking-mono);
   }
+
+  .view-toggle {
+    display: flex;
+    border: 2px solid var(--border);
+  }
+
+  .view-btn {
+    padding: var(--space-1) var(--space-2);
+    font-size: var(--text-sm);
+    background: var(--canvas-raised);
+    color: var(--text-secondary);
+    border: none;
+    border-radius: 0;
+    cursor: pointer;
+    font-family: var(--font-family);
+  }
+  .view-btn + .view-btn { border-left: 2px solid var(--border); }
+  .view-btn.active { background: var(--accent); color: var(--text-inverse); }
 
   .load-more {
     display: flex;

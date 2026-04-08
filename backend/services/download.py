@@ -141,19 +141,38 @@ class DownloadService:
             downloads_db_path=downloads_db,
         )
 
+        import time as _time
+
         event_bus = self.event_bus
         queue_item = item
+        track_statuses: list[dict] = []
+        last_emit = [0.0]
+        track_start_time = [_time.monotonic()]
 
         def on_track_start(num: int, title: str):
             queue_item["current_track"] = f"Track {num}: {title}"
+            track_statuses.append({"name": title, "status": "downloading", "progress": 0})
+            track_start_time[0] = _time.monotonic()
 
         def on_track_progress(num: int, bytes_done: int, bytes_total: int):
-            import time
             queue_item["bytes_done"] = bytes_done
             queue_item["bytes_total"] = bytes_total
-            if bytes_total > 0:
-                elapsed = 1  # simplified
-                queue_item["speed"] = round(bytes_done / max(1, bytes_total) * 10, 2)
+
+            # Update current track progress
+            if track_statuses and bytes_total > 0:
+                track_statuses[-1]["progress"] = min(100, round(bytes_done / bytes_total * 100))
+
+            # Calculate speed
+            elapsed = _time.monotonic() - track_start_time[0]
+            speed = (bytes_done / elapsed / (1024 * 1024)) if elapsed > 0 else 0
+            queue_item["speed"] = round(speed, 2)
+
+            # Throttle WebSocket events to every 0.5s
+            now = _time.monotonic()
+            if now - last_emit[0] < 0.5:
+                return
+            last_emit[0] = now
+
             try:
                 loop = asyncio.get_event_loop()
                 if loop.is_running():
@@ -164,13 +183,17 @@ class DownloadService:
                         "track_count": queue_item.get("track_count", 0),
                         "bytes_done": bytes_done,
                         "bytes_total": bytes_total,
-                        "speed": queue_item.get("speed", 0),
+                        "speed": queue_item["speed"],
                         "current_track": queue_item.get("current_track", ""),
+                        "track_statuses": [dict(t) for t in track_statuses],
                     }))
             except Exception:
                 pass
 
         def on_track_complete(num: int, title: str, success: bool):
+            if track_statuses:
+                track_statuses[-1]["status"] = "complete" if success else "failed"
+                track_statuses[-1]["progress"] = 100 if success else track_statuses[-1]["progress"]
             if success:
                 queue_item["tracks_done"] = queue_item.get("tracks_done", 0) + 1
 
