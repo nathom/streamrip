@@ -209,10 +209,12 @@ class AppDatabase:
             sort_dir = "DESC"
 
         where = " AND ".join(conditions)
+        # NULLS LAST ensures albums without added_to_library_at sort to the bottom
+        nulls = "NULLS LAST" if sort_dir == "DESC" else "NULLS FIRST"
         query = f"""
             SELECT * FROM albums
             WHERE {where}
-            ORDER BY {sort_by} {sort_dir}
+            ORDER BY {sort_by} {sort_dir} {nulls}
             LIMIT ? OFFSET ?
         """
         params.extend([limit, offset])

@@ -146,14 +146,18 @@ class LibraryService:
             raw_pages = await client.get_user_favorites("album", limit=None)
             all_items = self._extract_items_from_pages(source, raw_pages)
 
+        from datetime import datetime
         existing_ids = {a["source_album_id"] for a in self.db.get_albums(source, limit=100000)}
+        now = datetime.now().isoformat()
         new_count = 0
         for item in all_items:
             album_resp = self._extract_album_data(source, item)
             if album_resp is None:
                 continue
-            if album_resp["source_album_id"] not in existing_ids:
+            is_new = album_resp["source_album_id"] not in existing_ids
+            if is_new:
                 new_count += 1
+                album_resp["added_to_library_at"] = now
             self.db.upsert_album(**album_resp)
 
         await self.event_bus.publish("library_updated", {"source": source, "new_count": new_count, "total": len(all_items)})
