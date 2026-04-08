@@ -268,7 +268,7 @@ class AlbumDownloader:
                     disc_folder = os.path.join(album_folder, f"Disc {track.disc_number}")
                     os.makedirs(disc_folder, exist_ok=True)
 
-                filename = self._build_track_filename(track, album, ext)
+                filename = self._build_track_filename(track, album, ext, raw_track=raw_track)
                 file_path = os.path.join(disc_folder, filename)
 
                 # Download audio
@@ -515,7 +515,7 @@ class AlbumDownloader:
             base = os.path.join(base, "Qobuz")
 
         replacements = {
-            "albumartist": _safe_filename(album.artist.name),
+            "albumartist": _safe_filename(_build_albumartist(album)),
             "title": _safe_filename(album.title),
             "year": album.release_date_original[:4] if album.release_date_original else "Unknown",
             "container": "FLAC" if self.config.quality >= 2 else "MP3",
@@ -532,13 +532,17 @@ class AlbumDownloader:
 
         return os.path.join(base, _safe_filename(folder_name))
 
-    def _build_track_filename(self, track: Track, album: Album, ext: str) -> str:
+    def _build_track_filename(
+        self, track: Track, album: Album, ext: str,
+        raw_track: dict | None = None,
+    ) -> str:
         """Build track filename from the format template."""
+        title = _build_track_title(track, raw_track)
         replacements = {
             "tracknumber": str(track.track_number).zfill(2),
             "artist": _safe_filename(track.performer.name),
-            "albumartist": _safe_filename(album.artist.name),
-            "title": _safe_filename(track.title),
+            "albumartist": _safe_filename(_build_albumartist(album)),
+            "title": _safe_filename(title),
         }
 
         filename = self.config.track_format
