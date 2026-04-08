@@ -72,6 +72,24 @@
   let folderPreview = $derived(previewFormat(folderFormat, sampleAlbum));
   let trackPreview = $derived(previewFormat(trackFormat, sampleTrack) + '.flac');
 
+  let scanning = $state(false);
+  let scanResult = $state<string | null>(null);
+
+  async function scanDownloads() {
+    scanning = true;
+    scanResult = null;
+    try {
+      const resp = await fetch('/api/downloads/scan', { method: 'POST' });
+      const data = await resp.json();
+      scanResult = `Found ${data.scanned} albums, synced ${data.reconciled} to database`;
+      setTimeout(() => { scanResult = null; }, 8000);
+    } catch (e: any) {
+      scanResult = 'Scan failed';
+    } finally {
+      scanning = false;
+    }
+  }
+
   let saving = $state(false);
   let saveError = $state('');
   let saveSuccess = $state(false);
@@ -391,12 +409,29 @@
     <div>
       <div class="settings-label">Download Path</div>
     </div>
-    <input
-      class="settings-input"
-      type="text"
-      placeholder="/mnt/music/StreamripDownloads"
-      bind:value={downloadPath}
-    />
+    <div>
+      <input
+        class="settings-input"
+        type="text"
+        placeholder="/mnt/music/StreamripDownloads"
+        bind:value={downloadPath}
+      />
+    </div>
+  </div>
+
+  <div class="settings-row">
+    <div>
+      <div class="settings-label">Scan Downloads</div>
+      <div class="settings-label-sub">Scan download folder for existing albums and sync with database</div>
+    </div>
+    <div style="display: flex; gap: var(--space-2); align-items: center;">
+      <button class="btn btn-secondary btn-sm" onclick={scanDownloads} disabled={scanning}>
+        {#if scanning}Scanning...{:else}▸ Scan Folder{/if}
+      </button>
+      {#if scanResult}
+        <span class="scan-result">{scanResult}</span>
+      {/if}
+    </div>
   </div>
 
   <div class="settings-row">
@@ -680,6 +715,13 @@
   .settings-input:focus {
     border-color: var(--accent);
     box-shadow: var(--shadow-accent);
+  }
+
+  .scan-result {
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    color: var(--positive);
+    letter-spacing: var(--tracking-mono);
   }
 
   .format-preview {
