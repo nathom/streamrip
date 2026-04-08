@@ -451,7 +451,7 @@
   <div class="settings-row">
     <div>
       <div class="settings-label">Reset Database</div>
-      <div class="settings-label-sub">Clear all library data, download history, and config. Files on disk are not affected.</div>
+      <div class="settings-label-sub">Clear library data and download history. Config and credentials are preserved.</div>
     </div>
     <div style="display: flex; gap: var(--space-2); align-items: center;">
       {#if confirmFlush}

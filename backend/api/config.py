@@ -42,15 +42,14 @@ async def update_config(request: Request, body: ConfigUpdate):
 
 @router.post("/reset")
 async def reset_database(request: Request):
-    """Reset all library data, download history, and config. Files on disk are not affected."""
+    """Reset library data and download history. Config and credentials are preserved."""
     db = request.app.state.db
     with db._connect() as conn:
         conn.execute("DELETE FROM albums")
         conn.execute("DELETE FROM tracks")
         conn.execute("DELETE FROM sync_runs")
-        conn.execute("DELETE FROM config")
-    logger.info("Database reset — all library data cleared")
-    return {"message": "Database reset. Library, tracks, and config cleared. Files on disk unchanged."}
+    logger.info("Database reset — library data cleared, config preserved")
+    return {"message": "Library, tracks, and sync history cleared. Config and credentials preserved. Files on disk unchanged."}
 
 
 async def _reload_clients(request: Request):
