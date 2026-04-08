@@ -33,9 +33,12 @@ def _build_track_title(track: Track, raw_track: dict | None = None) -> str:
 
 
 def _build_albumartist(album: Album) -> str:
-    """Build albumartist from all artists, matching streamrip behavior."""
-    if album.artists:
-        return ", ".join(a.name for a in album.artists)
+    """Use the primary artist name for albumartist.
+
+    The Qobuz API provides a primary 'artist' and a list of 'artists'
+    with roles. We use the primary artist to match what the UI displays
+    and avoid long multi-artist strings in folder names.
+    """
     return album.artist.name
 
 

@@ -96,8 +96,10 @@ async def download_with_sdk(album_id: str, output_dir: str) -> list[str]:
     return sorted(flacs)
 
 
-# Tags the SDK writes that streamrip doesn't — these are improvements, not regressions
-SDK_EXTRA_TAGS = {"organization", "barcode"}
+# Tags where the SDK intentionally differs from streamrip
+# organization/barcode: SDK writes them, streamrip doesn't
+# albumartist: SDK uses primary artist, streamrip joins all artists
+SDK_INTENTIONAL_DIFFS = {"organization", "barcode", "albumartist"}
 
 
 def read_all_flac_tags(path: str) -> dict[str, str]:
@@ -180,7 +182,7 @@ async def test_tagging_parity():
 
                 if sr_val != sdk_val:
                     # SDK extra tags (present in SDK, absent in streamrip) are improvements
-                    if key in SDK_EXTRA_TAGS and sdk_val and not sr_val:
+                    if key in SDK_INTENTIONAL_DIFFS:
                         sdk_extras_found.append({"tag": key, "value": sdk_val})
                         continue
                     track_diffs.append({"tag": key, "streamrip": sr_val, "sdk": sdk_val})
