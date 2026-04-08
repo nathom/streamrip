@@ -114,11 +114,14 @@ Step 5: Validate token via user/login:
 ```
 
 **Key details:**
-- `redirect_url` for native apps: `qobuzapp://discover`
-- For SDK: use `http://localhost:{port}/callback` and spin up a local server
-- The `code` + `private_key` pair is one-time use
+- `ext_app_id=304027809` is the Qobuz desktop app's application ID
+- `redirect_url` for native apps: `qobuzapp://discover` (custom protocol)
+- The OAuth consent page (Step 3) uses JavaScript `window.location` to redirect to `qobuzapp://discover?code_autorisation=<AUTH_CODE>` — the API call then uses `code` param (not `code_autorisation`)
+- `private_key` in `oauth/callback` is an **app-level secret** (12 chars), NOT per-user. It's tied to `ext_app_id`.
+- The login form (Step 2) requires **reCAPTCHA** — programmatic OAuth requires browser automation or user-assisted login
+- For SDK: use `http://localhost:{port}/callback` as `redirect_url` and spin up a local server, or open the browser and let the user complete login manually
 - The returned `token` is the `user_auth_token` for all subsequent requests
-- Login form requires reCAPTCHA (may need browser automation for programmatic use)
+- After `oauth/callback`, the app validates via `POST user/login` which returns the full user profile including subscription tier and streaming capabilities
 
 ### Strategy 3: Spoofer (Optional Fallback)
 
