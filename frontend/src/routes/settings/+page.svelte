@@ -29,6 +29,49 @@
   let autoSyncEnabled = $state(false);
   let syncInterval = $state('6h');
 
+  // Sample data for format preview
+  const sampleAlbum = {
+    albumartist: 'Radiohead',
+    title: 'In Rainbows',
+    year: '2007',
+    container: 'FLAC',
+    bit_depth: '24',
+    sampling_rate: '96',
+    id: '0634904032067',
+    albumcomposer: 'Radiohead',
+  };
+  const sampleTrack = {
+    tracknumber: 3,
+    artist: 'Radiohead',
+    albumartist: 'Radiohead',
+    title: 'Nude',
+    explicit: '',
+    composer: 'Thom Yorke',
+  };
+
+  function previewFormat(fmt: string, data: Record<string, any>): string {
+    try {
+      let result = fmt;
+      // Handle Python-style format specifiers like {tracknumber:02}
+      result = result.replace(/\{(\w+):(\d+)\}/g, (_, key, pad) => {
+        const val = data[key];
+        if (val === undefined) return `{${key}}`;
+        return String(val).padStart(parseInt(pad), '0');
+      });
+      // Handle simple {key} replacements
+      result = result.replace(/\{(\w+)\}/g, (_, key) => {
+        const val = data[key];
+        return val !== undefined ? String(val) : `{${key}}`;
+      });
+      return result || '(empty)';
+    } catch {
+      return fmt;
+    }
+  }
+
+  let folderPreview = $derived(previewFormat(folderFormat, sampleAlbum));
+  let trackPreview = $derived(previewFormat(trackFormat, sampleTrack) + '.flac');
+
   let saving = $state(false);
   let saveError = $state('');
   let saveSuccess = $state(false);
@@ -373,24 +416,31 @@
   <div class="settings-row">
     <div>
       <div class="settings-label">Folder Format</div>
-      <div class="settings-label-sub">{'{albumartist}'}, {'{title}'}, {'{year}'}, etc.</div>
+      <div class="settings-label-sub">{'{albumartist}'}, {'{title}'}, {'{year}'}, {'{container}'}, {'{bit_depth}'}, {'{sampling_rate}'}</div>
     </div>
-    <input
-      class="settings-input"
-      type="text"
-      bind:value={folderFormat}
-    />
+    <div>
+      <input
+        class="settings-input"
+        type="text"
+        bind:value={folderFormat}
+      />
+      <div class="format-preview">▸ {folderPreview}</div>
+    </div>
   </div>
 
   <div class="settings-row">
     <div>
       <div class="settings-label">Track Format</div>
+      <div class="settings-label-sub">{'{tracknumber}'}, {'{artist}'}, {'{title}'}, {'{explicit}'}, {'{albumartist}'}</div>
     </div>
-    <input
-      class="settings-input"
-      type="text"
-      bind:value={trackFormat}
-    />
+    <div>
+      <input
+        class="settings-input"
+        type="text"
+        bind:value={trackFormat}
+      />
+      <div class="format-preview">▸ {trackPreview}</div>
+    </div>
   </div>
   <div class="settings-row">
     <div>
@@ -630,6 +680,18 @@
   .settings-input:focus {
     border-color: var(--accent);
     box-shadow: var(--shadow-accent);
+  }
+
+  .format-preview {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--accent);
+    letter-spacing: var(--tracking-mono);
+    margin-top: var(--space-1);
+    padding: var(--space-1) 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .settings-input::placeholder {
