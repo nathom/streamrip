@@ -1,7 +1,6 @@
 import { writable } from 'svelte/store';
 import { api } from '$lib/api/client';
 import { onEvent } from './websocket';
-import { selectedAlbum } from './library';
 
 export const queue = writable<any[]>([]);
 export const activeCount = writable(0);
@@ -39,9 +38,8 @@ onEvent('download_complete', (data) => {
   // Refresh full queue state from server after completion
   loadQueue();
   // Notify subscribers (e.g. AlbumDetail) about the completed download
+  // AlbumDetail subscribes to this and re-fetches the album data
   lastCompletedDownload.set(data);
-  // Clear selectedAlbum cache so the next open fetches fresh data
-  selectedAlbum.set(null);
 });
 
 onEvent('download_failed', (data) => {

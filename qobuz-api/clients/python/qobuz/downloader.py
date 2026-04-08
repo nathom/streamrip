@@ -235,7 +235,7 @@ class AlbumDownloader:
         path = os.path.join(folder, self.METADATA_FILENAME)
         try:
             with open(path, "w") as f:
-                json.dump(metadata, f, indent=2)
+                json.dump(metadata, f, indent=2, ensure_ascii=False)
             logger.info("Wrote metadata file: %s", path)
         except Exception as e:
             logger.warning("Failed to write metadata file: %s", e)
@@ -610,8 +610,8 @@ class AlbumDownloader:
             base = os.path.join(base, "Qobuz")
 
         replacements = {
-            "albumartist": _build_albumartist(album),
-            "title": album.title,
+            "albumartist": _safe_value(_build_albumartist(album)),
+            "title": _safe_value(album.title),
             "year": album.release_date_original[:4] if album.release_date_original else "Unknown",
             "container": "FLAC" if self.config.quality >= 2 else "MP3",
             "bit_depth": str(album.maximum_bit_depth),
@@ -646,9 +646,9 @@ class AlbumDownloader:
 
         replacements = {
             "tracknumber": track.track_number,
-            "artist": track.performer.name,
-            "albumartist": _build_albumartist(album),
-            "title": title,
+            "artist": _safe_value(track.performer.name),
+            "albumartist": _safe_value(_build_albumartist(album)),
+            "title": _safe_value(title),
             "explicit": explicit,
         }
 
@@ -668,6 +668,18 @@ class AlbumDownloader:
 def _safe_filename(s: str) -> str:
     """Remove or replace characters that are invalid in file/folder names."""
     s = re.sub(r'[<>:"/\\|?*]', "", s)
+    s = s.replace("\n", " ").replace("\r", "").strip()
+    return s[:200]
+
+
+def _safe_value(s: str) -> str:
+    """Sanitize a metadata value for use in file/folder name templates.
+
+    Removes characters that are invalid in filenames AND path separators,
+    so values like 'Eu e Memê / Memê e Eu' don't create nested directories.
+    """
+    s = re.sub(r'[<>:"/\\|?*]', "", s)
+    s = s.replace("/", " - ")  # Replace path separator with dash
     s = s.replace("\n", " ").replace("\r", "").strip()
     return s[:200]
 
