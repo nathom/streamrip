@@ -33,6 +33,7 @@ class DownloadConfig:
     source_subdirectories: bool = False
     disc_subdirectories: bool = True
     tag_files: bool = True
+    download_booklets: bool = True
 
 
 @dataclass
@@ -53,6 +54,7 @@ class AlbumResult:
     artist: str
     tracks: list[TrackResult] = field(default_factory=list)
     cover_path: str | None = None
+    booklet_paths: list[str] = field(default_factory=list)
 
     @property
     def successful(self) -> int:
@@ -95,14 +97,26 @@ class AlbumDownloader:
 
     async def download(self, album_id: str) -> AlbumResult:
         """Download an entire album by ID."""
-        album, tracks = await self.client.catalog.get_album_with_tracks(album_id)
-        logger.info("Resolved: %s — %s (%d tracks)",
-                     album.artist.name, album.title, len(tracks))
+        # Fetch raw response for goodies, then parse album + tracks
+        _, raw_body = await self.client._transport.get(
+            "album/get", {"album_id": album_id, "extra": "track_ids"}
+        )
+        album = Album.from_dict(raw_body)
+        tracks = [Track.from_dict(t) for t in raw_body.get("tracks", {}).get("items", [])]
+        goodies = raw_body.get("goodies", [])
+
+        logger.info("Resolved: %s — %s (%d tracks, %d booklets)",
+                     album.artist.name, album.title, len(tracks), len(goodies))
 
         album_folder = self._build_album_folder(album)
         os.makedirs(album_folder, exist_ok=True)
 
         cover_path = await self._download_cover(album, album_folder)
+
+        # Download booklet PDFs
+        booklet_paths = []
+        if self.config.download_booklets and goodies:
+            booklet_paths = await self._download_booklets(goodies, album_folder)
 
         # Download all tracks with concurrency limit
         results = await asyncio.gather(
@@ -130,6 +144,7 @@ class AlbumDownloader:
             artist=album.artist.name,
             tracks=track_results,
             cover_path=cover_path,
+            booklet_paths=booklet_paths,
         )
 
     async def _download_track(
@@ -209,6 +224,36 @@ class AlbumDownloader:
                         downloaded += len(chunk)
                         if self._on_track_progress:
                             self._on_track_progress(track_num, downloaded, total)
+
+    async def _download_booklets(self, goodies: list[dict], folder: str) -> list[str]:
+        """Download PDF booklets from the goodies list."""
+        paths = []
+        for i, goodie in enumerate(goodies):
+            url = goodie.get("url") or goodie.get("original_url")
+            if not url:
+                continue
+            name = goodie.get("name", f"booklet_{i + 1}")
+            ext = url.rsplit(".", 1)[-1] if "." in url.rsplit("/", 1)[-1] else "pdf"
+            filename = f"{_safe_filename(name)}.{ext}"
+            path = os.path.join(folder, filename)
+
+            if os.path.exists(path):
+                paths.append(path)
+                continue
+
+            try:
+                async with aiohttp.ClientSession() as session:
+                    async with session.get(url) as resp:
+                        resp.raise_for_status()
+                        with open(path, "wb") as f:
+                            async for chunk in resp.content.iter_chunked(8192):
+                                f.write(chunk)
+                paths.append(path)
+                logger.info("Downloaded booklet: %s", filename)
+            except Exception as e:
+                logger.warning("Failed to download booklet '%s': %s", name, e)
+
+        return paths
 
     async def _download_cover(self, album: Album, folder: str) -> str | None:
         """Download album cover art."""
