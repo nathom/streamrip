@@ -49,23 +49,46 @@ async def _reload_clients(request: Request):
     # Close existing sessions
     old_clients = getattr(request.app.state, '_clients_ref', {})
     for client in old_clients.values():
-        if hasattr(client, 'session') and client.session:
-            try:
+        try:
+            if hasattr(client, '__aexit__'):
+                await client.__aexit__(None, None, None)
+            elif hasattr(client, 'session') and client.session:
                 await client.session.close()
-            except Exception:
-                pass
+        except Exception:
+            pass
 
     # Create new clients
     clients = _init_clients(db)
 
-    # Login
+    # Open sessions and login
     for name, client in clients.items():
         try:
-            if not client.logged_in:
+            if hasattr(client, '__aenter__'):
+                # SDK client — open async session
+                await client.__aenter__()
+                logger.info("Hot-reloaded %s (session opened)", name)
+            elif hasattr(client, 'logged_in') and not client.logged_in:
+                # Streamrip client — login
                 await client.login()
                 logger.info("Hot-reloaded and logged in to %s", name)
         except Exception:
-            logger.exception("Failed to login to %s during hot-reload", name)
+            logger.exception("Failed to initialize %s during hot-reload", name)
+
+    # Fetch app_secret for Qobuz if needed
+    qobuz = clients.get("qobuz")
+    if qobuz and hasattr(qobuz, 'streaming') and not getattr(qobuz, '_app_secret_cached', False):
+        try:
+            from qobuz.spoofer import fetch_app_credentials, find_working_secret
+            app_id, secrets = await fetch_app_credentials()
+            token = db.get_config("qobuz_token")
+            if token:
+                secret = await find_working_secret(app_id, secrets, token)
+                qobuz.streaming._app_secret = secret
+                qobuz._app_secret_cached = True
+                db.set_config("qobuz_app_id", app_id)
+                logger.info("Qobuz app secret resolved during hot-reload")
+        except Exception:
+            logger.exception("Failed to resolve Qobuz app secret during hot-reload")
 
     # Update all service references
     request.app.state.library_service.clients = clients
