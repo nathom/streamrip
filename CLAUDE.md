@@ -2,19 +2,18 @@
 
 ## Project Overview
 
-Streamrip is a music download manager with a web UI for managing Qobuz and Tidal libraries. It consists of:
+Streamrip is a web UI for managing Qobuz and Tidal libraries — downloading, syncing, and organizing music from both services. The repo now contains only the web UI; the old streamrip CLI (`rip`, TUI, media pipeline) was removed. It consists of:
 
 - **Backend**: FastAPI app in `backend/` serving REST API + WebSocket
 - **Frontend**: SvelteKit app in `frontend/` using Arthur Soares Design System
-- **Clients**: Existing streamrip clients in `streamrip/client/` (Qobuz, Tidal, Deezer, SoundCloud)
-- **Media pipeline**: `streamrip/media/` — PendingAlbum → resolve → Album → rip → tagged audio files
-- **Config**: SQLite DB (`backend/models/database.py`) + bridge to streamrip TOML config (`backend/services/config_bridge.py`)
+- **SDKs**: Qobuz and Tidal Python SDKs consumed from the `sdks/qobuz_api_client` git submodule (→ `arthursoares/qobuz_api_client`). Both are installed via `make deps`. Neither depends on anything else in this repo.
+- **Config**: SQLite DB (`backend/models/database.py`) stores credentials, library, and settings directly — there is no streamrip TOML bridge anymore.
 
 ## Key Commands
 
 ```bash
+make deps          # Init submodule + install both SDKs (run after clone or SDK pin change)
 make test          # Unit tests (~1.5s, no credentials)
-make test-e2e      # E2E tests (needs QOBUZ_TOKEN, QOBUZ_USER_ID env vars)
 make dev           # Build frontend + start backend at :8080
 make dev-backend   # Start backend only (skip frontend build)
 make docker        # Build + run Docker image
@@ -22,16 +21,16 @@ make docker        # Build + run Docker image
 
 ## Architecture Decisions
 
-- **No Main class for downloads**: `DownloadService._download_album()` uses `PendingAlbum` directly instead of `Main` to preserve logged-in client state (Main.__init__ creates new un-logged-in clients)
-- **Config bridge**: `backend/services/config_bridge.py` is the single source of truth for building streamrip Config from the web DB
-- **Progress hooks**: `WebProgressManager` replaces streamrip's Rich `ProgressManager` during downloads to emit WebSocket events
-- **Quality values**: Streamrip uses 1-4 internally, mapped to Qobuz format IDs (5, 6, 7, 27) via `QobuzClient.get_quality()`
-- **Auto-login fallback**: `_download_album` attempts `client.login()` if client isn't ready, handles the Docker cold-start scenario
+- **Both sources go through standalone SDKs.** `backend/services/download.py:_download_album` dispatches on `item["source"]` between `qobuz.AlbumDownloader` and `tidal.AlbumDownloader`. Both SDKs expose the same facade shape (`client.catalog`, `client.favorites`, `client.streaming`) so library/sync/search code paths are mostly source-agnostic via `hasattr(client, 'catalog')`.
+- **SDKs are git submodules, not vendored copies.** The `sdks/qobuz_api_client` submodule pins an exact commit of the upstream SDK repo; Docker builds and dev installs both reference that path. Update with `git -C sdks/qobuz_api_client pull` + commit the submodule bump.
+- **Progress callbacks come from the SDKs.** Both SDKs' `AlbumDownloader` takes `on_track_start` / `on_track_progress` / `on_track_complete` callbacks; `DownloadService._download_album` wires them to emit WebSocket events.
+- **Per-source dedup DBs.** Qobuz uses `data/downloads.db` (legacy name preserved for existing state); Tidal uses `data/downloads-tidal.db` so track IDs from the two services can't collide.
+- **Quality tiers are per-source.** The backend reads `qobuz_quality` or `tidal_quality` from the config DB — each maps onto the respective SDK's 0–3 scale.
+- **Auto token refresh.** The Tidal SDK refreshes on `__aenter__` and on 401 automatically. Qobuz has no equivalent refresh endpoint — credentials are re-captured via the OAuth flow in Settings.
 
 ## Known Issues
 
 - Track download status in album detail only updates after full album download completes (no per-track real-time update in album view)
-- `test_album_handles_failed_track` is xfail due to Album dataclass `slots=True` vs dynamic attributes
 - Qobuz token refresh is manual (no OAuth refresh endpoint)
 
 ## Design System
@@ -47,5 +46,5 @@ All frontend follows `frontend/src/lib/design-system/tokens.css`:
 
 - Design spec: `docs/superpowers/specs/2026-04-06-streamrip-web-ui-design.md`
 - Implementation plan: `docs/superpowers/plans/2026-04-06-streamrip-web-ui-plan.md`
-- Bug fix list: `.ai-project/todos/bug-fixes-review-2026-04-06.md`
+- Cleanup plan: `~/.claude/plans/linear-tickling-aho.md`
 - Web UI docs: `docs/WEB_UI.md`

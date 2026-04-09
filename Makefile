@@ -4,22 +4,19 @@
 deps:
 	git submodule update --init --recursive
 	poetry run pip install -e sdks/qobuz_api_client/clients/python
+	poetry run pip install -e sdks/qobuz_api_client/clients/python/tidal
 
 # Run unit tests (no credentials needed)
 test:
-	poetry run pytest tests/ -q --tb=short --ignore=tests/test_e2e_download.py -k "not test_streamrip_versions_match"
+	poetry run pytest tests/ -q --tb=short
 
 # Run unit tests with verbose output
 test-unit:
-	poetry run pytest tests/ -v --tb=short --ignore=tests/test_e2e_download.py -k "not test_streamrip_versions_match"
-
-# Run e2e tests (requires QOBUZ_TOKEN and QOBUZ_USER_ID env vars)
-test-e2e:
-	poetry run pytest tests/test_e2e_download.py -v --tb=short
+	poetry run pytest tests/ -v --tb=short
 
 # Run everything
 test-all:
-	poetry run pytest tests/ -v --tb=short -k "not test_streamrip_versions_match"
+	poetry run pytest tests/ -v --tb=short
 
 # Build frontend
 build-frontend:
@@ -57,4 +54,4 @@ dev-frontend:
 
 # Lint
 lint:
-	poetry run ruff check streamrip/ backend/
+	poetry run ruff check backend/
