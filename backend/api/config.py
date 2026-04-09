@@ -74,34 +74,13 @@ async def _reload_clients(request: Request):
         except Exception:
             logger.exception("Failed to initialize %s during hot-reload", name)
 
-    # Fetch app_secret for Qobuz if needed
+    # Resolve the real Qobuz app_id and secret.  This also corrects
+    # the X-App-Id session header if the client was built with a stale
+    # cached app_id (see _resolve_qobuz_credentials docstring in main.py).
     qobuz = clients.get("qobuz")
-    if qobuz and hasattr(qobuz, 'streaming') and not getattr(qobuz, '_app_secret_cached', False):
-        try:
-            from qobuz.spoofer import fetch_app_credentials, find_working_secret
-            app_id, secrets = await fetch_app_credentials()
-            token = db.get_config("qobuz_token")
-            if token and secrets:
-                secret = None
-                try:
-                    secret = await find_working_secret(app_id, secrets, token)
-                except RuntimeError:
-                    # Verification test failed (rate-limit, removed test track, etc.)
-                    # The secrets come from the live bundle so the first candidate is
-                    # almost certainly correct — use it as a fallback.
-                    logger.warning(
-                        "Qobuz secret verification failed (%d candidates); "
-                        "using first candidate as fallback",
-                        len(secrets),
-                    )
-                    secret = secrets[0]
-                if secret:
-                    qobuz.streaming._app_secret = secret
-                    qobuz._app_secret_cached = True
-                    db.set_config("qobuz_app_id", app_id)
-                    logger.info("Qobuz app secret resolved during hot-reload")
-        except Exception:
-            logger.exception("Failed to resolve Qobuz app secret during hot-reload")
+    if qobuz:
+        from ..main import _resolve_qobuz_credentials
+        await _resolve_qobuz_credentials(db, qobuz)
 
     # Update all service references
     request.app.state.library_service.clients = clients

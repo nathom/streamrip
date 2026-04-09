@@ -26,11 +26,13 @@ def _init_clients(db: AppDatabase) -> dict:
     if qobuz_token:
         try:
             from qobuz import QobuzClient
-            from qobuz.spoofer import fetch_app_credentials, find_working_secret
-            import asyncio
 
-            # We need app_id — check if cached, otherwise use default
-            app_id = db.get_config("qobuz_app_id") or "798273057"
+            # Use the cached app_id from a previous successful credential
+            # fetch.  The real app_id is discovered asynchronously in
+            # _resolve_qobuz_credentials() after the session opens; if the
+            # cached value is stale or missing, the session will be recreated
+            # there with the correct ID.
+            app_id = db.get_config("qobuz_app_id") or "950096963"
 
             client = QobuzClient(
                 app_id=app_id,
@@ -38,7 +40,7 @@ def _init_clients(db: AppDatabase) -> dict:
             )
             # Note: client session opens on __aenter__, done in lifespan
             clients["qobuz"] = client
-            logger.info("Qobuz SDK client initialized")
+            logger.info("Qobuz SDK client initialized (app_id=%s)", app_id)
         except Exception:
             logger.exception("Failed to initialize Qobuz client")
 
@@ -72,6 +74,67 @@ def _init_clients(db: AppDatabase) -> dict:
     return clients
 
 
+async def _resolve_qobuz_credentials(db: AppDatabase, qobuz) -> None:
+    """Fetch the real Qobuz app_id + secret from the web player bundle.
+
+    The app_id is baked into the aiohttp session headers at construction
+    time.  If the real app_id from the bundle differs from what the client
+    was created with (e.g. first boot, or Qobuz rotated their bundle), we
+    close the existing session, update the transport's app_id, and reopen —
+    so subsequent requests carry the correct X-App-Id header.
+
+    Catalog and download endpoints validate X-App-Id; favorites does not,
+    which is why get_albums returns 200 while album/get returns 401 when
+    the app_id is wrong.
+    """
+    if getattr(qobuz, "_app_secret_cached", False):
+        return
+
+    try:
+        from qobuz.spoofer import fetch_app_credentials, find_working_secret
+
+        real_app_id, secrets = await fetch_app_credentials()
+        token = db.get_config("qobuz_token")
+        if not token or not secrets:
+            return
+
+        # If the real app_id differs from what the client was built with,
+        # recreate the transport session so X-App-Id is correct everywhere.
+        if real_app_id != qobuz._transport.app_id:
+            logger.info(
+                "Qobuz app_id updated (%s → %s); recreating transport session",
+                qobuz._transport.app_id,
+                real_app_id,
+            )
+            await qobuz._transport.__aexit__(None, None, None)
+            qobuz._transport.app_id = real_app_id
+            await qobuz._transport.__aenter__()
+
+        db.set_config("qobuz_app_id", real_app_id)
+
+        secret = None
+        try:
+            secret = await find_working_secret(real_app_id, secrets, token)
+        except RuntimeError:
+            # Verification test failed (rate-limit, removed test track, etc.)
+            # Secrets are extracted from the live bundle — first candidate is
+            # almost certainly correct.
+            logger.warning(
+                "Qobuz secret verification failed (%d candidates); "
+                "using first candidate as fallback",
+                len(secrets),
+            )
+            secret = secrets[0]
+
+        if secret:
+            qobuz.streaming._app_secret = secret
+            qobuz._app_secret_cached = True
+            logger.info("Qobuz app_id and secret resolved (app_id=%s)", real_app_id)
+
+    except Exception:
+        logger.exception("Failed to resolve Qobuz app credentials")
+
+
 def create_app(db_path: str | None = None) -> FastAPI:
     if db_path is None:
         db_path = os.environ.get("STREAMRIP_DB_PATH", "data/streamrip.db")
@@ -102,32 +165,12 @@ def create_app(db_path: str | None = None) -> FastAPI:
             except Exception:
                 logger.exception("Failed to initialize %s", name)
 
-        # Fetch and cache app_secret for Qobuz downloads (Qobuz-only:
-        # Tidal's manifest includes its own signed URLs).
+        # Resolve the real Qobuz app_id + secret from the live bundle.
+        # This also corrects the X-App-Id session header if the cached
+        # app_id was stale.
         qobuz = clients.get("qobuz")
-        if qobuz and not getattr(qobuz, '_app_secret_cached', False):
-            try:
-                from qobuz.spoofer import fetch_app_credentials, find_working_secret
-                app_id, secrets = await fetch_app_credentials()
-                token = db.get_config("qobuz_token")
-                if token and secrets:
-                    secret = None
-                    try:
-                        secret = await find_working_secret(app_id, secrets, token)
-                    except RuntimeError:
-                        logger.warning(
-                            "Qobuz secret verification failed (%d candidates); "
-                            "using first candidate as fallback",
-                            len(secrets),
-                        )
-                        secret = secrets[0]
-                    if secret:
-                        qobuz.streaming._app_secret = secret
-                        qobuz._app_secret_cached = True
-                        db.set_config("qobuz_app_id", app_id)
-                        logger.info("Qobuz app secret resolved and cached")
-            except Exception:
-                logger.exception("Failed to resolve Qobuz app secret")
+        if qobuz:
+            await _resolve_qobuz_credentials(db, qobuz)
 
         yield
 
