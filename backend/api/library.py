@@ -26,6 +26,21 @@ async def refresh_library(request: Request, source: str):
     return await service.refresh_library(source)
 
 @router.get("/search/{source}")
-async def search(request: Request, source: str, q: str, limit: int = 20):
+async def search(
+    request: Request,
+    source: str,
+    q: str,
+    page: int = 1,
+    page_size: int = 60,
+):
+    """Search the streaming service's catalog (paginated).
+
+    Mirrors the shape of ``GET /api/library/{source}/albums`` so the
+    frontend can reuse its Load More / table-view machinery.  Returns
+    ``{albums, total, limit, offset}``.
+    """
     service = request.app.state.library_service
-    return await service.search(source, q, limit=limit)
+    page = max(1, page)
+    page_size = max(1, min(page_size, 200))
+    offset = (page - 1) * page_size
+    return await service.search(source, q, limit=page_size, offset=offset)

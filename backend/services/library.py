@@ -225,26 +225,31 @@ class LibraryService:
             "maximum_sampling_rate": album.maximum_sampling_rate,
         }
 
-    async def search(self, source, query, limit=20):
-        client = self.clients.get(source)
-        if client is None:
-            return []
+    async def search(self, source, query, *, limit: int = 60, offset: int = 0):
+        """Search the streaming service's catalog with pagination.
 
-        # Both SDK clients expose a `catalog` namespace with search_albums.
-        # The response shape differs (Qobuz → PaginatedResult of raw-ish
-        # dicts; Tidal → PaginatedResult of dict items) but both end up
-        # going through _extract_{source}_album below.
-        if hasattr(client, 'catalog'):
-            result = await client.catalog.search_albums(query, limit=limit)
-            if source == "qobuz":
-                albums = [self._sdk_album_to_dict_from_raw(item) for item in result.items]
-            else:
-                albums = list(result.items)
+        Returns a paginated envelope ``{albums, total, limit, offset}``
+        matching the shape of ``get_albums``.  ``total`` reflects the
+        upstream service's reported total when available so the UI can
+        render Load More / page counts.
+        """
+        empty = {"albums": [], "total": 0, "limit": limit, "offset": offset}
+        client = self.clients.get(source)
+        if client is None or not hasattr(client, "catalog"):
+            return empty
+
+        # Both SDK clients expose a `catalog.search_albums(query, limit, offset)`.
+        # Tidal returns dict items in `result.items`; Qobuz returns the raw
+        # dict shape under different envelope keys.  Normalize via the
+        # per-source extractor below.
+        result = await client.catalog.search_albums(query, limit=limit, offset=offset)
+        if source == "qobuz":
+            raw_items = [self._sdk_album_to_dict_from_raw(item) for item in result.items]
         else:
-            return []
+            raw_items = list(result.items)
 
         enriched = []
-        for album in albums:
+        for album in raw_items:
             parsed = self._extract_album_data(source, album)
             if parsed is None:
                 continue
@@ -255,7 +260,13 @@ class LibraryService:
                 "download_status": existing["download_status"] if existing else "not_downloaded",
                 "id": existing["id"] if existing else 0,
             })
-        return enriched
+
+        return {
+            "albums": enriched,
+            "total": getattr(result, "total", len(enriched)),
+            "limit": getattr(result, "limit", limit),
+            "offset": getattr(result, "offset", offset),
+        }
 
     def _extract_album_data(self, source, item):
         try:

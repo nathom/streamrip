@@ -66,10 +66,11 @@ class TestLibraryServiceSearch:
         mock_client.catalog.search_albums = AsyncMock(return_value=page)
 
         service = LibraryService(db, event_bus, clients={"qobuz": mock_client})
-        results = await service.search("qobuz", "test query")
-        assert len(results) == 2
-        known = next(r for r in results if r["source_album_id"] == "existing_id")
-        unknown = next(r for r in results if r["source_album_id"] == "new_id")
+        result = await service.search("qobuz", "test query")
+        albums = result["albums"]
+        assert len(albums) == 2
+        known = next(r for r in albums if r["source_album_id"] == "existing_id")
+        unknown = next(r for r in albums if r["source_album_id"] == "new_id")
         assert known["in_library"] is True
         assert unknown["in_library"] is False
 

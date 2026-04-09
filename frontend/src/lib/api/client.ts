@@ -25,8 +25,10 @@ export const api = {
       request<any>(`/library/${source}/albums/${id}`),
     refresh: (source: string) =>
       request<any>(`/library/refresh/${source}`, { method: 'POST' }),
-    search: (source: string, query: string) =>
-      request<any>(`/library/search/${source}?q=${encodeURIComponent(query)}`),
+    search: (source: string, query: string, params?: Record<string, string>) => {
+      const qs = new URLSearchParams({ q: query, ...(params ?? {}) });
+      return request<any>(`/library/search/${source}?${qs}`);
+    },
   },
   downloads: {
     getQueue: () => request<any>('/downloads/queue'),

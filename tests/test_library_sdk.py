@@ -201,11 +201,13 @@ class TestLibrarySDKSearch:
         client = make_sdk_client(search_results=search_items)
         service = LibraryService(db, event_bus, clients={"qobuz": client})
 
-        results = await service.search("qobuz", "test query")
+        result = await service.search("qobuz", "test query")
+        albums = result["albums"]
 
-        assert len(results) == 1
-        assert results[0]["source_album_id"] == "s1"
-        assert results[0]["in_library"] is False
+        assert result["total"] >= 1
+        assert len(albums) == 1
+        assert albums[0]["source_album_id"] == "s1"
+        assert albums[0]["in_library"] is False
 
     async def test_search_enriches_with_library_status(self, db, event_bus):
         """Search results should show in_library=True for known albums."""
@@ -224,10 +226,11 @@ class TestLibrarySDKSearch:
         client = make_sdk_client(search_results=search_items)
         service = LibraryService(db, event_bus, clients={"qobuz": client})
 
-        results = await service.search("qobuz", "test")
+        result = await service.search("qobuz", "test")
+        albums = result["albums"]
 
-        known = next(r for r in results if r["source_album_id"] == "existing")
-        new = next(r for r in results if r["source_album_id"] == "new")
+        known = next(r for r in albums if r["source_album_id"] == "existing")
+        new = next(r for r in albums if r["source_album_id"] == "new")
         assert known["in_library"] is True
         assert new["in_library"] is False
 

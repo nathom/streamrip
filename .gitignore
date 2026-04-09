@@ -43,3 +43,12 @@ data/
 backend/static/
 *.db
 debug_*.py
+
+# HAR / Proxyman captures contain plaintext auth material — never commit them
+captures/
+*.har
+*.proxyman
+
+# Test coverage artifacts
+.coverage
+htmlcov/
