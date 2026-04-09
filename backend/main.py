@@ -85,14 +85,15 @@ async def _resolve_qobuz_credentials(db: AppDatabase, qobuz) -> None:
     """Resolve a Qobuz app_secret for signing track/getFileUrl.
 
     Resolution order:
-      1. **User override** (`qobuz_app_secret` config key) — pasted in
-         Settings.  Required when using OAuth-issued tokens, because
-         the OAuth app's signing secret can't be scraped from any
-         public bundle.  Trusted as-is, no verification.
-      2. **Spoofer fallback** — scrape the web player bundle, verify
+      1. **User override** (`qobuz_app_secret` config key).
+      2. **Hardcoded secret for the OAuth/Helper app** — when
+         X-App-Id is the OAuth app (`qobuz.auth.APP_ID = 304027809`),
+         use `qobuz.auth.APP_SECRET` which was decoded from the
+         Qobuz Helper's bundle (paris seed) and verified against a
+         captured signed request.
+      3. **Spoofer fallback** — scrape the web player bundle, verify
          secrets against the *current* X-App-Id (must match for the
          test request to succeed), use the first one that works.
-         Falls back to ``secrets[0]`` if verification fails.
 
     The X-App-Id header was set at client construction time from
     `qobuz_app_id`; this function never touches it.  If the DB has no
@@ -104,6 +105,8 @@ async def _resolve_qobuz_credentials(db: AppDatabase, qobuz) -> None:
     if getattr(qobuz, "_app_secret_cached", False):
         return
 
+    client_app_id = qobuz._transport.app_id
+
     # 1. User override
     override_secret = db.get_config("qobuz_app_secret")
     if override_secret:
@@ -111,11 +114,26 @@ async def _resolve_qobuz_credentials(db: AppDatabase, qobuz) -> None:
         qobuz._app_secret_cached = True
         logger.info(
             "Qobuz app_secret loaded from user override (app_id=%s)",
-            qobuz._transport.app_id,
+            client_app_id,
         )
         return
 
-    # 2. Spoofer fallback
+    # 2. Hardcoded secret for the OAuth/Helper app
+    try:
+        from qobuz.auth import APP_ID as OAUTH_APP_ID, APP_SECRET as OAUTH_APP_SECRET
+        if client_app_id == OAUTH_APP_ID and OAUTH_APP_SECRET:
+            qobuz.streaming._app_secret = OAUTH_APP_SECRET
+            qobuz._app_secret_cached = True
+            logger.info(
+                "Qobuz app_secret loaded from qobuz.auth.APP_SECRET (OAuth app, "
+                "app_id=%s)",
+                client_app_id,
+            )
+            return
+    except ImportError:
+        pass  # older SDK without APP_SECRET — fall through to spoofer
+
+    # 3. Spoofer fallback
     try:
         from qobuz.spoofer import fetch_app_credentials, find_working_secret
 
