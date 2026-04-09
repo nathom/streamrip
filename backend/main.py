@@ -26,19 +26,25 @@ def _init_clients(db: AppDatabase) -> dict:
     if qobuz_token:
         try:
             from qobuz import QobuzClient
+            from qobuz.auth import APP_ID as OAUTH_APP_ID
 
-            # Use the cached app_id from a previous successful credential
-            # fetch.  The real app_id is discovered asynchronously in
-            # _resolve_qobuz_credentials() after the session opens; if the
-            # cached value is stale or missing, the session will be recreated
-            # there with the correct ID.
-            app_id = db.get_config("qobuz_app_id") or "950096963"
+            # Qobuz tokens are bound to the app that issued them.  This
+            # backend only supports the OAuth login flow, which issues
+            # tokens for OAUTH_APP_ID ("304027809").  Any other X-App-Id
+            # on subsequent requests makes Qobuz return 401 on catalog,
+            # download, and sync endpoints (favorites used to be lenient
+            # but is now strict too).
+            #
+            # Intentionally ignore any cached `qobuz_app_id` from older
+            # builds that incorrectly stored the web player bundle ID —
+            # it would break OAuth-issued tokens.
+            app_id = OAUTH_APP_ID
+            db.set_config("qobuz_app_id", app_id)
 
             client = QobuzClient(
                 app_id=app_id,
                 user_auth_token=qobuz_token,
             )
-            # Note: client session opens on __aenter__, done in lifespan
             clients["qobuz"] = client
             logger.info("Qobuz SDK client initialized (app_id=%s)", app_id)
         except Exception:
@@ -75,17 +81,19 @@ def _init_clients(db: AppDatabase) -> dict:
 
 
 async def _resolve_qobuz_credentials(db: AppDatabase, qobuz) -> None:
-    """Fetch the real Qobuz app_id + secret from the web player bundle.
+    """Fetch a Qobuz app_secret for signing track/getFileUrl requests.
 
-    The app_id is baked into the aiohttp session headers at construction
-    time.  If the real app_id from the bundle differs from what the client
-    was created with (e.g. first boot, or Qobuz rotated their bundle), we
-    close the existing session, update the transport's app_id, and reopen —
-    so subsequent requests carry the correct X-App-Id header.
+    The X-App-Id header is set at client construction time from the DB
+    (`qobuz_app_id`) and is the OAuth app that issued the user token — we
+    must NOT change it here, otherwise Qobuz rejects all subsequent
+    requests as the token-app binding breaks.
 
-    Catalog and download endpoints validate X-App-Id; favorites does not,
-    which is why get_albums returns 200 while album/get returns 401 when
-    the app_id is wrong.
+    The *secret* is needed only for signing the streaming endpoint.
+    Qobuz doesn't expose it; the spoofer scrapes it from the public web
+    player bundle.  Try verifying each candidate against a real track;
+    if verification fails (rate-limit, removed test track, etc.), fall
+    back to the first candidate — they come from the live bundle so the
+    first entry is almost certainly valid.
     """
     if getattr(qobuz, "_app_secret_cached", False):
         return
@@ -93,32 +101,19 @@ async def _resolve_qobuz_credentials(db: AppDatabase, qobuz) -> None:
     try:
         from qobuz.spoofer import fetch_app_credentials, find_working_secret
 
-        real_app_id, secrets = await fetch_app_credentials()
+        _bundle_app_id, secrets = await fetch_app_credentials()
         token = db.get_config("qobuz_token")
         if not token or not secrets:
             return
 
-        # If the real app_id differs from what the client was built with,
-        # recreate the transport session so X-App-Id is correct everywhere.
-        if real_app_id != qobuz._transport.app_id:
-            logger.info(
-                "Qobuz app_id updated (%s → %s); recreating transport session",
-                qobuz._transport.app_id,
-                real_app_id,
-            )
-            await qobuz._transport.__aexit__(None, None, None)
-            qobuz._transport.app_id = real_app_id
-            await qobuz._transport.__aenter__()
-
-        db.set_config("qobuz_app_id", real_app_id)
+        # Verify secrets against the CLIENT'S current app_id (not the bundle
+        # one) so the test request uses a valid token-app pairing.
+        client_app_id = qobuz._transport.app_id
 
         secret = None
         try:
-            secret = await find_working_secret(real_app_id, secrets, token)
+            secret = await find_working_secret(client_app_id, secrets, token)
         except RuntimeError:
-            # Verification test failed (rate-limit, removed test track, etc.)
-            # Secrets are extracted from the live bundle — first candidate is
-            # almost certainly correct.
             logger.warning(
                 "Qobuz secret verification failed (%d candidates); "
                 "using first candidate as fallback",
@@ -129,7 +124,7 @@ async def _resolve_qobuz_credentials(db: AppDatabase, qobuz) -> None:
         if secret:
             qobuz.streaming._app_secret = secret
             qobuz._app_secret_cached = True
-            logger.info("Qobuz app_id and secret resolved (app_id=%s)", real_app_id)
+            logger.info("Qobuz app_secret resolved (app_id=%s)", client_app_id)
 
     except Exception:
         logger.exception("Failed to resolve Qobuz app credentials")

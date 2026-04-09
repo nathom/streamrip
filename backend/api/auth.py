@@ -58,6 +58,11 @@ async def qobuz_oauth_callback(request: Request, body: OAuthCodeRequest):
     db = request.app.state.db
     db.set_config("qobuz_token", creds["user_auth_token"])
     db.set_config("qobuz_user_id", str(creds["user_id"]))
+    # The OAuth flow issues tokens bound to the OAuth app ("304027809").
+    # All subsequent requests MUST send X-App-Id = that app, otherwise
+    # Qobuz rejects the token with 401 on every endpoint that validates
+    # token-app binding (catalog, downloads, sync).  Persist it explicitly.
+    db.set_config("qobuz_app_id", creds["app_id"])
 
     from .config import _reload_clients
     await _reload_clients(request)
@@ -91,6 +96,8 @@ async def qobuz_oauth_from_url(request: Request, body: OAuthRedirectRequest):
     db = request.app.state.db
     db.set_config("qobuz_token", creds["user_auth_token"])
     db.set_config("qobuz_user_id", str(creds["user_id"]))
+    # See oauth-callback above — the OAuth token is bound to creds["app_id"]
+    db.set_config("qobuz_app_id", creds["app_id"])
 
     from .config import _reload_clients
     await _reload_clients(request)
