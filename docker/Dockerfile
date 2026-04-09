@@ -13,8 +13,8 @@ WORKDIR /app
 COPY pyproject.toml poetry.lock README.md ./
 COPY streamrip/ ./streamrip/
 COPY backend/ ./backend/
-COPY qobuz-api/clients/python/ ./qobuz-sdk/
-RUN pip install --no-cache-dir poetry && poetry config virtualenvs.create false && poetry install --only main --no-interaction && pip install --no-cache-dir websockets ./qobuz-sdk/
+COPY sdks/qobuz_api_client/clients/python/ ./sdks/qobuz/
+RUN pip install --no-cache-dir poetry && poetry config virtualenvs.create false && poetry install --only main --no-interaction && pip install --no-cache-dir websockets ./sdks/qobuz/
 COPY --from=frontend /app/frontend/build ./backend/static/
 EXPOSE 8080
 CMD ["uvicorn", "backend.main:create_app", "--factory", "--host", "0.0.0.0", "--port", "8080"]

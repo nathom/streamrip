@@ -1,2 +1,0 @@
-# Override root gitignore rule that blocks *test.py
-!*test.py

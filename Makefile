@@ -1,4 +1,9 @@
-.PHONY: test test-unit test-e2e test-all build-frontend build-docker dev lint
+.PHONY: deps test test-unit test-e2e test-all build-frontend build-docker dev lint
+
+# Initialize submodules and install local SDKs (run once after clone or when SDK pin changes)
+deps:
+	git submodule update --init --recursive
+	poetry run pip install -e sdks/qobuz_api_client/clients/python
 
 # Run unit tests (no credentials needed)
 test:

@@ -1,0 +1,3 @@
+[submodule "sdks/qobuz_api_client"]
+	path = sdks/qobuz_api_client
+	url = git@github.com:arthursoares/qobuz_api_client.git
