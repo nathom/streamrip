@@ -21,11 +21,6 @@
   let embedArtwork = $state(true);
   let artworkSize = $state('large');
 
-  let conversionEnabled = $state(false);
-  let conversionCodec = $state('FLAC');
-  let conversionSamplingRate = $state(48000);
-  let conversionBitDepth = $state(24);
-
   let autoSyncEnabled = $state(false);
   let syncInterval = $state('6h');
 
@@ -211,11 +206,6 @@
         embedArtwork = config.embed_artwork ?? true;
         artworkSize = config.artwork_size ?? 'large';
 
-        conversionEnabled = config.conversion_enabled ?? false;
-        conversionCodec = config.conversion_codec ?? 'FLAC';
-        conversionSamplingRate = config.conversion_sampling_rate ?? 48000;
-        conversionBitDepth = config.conversion_bit_depth ?? 24;
-
         autoSyncEnabled = config.auto_sync_enabled ?? false;
         syncInterval = config.auto_sync_interval ?? '6h';
       }
@@ -242,10 +232,6 @@
         track_format: trackFormat,
         embed_artwork: embedArtwork,
         artwork_size: artworkSize,
-        conversion_enabled: conversionEnabled,
-        conversion_codec: conversionCodec,
-        conversion_sampling_rate: conversionSamplingRate,
-        conversion_bit_depth: conversionBitDepth,
         auto_sync_enabled: autoSyncEnabled,
         auto_sync_interval: syncInterval,
       });
@@ -552,62 +538,6 @@
       <option value="small">Small</option>
       <option value="large">Large</option>
       <option value="original">Original (up to 30MB)</option>
-    </select>
-  </div>
-</div>
-
-<!-- ── Conversion ── -->
-<div class="settings-section">
-  <div class="settings-section-header">
-    <span>◆ Conversion</span>
-  </div>
-
-  <div class="settings-row">
-    <div>
-      <div class="settings-label">Enable Conversion</div>
-    </div>
-    <button
-      class="toggle-track"
-      class:on={conversionEnabled}
-      onclick={() => { conversionEnabled = !conversionEnabled; }}
-      aria-pressed={conversionEnabled}
-      aria-label="Enable conversion"
-    >
-      <div class="toggle-thumb"></div>
-    </button>
-  </div>
-
-  <div class="settings-row">
-    <div>
-      <div class="settings-label">Codec</div>
-    </div>
-    <select class="settings-select" bind:value={conversionCodec} style="max-width: 160px;">
-      <option value="FLAC">FLAC</option>
-      <option value="ALAC">ALAC</option>
-      <option value="OGG">OGG Vorbis</option>
-      <option value="MP3">MP3</option>
-      <option value="AAC">AAC</option>
-    </select>
-  </div>
-  <div class="settings-row">
-    <div>
-      <div class="settings-label">Max Sampling Rate</div>
-      <div class="settings-label-sub">Downsample if higher (Hz)</div>
-    </div>
-    <select class="settings-select" bind:value={conversionSamplingRate} style="max-width: 160px;">
-      <option value={44100}>44.1 kHz</option>
-      <option value={48000}>48 kHz</option>
-      <option value={96000}>96 kHz</option>
-      <option value={192000}>192 kHz</option>
-    </select>
-  </div>
-  <div class="settings-row" style="border-bottom: none;">
-    <div>
-      <div class="settings-label">Max Bit Depth</div>
-    </div>
-    <select class="settings-select" bind:value={conversionBitDepth} style="max-width: 160px;">
-      <option value={16}>16-bit</option>
-      <option value={24}>24-bit</option>
     </select>
   </div>
 </div>

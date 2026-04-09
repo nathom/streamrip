@@ -106,8 +106,8 @@ class TestConfigReload:
 
     async def test_config_type_conversion(self, client, app):
         app.state.db.set_config("qobuz_quality", "3")
-        app.state.db.set_config("conversion_enabled", "true")
+        app.state.db.set_config("auto_sync_enabled", "true")
         resp = await client.get("/api/config")
         data = resp.json()
         assert isinstance(data["qobuz_quality"], int)
-        assert isinstance(data["conversion_enabled"], bool)
+        assert isinstance(data["auto_sync_enabled"], bool)

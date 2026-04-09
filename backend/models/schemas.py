@@ -126,10 +126,6 @@ class AppConfig(BaseModel):
     track_format: str = "{tracknumber:02}. {artist} - {title}{explicit}"
     embed_artwork: bool = True
     artwork_size: str = "large"
-    conversion_enabled: bool = False
-    conversion_codec: str = "ALAC"
-    conversion_sampling_rate: int = 48000
-    conversion_bit_depth: int = 24
     auto_sync_enabled: bool = False
     auto_sync_interval: str = "6h"
 
@@ -148,10 +144,6 @@ class ConfigUpdate(BaseModel):
     track_format: str | None = None
     embed_artwork: bool | None = None
     artwork_size: str | None = None
-    conversion_enabled: bool | None = None
-    conversion_codec: str | None = None
-    conversion_sampling_rate: int | None = None
-    conversion_bit_depth: int | None = None
     auto_sync_enabled: bool | None = None
     auto_sync_interval: str | None = None
 
