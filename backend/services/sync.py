@@ -2,7 +2,6 @@
 
 import asyncio
 import logging
-from datetime import datetime
 
 from ..models.database import AppDatabase
 from .event_bus import EventBus
@@ -11,11 +10,19 @@ logger = logging.getLogger("streamrip")
 
 
 class SyncService:
-    def __init__(self, db: AppDatabase, event_bus: EventBus, clients: dict, library_service):
+    def __init__(
+        self,
+        db: AppDatabase,
+        event_bus: EventBus,
+        clients: dict,
+        library_service,
+        download_service=None,
+    ):
         self.db = db
         self.event_bus = event_bus
         self.clients = clients
         self.library_service = library_service
+        self.download_service = download_service
         self._auto_sync_task: asyncio.Task | None = None
 
     async def get_diff(self, source: str) -> dict:
@@ -60,7 +67,15 @@ class SyncService:
         }
 
     async def run_sync(self, source: str, download_new: bool = False) -> dict:
-        """Run a full sync: refresh library, record results."""
+        """Run a full sync: refresh library, optionally enqueue new albums.
+
+        When ``download_new=True`` and a ``download_service`` was passed
+        to the constructor, the new albums detected by the diff are
+        enqueued for download via ``download_service.enqueue``.  The
+        returned dict reports how many were queued, but the downloads
+        themselves run async in the worker — this method does not block
+        on completion.
+        """
         run_id = self.db.create_sync_run(source)
 
         await self.event_bus.publish("sync_started", {"source": source, "run_id": run_id})
@@ -72,12 +87,25 @@ class SyncService:
             # Get diff after refresh
             diff = await self.get_diff(source)
 
+            albums_downloaded = 0
+            if download_new and self.download_service is not None and diff["new_albums"]:
+                new_ids = [a["source_album_id"] for a in diff["new_albums"]]
+                logger.info(
+                    "Auto-sync enqueueing %d new %s albums for download",
+                    len(new_ids), source,
+                )
+                try:
+                    await self.download_service.enqueue(source, new_ids)
+                    albums_downloaded = len(new_ids)
+                except Exception:
+                    logger.exception("Failed to enqueue auto-sync downloads")
+
             self.db.complete_sync_run(
                 run_id,
                 albums_found=refresh_result["total"],
                 albums_new=refresh_result["new"],
                 albums_removed=len(diff["removed_albums"]),
-                albums_downloaded=0,
+                albums_downloaded=albums_downloaded,
             )
 
             await self.event_bus.publish("sync_complete", {
@@ -85,6 +113,7 @@ class SyncService:
                 "run_id": run_id,
                 "new_count": refresh_result["new"],
                 "removed_count": len(diff["removed_albums"]),
+                "downloaded_count": albums_downloaded,
             })
 
             return {
@@ -92,6 +121,7 @@ class SyncService:
                 "albums_found": refresh_result["total"],
                 "albums_new": refresh_result["new"],
                 "albums_removed": len(diff["removed_albums"]),
+                "albums_downloaded": albums_downloaded,
                 "status": "complete",
             }
         except Exception as e:
@@ -101,8 +131,19 @@ class SyncService:
     async def get_history(self, source: str, limit: int = 10) -> list[dict]:
         return self.db.get_sync_history(source, limit=limit)
 
-    def start_auto_sync(self, source: str, interval_seconds: int):
-        """Start a background auto-sync task."""
+    def start_auto_sync(
+        self,
+        source: str,
+        interval_seconds: int,
+        download_new: bool = True,
+    ):
+        """Start a background auto-sync task.
+
+        ``download_new`` is forwarded to ``run_sync``: when True (default),
+        new albums detected by each scheduled diff are enqueued for
+        download.  Set to False to refresh the library only without
+        kicking off downloads.
+        """
         if self._auto_sync_task and not self._auto_sync_task.done():
             self._auto_sync_task.cancel()
 
@@ -110,8 +151,11 @@ class SyncService:
             while True:
                 await asyncio.sleep(interval_seconds)
                 try:
-                    logger.info("Auto-sync running for %s", source)
-                    await self.run_sync(source)
+                    logger.info(
+                        "Auto-sync running for %s (download_new=%s)",
+                        source, download_new,
+                    )
+                    await self.run_sync(source, download_new=download_new)
                 except Exception:
                     logger.exception("Auto-sync failed for %s", source)
 

@@ -27,10 +27,10 @@ make docker        # Build + run Docker image
 - **Per-source dedup DBs.** Qobuz uses `data/downloads.db` (legacy name preserved for existing state); Tidal uses `data/downloads-tidal.db` so track IDs from the two services can't collide.
 - **Quality tiers are per-source.** The backend reads `qobuz_quality` or `tidal_quality` from the config DB — each maps onto the respective SDK's 0–3 scale.
 - **Auto token refresh.** The Tidal SDK refreshes on `__aenter__` and on 401 automatically. Qobuz has no equivalent refresh endpoint — credentials are re-captured via the OAuth flow in Settings.
+- **Both sources OAuth, both sources can download.** Tidal uses a device-code OAuth flow wired into Settings ("Connect Tidal" button). Qobuz uses a redirect-based OAuth flow. Tokens issued by Qobuz OAuth are bound to app `304027809`; downloads need a matching signing secret which is hardcoded in `qobuz.auth.APP_SECRET` (decoded from the official Qobuz desktop Helper bundle). Users with a manually-pasted web-player token (`798273057`) take a separate code path where the spoofer scrapes the secret from `play.qobuz.com`.
 
 ## Known Issues
 
-- Track download status in album detail only updates after full album download completes (no per-track real-time update in album view)
 - Qobuz token refresh is manual (no OAuth refresh endpoint)
 
 ## Design System

@@ -85,7 +85,7 @@ class TestAutoSyncLoop:
         """The loop should call run_sync each interval until cancelled."""
         call_count = {"n": 0}
 
-        async def fake_run_sync(source):
+        async def fake_run_sync(source, download_new=False):
             call_count["n"] += 1
             return {"status": "complete"}
 
@@ -112,7 +112,7 @@ class TestAutoSyncLoop:
         """The loop sleeps BEFORE the first sync, so call_count is 0 at t=0."""
         call_count = {"n": 0}
 
-        async def fake_run_sync(source):
+        async def fake_run_sync(source, download_new=False):
             call_count["n"] += 1
             return {"status": "complete"}
 
@@ -140,7 +140,7 @@ class TestStopAutoSync:
     async def test_stop_cancels_the_loop(self, db, event_bus):
         call_count = {"n": 0}
 
-        async def fake_run_sync(source):
+        async def fake_run_sync(source, download_new=False):
             call_count["n"] += 1
             return {"status": "complete"}
 
@@ -170,7 +170,7 @@ class TestStopAutoSync:
         first_calls = {"n": 0}
         second_calls = {"n": 0}
 
-        async def first_run_sync(source):
+        async def first_run_sync(source, download_new=False):
             first_calls["n"] += 1
             return {"status": "complete"}
 
@@ -179,7 +179,7 @@ class TestStopAutoSync:
         first_task = service._auto_sync_task
 
         # Replace run_sync and restart
-        async def second_run_sync(source):
+        async def second_run_sync(source, download_new=False):
             second_calls["n"] += 1
             return {"status": "complete"}
 
@@ -202,6 +202,161 @@ class TestStopAutoSync:
 # ---------------------------------------------------------------------------
 
 
+class TestDownloadNewForwarding:
+    async def test_loop_passes_download_new_to_run_sync(self, db, event_bus):
+        """start_auto_sync(download_new=True) must propagate to run_sync."""
+        captured: list[bool] = []
+
+        async def fake_run_sync(source, download_new=False):
+            captured.append(download_new)
+            return {"status": "complete"}
+
+        service = _make_service(db, event_bus, run_sync_impl=fake_run_sync)
+        service.start_auto_sync("qobuz", interval_seconds=0.01, download_new=True)
+
+        await asyncio.sleep(0.04)
+        service.stop_auto_sync()
+        await asyncio.sleep(0)
+
+        assert len(captured) >= 1
+        assert all(d is True for d in captured), (
+            f"download_new should always be True: {captured}"
+        )
+
+    async def test_loop_default_download_new_is_true(self, db, event_bus):
+        captured: list[bool] = []
+
+        async def fake_run_sync(source, download_new=False):
+            captured.append(download_new)
+            return {"status": "complete"}
+
+        service = _make_service(db, event_bus, run_sync_impl=fake_run_sync)
+        # No download_new kwarg → defaults to True
+        service.start_auto_sync("qobuz", interval_seconds=0.01)
+
+        await asyncio.sleep(0.03)
+        service.stop_auto_sync()
+        await asyncio.sleep(0)
+
+        assert len(captured) >= 1
+        assert captured[0] is True
+
+
+class TestRunSyncDownloadNew:
+    async def test_run_sync_enqueues_new_albums_when_download_new_true(
+        self, db, event_bus
+    ):
+        """run_sync(download_new=True) must call download_service.enqueue
+        with the source IDs of newly-discovered albums."""
+        from unittest.mock import AsyncMock, MagicMock
+
+        from backend.services.sync import SyncService
+
+        # Library service stubbed out — return one new album
+        library_service = MagicMock()
+        library_service.refresh_library = AsyncMock(
+            return_value={"total": 1, "new": 1}
+        )
+        # Inject diff: one new album in the streaming service, none in the DB
+        new_album = {
+            "source_album_id": "new-1",
+            "title": "New Album",
+            "artist": "Artist",
+            "source": "qobuz",
+        }
+
+        # Pre-create a stub client + spy download service
+        client = _mock_client_with_empty_favorites()
+        download_service = MagicMock()
+        download_service.enqueue = AsyncMock(return_value=[])
+
+        service = SyncService(
+            db, event_bus,
+            clients={"qobuz": client},
+            library_service=library_service,
+            download_service=download_service,
+        )
+        # Stub get_diff so we control the new_albums list independent of
+        # the favorites mock above
+        service.get_diff = AsyncMock(return_value={
+            "new_albums": [new_album],
+            "removed_albums": [],
+            "source": "qobuz",
+            "last_sync": None,
+        })
+
+        result = await service.run_sync("qobuz", download_new=True)
+
+        download_service.enqueue.assert_awaited_once_with("qobuz", ["new-1"])
+        assert result["albums_downloaded"] == 1
+
+    async def test_run_sync_does_not_enqueue_when_download_new_false(
+        self, db, event_bus
+    ):
+        from unittest.mock import AsyncMock, MagicMock
+
+        from backend.services.sync import SyncService
+
+        library_service = MagicMock()
+        library_service.refresh_library = AsyncMock(
+            return_value={"total": 1, "new": 1}
+        )
+        client = _mock_client_with_empty_favorites()
+        download_service = MagicMock()
+        download_service.enqueue = AsyncMock()
+
+        service = SyncService(
+            db, event_bus,
+            clients={"qobuz": client},
+            library_service=library_service,
+            download_service=download_service,
+        )
+        service.get_diff = AsyncMock(return_value={
+            "new_albums": [{"source_album_id": "x", "title": "T", "artist": "A"}],
+            "removed_albums": [],
+            "source": "qobuz",
+            "last_sync": None,
+        })
+
+        result = await service.run_sync("qobuz", download_new=False)
+
+        download_service.enqueue.assert_not_called()
+        assert result["albums_downloaded"] == 0
+
+
+class TestParseAutoSyncInterval:
+    """Smoke tests for the human-readable interval parser used by
+    backend.main._parse_auto_sync_interval."""
+
+    def test_known_presets(self):
+        from backend.main import _parse_auto_sync_interval
+        assert _parse_auto_sync_interval("1h") == 60 * 60
+        assert _parse_auto_sync_interval("6h") == 6 * 60 * 60
+        assert _parse_auto_sync_interval("12h") == 12 * 60 * 60
+        assert _parse_auto_sync_interval("daily") == 24 * 60 * 60
+        assert _parse_auto_sync_interval("24h") == 24 * 60 * 60
+
+    def test_bare_int_string(self):
+        from backend.main import _parse_auto_sync_interval
+        assert _parse_auto_sync_interval("3600") == 3600
+
+    def test_min_60_seconds(self):
+        """Bare ints below 60 are clamped to 60s to avoid hammering."""
+        from backend.main import _parse_auto_sync_interval
+        assert _parse_auto_sync_interval("5") == 60
+
+    def test_unknown_falls_back_to_six_hours(self):
+        from backend.main import _parse_auto_sync_interval
+        assert _parse_auto_sync_interval("custom") == 6 * 60 * 60
+        assert _parse_auto_sync_interval(None) == 6 * 60 * 60
+        assert _parse_auto_sync_interval("") == 6 * 60 * 60
+
+    def test_case_insensitive(self):
+        from backend.main import _parse_auto_sync_interval
+        assert _parse_auto_sync_interval("DAILY") == 24 * 60 * 60
+        assert _parse_auto_sync_interval("6H") == 6 * 60 * 60
+
+
 class TestLoopResilience:
     async def test_exception_in_run_sync_does_not_kill_loop(
         self, db, event_bus
@@ -209,7 +364,7 @@ class TestLoopResilience:
         """A failing sync should be logged but the loop should keep running."""
         attempts = {"n": 0}
 
-        async def flaky_run_sync(source):
+        async def flaky_run_sync(source, download_new=False):
             attempts["n"] += 1
             if attempts["n"] == 1:
                 raise RuntimeError("transient failure on first attempt")

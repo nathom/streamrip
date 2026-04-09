@@ -1,5 +1,6 @@
 """Downloads API routes."""
 from fastapi import APIRouter, Request
+
 from ..models.schemas import DownloadRequest
 
 router = APIRouter(prefix="/api/downloads", tags=["downloads"])
@@ -49,8 +50,9 @@ async def remove_from_queue(request: Request, item_id: str):
 @router.post("/scan")
 async def scan_downloads(request: Request):
     """Scan the download directory for .streamrip.json files and reconcile with DB."""
-    from qobuz.downloader import AlbumDownloader
     from datetime import datetime
+
+    from qobuz.downloader import AlbumDownloader
 
     db = request.app.state.db
     download_path = db.get_config("downloads_path") or "/music"

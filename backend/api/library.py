@@ -44,3 +44,25 @@ async def search(
     page_size = max(1, min(page_size, 200))
     offset = (page - 1) * page_size
     return await service.search(source, q, limit=page_size, offset=offset)
+
+
+@router.get("/{source}/playlists")
+async def list_playlists(request: Request, source: str):
+    """List the user's playlists from the streaming service.
+
+    Currently only Qobuz is implemented.  Tidal returns an empty list
+    until the SDK gains playlist read methods.
+    """
+    service = request.app.state.library_service
+    return await service.list_playlists(source)
+
+
+@router.get("/{source}/playlists/{playlist_id}")
+async def get_playlist(request: Request, source: str, playlist_id: int):
+    """Fetch a playlist with its track list."""
+    service = request.app.state.library_service
+    result = await service.get_playlist(source, playlist_id)
+    if result is None:
+        from fastapi.responses import JSONResponse
+        return JSONResponse({"error": "Playlist not found"}, status_code=404)
+    return result

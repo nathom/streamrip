@@ -2,6 +2,7 @@
 import logging
 
 from fastapi import APIRouter, Request
+
 from ..models.schemas import AppConfig, ConfigUpdate
 
 router = APIRouter(prefix="/api/config", tags=["config"])
@@ -58,6 +59,16 @@ async def update_config(request: Request, body: ConfigUpdate):
     }
     if cred_keys & set(updates.keys()):
         await _reload_clients(request)
+
+    # Restart the auto-sync loop if its config changed
+    auto_sync_keys = {"auto_sync_enabled", "auto_sync_interval"}
+    if auto_sync_keys & set(updates.keys()):
+        from ..main import _start_auto_sync_if_enabled
+        sync_service = request.app.state.sync_service
+        sync_service.stop_auto_sync()
+        _start_auto_sync_if_enabled(
+            db, sync_service, request.app.state._clients_ref
+        )
 
     return await get_config(request)
 

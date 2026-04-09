@@ -84,7 +84,7 @@ async def qobuz_oauth_from_url(request: Request, body: OAuthRedirectRequest):
 
     For headless/remote machines where the browser callback can't reach localhost.
     """
-    from qobuz.auth import extract_code_from_url, exchange_code
+    from qobuz.auth import exchange_code, extract_code_from_url
 
     try:
         code = extract_code_from_url(body.redirect_url)

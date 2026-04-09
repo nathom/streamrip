@@ -5,8 +5,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
-from .api import auth, config, downloads, library, websocket
-from .api import sync
+from .api import auth, config, downloads, library, sync, websocket
 from .api.websocket import manager
 from .models.database import AppDatabase
 from .services.download import DownloadService
@@ -81,6 +80,65 @@ def _init_clients(db: AppDatabase) -> dict:
     return clients
 
 
+_AUTO_SYNC_DEFAULT_SECONDS = 6 * 60 * 60
+
+
+def _parse_auto_sync_interval(value: str | None) -> int:
+    """Convert an auto_sync_interval config value to seconds.
+
+    Accepts the human-readable strings the Settings UI writes
+    (``"1h"``, ``"6h"``, ``"daily"``, ``"custom"``) plus a bare integer
+    string for advanced/cron use.  Defaults to 6 hours when unparseable.
+    """
+    if not value:
+        return _AUTO_SYNC_DEFAULT_SECONDS
+    v = value.strip().lower()
+    presets = {
+        "1h": 60 * 60,
+        "6h": 6 * 60 * 60,
+        "12h": 12 * 60 * 60,
+        "daily": 24 * 60 * 60,
+        "24h": 24 * 60 * 60,
+    }
+    if v in presets:
+        return presets[v]
+    try:
+        return max(60, int(v))  # bare int = seconds, min 60s
+    except ValueError:
+        return _AUTO_SYNC_DEFAULT_SECONDS
+
+
+def _start_auto_sync_if_enabled(db: AppDatabase, sync_service: "SyncService", clients: dict) -> None:
+    """If auto_sync_enabled is True in the DB, start the loop.
+
+    Picks the first connected source (qobuz or tidal) — auto-sync is
+    single-source for now since the UI doesn't expose a per-source
+    toggle.  No-op if no source is connected or the flag is off.
+    """
+    enabled_raw = db.get_config("auto_sync_enabled") or "false"
+    if enabled_raw.lower() not in ("true", "1", "yes"):
+        return
+
+    interval_raw = db.get_config("auto_sync_interval")
+    interval_seconds = _parse_auto_sync_interval(interval_raw)
+
+    # Pick the first available source
+    source = None
+    for candidate in ("qobuz", "tidal"):
+        if candidate in clients:
+            source = candidate
+            break
+    if source is None:
+        logger.info("Auto-sync enabled but no source connected; skipping")
+        return
+
+    logger.info(
+        "Starting auto-sync for %s (interval=%ds, download_new=True)",
+        source, interval_seconds,
+    )
+    sync_service.start_auto_sync(source, interval_seconds, download_new=True)
+
+
 async def _resolve_qobuz_credentials(db: AppDatabase, qobuz) -> None:
     """Resolve a Qobuz app_secret for signing track/getFileUrl.
 
@@ -120,7 +178,8 @@ async def _resolve_qobuz_credentials(db: AppDatabase, qobuz) -> None:
 
     # 2. Hardcoded secret for the OAuth/Helper app
     try:
-        from qobuz.auth import APP_ID as OAUTH_APP_ID, APP_SECRET as OAUTH_APP_SECRET
+        from qobuz.auth import APP_ID as OAUTH_APP_ID
+        from qobuz.auth import APP_SECRET as OAUTH_APP_SECRET
         if client_app_id == OAUTH_APP_ID and OAUTH_APP_SECRET:
             qobuz.streaming._app_secret = OAUTH_APP_SECRET
             qobuz._app_secret_cached = True
@@ -188,7 +247,12 @@ def create_app(db_path: str | None = None) -> FastAPI:
     download_path = db.get_config("downloads_path") or os.environ.get("STREAMRIP_DOWNLOADS_PATH", "/music")
     library_service = LibraryService(db, event_bus, clients=clients)
     download_service = DownloadService(db, event_bus, clients=clients, download_path=download_path)
-    sync_service = SyncService(db, event_bus, clients=clients, library_service=library_service)
+    sync_service = SyncService(
+        db, event_bus,
+        clients=clients,
+        library_service=library_service,
+        download_service=download_service,
+    )
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
@@ -208,7 +272,13 @@ def create_app(db_path: str | None = None) -> FastAPI:
         if qobuz:
             await _resolve_qobuz_credentials(db, qobuz)
 
+        # Start auto-sync loop if enabled in the DB
+        _start_auto_sync_if_enabled(db, sync_service, clients)
+
         yield
+
+        # Stop auto-sync before shutting down
+        sync_service.stop_auto_sync()
 
         # Cleanup sessions
         for client in clients.values():

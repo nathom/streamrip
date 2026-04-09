@@ -29,6 +29,10 @@ export const api = {
       const qs = new URLSearchParams({ q: query, ...(params ?? {}) });
       return request<any>(`/library/search/${source}?${qs}`);
     },
+    listPlaylists: (source: string) =>
+      request<any[]>(`/library/${source}/playlists`),
+    getPlaylist: (source: string, id: number) =>
+      request<any>(`/library/${source}/playlists/${id}`),
   },
   downloads: {
     getQueue: () => request<any>('/downloads/queue'),

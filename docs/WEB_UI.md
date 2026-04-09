@@ -57,26 +57,14 @@ Key points:
 2. Sign in. Instead of catching the callback, copy the full URL you were redirected to (it contains `?code_autorisation=…`).
 3. Paste it into the **Redirect URL** field. The backend extracts the code and exchanges it on your behalf.
 
-### Tidal (manual for now)
+### Tidal (device-code OAuth)
 
-The Tidal SDK supports the device-code OAuth flow (see `tidal.auth.request_device_code` / `poll_device_code` / `refresh_access_token`), but the flow isn't wired into the Settings UI yet. In the meantime:
+1. Open the **Settings** page → **Connect Tidal**.
+2. The backend calls Tidal's `device_authorization` endpoint and the UI shows a 5-letter user code + opens `https://link.tidal.com/<code>` in a new browser tab.
+3. Sign in on Tidal and click Authorize. The backend polls in the background; once approved it stores the access token, refresh token, user ID, and country code in the SQLite DB and hot-reloads the client.
+4. The flow works on any device — if the browser tab can't reach Tidal (e.g. a remote server with no display), open the link manually from any other device using the user code.
 
-1. Get an access token + refresh token via another Tidal client (e.g. [`tidal-dl`](https://github.com/yaronzz/Tidal-Media-Downloader)) or by running `python -c "from tidal import auth; import asyncio; ..."` against the SDK helpers directly.
-2. Write them to the SQLite DB via the API:
-
-   ```bash
-   curl -X PATCH http://localhost:8080/api/config -H "Content-Type: application/json" -d '{
-     "tidal_access_token": "...",
-     "tidal_refresh_token": "...",
-     "tidal_user_id": "...",
-     "tidal_country_code": "US",
-     "tidal_token_expiry": "1893456000"
-   }'
-   ```
-
-3. The backend hot-reloads the Tidal client on the next request.
-
-The Tidal SDK will auto-refresh any token that expires within 24 hours on `__aenter__`, and also has a 401 retry path on the HTTP transport, so once credentials are in the DB you shouldn't need to touch them again unless the refresh token itself expires.
+The Tidal SDK auto-refreshes any token that expires within 24 hours on `__aenter__` and has a 401 retry path on the HTTP transport, so once credentials are in the DB you shouldn't need to touch them again unless the refresh token itself expires.
 
 ## Features
 
@@ -111,7 +99,7 @@ The Tidal SDK will auto-refresh any token that expires within 24 hours on `__aen
 
 ### Settings
 
-- **Source credentials** — Qobuz (OAuth), Tidal (manual tokens for now)
+- **Source credentials** — Qobuz (OAuth + optional `App ID` / `App Secret` overrides), Tidal (device-code OAuth)
 - **Qualities** — independent per-source: 0 LOW, 1 HIGH, 2 LOSSLESS (CD), 3 HI_RES
 - **Download path**
 - **Folder format** / **Track format** with live preview and sample data
@@ -144,10 +132,12 @@ All endpoints live under `/api` and return JSON. Content-Type is `application/js
 | `/api/auth/qobuz/oauth-url` | GET | `{"url": "…"}` — open in a browser to start the Qobuz OAuth flow |
 | `/api/auth/qobuz/oauth-callback` | POST | Exchange an OAuth code for credentials (browser flow) |
 | `/api/auth/qobuz/oauth-from-url` | POST | Extract the code from a pasted redirect URL and exchange it (headless flow) |
+| `/api/auth/tidal/device-code` | POST | Start the Tidal device-code OAuth flow — returns `{device_code, user_code, verification_url, expires_in, interval}` |
+| `/api/auth/tidal/poll` | POST | Poll for Tidal authorization — `{"device_code": "..."}` → `{"status": "pending"\|"authorized"\|"error"}` |
 | `/api/library/{source}/albums` | GET | Paginated album list — `?page=1&page_size=50&sort_by=added_to_library_at&sort_dir=DESC&status=…&search=…` |
 | `/api/library/{source}/albums/{id}` | GET | Album detail with tracks |
 | `/api/library/refresh/{source}` | POST | Full library refresh from the streaming service |
-| `/api/library/search/{source}` | GET | `?query=…&limit=20` — search the streaming service directly |
+| `/api/library/search/{source}` | GET | Paginated catalog search — `?q=…&page=1&page_size=60`. Returns the same `{albums, total, limit, offset}` envelope as `/albums`. |
 | `/api/library/scan` | POST | Reconcile `.streamrip.json` sentinels under `downloads_path` against the DB |
 | `/api/downloads/queue` | GET | Current queue with progress |
 | `/api/downloads/queue` | POST | `{"source": "qobuz", "album_ids": [...], "force": false}` — enqueue |
@@ -211,7 +201,5 @@ The Dockerfile also COPYs from `sdks/qobuz_api_client/clients/python/`, so rebui
 
 ## Known gaps
 
-- **Tidal OAuth flow** is implemented in the SDK but not wired into Settings — Tidal credentials currently have to be set manually through `/api/config`.
-- **Track download status in album detail** only updates after the full album finishes. The per-track progress events are emitted and used by the queue panel, but the album detail panel doesn't subscribe to them yet.
 - **Qobuz token refresh** is manual — the Qobuz API doesn't expose a refresh endpoint, so the credentials have to be re-captured via the OAuth flow when they expire.
-- **Playlists** — neither SDK's `catalog` namespace surfaces playlists in the web UI yet. The underlying API calls exist (Tidal SDK has `FavoritesAPI.get_tracks` and `CatalogAPI.search_*`; Qobuz SDK has a full `PlaylistsAPI`), but there's no frontend surface.
+- **Playlists** — neither SDK's playlist API is surfaced in the web UI yet. Qobuz SDK has full `PlaylistsAPI` (CRUD); Tidal SDK has `FavoritesAPI.get_tracks` and `CatalogAPI.search_*`. No frontend surface.

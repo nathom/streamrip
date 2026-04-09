@@ -141,6 +141,9 @@
       <a href="/search" class="nav-item" onclick={() => sidebarOpen = false} class:active={activePage === 'search'}>
         <span class="nav-icon">◆</span> Search
       </a>
+      <a href="/playlists" class="nav-item" onclick={() => sidebarOpen = false} class:active={activePage === 'playlists'}>
+        <span class="nav-icon">≡</span> Playlists
+      </a>
       <a href="/downloads" class="nav-item" onclick={() => sidebarOpen = false} class:active={activePage === 'downloads'}>
         <span class="nav-icon">▸</span> Downloads
         {#if downloadCount > 0}

@@ -37,7 +37,7 @@
   import { onDestroy } from 'svelte';
   import { api } from '$lib/api/client';
   import { currentSource, loadAlbumDetail } from '$lib/stores/library';
-  import { lastCompletedDownload } from '$lib/stores/downloads';
+  import { lastCompletedDownload, liveTrackStatuses } from '$lib/stores/downloads';
 
   let {
     album,
@@ -181,6 +181,39 @@
     return track.status || track.download_status;
   }
 
+  /**
+   * Live status overlay during an active download.
+   *
+   * The downloader emits per-track ``download_progress`` events with a
+   * ``track_statuses`` array.  ``downloads.ts`` mirrors them into
+   * ``liveTrackStatuses`` keyed by source_album_id.  When the user has
+   * an album detail panel open during a download, we merge those live
+   * statuses on top of the static DB-loaded ``track.status`` so each
+   * row updates as the download progresses, instead of waiting for the
+   * album-level ``download_complete`` to refetch.
+   */
+  let liveStatusesForAlbum = $derived.by(() => {
+    if (!album) return null;
+    const key = album.source_album_id ?? String(album.id);
+    return $liveTrackStatuses[key] ?? null;
+  });
+
+  function getLiveTrackStatus(track: Track): string | undefined {
+    if (!liveStatusesForAlbum) return getTrackStatus(track);
+    const num = track.track_number ?? track.number;
+    if (num == null) return getTrackStatus(track);
+    const live = liveStatusesForAlbum.find((s: any) => s.num === num);
+    return live?.status ?? getTrackStatus(track);
+  }
+
+  function getLiveTrackProgress(track: Track): number | null {
+    if (!liveStatusesForAlbum) return null;
+    const num = track.track_number ?? track.number;
+    if (num == null) return null;
+    const live = liveStatusesForAlbum.find((s: any) => s.num === num);
+    return live?.progress ?? null;
+  }
+
   let downloadQueued = $state(false);
 
   async function handleDownload(force: boolean = false) {
@@ -297,7 +330,16 @@
             </div>
             <span class="track-duration">{formatTrackDuration(track)}</span>
             <span class="track-status">
-              <span class="tag {trackStatusClass(getTrackStatus(track))}" style="font-size:10px;">{trackStatusLabel(getTrackStatus(track))}</span>
+              {#if getLiveTrackStatus(track) === 'downloading'}
+                <span class="track-progress-mini" title="Downloading">
+                  <span
+                    class="track-progress-fill"
+                    style="width: {getLiveTrackProgress(track) ?? 0}%;"
+                  ></span>
+                </span>
+              {:else}
+                <span class="tag {trackStatusClass(getLiveTrackStatus(track))}" style="font-size:10px;">{trackStatusLabel(getLiveTrackStatus(track))}</span>
+              {/if}
             </span>
           </div>
         {/each}
@@ -570,6 +612,23 @@
 
   .track-status {
     text-align: right;
+  }
+
+  /* Live per-track download progress bar (replaces the status tag while
+     the track is actively downloading) */
+  .track-progress-mini {
+    display: inline-block;
+    width: 60px;
+    height: 6px;
+    background: var(--canvas-inset);
+    border: 1.5px solid var(--border);
+    position: relative;
+    vertical-align: middle;
+  }
+  .track-progress-fill {
+    display: block;
+    height: 100%;
+    background: var(--accent);
   }
 
   /* Tags */

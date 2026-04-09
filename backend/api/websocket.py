@@ -1,6 +1,7 @@
 """WebSocket handler for real-time events."""
 import json
 import logging
+
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 router = APIRouter()

@@ -1,7 +1,6 @@
 """Library service — fetches and caches streaming library state."""
 
 import logging
-from typing import Any
 
 from ..models.database import AppDatabase
 from .event_bus import EventBus
@@ -223,6 +222,79 @@ class LibraryService:
             },
             "maximum_bit_depth": album.maximum_bit_depth,
             "maximum_sampling_rate": album.maximum_sampling_rate,
+        }
+
+    async def list_playlists(self, source: str, *, limit: int = 500) -> list[dict]:
+        """List the current user's playlists from the streaming service.
+
+        Currently only Qobuz is supported (its SDK exposes a full
+        ``PlaylistsAPI``).  Tidal's SDK has the ``Playlist`` type but
+        no read methods yet — returns an empty list for tidal.
+        """
+        client = self.clients.get(source)
+        if client is None:
+            return []
+        if source != "qobuz" or not hasattr(client, "playlists"):
+            return []
+
+        result = await client.playlists.list(limit=limit)
+        playlists = []
+        for item in result.items:
+            playlists.append({
+                "id": item.get("id"),
+                "name": item.get("name", "Untitled"),
+                "description": item.get("description") or "",
+                "tracks_count": item.get("tracks_count", 0),
+                "duration": item.get("duration", 0),
+                "is_public": item.get("is_public", False),
+                "created_at": item.get("created_at"),
+                "updated_at": item.get("updated_at"),
+                "owner": (item.get("owner") or {}).get("name", ""),
+            })
+        return playlists
+
+    async def get_playlist(
+        self, source: str, playlist_id: int | str, *, limit: int = 500
+    ) -> dict | None:
+        """Fetch a single playlist with its tracks."""
+        client = self.clients.get(source)
+        if client is None or source != "qobuz" or not hasattr(client, "playlists"):
+            return None
+
+        playlist = await client.playlists.get(
+            playlist_id, extra="tracks", limit=limit
+        )
+        # Tracks are raw dicts on Playlist.tracks (one per item)
+        tracks = []
+        for raw in playlist.tracks:
+            track_obj = raw.get("track", raw) if isinstance(raw, dict) else raw
+            if not isinstance(track_obj, dict):
+                continue
+            artist = track_obj.get("performer") or track_obj.get("composer") or {}
+            album = track_obj.get("album", {})
+            tracks.append({
+                "id": track_obj.get("id"),
+                "title": track_obj.get("title"),
+                "artist": (
+                    artist.get("name")
+                    if isinstance(artist, dict)
+                    else str(artist)
+                ),
+                "duration_seconds": track_obj.get("duration"),
+                "album_title": album.get("title") if isinstance(album, dict) else None,
+                "album_id": str(album.get("id")) if isinstance(album, dict) and album.get("id") else None,
+                "track_number": track_obj.get("track_number"),
+            })
+
+        return {
+            "id": playlist.id,
+            "name": playlist.name,
+            "description": playlist.description,
+            "tracks_count": playlist.tracks_count,
+            "duration": playlist.duration,
+            "is_public": playlist.is_public,
+            "owner": getattr(playlist.owner, "name", ""),
+            "tracks": tracks,
         }
 
     async def search(self, source, query, *, limit: int = 60, offset: int = 0):
