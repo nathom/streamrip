@@ -25,25 +25,110 @@ class DownloadService:
         self._cancel_requested: set[str] = set()
         self._worker_task: asyncio.Task | None = None
 
+    async def _fetch_album_metadata(self, source: str, source_album_id: str) -> dict:
+        """Fetch real album metadata from the streaming service.
+
+        Used when enqueueing a download for an album that's not yet in
+        the local DB (typically a search result).  Falls back to a
+        placeholder name if the SDK call fails — we still want the
+        download to be attempted, just with an ugly queue entry.
+        """
+        fallback = {
+            "title": f"Album {source_album_id}",
+            "artist": "Unknown",
+            "cover_url": None,
+            "track_count": None,
+            "release_date": None,
+        }
+        client = self.clients.get(source)
+        if client is None or not hasattr(client, "catalog"):
+            return fallback
+
+        try:
+            album, tracks = await client.catalog.get_album_with_tracks(source_album_id)
+        except Exception:
+            logger.exception(
+                "Failed to fetch metadata for %s/%s; using placeholder",
+                source, source_album_id,
+            )
+            return fallback
+
+        # The two SDKs return slightly different shapes — both have
+        # `title` and `artist.name`, but `cover` (Tidal) vs `image.large`
+        # (Qobuz raw dicts). The typed Qobuz Album also has helpers.
+        title = getattr(album, "title", None) or fallback["title"]
+        artist_obj = getattr(album, "artist", None)
+        artist = (
+            getattr(artist_obj, "name", None)
+            if artist_obj is not None
+            else None
+        ) or fallback["artist"]
+
+        # Cover URL — Tidal exposes a bare cover ID, Qobuz a full URL.
+        cover_url: str | None = None
+        if source == "tidal":
+            cover_id = getattr(album, "cover", None)
+            if cover_id:
+                cover_url = (
+                    f"https://resources.tidal.com/images/"
+                    f"{cover_id.replace('-', '/')}/640x640.jpg"
+                )
+        else:
+            image = getattr(album, "image", None)
+            if isinstance(image, dict):
+                cover_url = image.get("large") or image.get("small")
+            elif image is not None:
+                cover_url = (
+                    getattr(image, "large", None) or getattr(image, "small", None)
+                )
+            if cover_url is None:
+                cover_url = getattr(album, "cover_url", None) or getattr(album, "cover", None)
+
+        track_count = (
+            getattr(album, "tracks_count", None)
+            or getattr(album, "number_of_tracks", None)
+            or len(tracks)
+        )
+        release_date = (
+            getattr(album, "release_date_original", None)
+            or getattr(album, "release_date", None)
+        )
+
+        return {
+            "title": title,
+            "artist": artist,
+            "cover_url": cover_url,
+            "track_count": track_count,
+            "release_date": release_date,
+        }
+
     async def enqueue(self, source: str, album_ids: list[str], force: bool = False) -> list[dict]:
         items = []
         for source_album_id in album_ids:
             album = self.db.get_album_by_source_id(source, source_album_id)
             if album is None:
-                # Auto-create a minimal album entry for search results not in library
-                from datetime import datetime
+                # Search results aren't in the local DB yet — fetch the real
+                # title/artist/cover from the streaming service so the queue
+                # row doesn't show "Album <id>" + "Unknown".
+                meta = await self._fetch_album_metadata(source, source_album_id)
                 album_id = self.db.upsert_album(
                     source=source,
                     source_album_id=source_album_id,
-                    title=f"Album {source_album_id}",
-                    artist="Unknown",
+                    title=meta["title"],
+                    artist=meta["artist"],
+                    cover_url=meta.get("cover_url"),
+                    track_count=meta.get("track_count"),
+                    release_date=meta.get("release_date"),
                     added_to_library_at=datetime.now().isoformat(),
                 )
                 album = self.db.get_album(album_id)
                 if album is None:
                     logger.warning("Failed to create album entry for %s", source_album_id)
                     continue
-                logger.info("Auto-created album entry for search result %s", source_album_id)
+                logger.info(
+                    "Auto-created album entry for %s: %s — %s",
+                    source_album_id, meta["artist"], meta["title"],
+                )
             item = {
                 "id": str(uuid.uuid4()),
                 "album_db_id": album["id"],
