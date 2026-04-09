@@ -109,11 +109,23 @@ def create_app(db_path: str | None = None) -> FastAPI:
             try:
                 from qobuz.spoofer import fetch_app_credentials, find_working_secret
                 app_id, secrets = await fetch_app_credentials()
-                secret = await find_working_secret(app_id, secrets, db.get_config("qobuz_token"))
-                qobuz.streaming._app_secret = secret
-                qobuz._app_secret_cached = True
-                db.set_config("qobuz_app_id", app_id)
-                logger.info("Qobuz app secret resolved and cached")
+                token = db.get_config("qobuz_token")
+                if token and secrets:
+                    secret = None
+                    try:
+                        secret = await find_working_secret(app_id, secrets, token)
+                    except RuntimeError:
+                        logger.warning(
+                            "Qobuz secret verification failed (%d candidates); "
+                            "using first candidate as fallback",
+                            len(secrets),
+                        )
+                        secret = secrets[0]
+                    if secret:
+                        qobuz.streaming._app_secret = secret
+                        qobuz._app_secret_cached = True
+                        db.set_config("qobuz_app_id", app_id)
+                        logger.info("Qobuz app secret resolved and cached")
             except Exception:
                 logger.exception("Failed to resolve Qobuz app secret")
 

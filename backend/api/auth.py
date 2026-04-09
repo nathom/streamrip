@@ -2,7 +2,7 @@
 
 import logging
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
@@ -59,7 +59,6 @@ async def qobuz_oauth_callback(request: Request, body: OAuthCodeRequest):
     db.set_config("qobuz_token", creds["user_auth_token"])
     db.set_config("qobuz_user_id", str(creds["user_id"]))
 
-    # Hot-reload clients
     from .config import _reload_clients
     await _reload_clients(request)
 
@@ -101,3 +100,69 @@ async def qobuz_oauth_from_url(request: Request, body: OAuthRedirectRequest):
         "user_id": creds["user_id"],
         "display_name": creds["display_name"],
     }
+
+
+# ── Tidal ──────────────────────────────────────────────────────────────────
+
+
+@router.post("/tidal/device-code")
+async def tidal_device_code():
+    """Start the Tidal device-code OAuth flow.
+
+    Returns the verification URL and user code the browser must open,
+    plus the device_code the caller must pass to the poll endpoint.
+    """
+    from tidal.auth import request_device_code
+
+    try:
+        data = await request_device_code()
+    except Exception as e:
+        logger.exception("Failed to start Tidal device-code flow")
+        raise HTTPException(status_code=502, detail=str(e))
+
+    return {
+        "device_code": data["deviceCode"],
+        "user_code": data["userCode"],
+        "verification_url": data.get("verificationUriComplete") or data.get("verificationUri"),
+        "expires_in": data.get("expiresIn", 300),
+        "interval": data.get("interval", 5),
+    }
+
+
+class TidalPollRequest(BaseModel):
+    device_code: str
+
+
+@router.post("/tidal/poll")
+async def tidal_poll(request: Request, body: TidalPollRequest):
+    """Poll the Tidal token endpoint.
+
+    Returns ``{"status": "pending"}`` while the user hasn't approved yet,
+    ``{"status": "authorized", "user_id": ...}`` on success, or
+    ``{"status": "error", "error": "..."}`` on failure.
+    """
+    from tidal.auth import poll_device_code
+
+    try:
+        status, data = await poll_device_code(body.device_code)
+    except Exception as e:
+        logger.exception("Tidal poll request failed")
+        return {"status": "error", "error": str(e)}
+
+    if status == 2:
+        return {"status": "pending"}
+    if status != 0:
+        return {"status": "error", "error": data.get("error_description") or str(data)}
+
+    # Authorized — persist credentials and hot-reload the client
+    db = request.app.state.db
+    db.set_config("tidal_access_token", data["access_token"])
+    db.set_config("tidal_refresh_token", data["refresh_token"])
+    db.set_config("tidal_user_id", str(data["user_id"]))
+    db.set_config("tidal_country_code", data["country_code"])
+    db.set_config("tidal_token_expiry", str(data["token_expiry"]))
+
+    from .config import _reload_clients
+    await _reload_clients(request)
+
+    return {"status": "authorized", "user_id": data["user_id"]}

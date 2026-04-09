@@ -81,12 +81,25 @@ async def _reload_clients(request: Request):
             from qobuz.spoofer import fetch_app_credentials, find_working_secret
             app_id, secrets = await fetch_app_credentials()
             token = db.get_config("qobuz_token")
-            if token:
-                secret = await find_working_secret(app_id, secrets, token)
-                qobuz.streaming._app_secret = secret
-                qobuz._app_secret_cached = True
-                db.set_config("qobuz_app_id", app_id)
-                logger.info("Qobuz app secret resolved during hot-reload")
+            if token and secrets:
+                secret = None
+                try:
+                    secret = await find_working_secret(app_id, secrets, token)
+                except RuntimeError:
+                    # Verification test failed (rate-limit, removed test track, etc.)
+                    # The secrets come from the live bundle so the first candidate is
+                    # almost certainly correct — use it as a fallback.
+                    logger.warning(
+                        "Qobuz secret verification failed (%d candidates); "
+                        "using first candidate as fallback",
+                        len(secrets),
+                    )
+                    secret = secrets[0]
+                if secret:
+                    qobuz.streaming._app_secret = secret
+                    qobuz._app_secret_cached = True
+                    db.set_config("qobuz_app_id", app_id)
+                    logger.info("Qobuz app secret resolved during hot-reload")
         except Exception:
             logger.exception("Failed to resolve Qobuz app secret during hot-reload")
 

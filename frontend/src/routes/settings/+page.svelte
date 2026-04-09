@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, onDestroy } from 'svelte';
   import { api } from '$lib/api/client';
 
   // Config state
@@ -175,6 +175,95 @@
       oauthLoading = false;
     }
   }
+
+  // Tidal device-code OAuth state
+  let tidalOauthStep = $state<'idle' | 'waiting' | 'authorized' | 'error'>('idle');
+  let tidalVerificationUrl = $state('');
+  let tidalUserCode = $state('');
+  let tidalDeviceCode = $state('');
+  let tidalError = $state('');
+  let _tidalPollTimerId: ReturnType<typeof setInterval> | null = null;
+
+  async function startTidalOAuth() {
+    tidalOauthStep = 'waiting';
+    tidalError = '';
+    try {
+      const resp = await fetch('/api/auth/tidal/device-code', { method: 'POST' });
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({}));
+        throw new Error(err.detail || `HTTP ${resp.status}`);
+      }
+      const data = await resp.json();
+      tidalDeviceCode = data.device_code;
+      tidalUserCode = data.user_code;
+      tidalVerificationUrl = data.verification_url;
+
+      // Open in new tab
+      window.open(tidalVerificationUrl, '_blank');
+
+      // Poll automatically until authorized or expired
+      const intervalMs = (data.interval ?? 5) * 1000;
+      _tidalPollTimerId = setInterval(pollTidal, intervalMs);
+
+      // Auto-cancel after expires_in
+      const expiresMs = (data.expires_in ?? 300) * 1000;
+      setTimeout(() => {
+        if (tidalOauthStep === 'waiting') {
+          cancelTidalOAuth();
+          tidalError = 'Login window expired. Please try again.';
+          tidalOauthStep = 'error';
+        }
+      }, expiresMs);
+    } catch (e: any) {
+      tidalError = e?.message ?? 'Failed to start Tidal login';
+      tidalOauthStep = 'error';
+    }
+  }
+
+  async function pollTidal() {
+    if (!tidalDeviceCode) return;
+    try {
+      const resp = await fetch('/api/auth/tidal/poll', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ device_code: tidalDeviceCode }),
+      });
+      const data = await resp.json();
+      if (data.status === 'authorized') {
+        if (_tidalPollTimerId !== null) {
+          clearInterval(_tidalPollTimerId);
+          _tidalPollTimerId = null;
+        }
+        tidalConnected = true;
+        tidalOauthStep = 'authorized';
+      } else if (data.status === 'error') {
+        if (_tidalPollTimerId !== null) {
+          clearInterval(_tidalPollTimerId);
+          _tidalPollTimerId = null;
+        }
+        tidalError = data.error ?? 'Authorization failed';
+        tidalOauthStep = 'error';
+      }
+      // status === 'pending': keep polling
+    } catch {
+      // Network error — keep polling
+    }
+  }
+
+  function cancelTidalOAuth() {
+    if (_tidalPollTimerId !== null) {
+      clearInterval(_tidalPollTimerId);
+      _tidalPollTimerId = null;
+    }
+    tidalOauthStep = 'idle';
+    tidalDeviceCode = '';
+    tidalVerificationUrl = '';
+    tidalUserCode = '';
+  }
+
+  onDestroy(() => {
+    if (_tidalPollTimerId !== null) clearInterval(_tidalPollTimerId);
+  });
 
   onMount(async () => {
     try {
@@ -392,11 +481,37 @@
 
   <div class="settings-row">
     <div>
-      <div class="settings-label">Login</div>
-      <div class="settings-label-sub">OAuth device flow</div>
+      <div class="settings-label">Login with Tidal</div>
+      <div class="settings-label-sub">Opens a Tidal authorization page in your browser — works on any device</div>
     </div>
-    <button class="btn btn-secondary btn-sm">Connect Tidal</button>
+    {#if tidalOauthStep === 'idle' || tidalOauthStep === 'error'}
+      <button class="btn btn-secondary btn-sm" onclick={startTidalOAuth}>▸ Connect Tidal</button>
+    {:else if tidalOauthStep === 'waiting'}
+      <button class="btn btn-secondary btn-sm" onclick={cancelTidalOAuth}>Cancel</button>
+    {:else if tidalOauthStep === 'authorized'}
+      <span style="color: var(--success, #4caf50); font-size: var(--text-sm);">Connected</span>
+    {/if}
   </div>
+
+  {#if tidalOauthStep === 'waiting'}
+    <div class="settings-row">
+      <div>
+        <div class="settings-label">Waiting for authorization…</div>
+        <div class="settings-label-sub">Approve the request in the browser tab that just opened, then return here.</div>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: var(--space-1); align-items: flex-end;">
+        <span style="font-family: monospace; font-size: var(--text-sm); letter-spacing: 3px; font-weight: bold;">{tidalUserCode}</span>
+        <a href={tidalVerificationUrl} target="_blank" rel="noopener" style="font-size: var(--text-xs); color: var(--muted);">Open link manually ↗</a>
+      </div>
+    </div>
+  {/if}
+
+  {#if tidalError}
+    <div class="settings-row" style="border-bottom: none;">
+      <div></div>
+      <span style="color: var(--destructive); font-size: var(--text-xs);">{tidalError}</span>
+    </div>
+  {/if}
 </div>
 
 <!-- ── Downloads ── -->
