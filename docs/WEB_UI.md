@@ -87,7 +87,7 @@ The Tidal SDK will auto-refresh any token that expires within 24 hours on `__aen
 - Filter by title/artist text or by download status (all / downloaded / not-downloaded)
 - Click an album to open the side detail panel: full track list, per-track download status, cover art, metadata
 - **Refresh Library** — pulls the full favorites list from the streaming service and diffs against local state
-- **Scan Folder** — walks the download directory and reconciles `.tidal.json` / `.streamrip.json` sentinel files against the DB so manually-copied albums get picked up
+- **Scan Folder** — walks the download directory and reconciles `.streamrip.json` sentinel files against the DB so manually-copied albums get picked up (Qobuz and Tidal both write the same filename, disambiguated by the `source` field inside)
 
 ### Search
 
@@ -148,7 +148,7 @@ All endpoints live under `/api` and return JSON. Content-Type is `application/js
 | `/api/library/{source}/albums/{id}` | GET | Album detail with tracks |
 | `/api/library/refresh/{source}` | POST | Full library refresh from the streaming service |
 | `/api/library/search/{source}` | GET | `?query=…&limit=20` — search the streaming service directly |
-| `/api/library/scan` | POST | Reconcile `.tidal.json` / `.streamrip.json` sentinels under `downloads_path` against the DB |
+| `/api/library/scan` | POST | Reconcile `.streamrip.json` sentinels under `downloads_path` against the DB |
 | `/api/downloads/queue` | GET | Current queue with progress |
 | `/api/downloads/queue` | POST | `{"source": "qobuz", "album_ids": [...], "force": false}` — enqueue |
 | `/api/downloads/queue/{id}` | DELETE | Cancel a single queued/running item |

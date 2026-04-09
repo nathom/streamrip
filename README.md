@@ -14,7 +14,7 @@ Runs as a small FastAPI + SvelteKit server in Docker (or locally) and is accesse
 - **Downloads** — queue albums from the library or search, with real-time per-track progress pushed over WebSocket
 - **Sync** — manual refresh or scheduled auto-sync to keep local library in step with the streaming service
 - **Custom paths** — folder/track format templates with live preview in Settings (`{albumartist}`, `{title}`, `{container}`, `{bit_depth}`, `{sampling_rate}`, etc.)
-- **Filesystem dedup** — a `.tidal.json` / `.streamrip.json` sentinel file per album folder so re-scans and reset-database operations don't re-download work you already have
+- **Filesystem dedup** — a `.streamrip.json` sentinel file per album folder so re-scans and reset-database operations don't re-download work you already have
 - **Artwork embedding** — cover art baked into tags at configurable resolution
 - **OAuth login** for Qobuz (browser flow + headless URL-paste flow for remote hosts)
 - **Per-source dedup database** so Qobuz and Tidal track IDs never collide
