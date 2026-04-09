@@ -44,23 +44,27 @@ class TestLibraryServiceGetAlbums:
 class TestLibraryServiceSearch:
     async def test_search_enriches_with_library_status(self, db, event_bus):
         db.upsert_album("qobuz", "existing_id", "Known Album", "Artist")
-        mock_client = AsyncMock(spec=[])  # Empty spec — no attributes by default
-        mock_client.source = "qobuz"
-        mock_client.logged_in = True
-        mock_client.search = AsyncMock(return_value=[{
-            "albums": {"items": [
-                {"id": "existing_id", "title": "Known Album", "artist": {"name": "Artist"},
-                 "release_date_original": "2024-01-01", "duration": 3600, "tracks_count": 10,
-                 "label": {"name": "Label"}, "genre": {"name": "Rock"},
-                 "maximum_bit_depth": 24, "maximum_sampling_rate": 96.0,
-                 "image": {"large": "https://img.com/cover.jpg"}},
-                {"id": "new_id", "title": "Unknown Album", "artist": {"name": "Other"},
-                 "release_date_original": "2024-06-01", "duration": 2400, "tracks_count": 8,
-                 "label": {"name": "Label2"}, "genre": {"name": "Jazz"},
-                 "maximum_bit_depth": 16, "maximum_sampling_rate": 44.1,
-                 "image": {"large": "https://img.com/cover2.jpg"}},
-            ]}
-        }])
+
+        # Mock the SDK client's catalog.search_albums → PaginatedResult
+        # with raw-ish Qobuz item dicts (mirroring what the Qobuz SDK
+        # returns from PaginatedResult.items).
+        page = MagicMock()
+        page.items = [
+            {"id": "existing_id", "title": "Known Album", "artist": {"name": "Artist"},
+             "release_date_original": "2024-01-01", "duration": 3600, "tracks_count": 10,
+             "label": {"name": "Label"}, "genre": {"name": "Rock"},
+             "maximum_bit_depth": 24, "maximum_sampling_rate": 96.0,
+             "image": {"large": "https://img.com/cover.jpg"}},
+            {"id": "new_id", "title": "Unknown Album", "artist": {"name": "Other"},
+             "release_date_original": "2024-06-01", "duration": 2400, "tracks_count": 8,
+             "label": {"name": "Label2"}, "genre": {"name": "Jazz"},
+             "maximum_bit_depth": 16, "maximum_sampling_rate": 44.1,
+             "image": {"large": "https://img.com/cover2.jpg"}},
+        ]
+        mock_client = MagicMock()
+        mock_client.catalog = MagicMock()
+        mock_client.catalog.search_albums = AsyncMock(return_value=page)
+
         service = LibraryService(db, event_bus, clients={"qobuz": mock_client})
         results = await service.search("qobuz", "test query")
         assert len(results) == 2
@@ -70,37 +74,3 @@ class TestLibraryServiceSearch:
         assert unknown["in_library"] is False
 
 
-class TestExtractItemsFromPages:
-    def test_qobuz_paginated_response(self):
-        """Should extract album items from Qobuz paginated {albums: {items: [...]}} format."""
-        service = LibraryService(None, EventBus(), clients={})
-        pages = [
-            {"albums": {"items": [
-                {"id": "a1", "title": "Album 1", "artist": {"name": "A"}},
-                {"id": "a2", "title": "Album 2", "artist": {"name": "B"}},
-            ], "total": 4}},
-            {"albums": {"items": [
-                {"id": "a3", "title": "Album 3", "artist": {"name": "C"}},
-                {"id": "a4", "title": "Album 4", "artist": {"name": "D"}},
-            ], "total": 4}},
-        ]
-        result = service._extract_items_from_pages("qobuz", pages)
-        assert len(result) == 4
-        assert result[0]["id"] == "a1"
-        assert result[3]["id"] == "a4"
-
-    def test_tidal_flat_list(self):
-        """Should pass through flat list of items (Tidal format)."""
-        service = LibraryService(None, EventBus(), clients={})
-        items = [
-            {"id": 1, "title": "Album 1"},
-            {"id": 2, "title": "Album 2"},
-        ]
-        result = service._extract_items_from_pages("tidal", items)
-        assert len(result) == 2
-
-    def test_empty_pages(self):
-        """Should return empty list for empty input."""
-        service = LibraryService(None, EventBus(), clients={})
-        assert service._extract_items_from_pages("qobuz", []) == []
-        assert service._extract_items_from_pages("qobuz", None) == []

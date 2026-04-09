@@ -113,45 +113,62 @@ class DownloadService:
                 await self.event_bus.publish("download_failed", {"item_id": item["id"], "error": str(e)})
 
     async def _download_album(self, item: dict):
-        """Download an album using the Qobuz SDK.
+        """Download an album using the appropriate source SDK.
 
-        Uses AlbumDownloader from the qobuz SDK — fully self-contained
-        with typed models, native progress callbacks, retry, and dedup.
-        No streamrip media pipeline dependency.
+        Dispatches to the Qobuz or Tidal SDK based on ``item["source"]``.
+        Both SDKs use the same ``AlbumDownloader``/``DownloadConfig`` shape
+        and the same callback protocol, so the progress-reporting wiring
+        below is identical for either path.
         """
-        from qobuz import AlbumDownloader, DownloadConfig
-
-        sdk_client = self.clients.get(item["source"])
+        source = item["source"]
+        sdk_client = self.clients.get(source)
         if sdk_client is None:
-            raise ValueError(f"No client for source {item['source']}")
+            raise ValueError(f"No client for source {source}")
 
-        # Build SDK download config from web DB settings
+        if source == "qobuz":
+            from qobuz import AlbumDownloader, DownloadConfig
+        elif source == "tidal":
+            from tidal import AlbumDownloader, DownloadConfig
+        else:
+            raise ValueError(f"Unsupported source: {source}")
+
+        # Quality is per-source (each streaming service has its own tier scale).
+        quality_key = f"{source}_quality"
         quality = 3
-        q_val = self.db.get_config("qobuz_quality")
+        q_val = self.db.get_config(quality_key)
         if q_val:
             quality = int(q_val)
 
+        # Per-source dedup DB so track IDs from different services never collide.
+        # Qobuz keeps the legacy name to preserve existing dedup state on disk.
         downloads_db = None
         if not item.get("force"):
             db_dir = os.path.dirname(
                 os.environ.get("STREAMRIP_DB_PATH", "data/streamrip.db")
             ) or "data"
-            downloads_db = os.path.join(db_dir, "downloads.db")
+            db_filename = "downloads.db" if source == "qobuz" else f"downloads-{source}.db"
+            downloads_db = os.path.join(db_dir, db_filename)
 
-        dl_config = DownloadConfig(
-            output_dir=self.download_path or "/music",
-            quality=quality,
-            folder_format=self.db.get_config("folder_format") or "{albumartist} - {title} ({year}) [{container}] [{bit_depth}B-{sampling_rate}kHz]",
-            track_format=self.db.get_config("track_format") or "{tracknumber:02d}. {artist} - {title}",
-            max_connections=self.max_connections,
-            embed_cover=self.db.get_config("embed_artwork") != "false",
-            cover_size=self.db.get_config("artwork_size") or "large",
-            source_subdirectories=self.db.get_config("source_subdirectories") in ("true", "1"),
-            disc_subdirectories=self.db.get_config("disc_subdirectories") != "false",
-            download_booklets=self.db.get_config("qobuz_download_booklets") != "false",
-            skip_downloaded=not item.get("force", False),
-            downloads_db_path=downloads_db,
-        )
+        config_kwargs: dict = {
+            "output_dir": self.download_path or "/music",
+            "quality": quality,
+            "folder_format": self.db.get_config("folder_format") or "{albumartist} - {title} ({year}) [{container}] [{bit_depth}B-{sampling_rate}kHz]",
+            "track_format": self.db.get_config("track_format") or "{tracknumber:02d}. {artist} - {title}",
+            "max_connections": self.max_connections,
+            "embed_cover": self.db.get_config("embed_artwork") != "false",
+            "cover_size": self.db.get_config("artwork_size") or "large",
+            "source_subdirectories": self.db.get_config("source_subdirectories") in ("true", "1"),
+            "disc_subdirectories": self.db.get_config("disc_subdirectories") != "false",
+            "skip_downloaded": not item.get("force", False),
+            "downloads_db_path": downloads_db,
+        }
+        # Qobuz-only settings — the Tidal SDK's DownloadConfig doesn't model them.
+        if source == "qobuz":
+            config_kwargs["download_booklets"] = (
+                self.db.get_config("qobuz_download_booklets") != "false"
+            )
+
+        dl_config = DownloadConfig(**config_kwargs)
 
         import time as _time
 

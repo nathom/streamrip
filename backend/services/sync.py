@@ -21,11 +21,14 @@ class SyncService:
     async def get_diff(self, source: str) -> dict:
         """Compare streaming library against local database."""
         client = self.clients.get(source)
-        if client is None or not getattr(client, 'logged_in', False):
+        # Both SDK clients open their transport via __aenter__ in lifespan
+        # and don't expose ``logged_in`` — treat presence of the client as
+        # sufficient. If the session is actually down, the SDK call below
+        # will surface a proper error.
+        if client is None:
             return {"new_albums": [], "removed_albums": [], "source": source, "last_sync": None}
 
-        raw_pages = await client.get_user_favorites("album", limit=None)
-        all_items = self.library_service._extract_items_from_pages(source, raw_pages)
+        all_items = await self.library_service.fetch_all_favorites(source, client)
 
         streaming_ids = set()
         new_albums = []

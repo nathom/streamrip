@@ -31,7 +31,7 @@ class LibraryService:
         if not tracks:
             source = album["source"]
             client = self.clients.get(source)
-            if client and (hasattr(client, 'favorites') or getattr(client, 'logged_in', False)):
+            if client is not None and hasattr(client, 'catalog'):
                 try:
                     tracks = await self._fetch_and_cache_tracks(
                         client, source, album["source_album_id"], album_id
@@ -102,31 +102,29 @@ class LibraryService:
         return self.db.get_tracks(album_id)
 
     async def _fetch_tidal_tracks(self, client, source_album_id, album_id):
-        """Fetch tracks from Tidal album endpoint."""
+        """Fetch tracks from Tidal using the SDK catalog API."""
         try:
-            resp = await client.get_metadata(source_album_id, "album")
+            _, tracks = await client.catalog.get_album_with_tracks(source_album_id)
         except Exception:
-            logger.exception("Failed to fetch Tidal album %s", source_album_id)
+            logger.exception("Failed to fetch Tidal album %s via SDK", source_album_id)
             return []
 
-        track_items = resp.get("tracks", resp.get("items", []))
-        if isinstance(track_items, dict):
-            track_items = track_items.get("items", [])
-
-        for t in track_items:
-            artists = t.get("artists", [])
-            artist_name = ", ".join(a["name"] for a in artists) if artists else t.get("artist", {}).get("name", "Unknown")
-
+        for t in tracks:
+            # Prefer the primary artist's name, fall back to joined artists
+            # list for compilations / collaborations.
+            artist_name = t.artist.name if t.artist.name else (
+                ", ".join(a.name for a in t.artists) if t.artists else "Unknown"
+            )
             self.db.upsert_track(
                 album_id=album_id,
-                source_track_id=str(t["id"]),
-                title=t.get("title", "Unknown"),
+                source_track_id=str(t.id),
+                title=t.title,
                 artist=artist_name,
-                track_number=t.get("trackNumber"),
-                disc_number=t.get("volumeNumber", 1),
-                duration_seconds=t.get("duration"),
-                explicit=t.get("explicit", False),
-                isrc=t.get("isrc"),
+                track_number=t.track_number,
+                disc_number=t.volume_number,
+                duration_seconds=t.duration,
+                explicit=t.explicit,
+                isrc=t.isrc,
             )
 
         return self.db.get_tracks(album_id)
@@ -136,15 +134,7 @@ class LibraryService:
         if client is None:
             raise ValueError(f"No client configured for {source}")
 
-        if source == "qobuz" and hasattr(client, 'favorites'):
-            # SDK client
-            all_items = await self._fetch_qobuz_favorites_sdk(client)
-        else:
-            # Streamrip client (Tidal)
-            if not client.logged_in:
-                raise ValueError(f"Client {source} is not authenticated")
-            raw_pages = await client.get_user_favorites("album", limit=None)
-            all_items = self._extract_items_from_pages(source, raw_pages)
+        all_items = await self.fetch_all_favorites(source, client)
 
         from datetime import datetime
         existing_ids = {a["source_album_id"] for a in self.db.get_albums(source, limit=100000)}
@@ -163,8 +153,21 @@ class LibraryService:
         await self.event_bus.publish("library_updated", {"source": source, "new_count": new_count, "total": len(all_items)})
         return {"total": len(all_items), "new": new_count}
 
+    async def fetch_all_favorites(self, source: str, client) -> list[dict]:
+        """Fetch every favorite album for *source* as a list of raw dicts.
+
+        Normalizes across the Qobuz and Tidal SDK clients so callers
+        (refresh_library, sync diff) share one code path. Each returned
+        dict is in whatever shape ``_extract_{source}_album`` expects.
+        """
+        if source == "qobuz":
+            return await self._fetch_qobuz_favorites_sdk(client)
+        if source == "tidal":
+            return await client.favorites.all_albums()
+        raise ValueError(f"Unsupported source: {source}")
+
     async def _fetch_qobuz_favorites_sdk(self, client) -> list[dict]:
-        """Fetch all favorite albums using the SDK client with pagination."""
+        """Fetch all favorite albums using the Qobuz SDK client with pagination."""
         all_items = []
         offset = 0
         while True:
@@ -222,55 +225,23 @@ class LibraryService:
             "maximum_sampling_rate": album.maximum_sampling_rate,
         }
 
-    def _extract_items_from_pages(self, source: str, pages) -> list:
-        """Extract individual album items from paginated API responses.
-
-        Handles two formats:
-        - Tidal: flat list of dicts with 'id' keys
-        - Qobuz: list of page dicts containing {albums: {items: [...]}}
-        """
-        if not pages:
-            return []
-
-        # Flat list of items (Tidal) — no nested structure
-        if isinstance(pages[0], dict) and "id" in pages[0] and "albums" not in pages[0]:
-            return pages
-
-        # Paginated response (Qobuz) — extract items from nested containers
-        all_items = []
-        for page in pages:
-            if not isinstance(page, dict):
-                continue
-            for key in ("albums", "tracks", "artists"):
-                container = page.get(key, {})
-                if isinstance(container, dict) and "items" in container:
-                    all_items.extend(container["items"])
-                    break
-            else:
-                if "id" in page:
-                    all_items.append(page)
-        return all_items
-
     async def search(self, source, query, limit=20):
         client = self.clients.get(source)
         if client is None:
             return []
 
-        if source == "qobuz" and hasattr(client, 'catalog'):
-            # SDK client
+        # Both SDK clients expose a `catalog` namespace with search_albums.
+        # The response shape differs (Qobuz → PaginatedResult of raw-ish
+        # dicts; Tidal → PaginatedResult of dict items) but both end up
+        # going through _extract_{source}_album below.
+        if hasattr(client, 'catalog'):
             result = await client.catalog.search_albums(query, limit=limit)
-            albums = [self._sdk_album_to_dict_from_raw(item) for item in result.items]
+            if source == "qobuz":
+                albums = [self._sdk_album_to_dict_from_raw(item) for item in result.items]
+            else:
+                albums = list(result.items)
         else:
-            # Streamrip client
-            raw_results = await client.search("album", query, limit=limit)
-            if not raw_results:
-                return []
-            albums = []
-            for page in raw_results:
-                if isinstance(page, dict) and "albums" in page:
-                    albums.extend(page["albums"].get("items", []))
-                elif isinstance(page, dict) and "items" in page:
-                    albums.extend(page["items"])
+            return []
 
         enriched = []
         for album in albums:

@@ -2,7 +2,7 @@
 import os
 import tempfile
 import pytest
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, MagicMock
 from backend.models.database import AppDatabase
 from backend.services.sync import SyncService
 from backend.services.event_bus import EventBus
@@ -33,10 +33,16 @@ class TestSyncService:
         assert diff["source"] == "qobuz"
 
     async def test_run_sync_records_history(self, db, event_bus):
-        mock_client = AsyncMock(spec=[])  # No SDK attributes
-        mock_client.source = "qobuz"
-        mock_client.logged_in = True
-        mock_client.get_user_favorites = AsyncMock(return_value=[])
+        # Mock the Qobuz SDK client's favorites namespace. Empty result
+        # page → no albums to sync.
+        empty_page = MagicMock()
+        empty_page.items = []
+        empty_page.total = 0
+        empty_page.limit = 500
+
+        mock_client = MagicMock()
+        mock_client.favorites = MagicMock()
+        mock_client.favorites.get_albums = AsyncMock(return_value=empty_page)
 
         clients = {"qobuz": mock_client}
         library_service = LibraryService(db, event_bus, clients=clients)

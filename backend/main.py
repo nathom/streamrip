@@ -42,15 +42,30 @@ def _init_clients(db: AppDatabase) -> dict:
         except Exception:
             logger.exception("Failed to initialize Qobuz client")
 
-    # Tidal — still uses streamrip's client for now
+    # Tidal — standalone SDK (same shape as the Qobuz SDK above)
     tidal_token = db.get_config("tidal_access_token")
     if tidal_token:
         try:
-            from .services.config_bridge import build_streamrip_config
-            cfg = build_streamrip_config(db)
-            from streamrip.client.tidal import TidalClient
-            clients["tidal"] = TidalClient(cfg)
-            logger.info("Tidal client initialized")
+            from tidal import TidalClient
+
+            refresh_token = db.get_config("tidal_refresh_token")
+            user_id = db.get_config("tidal_user_id") or 0
+            country_code = db.get_config("tidal_country_code") or "US"
+            token_expiry_str = db.get_config("tidal_token_expiry") or "0"
+            try:
+                token_expiry = float(token_expiry_str)
+            except ValueError:
+                token_expiry = 0.0
+
+            client = TidalClient(
+                access_token=tidal_token,
+                refresh_token=refresh_token,
+                user_id=user_id,
+                country_code=country_code,
+                token_expiry=token_expiry,
+            )
+            clients["tidal"] = client
+            logger.info("Tidal SDK client initialized")
         except Exception:
             logger.exception("Failed to initialize Tidal client")
 
@@ -78,21 +93,17 @@ def create_app(db_path: str | None = None) -> FastAPI:
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
-        # Open client sessions
+        # Open client sessions — both Qobuz and Tidal SDK clients are
+        # async context managers.
         for name, client in clients.items():
             try:
-                # SDK clients use async context manager
-                if hasattr(client, '__aenter__'):
-                    await client.__aenter__()
-                    logger.info("Opened session for %s", name)
-                # Streamrip clients use login()
-                elif hasattr(client, 'logged_in') and not client.logged_in:
-                    await client.login()
-                    logger.info("Logged in to %s", name)
+                await client.__aenter__()
+                logger.info("Opened session for %s", name)
             except Exception:
                 logger.exception("Failed to initialize %s", name)
 
-        # Fetch and cache app_secret for Qobuz downloads
+        # Fetch and cache app_secret for Qobuz downloads (Qobuz-only:
+        # Tidal's manifest includes its own signed URLs).
         qobuz = clients.get("qobuz")
         if qobuz and not getattr(qobuz, '_app_secret_cached', False):
             try:
@@ -101,7 +112,6 @@ def create_app(db_path: str | None = None) -> FastAPI:
                 secret = await find_working_secret(app_id, secrets, db.get_config("qobuz_token"))
                 qobuz.streaming._app_secret = secret
                 qobuz._app_secret_cached = True
-                # Cache app_id
                 db.set_config("qobuz_app_id", app_id)
                 logger.info("Qobuz app secret resolved and cached")
             except Exception:
@@ -112,10 +122,7 @@ def create_app(db_path: str | None = None) -> FastAPI:
         # Cleanup sessions
         for client in clients.values():
             try:
-                if hasattr(client, '__aexit__'):
-                    await client.__aexit__(None, None, None)
-                elif hasattr(client, 'session') and client.session:
-                    await client.session.close()
+                await client.__aexit__(None, None, None)
             except Exception:
                 pass
         logger.info("streamrip web UI shutting down")

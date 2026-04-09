@@ -57,31 +57,20 @@ async def _reload_clients(request: Request):
 
     db = request.app.state.db
 
-    # Close existing sessions
+    # Close existing sessions (all clients are SDK async context managers now).
     old_clients = getattr(request.app.state, '_clients_ref', {})
     for client in old_clients.values():
         try:
-            if hasattr(client, '__aexit__'):
-                await client.__aexit__(None, None, None)
-            elif hasattr(client, 'session') and client.session:
-                await client.session.close()
+            await client.__aexit__(None, None, None)
         except Exception:
             pass
 
-    # Create new clients
+    # Create new clients and open their sessions
     clients = _init_clients(db)
-
-    # Open sessions and login
     for name, client in clients.items():
         try:
-            if hasattr(client, '__aenter__'):
-                # SDK client — open async session
-                await client.__aenter__()
-                logger.info("Hot-reloaded %s (session opened)", name)
-            elif hasattr(client, 'logged_in') and not client.logged_in:
-                # Streamrip client — login
-                await client.login()
-                logger.info("Hot-reloaded and logged in to %s", name)
+            await client.__aenter__()
+            logger.info("Hot-reloaded %s (session opened)", name)
         except Exception:
             logger.exception("Failed to initialize %s during hot-reload", name)
 
