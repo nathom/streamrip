@@ -2,6 +2,7 @@
   import { api } from '$lib/api/client';
 
   interface TrackStatus {
+    num?: number;
     name: string;
     status: string;
     progress: number;
