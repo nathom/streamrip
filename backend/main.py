@@ -82,23 +82,40 @@ def _init_clients(db: AppDatabase) -> dict:
 
 
 async def _resolve_qobuz_credentials(db: AppDatabase, qobuz) -> None:
-    """Fetch a Qobuz app_secret from the live bundle for signing requests.
+    """Resolve a Qobuz app_secret for signing track/getFileUrl.
 
-    The X-App-Id header was set at client construction time from the DB
-    (`qobuz_app_id`).  The signing *secret* for `track/getFileUrl` is not
-    persisted — Qobuz doesn't expose it; the spoofer scrapes it from the
-    public web player bundle on every boot.  Verify each candidate
-    against a real track and use the first one that works.
+    Resolution order:
+      1. **User override** (`qobuz_app_secret` config key) — pasted in
+         Settings.  Required when using OAuth-issued tokens, because
+         the OAuth app's signing secret can't be scraped from any
+         public bundle.  Trusted as-is, no verification.
+      2. **Spoofer fallback** — scrape the web player bundle, verify
+         secrets against the *current* X-App-Id (must match for the
+         test request to succeed), use the first one that works.
+         Falls back to ``secrets[0]`` if verification fails.
 
-    If the DB has no cached `qobuz_app_id` yet (first boot with a
-    web-player-scoped token), record the bundle's app_id so subsequent
-    boots construct the client with the correct X-App-Id header from
-    the start.  Never overwrite an existing cached value — the OAuth
-    callback path persists its own app_id and we must not clobber it.
+    The X-App-Id header was set at client construction time from
+    `qobuz_app_id`; this function never touches it.  If the DB has no
+    cached `qobuz_app_id` yet (first boot with a web-player token),
+    record the bundle's app_id so subsequent boots use the right
+    header from the start.  Never overwrite an existing value — the
+    OAuth callback path persists its own app_id.
     """
     if getattr(qobuz, "_app_secret_cached", False):
         return
 
+    # 1. User override
+    override_secret = db.get_config("qobuz_app_secret")
+    if override_secret:
+        qobuz.streaming._app_secret = override_secret
+        qobuz._app_secret_cached = True
+        logger.info(
+            "Qobuz app_secret loaded from user override (app_id=%s)",
+            qobuz._transport.app_id,
+        )
+        return
+
+    # 2. Spoofer fallback
     try:
         from qobuz.spoofer import fetch_app_credentials, find_working_secret
 
@@ -119,7 +136,10 @@ async def _resolve_qobuz_credentials(db: AppDatabase, qobuz) -> None:
         except RuntimeError:
             logger.warning(
                 "Qobuz secret verification failed (%d candidates); "
-                "using first candidate as fallback",
+                "using first candidate as fallback. Set `qobuz_app_secret` "
+                "in Settings if your token is OAuth-issued (the spoofer "
+                "scrapes the web-player bundle, which won't sign requests "
+                "for any other app).",
                 len(secrets),
             )
             secret = secrets[0]

@@ -5,6 +5,8 @@
   // Config state
   let qobuzUserId = $state('');
   let qobuzAuthToken = $state('');
+  let qobuzAppId = $state('');
+  let qobuzAppSecret = $state('');
   let qobuzQuality = $state('3');
   let qobuzDownloadBooklets = $state(true);
   let qobuzConnected = $state(false);
@@ -271,6 +273,8 @@
       if (config) {
         qobuzUserId = config.qobuz_user_id ?? '';
         qobuzAuthToken = config.qobuz_token ?? '';
+        qobuzAppId = config.qobuz_app_id ?? '';
+        qobuzAppSecret = config.qobuz_app_secret ?? '';
         qobuzQuality = String(config.qobuz_quality ?? 3);
         qobuzDownloadBooklets = config.qobuz_download_booklets ?? true;
         // Check actual auth status, not just whether token exists
@@ -311,6 +315,8 @@
       await api.config.update({
         qobuz_user_id: qobuzUserId,
         qobuz_token: qobuzAuthToken,
+        qobuz_app_id: qobuzAppId,
+        qobuz_app_secret: qobuzAppSecret,
         qobuz_quality: parseInt(qobuzQuality),
         qobuz_download_booklets: qobuzDownloadBooklets,
         downloads_path: downloadPath,
@@ -435,13 +441,41 @@
   <div class="settings-row">
     <div>
       <div class="settings-label">Auth Token</div>
-      <div class="settings-label-sub">Auto-filled after OAuth login</div>
+      <div class="settings-label-sub">Auto-filled after OAuth login, or paste from play.qobuz.com DevTools (Network → any api.json request → X-User-Auth-Token)</div>
     </div>
     <input
       class="settings-input"
       type="password"
       placeholder="Paste token from browser DevTools"
       bind:value={qobuzAuthToken}
+      style="max-width: 400px;"
+    />
+  </div>
+
+  <div class="settings-row">
+    <div>
+      <div class="settings-label">App ID</div>
+      <div class="settings-label-sub">Override the X-App-Id sent on every request. Leave blank to auto-detect from the spoofer (798273057). OAuth tokens use 304027809.</div>
+    </div>
+    <input
+      class="settings-input"
+      type="text"
+      placeholder="Auto-detect"
+      bind:value={qobuzAppId}
+      style="max-width: 200px;"
+    />
+  </div>
+
+  <div class="settings-row">
+    <div>
+      <div class="settings-label">App Secret (override)</div>
+      <div class="settings-label-sub">Override the request-signing secret used for downloads. Required when the App ID above is anything other than the spoofed web-player ID — only the app's owner has this. Leave blank to use the spoofer's auto-detected secret.</div>
+    </div>
+    <input
+      class="settings-input"
+      type="password"
+      placeholder="Auto-detect from spoofer"
+      bind:value={qobuzAppSecret}
       style="max-width: 400px;"
     />
   </div>

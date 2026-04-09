@@ -28,11 +28,34 @@ async def get_config(request: Request) -> AppConfig:
 async def update_config(request: Request, body: ConfigUpdate):
     db = request.app.state.db
     updates = body.model_dump(exclude_none=True)
+
+    # Manual qobuz_token paste path: if the token in the PATCH body differs
+    # from what's currently stored AND the user didn't also provide an
+    # explicit qobuz_app_id, assume it's a manually-extracted web player
+    # token and pin qobuz_app_id=798273057.  That matches the spoofer's
+    # signing secret, which is the only secret we have without an override.
+    #
+    # OAuth-issued tokens use a different code path
+    # (/api/auth/qobuz/oauth-from-url) that atomically sets qobuz_app_id
+    # to the OAuth app, so this branch never fires for OAuth flows.
+    if "qobuz_token" in updates and not updates.get("qobuz_app_id"):
+        new_token = updates["qobuz_token"] or ""
+        old_token = db.get_config("qobuz_token") or ""
+        if new_token and new_token != old_token:
+            updates["qobuz_app_id"] = "798273057"
+            logger.info(
+                "Detected manual qobuz_token change — pinning qobuz_app_id=798273057 "
+                "(web player; required for download signing)"
+            )
+
     for key, value in updates.items():
         db.set_config(key, str(value))
 
     # Hot-reload clients if credentials changed
-    cred_keys = {"qobuz_token", "qobuz_user_id", "tidal_access_token"}
+    cred_keys = {
+        "qobuz_token", "qobuz_user_id", "qobuz_app_id", "qobuz_app_secret",
+        "tidal_access_token",
+    }
     if cred_keys & set(updates.keys()):
         await _reload_clients(request)
 

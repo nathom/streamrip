@@ -115,6 +115,8 @@ class AppConfig(BaseModel):
     qobuz_quality: int = 3
     qobuz_user_id: str = ""
     qobuz_token: str = ""
+    qobuz_app_id: str = ""
+    qobuz_app_secret: str = ""
     qobuz_download_booklets: bool = True
     tidal_quality: int = 3
     tidal_access_token: str = ""
@@ -134,6 +136,8 @@ class ConfigUpdate(BaseModel):
     qobuz_quality: int | None = None
     qobuz_user_id: str | None = None
     qobuz_token: str | None = None
+    qobuz_app_id: str | None = None
+    qobuz_app_secret: str | None = None
     qobuz_download_booklets: bool | None = None
     tidal_quality: int | None = None
     downloads_path: str | None = None
