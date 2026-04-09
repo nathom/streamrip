@@ -120,10 +120,14 @@ async def tidal_device_code():
         logger.exception("Failed to start Tidal device-code flow")
         raise HTTPException(status_code=502, detail=str(e))
 
+    verification_url = data.get("verificationUriComplete") or data.get("verificationUri") or ""
+    if verification_url and not verification_url.startswith("http"):
+        verification_url = f"https://{verification_url}"
+
     return {
         "device_code": data["deviceCode"],
         "user_code": data["userCode"],
-        "verification_url": data.get("verificationUriComplete") or data.get("verificationUri"),
+        "verification_url": verification_url,
         "expires_in": data.get("expiresIn", 300),
         "interval": data.get("interval", 5),
     }
