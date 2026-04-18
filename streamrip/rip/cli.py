@@ -2,6 +2,7 @@ import asyncio
 import json
 import logging
 import os
+import re
 import shutil
 import subprocess
 from functools import wraps
@@ -21,6 +22,66 @@ from ..config import DEFAULT_CONFIG_PATH, Config, OutdatedConfigError, set_user_
 from ..console import console
 from ..utils.ssl_utils import get_aiohttp_connector_kwargs
 from .main import Main
+
+
+_NUMERIC_PREFIX_RE = re.compile(r"^v?(\d+(?:\.\d+)*)", re.IGNORECASE)
+_SUFFIX_NUM_RE = re.compile(r"(\d+)")
+
+
+def _parse_version_components(version: str) -> tuple[tuple[int, ...], int, int]:
+    """Parse a version string into comparable components.
+
+    Returns (release tuple, stage rank, stage number), where stage rank is:
+    dev < alpha < beta < rc < final < post
+    """
+    v = version.strip().lower()
+    match = _NUMERIC_PREFIX_RE.match(v)
+    if match is None:
+        return (0,), 4, 0
+
+    release = tuple(int(part) for part in match.group(1).split("."))
+    suffix = v[match.end() :].strip(".-_")
+    if not suffix:
+        return release, 4, 0
+
+    stage_num_match = _SUFFIX_NUM_RE.search(suffix)
+    stage_num = int(stage_num_match.group(1)) if stage_num_match else 0
+
+    if suffix.startswith("dev"):
+        return release, 0, stage_num
+    if suffix.startswith("a") or suffix.startswith("alpha"):
+        return release, 1, stage_num
+    if suffix.startswith("b") or suffix.startswith("beta"):
+        return release, 2, stage_num
+    if suffix.startswith("rc"):
+        return release, 3, stage_num
+    if suffix.startswith("post"):
+        return release, 5, stage_num
+
+    # Unknown suffix: treat as pre-release to avoid false "new version" warnings.
+    return release, 3, stage_num
+
+
+def _compare_versions(v1: str, v2: str) -> int:
+    r1, s1, n1 = _parse_version_components(v1)
+    r2, s2, n2 = _parse_version_components(v2)
+
+    max_len = max(len(r1), len(r2))
+    for i in range(max_len):
+        p1 = r1[i] if i < len(r1) else 0
+        p2 = r2[i] if i < len(r2) else 0
+        if p1 != p2:
+            return 1 if p1 > p2 else -1
+
+    if s1 != s2:
+        return 1 if s1 > s2 else -1
+    if n1 != n2:
+        return 1 if n1 > n2 else -1
+    return 0
+
+
+def is_update_available(current_version: str, latest_version: str) -> bool:
+    return _compare_versions(latest_version, current_version) > 0
 
 
 def coro(f):
@@ -194,7 +255,7 @@ async def url(ctx, urls):
 
             if version_coro is not None:
                 latest_version, notes = await version_coro
-                if latest_version != __version__:
+                if is_update_available(__version__, latest_version):
                     console.print(
                         f"\n[green]A new version of streamrip [cyan]v{latest_version}[/cyan]"
                         " is available! Run [white][bold]pip3 install streamrip --upgrade[/bold][/white]"
