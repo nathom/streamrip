@@ -85,8 +85,13 @@ class Track(Media):
     async def _convert(self):
         c = self.config.session.conversion
         engine_class = converter.get(c.codec)
+        ffmpeg_arg = None
+        if not engine_class.lossless:
+            ffmpeg_arg = engine_class.get_quality_arg(c.lossy_bitrate)
+
         engine = engine_class(
             filename=self.download_path,
+            ffmpeg_arg=ffmpeg_arg,
             sampling_rate=c.sampling_rate,
             bit_depth=c.bit_depth,
             remove_source=True,  # always going to delete the old file

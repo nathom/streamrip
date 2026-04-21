@@ -167,6 +167,10 @@ class Converter:
             self.ffmpeg_arg = self.default_ffmpeg_arg
             return
 
+    @classmethod
+    def get_quality_arg(cls, _: int) -> str:
+        return cls.default_ffmpeg_arg
+
 
 class FLAC(Converter):
     """Class for FLAC converter."""
@@ -205,8 +209,9 @@ class LAME(Converter):
     container = "mp3"
     default_ffmpeg_arg = "-q:a 0"  # V0
 
-    def get_quality_arg(self, rate):
-        return self._bitrate_map[rate]
+    @classmethod
+    def get_quality_arg(cls, rate):
+        return cls._bitrate_map.get(rate, f"-b:a {rate}k")
 
 
 class ALAC(Converter):
@@ -232,8 +237,9 @@ class Vorbis(Converter):
     container = "ogg"
     default_ffmpeg_arg = "-q:a 6"  # 160, aka the "high" quality profile from Spotify
 
-    def get_quality_arg(self, rate: int) -> str:
-        arg = "qscale:a %d"
+    @classmethod
+    def get_quality_arg(cls, rate: int) -> str:
+        arg = "-qscale:a %d"
         if rate <= 128:
             return arg % (rate / 16 - 4)
         if rate <= 256:
@@ -256,8 +262,9 @@ class OPUS(Converter):
     container = "opus"
     default_ffmpeg_arg = "-b:a 128k"  # Transparent
 
-    def get_quality_arg(self, _: int) -> str:
-        return ""
+    @classmethod
+    def get_quality_arg(cls, rate: int) -> str:
+        return f"-b:a {rate}k"
 
 
 class AAC(Converter):
@@ -274,8 +281,9 @@ class AAC(Converter):
     container = "m4a"
     default_ffmpeg_arg = "-b:a 256k"
 
-    def get_quality_arg(self, _: int) -> str:
-        return ""
+    @classmethod
+    def get_quality_arg(cls, rate: int) -> str:
+        return f"-b:a {rate}k"
 
 
 def get(codec: str) -> type[Converter]:
