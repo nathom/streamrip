@@ -27,11 +27,11 @@ quality = 3
 # This will download booklet pdfs that are included with some albums
 download_booklets = true
 
-# Authenticate to Qobuz using auth token? Value can be true/false only
-use_auth_token = false
-# Enter your userid if the above use_auth_token is set to true, else enter your email
+# Qobuz web login now uses OAuth/reCAPTCHA. Use token auth from a logged-in browser session.
+use_auth_token = true
+# Enter your Qobuz user id (numeric string)
 email_or_userid = ""
-# Enter your auth token if the above use_auth_token is set to true, else enter the md5 hash of your plaintext password
+# Enter your Qobuz user_auth_token (JWT). Refresh it when it expires.
 password_or_token = ""
 # Do not change
 app_id = ""

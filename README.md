@@ -130,6 +130,40 @@ For more customization, see the config file
 rip config open
 ```
 
+### Qobuz login (token-based)
+
+Qobuz no longer supports the old direct email/password API login flow used by streamrip.  
+Streamrip now attempts to capture `user.id` and `user_auth_token` automatically in a managed browser session.
+
+Before using automatic capture, install Playwright browser runtime:
+
+```bash
+pip install playwright
+playwright install chromium
+```
+
+If automatic capture fails or times out, streamrip falls back to manual token input.
+
+In your config:
+
+```toml
+[qobuz]
+use_auth_token = true
+email_or_userid = "YOUR_QOBUZ_USER_ID"
+password_or_token = "YOUR_USER_AUTH_TOKEN"
+```
+
+To refresh an expired token:
+
+1. Run any Qobuz command again (streamrip will retry auto-capture)
+2. If needed, log in at `qobuz.com` or `play.qobuz.com`
+3. Open DevTools -> Network
+4. Filter requests by `user/login`
+5. Open a successful request response and copy:
+   - `user_auth_token`
+   - `user.id`
+6. Update `email_or_userid` and `password_or_token` in config
+
 If you're confused about anything, see the help pages. The main help pages can be accessed by typing `rip` by itself in the command line. The help pages for each command can be accessed with the `--help` flag. For example, to see the help page for the `url` command, type
 
 ```
