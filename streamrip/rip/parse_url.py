@@ -54,6 +54,10 @@ class URL(ABC):
 class GenericURL(URL):
     @classmethod
     def from_str(cls, url: str) -> URL | None:
+        # tidal.com/track/123/u messes with the regex
+        if "tidal.com" in url and url.endswith("/u"):
+            url = url.rstrip("/u")
+
         generic_url = URL_REGEX.match(url)
         if generic_url is None:
             return None
