@@ -23,6 +23,29 @@ class Client(ABC):
     session: aiohttp.ClientSession
     logged_in: bool
 
+    def __init__(self):
+        self._quality_warned = False
+
+    def clamp_quality(self, requested_quality: int) -> int:
+        """Clamp requested quality to maximum supported by this source.
+
+        Warns once if quality exceeds maximum.
+        Returns the clamped quality value.
+        """
+        if requested_quality > self.max_quality:
+            if not self._quality_warned:
+                logger.warning(
+                    "Requested quality %d exceeds %s maximum (quality %d). "
+                    "Using highest available quality (%d) for all tracks.",
+                    requested_quality,
+                    self.source.capitalize(),
+                    self.max_quality,
+                    self.max_quality,
+                )
+                self._quality_warned = True
+            return self.max_quality
+        return requested_quality
+
     @abstractmethod
     async def login(self):
         raise NotImplementedError

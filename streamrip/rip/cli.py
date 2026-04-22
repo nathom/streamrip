@@ -194,7 +194,15 @@ async def url(ctx, urls):
 
             if version_coro is not None:
                 latest_version, notes = await version_coro
-                if latest_version != __version__:
+                # Only show update message if latest version is actually newer than running version
+                def version_tuple(v):
+                    """Convert version string to tuple for comparison."""
+                    try:
+                        return tuple(map(int, v.split('.')))
+                    except (ValueError, AttributeError):
+                        return (0, 0, 0)
+
+                if version_tuple(latest_version) > version_tuple(__version__):
                     console.print(
                         f"\n[green]A new version of streamrip [cyan]v{latest_version}[/cyan]"
                         " is available! Run [white][bold]pip3 install streamrip --upgrade[/bold][/white]"

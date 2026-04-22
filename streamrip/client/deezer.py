@@ -7,6 +7,12 @@ import deezer
 from Cryptodome.Cipher import AES
 
 from ..config import Config
+
+# Suppress urllib3 connection pool warnings from deezer-py library
+# These are performance warnings, not failures - downloads still work
+logging.getLogger("urllib3.connectionpool").setLevel(logging.ERROR)
+
+
 from ..exceptions import (
     AuthenticationError,
     MissingCredentialsError,
@@ -35,6 +41,7 @@ class DeezerClient(Client):
     max_quality = 2
 
     def __init__(self, config: Config):
+        super().__init__()
         self.global_config = config
         self.client = deezer.Deezer()
         self.logged_in = False
@@ -79,7 +86,8 @@ class DeezerClient(Client):
                 asyncio.to_thread(self.client.api.get_album_tracks, album_id),
             )
         except Exception as e:
-            logger.error(f"Error fetching album of track {item_id}: {e}")
+            # Album metadata unavailable (likely geo-restricted) - using track metadata only
+            logger.debug(f"Album {album_id} unavailable for track {item_id}: {e}")
             return item
 
         album_metadata["tracks"] = album_tracks["data"]
@@ -152,6 +160,9 @@ class DeezerClient(Client):
 
         fallback_id = track_info.get("FALLBACK", {}).get("SNG_ID")
 
+        # Clamp quality to maximum supported by Deezer
+        quality = self.clamp_quality(quality)
+
         quality_map = [
             (9, "MP3_128"),  # quality 0
             (3, "MP3_320"),  # quality 1
@@ -161,18 +172,21 @@ class DeezerClient(Client):
             int(track_info.get(f"FILESIZE_{format}", 0)) for _, format in quality_map
         ]
         dl_info["quality_to_size"] = size_map
-        
+
         # Check if requested quality is available
         if size_map[quality] == 0:
             if self.config.lower_quality_if_not_available:
                 # Fallback to lower quality
+                original_quality = quality
                 while size_map[quality] == 0 and quality > 0:
-                    logger.warning(
-                        "The requested quality %s is not available. Falling back to quality %s",
-                        quality,
-                        quality - 1,
-                    )
                     quality -= 1
+                # Only log if fallback occurred
+                if quality != original_quality:
+                    logger.debug(
+                        "Quality %s unavailable, using quality %s instead",
+                        original_quality,
+                        quality,
+                    )
             else:
                 # No fallback - raise error
                 raise NonStreamableError(

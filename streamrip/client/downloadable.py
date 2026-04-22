@@ -129,7 +129,8 @@ class DeezerDownloadable(Downloadable):
         ]
         if len(qualities_available) == 0:
             raise NonStreamableError(
-                "Missing download info. Skipping.",
+                "Track not available for download (no file sizes returned by API). "
+                "Likely removed, geo-restricted, or licensing issue.",
             )
         max_quality_available = max(qualities_available)
         self.quality = min(info["quality"], max_quality_available)

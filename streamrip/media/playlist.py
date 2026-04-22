@@ -49,20 +49,37 @@ class PendingPlaylistTrack(Pending):
         try:
             resp = await self.client.get_metadata(self.id, "track")
         except NonStreamableError as e:
-            logger.error(f"Could not stream track {self.id}: {e}")
+            # Try to get track name from error context
+            track_name = f"track {self.id}"
+            logger.error(f"Could not stream {track_name}: {e}")
             return None
+
+        # Extract track info for better error messages
+        try:
+            track_title = resp.get("title", "Unknown Title")
+            # Handle different API response formats for artist
+            artist_info = resp.get("artist") or resp.get("artists", [])
+            if isinstance(artist_info, dict):
+                track_artist = artist_info.get("name", "Unknown Artist")
+            elif isinstance(artist_info, list) and len(artist_info) > 0:
+                track_artist = artist_info[0].get("name", "Unknown Artist")
+            else:
+                track_artist = "Unknown Artist"
+            track_name = f'"{track_title}" by {track_artist}'
+        except Exception:
+            track_name = f"track {self.id}"
 
         album = AlbumMetadata.from_track_resp(resp, self.client.source)
         if album is None:
             logger.error(
-                f"Track ({self.id}) not available for stream on {self.client.source}",
+                f"{track_name} not available for stream on {self.client.source}",
             )
             self.db.set_failed(self.client.source, "track", self.id)
             return None
         meta = TrackMetadata.from_resp(album, self.client.source, resp)
         if meta is None:
             logger.error(
-                f"Track ({self.id}) not available for stream on {self.client.source}",
+                f"{track_name} not available for stream on {self.client.source}",
             )
             self.db.set_failed(self.client.source, "track", self.id)
             return None
@@ -80,7 +97,7 @@ class PendingPlaylistTrack(Pending):
                 self.client.get_downloadable(self.id, quality),
             )
         except NonStreamableError as e:
-            logger.error(f"Error fetching download info for track {self.id}: {e}")
+            logger.error(f"Error fetching download info for {track_name}: {e}")
             self.db.set_failed(self.client.source, "track", self.id)
             return None
 
@@ -127,7 +144,8 @@ class Playlist(Media):
                     return
                 await track.rip()
             except Exception as e:
-                logger.error(f"Error downloading track: {e}")
+                # Unexpected error - specific errors are already logged in resolve()
+                logger.error(f"Unexpected error processing track {item.id}: {e}", exc_info=True)
 
         batches = self.batch(
             [_resolve_download(track) for track in self.tracks],
