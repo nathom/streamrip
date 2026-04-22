@@ -119,15 +119,25 @@ class Playlist(Media):
 
     async def download(self):
         track_resolve_chunk_size = 20
+        success_count = 0
+        failed_count = 0
+        total_tracks = len(self.tracks)
+
+        logger.info(f"Starting download of {total_tracks} tracks from playlist '{self.name}'")
 
         async def _resolve_download(item: PendingPlaylistTrack):
+            nonlocal success_count, failed_count
             try:
                 track = await item.resolve()
                 if track is None:
+                    logger.debug(f"Track {item.id} skipped (already downloaded or unavailable)")
+                    failed_count += 1
                     return
                 await track.rip()
+                success_count += 1
             except Exception as e:
-                logger.error(f"Error downloading track: {e}")
+                logger.error(f"Error downloading track {item.id}: {e}")
+                failed_count += 1
 
         batches = self.batch(
             [_resolve_download(track) for track in self.tracks],
@@ -140,6 +150,17 @@ class Playlist(Media):
             for result in results:
                 if isinstance(result, Exception):
                     logger.error(f"Batch processing error: {result}")
+                    failed_count += 1
+
+        # Log summary of download results
+        if success_count > 0:
+            logger.info(f"Successfully downloaded {success_count} out of {total_tracks} tracks from playlist '{self.name}'")
+        if failed_count > 0:
+            logger.warning(f"Failed to download {failed_count} out of {total_tracks} tracks from playlist '{self.name}'")
+        if success_count == 0 and total_tracks > 0:
+            logger.error(f"Failed to download any tracks from playlist '{self.name}'")
+        elif success_count == total_tracks:
+            logger.info(f"Successfully downloaded all tracks from playlist '{self.name}'")
 
     @staticmethod
     def batch(iterable, n=1):
@@ -169,9 +190,16 @@ class PendingPlaylist(Pending):
         except Exception as e:
             logger.error(f"Error creating playlist: {e}")
             return None
+
         name = meta.name
         parent = self.config.session.downloads.folder
         folder = os.path.join(parent, clean_filepath(name))
+
+        track_ids = meta.ids()
+        if not track_ids:
+            logger.warning(f"No available tracks to download in playlist '{name}'")
+            return None
+
         tracks = [
             PendingPlaylistTrack(
                 id,
@@ -182,8 +210,14 @@ class PendingPlaylist(Pending):
                 position + 1,
                 self.db,
             )
-            for position, id in enumerate(meta.ids())
+            for position, id in enumerate(track_ids)
         ]
+
+        if not tracks:
+            logger.warning(f"No tracks to download in playlist '{name}'")
+            return None
+
+        logger.info(f"Preparing to download {len(tracks)} tracks from playlist '{name}'")
         return Playlist(name, self.config, self.client, tracks)
 
 
