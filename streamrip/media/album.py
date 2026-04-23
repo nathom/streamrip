@@ -112,7 +112,9 @@ class PendingAlbum(Pending):
             parent = os.path.join(parent, self.client.source.capitalize())
         formatter = config.filepaths.folder_format
         folder = clean_filepath(
-            meta.format_folder_path(formatter), config.filepaths.restrict_characters
+            meta.format_folder_path(formatter),
+            config.filepaths.restrict_characters,
+            max_length=150,  # Leave room for parent path and filename
         )
 
         return os.path.join(parent, folder)
