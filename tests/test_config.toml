@@ -21,6 +21,18 @@ requests_per_minute = 60
 # Set to false if you encounter SSL certificate verification errors (not recommended)
 verify_ssl = true
 
+[proxy]
+# Global proxy applied to all supported services unless a service-specific proxy is set.
+# Supported schemes: http, https, socks4, socks5
+global = ""
+# Override the global proxy for a specific service or domain by setting one of these.
+qobuz = ""
+tidal = ""
+deezer = ""
+soundcloud = ""
+youtube = ""
+lastfm = ""
+
 [qobuz]
 # 1: 320kbps MP3, 2: 16/44.1, 3: 24/<=96, 4: 24/>=96
 quality = 3
@@ -191,5 +203,5 @@ max_search_results = 100
 
 [misc]
 # Metadata to identify this config file. Do not change.
-version = "2.2.0"
+version = "2.3.0"
 check_for_updates = true

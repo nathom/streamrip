@@ -17,6 +17,7 @@ from streamrip.config import (
     LastFmConfig,
     MetadataConfig,
     MiscConfig,
+    ProxyConfig,
     QobuzConfig,
     QobuzDiscographyFilterConfig,
     SoundcloudConfig,
@@ -136,7 +137,8 @@ def test_config_file_update():
     assert toml["cli"]["text_output"] is True  # type: ignore
     assert toml["cli"]["progress_bars"] is True  # type: ignore
     assert toml["cli"]["max_search_results"] == 100  # type: ignore
-    assert toml["misc"]["version"] == "2.2.0"  # type: ignore
+    assert toml["proxy"]["global"] == ""  # type: ignore
+    assert toml["misc"]["version"] == "2.3.0"  # type: ignore
     assert "YouTubeVideos" in str(toml["youtube"]["video_downloads_folder"])
     # type: ignore
     os.remove("tests/test_config_old2.toml")
@@ -164,6 +166,15 @@ def test_sample_config_data_fields(sample_config_data):
             max_connections=6,
             requests_per_minute=60,
             verify_ssl=True,
+        ),
+        proxy=ProxyConfig(
+            global_="",
+            qobuz="",
+            tidal="",
+            deezer="",
+            soundcloud="",
+            youtube="",
+            lastfm="",
         ),
         qobuz=QobuzConfig(
             use_auth_token=False,
@@ -250,6 +261,7 @@ def test_sample_config_data_fields(sample_config_data):
         _modified=False,
     )
     assert sample_config_data.downloads == test_config.downloads
+    assert sample_config_data.proxy == test_config.proxy
     assert sample_config_data.qobuz == test_config.qobuz
     assert sample_config_data.tidal == test_config.tidal
     assert sample_config_data.deezer == test_config.deezer
@@ -275,6 +287,15 @@ def test_config_update_on_save():
     os.remove(tmp_config_path)
 
     assert conf2.session.downloads.folder == "new_folder"
+
+
+def test_proxy_config_lookup(sample_config):
+    sample_config.session.proxy.global_ = "http://global.proxy:8080"
+    sample_config.session.proxy.qobuz = "socks5://qobuz.proxy:1080"
+
+    assert sample_config.session.get_proxy() == "http://global.proxy:8080"
+    assert sample_config.session.get_proxy("qobuz") == "socks5://qobuz.proxy:1080"
+    assert sample_config.session.get_proxy("tidal") == "http://global.proxy:8080"
 
 
 def test_config_dont_update_without_set_modified():

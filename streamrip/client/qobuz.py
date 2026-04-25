@@ -18,6 +18,7 @@ from ..exceptions import (
     MissingCredentialsError,
     NonStreamableError,
 )
+from ..utils.aiohttp import get_aiohttp_session_kwargs
 from .client import Client
 from .downloadable import BasicDownloadable, Downloadable
 
@@ -47,7 +48,7 @@ QOBUZ_FEATURED_KEYS = {
 class QobuzSpoofer:
     """Spoofs the information required to stream tracks from Qobuz."""
 
-    def __init__(self, verify_ssl: bool = True):
+    def __init__(self, verify_ssl: bool = True, proxy: str | None = None):
         """Create a Spoofer."""
         self.seed_timezone_regex = (
             r'[a-z]\.initialSeed\("(?P<seed>[\w=]+)",window\.ut'
@@ -63,6 +64,7 @@ class QobuzSpoofer:
         )
         self.session = None
         self.verify_ssl = verify_ssl
+        self.proxy = proxy
 
     async def get_app_id_and_secrets(self) -> tuple[str, list[str]]:
         assert self.session is not None
@@ -126,13 +128,10 @@ class QobuzSpoofer:
         return app_id, secrets_list
 
     async def __aenter__(self):
-        from ..utils.ssl_utils import get_aiohttp_connector_kwargs
-
         # For the spoofer, always use SSL verification
-        connector_kwargs = get_aiohttp_connector_kwargs(verify_ssl=True)
-        connector = aiohttp.TCPConnector(**connector_kwargs)
-
-        self.session = aiohttp.ClientSession(connector=connector)
+        self.session = aiohttp.ClientSession(
+            **get_aiohttp_session_kwargs(verify_ssl=True, proxy=self.proxy),
+        )
         return self
 
     async def __aexit__(self, *_):
@@ -155,7 +154,8 @@ class QobuzClient(Client):
 
     async def login(self):
         self.session = await self.get_session(
-            verify_ssl=self.config.session.downloads.verify_ssl
+            verify_ssl=self.config.session.downloads.verify_ssl,
+            proxy=self.config.session.get_proxy(self.source),
         )
         """User credentials require either a user token OR a user email & password.
 
@@ -395,7 +395,8 @@ class QobuzClient(Client):
 
     async def _get_app_id_and_secrets(self) -> tuple[str, list[str]]:
         async with QobuzSpoofer(
-            verify_ssl=self.config.session.downloads.verify_ssl
+            verify_ssl=self.config.session.downloads.verify_ssl,
+            proxy=self.config.session.get_proxy(self.source),
         ) as spoofer:
             return await spoofer.get_app_id_and_secrets()
 
