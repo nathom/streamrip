@@ -1,6 +1,7 @@
 import hashlib
 import logging
 import os
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from util import arun
@@ -81,3 +82,68 @@ def test_client_search_no_limit(qobuz_client):
         total += len(r["albums"]["items"])
         correct_total = max(correct_total, r["albums"]["total"])
     assert total == correct_total
+
+
+class _MockResponse:
+    def __init__(self, status: int, body: str):
+        self.status = status
+        self._body = body
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, *_):
+        return False
+
+    async def text(self) -> str:
+        return self._body
+
+
+class _MockSession:
+    def __init__(self, responses: list[_MockResponse]):
+        self._responses = responses
+        self.headers = {"X-App-Id": "123"}
+
+    def get(self, *_args, **_kwargs):
+        assert self._responses, "No mocked responses left"
+        return self._responses.pop(0)
+
+
+@pytest.mark.asyncio
+async def test_qobuz_api_request_retries_non_json_with_proxy():
+    config = Config.defaults()
+    config.session.proxy.qobuz = "socks5://proxy.example:1080"
+    client = QobuzClient(config)
+    client.session = _MockSession([_MockResponse(403, "<html>Access Denied</html>")])
+    retry_session = _MockSession([_MockResponse(200, '{"ok": true}')])
+
+    retry_session_cm = AsyncMock()
+    retry_session_cm.__aenter__.return_value = retry_session
+    retry_session_cm.__aexit__.return_value = False
+
+    with (
+        patch("streamrip.client.qobuz.get_aiohttp_session_kwargs") as mock_get_kwargs,
+        patch("streamrip.client.qobuz.aiohttp.ClientSession") as mock_client_session,
+    ):
+        mock_get_kwargs.return_value = {"connector": MagicMock()}
+        mock_client_session.return_value = retry_session_cm
+
+        status, payload = await client._api_request("user/login", {})
+
+    assert status == 200
+    assert payload == {"ok": True}
+    mock_get_kwargs.assert_called_once_with(
+        verify_ssl=config.session.downloads.verify_ssl,
+        proxy="socks5://proxy.example:1080",
+    )
+    assert mock_client_session.called
+
+
+@pytest.mark.asyncio
+async def test_qobuz_api_request_raises_helpful_error_without_proxy():
+    config = Config.defaults()
+    client = QobuzClient(config)
+    client.session = _MockSession([_MockResponse(403, "<html>Access Denied</html>")])
+
+    with pytest.raises(RuntimeError, match="Qobuz API returned non-JSON response"):
+        await client._api_request("user/login", {})

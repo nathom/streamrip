@@ -1,6 +1,7 @@
 import asyncio
 import base64
 import hashlib
+import json
 import logging
 import re
 import time
@@ -128,9 +129,12 @@ class QobuzSpoofer:
         return app_id, secrets_list
 
     async def __aenter__(self):
-        # For the spoofer, always use SSL verification
+        # Respect caller SSL and proxy settings while creating the spoofing session.
         self.session = aiohttp.ClientSession(
-            **get_aiohttp_session_kwargs(verify_ssl=True, proxy=self.proxy),
+            **get_aiohttp_session_kwargs(
+                verify_ssl=self.verify_ssl,
+                proxy=self.proxy,
+            ),
         )
         return self
 
@@ -446,9 +450,44 @@ class QobuzClient(Client):
         """
         url = f"{QOBUZ_BASE_URL}/{epoint}"
         logger.debug("api_request: endpoint=%s, params=%s", epoint, params)
+
+        async def request_json(session: aiohttp.ClientSession) -> tuple[int, dict]:
+            async with session.get(url, params=params) as response:
+                text = await response.text()
+                try:
+                    return response.status, json.loads(text)
+                except json.JSONDecodeError as e:
+                    body_preview = " ".join(text.split())[:200]
+                    raise RuntimeError(
+                        f"Qobuz API returned non-JSON response for '{epoint}' "
+                        f"(HTTP {response.status}). This is often caused by a CDN "
+                        "block or misconfigured proxy. "
+                        f"Body starts with: {body_preview!r}",
+                    ) from e
+
         async with self.rate_limiter:
-            async with self.session.get(url, params=params) as response:
-                return response.status, await response.json()
+            try:
+                return await request_json(self.session)
+            except RuntimeError as first_error:
+                proxy = self.config.session.get_proxy(self.source)
+                if proxy is None:
+                    raise
+
+                logger.warning(
+                    "Qobuz request failed with a non-JSON response, retrying once "
+                    "with a fresh proxied session.",
+                )
+                async with aiohttp.ClientSession(
+                    headers=dict(self.session.headers),
+                    **get_aiohttp_session_kwargs(
+                        verify_ssl=self.config.session.downloads.verify_ssl,
+                        proxy=proxy,
+                    ),
+                ) as retry_session:
+                    try:
+                        return await request_json(retry_session)
+                    except RuntimeError:
+                        raise first_error
 
     @staticmethod
     def get_quality(quality: int):
