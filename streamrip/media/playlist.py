@@ -24,7 +24,7 @@ from ..metadata import (
     SearchResults,
     TrackMetadata,
 )
-from ..utils.ssl_utils import get_aiohttp_connector_kwargs
+from ..utils.aiohttp import get_aiohttp_session_kwargs
 from .artwork import download_artwork
 from .media import Media, Pending
 from .track import Track
@@ -360,10 +360,10 @@ class PendingLastfmPlaylist(Pending):
 
         # Create new session so we're not bound by rate limit
         verify_ssl = getattr(self.config.session.downloads, "verify_ssl", True)
-        connector_kwargs = get_aiohttp_connector_kwargs(verify_ssl=verify_ssl)
-        connector = aiohttp.TCPConnector(**connector_kwargs)
-
-        async with aiohttp.ClientSession(connector=connector) as session:
+        proxy = self.config.session.get_proxy("lastfm")
+        async with aiohttp.ClientSession(
+            **get_aiohttp_session_kwargs(verify_ssl=verify_ssl, proxy=proxy),
+        ) as session:
             page = await fetch(session, playlist_url)
             playlist_title_match = re_playlist_title_match.search(page)
             if playlist_title_match is None:

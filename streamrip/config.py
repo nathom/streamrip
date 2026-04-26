@@ -17,7 +17,7 @@ logger = logging.getLogger("streamrip")
 APP_DIR = click.get_app_dir("streamrip")
 os.makedirs(APP_DIR, exist_ok=True)
 DEFAULT_CONFIG_PATH = os.path.join(APP_DIR, "config.toml")
-CURRENT_CONFIG_VERSION = "2.2.0"
+CURRENT_CONFIG_VERSION = "2.3.0"
 
 
 class OutdatedConfigError(Exception):
@@ -206,6 +206,17 @@ class DownloadsConfig:
 
 
 @dataclass(slots=True)
+class ProxyConfig:
+    global_: str
+    qobuz: str
+    tidal: str
+    deezer: str
+    soundcloud: str
+    youtube: str
+    lastfm: str
+
+
+@dataclass(slots=True)
 class LastFmConfig:
     # The source on which to search for the tracks.
     source: str
@@ -246,6 +257,7 @@ assert os.path.isfile(BLANK_CONFIG_PATH), "Template config not found"
 class ConfigData:
     toml: TOMLDocument
     downloads: DownloadsConfig
+    proxy: ProxyConfig
 
     qobuz: QobuzConfig
     tidal: TidalConfig
@@ -277,12 +289,15 @@ class ConfigData:
             )
 
         downloads = DownloadsConfig(**toml["downloads"])  # type: ignore
+        proxy_toml = dict(toml["proxy"])  # type: ignore
+        proxy_toml["global_"] = proxy_toml.pop("global", "")
         qobuz = QobuzConfig(**toml["qobuz"])  # type: ignore
         tidal = TidalConfig(**toml["tidal"])  # type: ignore
         deezer = DeezerConfig(**toml["deezer"])  # type: ignore
         soundcloud = SoundcloudConfig(**toml["soundcloud"])  # type: ignore
         youtube = YoutubeConfig(**toml["youtube"])  # type: ignore
         lastfm = LastFmConfig(**toml["lastfm"])  # type: ignore
+        proxy = ProxyConfig(**proxy_toml)
         artwork = ArtworkConfig(**toml["artwork"])  # type: ignore
         filepaths = FilepathsConfig(**toml["filepaths"])  # type: ignore
         metadata = MetadataConfig(**toml["metadata"])  # type: ignore
@@ -295,6 +310,7 @@ class ConfigData:
         return cls(
             toml=toml,
             downloads=downloads,
+            proxy=proxy,
             qobuz=qobuz,
             tidal=tidal,
             deezer=deezer,
@@ -325,6 +341,7 @@ class ConfigData:
 
     def update_toml(self):
         update_toml_section_from_config(self.toml["downloads"], self.downloads)
+        update_toml_proxy_section_from_config(self.toml["proxy"], self.proxy)
         update_toml_section_from_config(self.toml["qobuz"], self.qobuz)
         update_toml_section_from_config(self.toml["tidal"], self.tidal)
         update_toml_section_from_config(self.toml["deezer"], self.deezer)
@@ -354,9 +371,30 @@ class ConfigData:
             raise Exception(f"Invalid source {source}")
         return res
 
+    def get_proxy(self, target: str | None = None) -> str | None:
+        if target is None:
+            return self.proxy.global_ or None
+
+        if not hasattr(self.proxy, target):
+            raise Exception(f"Invalid proxy target {target}")
+
+        proxy = getattr(self.proxy, target)
+        if proxy:
+            return proxy
+
+        return self.proxy.global_ or None
+
 
 def update_toml_section_from_config(toml_section, config):
     for field in fields(config):
+        toml_section[field.name] = getattr(config, field.name)
+
+
+def update_toml_proxy_section_from_config(toml_section, config: ProxyConfig):
+    toml_section["global"] = config.global_
+    for field in fields(config):
+        if field.name == "global_":
+            continue
         toml_section[field.name] = getattr(config, field.name)
 
 

@@ -7,6 +7,7 @@ import pytest
 from streamrip.client.client import Client
 from streamrip.client.qobuz import QobuzSpoofer
 from streamrip.rip.cli import latest_streamrip_version, rip
+from streamrip.utils.aiohttp import get_aiohttp_session_kwargs
 from streamrip.utils.ssl_utils import (
     create_ssl_context,
     get_aiohttp_connector_kwargs,
@@ -131,23 +132,57 @@ async def test_client_get_session_creates_connector():
     if "verify_ssl" not in signature.parameters:
         pytest.skip("verify_ssl parameter not implemented in Client.get_session yet")
 
-    # Patch the get_aiohttp_connector_kwargs function and the client session
+    # Patch the session helper and the client session
     with (
-        patch(
-            "streamrip.client.client.get_aiohttp_connector_kwargs"
-        ) as mock_get_kwargs,
+        patch("streamrip.client.client.get_aiohttp_session_kwargs") as mock_get_kwargs,
         patch("aiohttp.ClientSession") as mock_client_session,
-        patch("aiohttp.TCPConnector") as mock_connector,
     ):
-        mock_get_kwargs.return_value = {"verify_ssl": False}
-        mock_connector.return_value = MagicMock()
+        mock_get_kwargs.return_value = {"connector": MagicMock()}
         mock_client_session.return_value = AsyncMock()
 
         # Test with SSL verification disabled
         await Client.get_session(verify_ssl=False)
 
-        # Verify get_aiohttp_connector_kwargs was called with verify_ssl=False
-        mock_get_kwargs.assert_called_once_with(verify_ssl=False)
+        # Verify the helper was called with verify_ssl=False
+        mock_get_kwargs.assert_called_once_with(verify_ssl=False, proxy=None)
+
+
+@pytest.mark.asyncio
+async def test_client_get_session_supports_http_proxy():
+    with (
+        patch("streamrip.client.client.get_aiohttp_session_kwargs") as mock_get_kwargs,
+        patch("aiohttp.ClientSession") as mock_client_session,
+    ):
+        mock_get_kwargs.return_value = {
+            "connector": MagicMock(),
+            "proxy": "http://proxy.example:8080",
+        }
+        mock_client_session.return_value = AsyncMock()
+
+        await Client.get_session(proxy="http://proxy.example:8080")
+
+        mock_get_kwargs.assert_called_once_with(
+            verify_ssl=True,
+            proxy="http://proxy.example:8080",
+        )
+        assert mock_client_session.call_args.kwargs["proxy"] == "http://proxy.example:8080"
+
+
+def test_get_aiohttp_session_kwargs_supports_socks_proxy():
+    with (
+        patch("streamrip.utils.aiohttp.get_aiohttp_connector_kwargs") as mock_get_kwargs,
+        patch("streamrip.utils.aiohttp.ProxyConnector") as mock_proxy_connector,
+    ):
+        mock_get_kwargs.return_value = {"verify_ssl": True}
+        mock_proxy_connector.from_url.return_value = MagicMock()
+
+        kwargs = get_aiohttp_session_kwargs(proxy="socks5://proxy.example:1080")
+
+        mock_proxy_connector.from_url.assert_called_once_with(
+            "socks5://proxy.example:1080",
+            verify_ssl=True,
+        )
+        assert kwargs["connector"] == mock_proxy_connector.from_url.return_value
 
 
 def test_latest_streamrip_version_supports_verify_ssl():
@@ -177,14 +212,12 @@ async def test_latest_streamrip_version_creates_session():
             "verify_ssl parameter not implemented in latest_streamrip_version yet"
         )
 
-    # Patch the get_aiohttp_connector_kwargs function and related modules
+    # Patch the session helper and related modules
     with (
-        patch("streamrip.rip.cli.get_aiohttp_connector_kwargs") as mock_get_kwargs,
+        patch("streamrip.rip.cli.get_aiohttp_session_kwargs") as mock_get_kwargs,
         patch("aiohttp.ClientSession") as mock_client_session,
-        patch("aiohttp.TCPConnector") as mock_connector,
     ):
-        mock_get_kwargs.return_value = {"verify_ssl": False}
-        mock_connector.return_value = MagicMock()
+        mock_get_kwargs.return_value = {"connector": MagicMock()}
 
         # Setup mock responses for API calls
         mock_session_instance = AsyncMock()
@@ -205,8 +238,8 @@ async def test_latest_streamrip_version_creates_session():
                 # We just need to ensure it doesn't raise TypeError for the verify_ssl parameter
                 pass
 
-        # Verify get_aiohttp_connector_kwargs was called with verify_ssl=False
-        mock_get_kwargs.assert_called_once_with(verify_ssl=False)
+        # Verify the helper was called with verify_ssl=False
+        mock_get_kwargs.assert_called_once_with(verify_ssl=False, proxy=None)
 
 
 @pytest.mark.asyncio
@@ -220,9 +253,9 @@ async def test_qobuz_spoofer_initialization(mock_client_session):
     if has_verify_ssl:
         # Patch the get_aiohttp_connector_kwargs function for the __aenter__ method
         with patch(
-            "streamrip.utils.ssl_utils.get_aiohttp_connector_kwargs"
+            "streamrip.client.qobuz.get_aiohttp_session_kwargs"
         ) as mock_get_kwargs:
-            mock_get_kwargs.return_value = {"verify_ssl": True}
+            mock_get_kwargs.return_value = {"connector": MagicMock()}
 
             spoofer = QobuzSpoofer(verify_ssl=True)
             assert spoofer is not None
@@ -231,8 +264,8 @@ async def test_qobuz_spoofer_initialization(mock_client_session):
             with patch.object(spoofer, "session", None):
                 await spoofer.__aenter__()
 
-                # Verify get_aiohttp_connector_kwargs was called
-                mock_get_kwargs.assert_called_once_with(verify_ssl=True)
+                # Verify the helper was called
+                mock_get_kwargs.assert_called_once_with(verify_ssl=True, proxy=None)
 
                 # Verify ClientSession was called
                 assert mock_client_session.called
@@ -271,14 +304,17 @@ async def test_lastfm_playlist_session_creation(mock_client_session):
     # Check if our code expects verify_ssl in config
     try:
         mock_config.session.downloads.verify_ssl = False
+        mock_config.session.get_proxy.return_value = None
         with patch(
-            "streamrip.utils.ssl_utils.get_aiohttp_connector_kwargs"
+            "streamrip.media.playlist.get_aiohttp_session_kwargs"
         ) as mock_get_kwargs:
-            mock_get_kwargs.return_value = {"verify_ssl": False}
+            mock_get_kwargs.return_value = {"connector": MagicMock()}
 
             # Try to parse the playlist
             with pytest.raises(Exception):
-                await pending_playlist._parse_lastfm_playlist()
+                await pending_playlist._parse_lastfm_playlist("https://www.last.fm/test")
+
+        mock_get_kwargs.assert_called_once_with(verify_ssl=False, proxy=None)
     except (AttributeError, TypeError):
         pytest.skip(
             "verify_ssl not used in PendingLastfmPlaylist._parse_lastfm_playlist yet"
@@ -297,6 +333,7 @@ async def test_client_uses_config_settings():
 
         # Set verify_ssl in config
         mock_config.session.downloads.verify_ssl = False
+        mock_config.session.get_proxy.return_value = None
 
         # Create client
         try:
@@ -313,6 +350,7 @@ async def test_client_uses_config_settings():
                     call_kwargs = mock_get_session.call_args.kwargs
                     assert "verify_ssl" in call_kwargs
                     assert call_kwargs["verify_ssl"] is False
+                    assert call_kwargs["proxy"] is None
                 except (AttributeError, AssertionError):
                     pytest.skip("verify_ssl not used in TidalClient.login yet")
         except Exception as e:

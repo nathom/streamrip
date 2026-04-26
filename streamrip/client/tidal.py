@@ -51,7 +51,8 @@ class TidalClient(Client):
 
     async def login(self):
         self.session = await self.get_session(
-            verify_ssl=self.global_config.session.downloads.verify_ssl
+            verify_ssl=self.global_config.session.downloads.verify_ssl,
+            proxy=self.global_config.session.get_proxy(self.source),
         )
         c = self.config
         if not c.access_token:

@@ -41,10 +41,13 @@ class DeezerClient(Client):
         self.config = config.session.deezer
 
     async def login(self):
+        proxy = self.global_config.session.get_proxy(self.source)
         # Used for track downloads
         self.session = await self.get_session(
-            verify_ssl=self.global_config.session.downloads.verify_ssl
+            verify_ssl=self.global_config.session.downloads.verify_ssl,
+            proxy=proxy,
         )
+        self._apply_proxy_to_deezer_client(proxy)
         arl = self.config.arl
         if not arl:
             raise MissingCredentialsError
@@ -244,3 +247,18 @@ class DeezerClient(Client):
         url = f"https://e-cdns-proxy-{track_hash[0]}.dzcdn.net/mobile/1/{path}"
         logger.debug("Encrypted file path %s", url)
         return url
+
+    def _apply_proxy_to_deezer_client(self, proxy: str | None):
+        if not proxy:
+            return
+
+        for owner in (
+            self.client,
+            getattr(self.client, "api", None),
+            getattr(self.client, "gw", None),
+        ):
+            session = getattr(owner, "session", None)
+            proxies = getattr(session, "proxies", None)
+            if proxies is None:
+                continue
+            proxies.update({"http": proxy, "https": proxy})

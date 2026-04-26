@@ -19,7 +19,7 @@ from rich.traceback import install
 from .. import __version__, db
 from ..config import DEFAULT_CONFIG_PATH, Config, OutdatedConfigError, set_user_defaults
 from ..console import console
-from ..utils.ssl_utils import get_aiohttp_connector_kwargs
+from ..utils.aiohttp import get_aiohttp_session_kwargs
 from .main import Main
 
 
@@ -181,7 +181,8 @@ async def url(ctx, urls):
                 # Run in background
                 version_coro = asyncio.create_task(
                     latest_streamrip_version(
-                        verify_ssl=cfg.session.downloads.verify_ssl
+                        verify_ssl=cfg.session.downloads.verify_ssl,
+                        proxy=cfg.session.get_proxy(),
                     )
                 )
             else:
@@ -448,7 +449,10 @@ async def id(ctx, source, media_type, id):
             await main.rip()
 
 
-async def latest_streamrip_version(verify_ssl: bool = True) -> tuple[str, str | None]:
+async def latest_streamrip_version(
+    verify_ssl: bool = True,
+    proxy: str | None = None,
+) -> tuple[str, str | None]:
     """Get the latest streamrip version from PyPI and release notes from GitHub.
 
     Args:
@@ -457,11 +461,9 @@ async def latest_streamrip_version(verify_ssl: bool = True) -> tuple[str, str | 
     Returns:
         A tuple of (version, release_notes)
     """
-    # Create connector with appropriate SSL settings
-    connector_kwargs = get_aiohttp_connector_kwargs(verify_ssl=verify_ssl)
-    connector = aiohttp.TCPConnector(**connector_kwargs)
-
-    async with aiohttp.ClientSession(connector=connector) as s:
+    async with aiohttp.ClientSession(
+        **get_aiohttp_session_kwargs(verify_ssl=verify_ssl, proxy=proxy),
+    ) as s:
         async with s.get("https://pypi.org/pypi/streamrip/json") as resp:
             data = await resp.json()
         version = data["info"]["version"]
