@@ -51,6 +51,18 @@ class TestParseURL(unittest.TestCase):
         self.assertEqual(groups[1], "track")  # media_type
         self.assertEqual(groups[2], "3083287")  # item_id
 
+        _test = lambda u: parse_url(u).match.groups()
+
+        self.assertEqual(
+            _test("https://tidal.com/track/144921990/u"),
+            ("tidal", "track", "144921990"),
+        )
+
+        self.assertEqual(
+            _test("https://tidal.com/track/454879903?u"),
+            ("tidal", "track", "454879903"),
+        )
+
     def test_deezer_track_url(self):
         """Test that Deezer track URLs are matched correctly."""
         url = "https://www.deezer.com/track/4195713"
