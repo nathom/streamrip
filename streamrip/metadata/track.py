@@ -31,6 +31,7 @@ class TrackMetadata:
     tracknumber: int
     discnumber: int
     composer: str | None
+    compilation: int = 0
     isrc: str | None = None
     lyrics: str | None = ""
 
@@ -211,6 +212,7 @@ class TrackMetadata:
             tracknumber=tracknumber,
             discnumber=discnumber,
             composer=None,
+            compilation=0,
             isrc=isrc,
             lyrics=lyrics,
         )
