@@ -65,6 +65,7 @@ class Track(Media):
                 try:
                     await self.downloadable.download(self.download_path, callback)
                 except Exception as e:
+                    # TODO: vremya
                     logger.error(
                         f"Persistent error downloading track '{self.meta.title}', skipping: {e}"
                     )
