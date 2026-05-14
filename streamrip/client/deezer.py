@@ -99,12 +99,15 @@ class DeezerClient(Client):
 
     async def get_playlist(self, item_id: str) -> dict:
         pl_metadata, pl_tracks = await asyncio.gather(
-            asyncio.to_thread(self.client.api.get_playlist, item_id),
-            asyncio.to_thread(self.client.api.get_playlist_tracks, item_id),
+            asyncio.to_thread(self.client.gw.get_playlist, item_id),
+            asyncio.to_thread(self.client.gw.get_playlist_tracks, item_id),
         )
-        pl_metadata["tracks"] = pl_tracks["data"]
-        pl_metadata["track_total"] = len(pl_tracks["data"])
-        return pl_metadata
+        # Normalize gw response to match api structure
+        tracks = pl_tracks if isinstance(pl_tracks, list) else pl_tracks["data"]
+        return {
+            "title": pl_metadata["DATA"]["TITLE"],
+            "tracks": [{"id": t["SNG_ID"]} for t in tracks],
+        }
 
     async def get_artist(self, item_id: str) -> dict:
         artist, albums = await asyncio.gather(
@@ -161,7 +164,7 @@ class DeezerClient(Client):
             int(track_info.get(f"FILESIZE_{format}", 0)) for _, format in quality_map
         ]
         dl_info["quality_to_size"] = size_map
-        
+
         # Check if requested quality is available
         if size_map[quality] == 0:
             if self.config.lower_quality_if_not_available:
@@ -178,7 +181,7 @@ class DeezerClient(Client):
                 raise NonStreamableError(
                     f"The requested quality {quality} is not available and fallback is disabled."
                 )
-        
+
         # Update the quality in dl_info to reflect the final quality used
         dl_info["quality"] = quality
 
