@@ -99,6 +99,7 @@ class TrackMetadata:
         tracknumber = typed(resp["track_position"], int)
         discnumber = typed(resp["disk_number"], int)
         composer = None
+        lyrics = resp.get("lyrics", "")
         info = TrackInfo(
             id=track_id,
             quality=album.info.quality,
@@ -116,6 +117,7 @@ class TrackMetadata:
             discnumber=discnumber,
             composer=composer,
             isrc=isrc,
+            lyrics=lyrics,
         )
 
     @classmethod
