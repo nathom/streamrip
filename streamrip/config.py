@@ -203,6 +203,9 @@ class DownloadsConfig:
     # Verify SSL certificates for API connections
     # Set to false if you encounter SSL certificate verification errors (not recommended)
     verify_ssl: bool
+    # Download and embed lyrics (currently supported for Deezer and Tidal)
+    # Defaulted so configs written before this option don't fail to load
+    lyrics: bool = True
 
 
 @dataclass(slots=True)

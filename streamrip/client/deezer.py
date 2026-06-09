@@ -86,13 +86,14 @@ class DeezerClient(Client):
         album_metadata["track_total"] = len(album_tracks["data"])
         item["album"] = album_metadata
 
-        try:
-            lyrics_resp = await asyncio.to_thread(
-                self.client.gw.get_track_lyrics, item_id
-            )
-            item["lyrics"] = lyrics_resp.get("LYRICS_TEXT") or ""
-        except Exception as e:
-            logger.warning(f"Failed to get lyrics for {item_id}: {e}")
+        if self.global_config.session.downloads.lyrics:
+            try:
+                lyrics_resp = await asyncio.to_thread(
+                    self.client.gw.get_track_lyrics, item_id
+                )
+                item["lyrics"] = lyrics_resp.get("LYRICS_TEXT") or ""
+            except Exception as e:
+                logger.warning(f"Failed to get lyrics for {item_id}: {e}")
 
         return item
 

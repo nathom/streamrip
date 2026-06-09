@@ -110,7 +110,7 @@ class TidalClient(Client):
 
             item["albums"] = album_resp["items"]
             item["albums"].extend(ep_resp["items"])
-        elif media_type == "track":
+        elif media_type == "track" and self.global_config.session.downloads.lyrics:
             try:
                 resp = await self._api_request(
                     f"tracks/{item_id!s}/lyrics", base="https://tidal.com/v1"
