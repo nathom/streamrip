@@ -86,7 +86,37 @@ class DeezerClient(Client):
         album_metadata["track_total"] = len(album_tracks["data"])
         item["album"] = album_metadata
 
+        if self.global_config.session.downloads.lyrics:
+            try:
+                lyrics_resp = await asyncio.to_thread(
+                    self.client.gw.get_track_lyrics, item_id
+                )
+                # Use unsynced lyrics for MP3, synced for others (FLAC, OPUS, etc)
+                conversion = self.global_config.session.conversion
+                if conversion.enabled and conversion.codec.upper() == "MP3":
+                    item["lyrics"] = lyrics_resp.get("LYRICS_TEXT") or ""
+                else:
+                    item["lyrics"] = self._format_synced_lyrics(
+                        lyrics_resp.get("LYRICS_SYNC_JSON")
+                    ) or (lyrics_resp.get("LYRICS_TEXT") or "")
+            except Exception as e:
+                logger.warning(f"Failed to get lyrics for {item_id}: {e}")
+
         return item
+
+    @staticmethod
+    def _format_synced_lyrics(sync_json: list[dict] | None) -> str:
+        """Convert Deezer's LYRICS_SYNC_JSON into LRC-formatted text."""
+        if not sync_json:
+            return ""
+        lines = []
+        for entry in sync_json:
+            timestamp = entry.get("lrc_timestamp")
+            if timestamp:
+                lines.append(f"{timestamp}{entry.get('line', '')}")
+            else:
+                lines.append("")
+        return "\n".join(lines)
 
     async def get_album(self, item_id: str) -> dict:
         album_metadata, album_tracks = await asyncio.gather(
