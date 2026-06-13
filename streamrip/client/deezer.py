@@ -33,14 +33,14 @@ class DeezerClient(Client):
 
     source = "deezer"
     max_quality = 2
-    _MAX_FAVORITES = 10_000
+    max_favorites = 10_000
 
     def __init__(self, config: Config):
         self.global_config = config
         self.client = deezer.Deezer()
         self.logged_in = False
         self.config = config.session.deezer
-        self._logged_in_user_id: int | None = None
+        self.logged_in_user_id: int | None = None
 
     async def login(self):
         # Used for track downloads
@@ -53,7 +53,7 @@ class DeezerClient(Client):
         success = self.client.login_via_arl(arl)
         if not success:
             raise AuthenticationError
-        self._logged_in_user_id = self.client.gw.get_user_data()["USER"]["USER_ID"]
+        self.logged_in_user_id = self.client.gw.get_user_data()["USER"]["USER_ID"]
         self.logged_in = True
 
     async def get_metadata(self, item_id: str, media_type: str) -> dict:
@@ -115,13 +115,13 @@ class DeezerClient(Client):
     async def get_user_favorites(self, user_id: str) -> dict:
         # deezer-py's get_user_tracks() drops the limit arg when routing to
         # get_my_favorite_tracks(), so we detect own profile and call it directly.
-        if int(user_id) == self._logged_in_user_id:
+        if int(user_id) == self.logged_in_user_id:
             tracks = await asyncio.to_thread(
-                self.client.gw.get_my_favorite_tracks, self._MAX_FAVORITES
+                self.client.gw.get_my_favorite_tracks, self.max_favorites
             )
         else:
             tracks = await asyncio.to_thread(
-                self.client.gw.get_user_tracks, int(user_id), self._MAX_FAVORITES
+                self.client.gw.get_user_tracks, int(user_id), self.max_favorites
             )
         return {
             "title": "Loved Tracks",
