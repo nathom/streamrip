@@ -33,12 +33,14 @@ class DeezerClient(Client):
 
     source = "deezer"
     max_quality = 2
+    max_favorites = 10_000
 
     def __init__(self, config: Config):
         self.global_config = config
         self.client = deezer.Deezer()
         self.logged_in = False
         self.config = config.session.deezer
+        self.logged_in_user_id: int | None = None
 
     async def login(self):
         # Used for track downloads
@@ -51,6 +53,7 @@ class DeezerClient(Client):
         success = self.client.login_via_arl(arl)
         if not success:
             raise AuthenticationError
+        self.logged_in_user_id = self.client.gw.get_user_data()["USER"]["USER_ID"]
         self.logged_in = True
 
     async def get_metadata(self, item_id: str, media_type: str) -> dict:
@@ -98,6 +101,9 @@ class DeezerClient(Client):
         return album_metadata
 
     async def get_playlist(self, item_id: str) -> dict:
+        if item_id.startswith("favorites:"):
+            return await self.get_user_favorites(item_id[len("favorites:"):])
+
         pl_metadata, pl_tracks = await asyncio.gather(
             asyncio.to_thread(self.client.api.get_playlist, item_id),
             asyncio.to_thread(self.client.api.get_playlist_tracks, item_id),
@@ -105,6 +111,23 @@ class DeezerClient(Client):
         pl_metadata["tracks"] = pl_tracks["data"]
         pl_metadata["track_total"] = len(pl_tracks["data"])
         return pl_metadata
+
+    async def get_user_favorites(self, user_id: str) -> dict:
+        # deezer-py's get_user_tracks() drops the limit arg when routing to
+        # get_my_favorite_tracks(), so we detect own profile and call it directly.
+        if int(user_id) == self.logged_in_user_id:
+            tracks = await asyncio.to_thread(
+                self.client.gw.get_my_favorite_tracks, self.max_favorites
+            )
+        else:
+            tracks = await asyncio.to_thread(
+                self.client.gw.get_user_tracks, int(user_id), self.max_favorites
+            )
+        return {
+            "title": "Loved Tracks",
+            "tracks": tracks,
+            "track_total": len(tracks),
+        }
 
     async def get_artist(self, item_id: str) -> dict:
         artist, albums = await asyncio.gather(
@@ -148,7 +171,7 @@ class DeezerClient(Client):
         # TODO: optimize such that all of the ids are requested at once
         dl_info: dict = {"quality": quality, "id": item_id}
 
-        track_info = self.client.gw.get_track(item_id)
+        track_info = await asyncio.to_thread(self.client.gw.get_track, item_id)
 
         fallback_id = track_info.get("FALLBACK", {}).get("SNG_ID")
 
