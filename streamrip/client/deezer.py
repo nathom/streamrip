@@ -186,11 +186,15 @@ class DeezerClient(Client):
         Fetches metadata for a playlist.
 
         Args:
-            item_id (str): The playlist ID.
+            item_id (str): The playlist ID, or "favorites:{user_id}" for loved tracks.
 
         Returns:
             dict: The playlist metadata.
         """
+        if item_id.startswith("favorites:"):
+            user_id = item_id[len("favorites:"):]
+            return await self.get_user_favorites(user_id)
+
         try:
             pl_metadata, pl_tracks = await asyncio.gather(
                 asyncio.to_thread(self.client.api.get_playlist, item_id),
@@ -205,6 +209,31 @@ class DeezerClient(Client):
         pl_metadata["tracks"] = pl_tracks["data"]
         pl_metadata["track_total"] = len(pl_tracks["data"])
         return pl_metadata
+
+    async def get_user_favorites(self, user_id: str) -> dict:
+        """
+        Fetches the loved tracks for a Deezer user profile.
+
+        Args:
+            user_id (str): The Deezer user ID.
+
+        Returns:
+            dict: A playlist-shaped dict with title and tracks list.
+        """
+        # deezer-py's get_user_tracks() drops the limit arg when routing to
+        # get_my_favorite_tracks(), so we detect own profile and call it directly.
+        logged_in_id = (await asyncio.to_thread(self.client.gw.get_user_data))["USER"]["USER_ID"]
+        if int(user_id) == logged_in_id:
+            tracks = await asyncio.to_thread(self.client.gw.get_my_favorite_tracks, 2000)
+        else:
+            tracks = await asyncio.to_thread(
+                self.client.gw.get_user_tracks, int(user_id), 2000
+            )
+        return {
+            "title": "Loved Tracks",
+            "tracks": tracks,
+            "track_total": len(tracks),
+        }
 
     async def get_artist(self, item_id: str) -> dict:
         """

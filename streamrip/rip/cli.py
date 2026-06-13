@@ -169,7 +169,32 @@ def rip(
 @click.pass_context
 @coro
 async def url(ctx, urls):
-    """Download content from URLs."""
+    """Download content from URLs.
+
+    Supported URL formats:
+
+    \b
+    Deezer:
+      https://www.deezer.com/fr/track/123456
+      https://www.deezer.com/fr/album/123456
+      https://www.deezer.com/fr/playlist/123456
+      https://www.deezer.com/fr/artist/123456
+      https://www.deezer.com/fr/profile/USER_ID/loved   (liked tracks)
+
+    \b
+    Qobuz:
+      https://www.qobuz.com/us-en/album/...
+      https://www.qobuz.com/us-en/interpreter/...
+
+    \b
+    Tidal:
+      https://tidal.com/browse/album/...
+      https://tidal.com/browse/track/...
+
+    \b
+    SoundCloud:
+      https://soundcloud.com/artist/track
+    """
     if ctx.obj["config"] is None:
         return
 

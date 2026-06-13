@@ -11,6 +11,7 @@ A scriptable stream downloader for Qobuz, Tidal, Deezer and SoundCloud.
 
 - Fast, concurrent downloads powered by `aiohttp`
 - Downloads tracks, albums, playlists, discographies, and labels from Qobuz, Tidal, Deezer, and SoundCloud
+- Downloads Deezer liked tracks from a user profile (`/profile/USER_ID/loved`)
 - Supports downloads of Spotify and Apple Music playlists through [last.fm](https://www.last.fm)
 - Automatically converts files to a preferred format
 - Has a database that stores the downloaded tracks' IDs so that repeats are avoided
@@ -122,6 +123,12 @@ Download a last.fm playlist using the lastfm command
 
 ```
 rip lastfm https://www.last.fm/user/nathan3895/playlists/12126195
+```
+
+Download your Deezer liked tracks
+
+```bash
+rip url https://www.deezer.com/fr/profile/USER_ID/loved
 ```
 
 For more customization, see the config file
