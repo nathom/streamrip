@@ -197,18 +197,22 @@ class DeezerClient(Client):
 
         try:
             pl_metadata, pl_tracks = await asyncio.gather(
-                asyncio.to_thread(self.client.api.get_playlist, item_id),
-                asyncio.to_thread(self.client.api.get_playlist_tracks, item_id),
+                asyncio.to_thread(self.client.gw.get_playlist, item_id),
+                asyncio.to_thread(self.client.gw.get_playlist_tracks, item_id),
             )
-        except DataException:
+        except Exception:
             new_id = await self._resolve_redirect("playlist", item_id)
             if new_id:
                 return await self.get_playlist(new_id)
             raise
 
-        pl_metadata["tracks"] = pl_tracks["data"]
-        pl_metadata["track_total"] = len(pl_tracks["data"])
-        return pl_metadata
+        # Normalize GW response to match expected structure
+        tracks = pl_tracks if isinstance(pl_tracks, list) else pl_tracks["data"]
+        return {
+            "title": pl_metadata["DATA"]["TITLE"],
+            "tracks": [{"id": t["SNG_ID"]} for t in tracks],
+            "track_total": len(tracks),
+        }
 
     async def get_user_favorites(self, user_id: str) -> dict:
         """
