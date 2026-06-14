@@ -230,6 +230,7 @@ class Vorbis(Converter):
     codec_name = "vorbis"
     codec_lib = "libvorbis"
     container = "ogg"
+    copy_art = False  # OGG muxer doesn't support -c:v copy from FLAC/MP3 sources
     default_ffmpeg_arg = "-q:a 6"  # 160, aka the "high" quality profile from Spotify
 
     def get_quality_arg(self, rate: int) -> str:
@@ -254,6 +255,7 @@ class OPUS(Converter):
     codec_name = "opus"
     codec_lib = "libopus"
     container = "opus"
+    copy_art = False  # Opus muxer doesn't support -c:v copy from FLAC/MP3 sources
     default_ffmpeg_arg = "-b:a 128k"  # Transparent
 
     def get_quality_arg(self, _: int) -> str:
