@@ -22,3 +22,4 @@ StreamripDownloads
 .DS_Store
 pyrightconfig.json
 .venv/
+dev-reinstall.sh
