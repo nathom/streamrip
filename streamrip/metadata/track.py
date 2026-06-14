@@ -95,7 +95,9 @@ class TrackMetadata:
         explicit = typed(resp["explicit_lyrics"], bool)
         work = None
         title = typed(resp["title"], str)
-        artist = typed(resp["artist"]["name"], str)
+        artist = ", ".join(
+            c["name"] for c in resp["contributors"] if c["type"] == "artist"
+        )
         tracknumber = typed(resp["track_position"], int)
         discnumber = typed(resp["disk_number"], int)
         composer = None
