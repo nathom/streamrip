@@ -160,7 +160,9 @@ class DeezerDynamicURL(URL):
     standard_link_re = re.compile(
         r"https://www\.deezer\.com/[a-z]{2}/(album|artist|playlist|track)/(\d+)"
     )
-    dynamic_link_re = re.compile(r"https://(?:deezer|dzr)\.page\.link/\w+")
+    dynamic_link_re = re.compile(
+        r"https://(?:link\.deezer\.com/s|deezer\.page\.link)/\w+"
+    )
 
     @classmethod
     def from_str(cls, url: str) -> URL | None:
