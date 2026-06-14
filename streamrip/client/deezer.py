@@ -20,6 +20,7 @@ from .downloadable import DeezerDownloadable
 
 logger = logging.getLogger("streamrip")
 logging.captureWarnings(True)
+logging.getLogger("urllib3.connectionpool").setLevel(logging.ERROR)
 
 
 class DeezerClient(Client):
@@ -365,7 +366,7 @@ class DeezerClient(Client):
                 continue
             except deezer.WrongGeolocation:
                 if not is_retry and fallback_id:
-                    logger.info(f"Geoblocked. Trying fallback ID: {fallback_id}")
+                    logger.debug(f"Geoblocked. Trying fallback ID: {fallback_id}")
                     return await self.get_downloadable(fallback_id, quality, is_retry=True)
                 raise NonStreamableError("Track geoblocked and no fallback available.")
         # --- END OF FALLBACK LOOP ---
