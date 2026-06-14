@@ -22,7 +22,6 @@ def clean_filename(fn: str, restrict: bool = False) -> str:
 
 
 def clean_filepath(fn: str, restrict: bool = False) -> str:
-    fn = fn.replace("/", "-")
     path = str(sanitize_filepath(fn))
     if restrict:
         path = "".join(c for c in path if c in ALLOWED_CHARS)
