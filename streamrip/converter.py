@@ -13,6 +13,18 @@ logger = logging.getLogger("streamrip")
 
 SAMPLING_RATES = {44100, 48000, 88200, 96000, 176400, 192000}
 
+def _check_libfdk_aac() -> bool:
+    try:
+        import subprocess
+        result = subprocess.run(
+            ["ffmpeg", "-encoders"], capture_output=True, text=True, timeout=5
+        )
+        return "libfdk_aac" in result.stdout
+    except Exception:
+        return False
+
+_LIBFDK_AAC_AVAILABLE = _check_libfdk_aac()
+
 
 class Converter:
     """Base class for audio codecs."""
@@ -263,8 +275,9 @@ class OPUS(Converter):
 
 
 class AAC(Converter):
-    """Class for libfdk_aac converter.
+    """Class for AAC converter.
 
+    Uses libfdk_aac if available, falls back to the native FFmpeg aac encoder.
     Default ffmpeg_arg: `-b:a 256k`.
 
     See available options:
@@ -272,7 +285,7 @@ class AAC(Converter):
     """
 
     codec_name = "aac"
-    codec_lib = "libfdk_aac"
+    codec_lib = "libfdk_aac" if _LIBFDK_AAC_AVAILABLE else "aac"
     container = "m4a"
     default_ffmpeg_arg = "-b:a 256k"
 
