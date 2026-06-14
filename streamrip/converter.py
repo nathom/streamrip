@@ -189,6 +189,8 @@ class Converter:
 
         if self.copy_art and type(self)._ffmpeg_supports_art:
             command.extend(["-c:v", "copy"])
+        elif not type(self)._ffmpeg_supports_art:
+            command.append("-vn")
 
         if self.ffmpeg_arg:
             command.extend(self.ffmpeg_arg.split())
