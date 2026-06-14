@@ -1,9 +1,11 @@
 """Wrapper classes over FFMPEG."""
 
 import asyncio
+import base64
 import logging
 import os
 import shutil
+import subprocess
 from tempfile import gettempdir
 from typing import Final, Optional
 
@@ -22,6 +24,9 @@ class Converter:
     container: str
     lossless: bool = False
     default_ffmpeg_arg: str = ""
+    # Subclasses set this to False when the muxer doesn't accept -c:v copy.
+    # Art is then embedded post-conversion via mutagen instead.
+    _ffmpeg_supports_art: bool = True
 
     def __init__(
         self,
@@ -81,6 +86,13 @@ class Converter:
         if custom_fn:
             self.final_fn = custom_fn
 
+        # Read cover art from the source before FFmpeg runs and before any
+        # potential source deletion, so it's available for post-conversion
+        # embedding even when remove_source=True.
+        cover_data: tuple[bytes, str] | None = None
+        if self.copy_art and not type(self)._ffmpeg_supports_art:
+            cover_data = await asyncio.to_thread(self._read_source_cover)
+
         self.command = self._gen_command()
         logger.debug("Generated conversion command: %s", self.command)
 
@@ -96,8 +108,58 @@ class Converter:
 
             shutil.move(self.tempfile, self.final_fn)
             logger.debug("Moved: %s -> %s", self.tempfile, self.final_fn)
+
+            if cover_data is not None:
+                await asyncio.to_thread(self._embed_cover_art, *cover_data)
         else:
             raise ConversionError(f"FFmpeg output:\n{out, err}")
+
+    def _read_source_cover(self) -> tuple[bytes, str] | None:
+        """Read cover art from the source file. Returns (data, mime) or None."""
+        from mutagen.flac import FLAC
+        from mutagen.id3 import ID3
+
+        src_ext = os.path.splitext(self.filename)[1].lower()
+        try:
+            if src_ext == ".flac":
+                src = FLAC(self.filename)
+                if src.pictures:
+                    p = src.pictures[0]
+                    return p.data, p.mime
+            elif src_ext == ".mp3":
+                tags = ID3(self.filename)
+                apic_list = tags.getall("APIC")
+                if apic_list:
+                    return apic_list[0].data, apic_list[0].mime
+        except Exception as e:
+            logger.debug("Could not read cover art from source: %s", e)
+        return None
+
+    def _embed_cover_art(self, cover_data: bytes, mime: str) -> None:
+        """Embed cover art into the converted OGG/OPUS file via METADATA_BLOCK_PICTURE."""
+        from mutagen.flac import Picture
+
+        pic = Picture()
+        pic.type = 3  # front cover
+        pic.mime = mime
+        pic.data = cover_data
+        encoded = base64.b64encode(pic.write()).decode("ascii")
+
+        out_ext = os.path.splitext(self.final_fn)[1].lower()
+        try:
+            if out_ext == ".ogg":
+                from mutagen.oggvorbis import OggVorbis
+                audio = OggVorbis(self.final_fn)
+            elif out_ext == ".opus":
+                from mutagen.oggopus import OggOpus
+                audio = OggOpus(self.final_fn)
+            else:
+                return
+            audio["metadata_block_picture"] = [encoded]
+            audio.save()
+            logger.debug("Embedded cover art via mutagen into %s", self.final_fn)
+        except Exception as e:
+            logger.warning("Could not embed cover art into %s: %s", self.final_fn, e)
 
     def _gen_command(self):
         command = [
@@ -114,8 +176,10 @@ class Converter:
         if self.show_progress:
             command.append("-stats")
 
-        if self.copy_art:
+        if self.copy_art and type(self)._ffmpeg_supports_art:
             command.extend(["-c:v", "copy"])
+        elif not type(self)._ffmpeg_supports_art:
+            command.append("-vn")
 
         if self.ffmpeg_arg:
             command.extend(self.ffmpeg_arg.split())
@@ -230,6 +294,8 @@ class Vorbis(Converter):
     codec_name = "vorbis"
     codec_lib = "libvorbis"
     container = "ogg"
+    # The OGG muxer doesn't support -c:v copy; art is embedded via mutagen instead.
+    _ffmpeg_supports_art = False
     default_ffmpeg_arg = "-q:a 6"  # 160, aka the "high" quality profile from Spotify
 
     def get_quality_arg(self, rate: int) -> str:
@@ -254,6 +320,8 @@ class OPUS(Converter):
     codec_name = "opus"
     codec_lib = "libopus"
     container = "opus"
+    # The Opus muxer doesn't support -c:v copy; art is embedded via mutagen instead.
+    _ffmpeg_supports_art = False
     default_ffmpeg_arg = "-b:a 128k"  # Transparent
 
     def get_quality_arg(self, _: int) -> str:
