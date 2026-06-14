@@ -29,7 +29,7 @@ class Converter:
         ffmpeg_arg: Optional[str] = None,
         sampling_rate: Optional[int] = None,
         bit_depth: Optional[int] = None,
-        copy_art: bool = True,
+        copy_art: Optional[bool] = None,
         remove_source: bool = False,
         show_progress: bool = False,
     ):
@@ -59,7 +59,7 @@ class Converter:
         self.remove_source = remove_source
         self.sampling_rate = sampling_rate
         self.bit_depth = bit_depth
-        self.copy_art = copy_art
+        self.copy_art = getattr(type(self), "copy_art", True) if copy_art is None else copy_art
         self.show_progress = show_progress
 
         if ffmpeg_arg is None:
