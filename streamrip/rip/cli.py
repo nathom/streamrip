@@ -65,7 +65,7 @@ def coro(f):
 @click.option(
     "-c",
     "--codec",
-    help="Convert the downloaded files to an audio codec (ALAC, FLAC, MP3, AAC, or OGG)",
+    help="Convert the downloaded files to an audio codec (ALAC, FLAC, MP3, AAC, OGG, or OPUS)",
 )
 @click.option(
     "--no-progress",
@@ -152,7 +152,7 @@ def rip(
 
     if codec is not None:
         c.session.conversion.enabled = True
-        assert codec.upper() in ("ALAC", "FLAC", "OGG", "MP3", "AAC")
+        assert codec.upper() in ("ALAC", "FLAC", "OGG", "MP3", "AAC", "OPUS")
         c.session.conversion.codec = codec.upper()
 
     if no_progress:
