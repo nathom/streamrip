@@ -419,7 +419,7 @@ async def concat_audio_files(paths: list[str], out: str, ext: str, max_files_ope
             "warning",
             outpaths[i],
         )
-        fut = asyncio.create_subprocess_exec(*command, stderr=asyncio.subprocess.PIPE)
+        fut = asyncio.create_subprocess_exec(*command, stdin=asyncio.subprocess.DEVNULL, stderr=asyncio.subprocess.PIPE)
         proc_futures.append(fut)
 
     # Create all processes concurrently
