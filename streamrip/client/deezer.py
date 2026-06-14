@@ -51,12 +51,16 @@ class DeezerClient(Client):
         self.config = config.session.deezer
         self.logged_in_user_id: int | None = None
 
-        # Size the deezer-py requests session pool to match max_connections so
-        # urllib3 never needs to discard connections and logs no warnings.
+        # Increase the deezer-py requests session pool well above max_connections.
+        # Each concurrent download spawns several API calls (metadata, track token,
+        # GW info…) via asyncio.to_thread(), so the actual number of simultaneous
+        # requests easily exceeds max_connections. pool_maxsize is just a ceiling —
+        # no memory is pre-allocated — so a generous value avoids the urllib3
+        # "Connection pool is full" warning without any real cost.
         max_conn = config.session.downloads.max_connections
         adapter = requests.adapters.HTTPAdapter(
             pool_connections=max_conn,
-            pool_maxsize=max_conn,
+            pool_maxsize=max(max_conn * 4, 32),
             max_retries=0,
         )
         self.client.session.mount("https://", adapter)
