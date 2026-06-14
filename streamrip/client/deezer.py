@@ -176,7 +176,7 @@ class DeezerClient(Client):
 
         # If a valid new ID is found and it differs from the original
         if match and (new_id := match.group(1)) != item_id:
-            logger.info(f"Resolved redirect for {media_type} {item_id} -> {new_id}")
+            logger.debug(f"Resolved redirect for {media_type} {item_id} -> {new_id}")
             return new_id
 
         return None
