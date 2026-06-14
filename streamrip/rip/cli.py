@@ -457,24 +457,27 @@ async def latest_streamrip_version(verify_ssl: bool = True) -> tuple[str, str | 
     Returns:
         A tuple of (version, release_notes)
     """
-    # Create connector with appropriate SSL settings
-    connector_kwargs = get_aiohttp_connector_kwargs(verify_ssl=verify_ssl)
-    connector = aiohttp.TCPConnector(**connector_kwargs)
+    try:
+        connector_kwargs = get_aiohttp_connector_kwargs(verify_ssl=verify_ssl)
+        connector = aiohttp.TCPConnector(**connector_kwargs)
 
-    async with aiohttp.ClientSession(connector=connector) as s:
-        async with s.get("https://pypi.org/pypi/streamrip/json") as resp:
-            data = await resp.json()
-        version = data["info"]["version"]
+        async with aiohttp.ClientSession(connector=connector) as s:
+            async with s.get("https://pypi.org/pypi/streamrip/json") as resp:
+                data = await resp.json(content_type=None)
+            version = data["info"]["version"]
 
-        if version == __version__:
-            return version, None
+            if version == __version__:
+                return version, None
 
-        async with s.get(
-            "https://api.github.com/repos/nathom/streamrip/releases/latest"
-        ) as resp:
-            json = await resp.json()
-        notes = json["body"]
-    return version, notes
+            async with s.get(
+                "https://api.github.com/repos/nathom/streamrip/releases/latest"
+            ) as resp:
+                gh = await resp.json(content_type=None)
+            notes = gh.get("body") if isinstance(gh, dict) else None
+        return version, notes
+    except Exception as e:
+        logger.debug("Could not check for updates: %s", e)
+        return __version__, None
 
 
 if __name__ == "__main__":
