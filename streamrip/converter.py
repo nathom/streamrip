@@ -86,6 +86,7 @@ class Converter:
 
         process = await asyncio.create_subprocess_exec(
             *self.command,
+            stdin=asyncio.subprocess.DEVNULL,
             stderr=asyncio.subprocess.PIPE,
         )
         out, err = await process.communicate()
