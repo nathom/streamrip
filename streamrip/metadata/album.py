@@ -162,14 +162,17 @@ class AlbumMetadata:
     def from_deezer(cls, resp: dict) -> AlbumMetadata | None:
         album = resp.get("title", "Unknown Album")
         tracktotal = typed(resp.get("track_total", 0) or resp.get("nb_tracks", 0), int)
-        disctotal = typed(resp["tracks"][-1]["disk_number"], int)
+        disctotal = typed(resp["tracks"][-1]["disk_number"], int) if resp["tracks"] else 1
         genres = [typed(g["name"], str) for g in resp["genres"]["data"]]
 
         date = typed(resp["release_date"], str)
         year = date[:4]
         _copyright = None
         description = None
-        albumartist = typed(safe_get(resp, "artist", "name"), str)
+        contributors = resp.get("contributors", [])
+        albumartist = ", ".join(
+            c["name"] for c in contributors if c["type"] == "artist"
+        ) or typed(safe_get(resp, "artist", "name"), str)
         albumcomposer = None
         label = resp.get("label")
         booklets = None
