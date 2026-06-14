@@ -219,7 +219,12 @@ async def url(ctx, urls):
 
             if version_coro is not None:
                 latest_version, notes = await version_coro
-                if latest_version != __version__:
+                def _ver(v):
+                    try:
+                        return tuple(map(int, v.split(".")))
+                    except (ValueError, AttributeError):
+                        return (0, 0, 0)
+                if _ver(latest_version) > _ver(__version__):
                     console.print(
                         f"\n[green]A new version of streamrip [cyan]v{latest_version}[/cyan]"
                         " is available! Run [white][bold]pip3 install streamrip --upgrade[/bold][/white]"
