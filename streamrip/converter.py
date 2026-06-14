@@ -5,6 +5,7 @@ import base64
 import logging
 import os
 import shutil
+import subprocess
 from tempfile import gettempdir
 from typing import Final, Optional
 
@@ -14,9 +15,9 @@ logger = logging.getLogger("streamrip")
 
 SAMPLING_RATES = {44100, 48000, 88200, 96000, 176400, 192000}
 
+
 def _check_libfdk_aac() -> bool:
     try:
-        import subprocess
         result = subprocess.run(
             ["ffmpeg", "-encoders"], capture_output=True, text=True, timeout=5
         )
@@ -170,7 +171,7 @@ class Converter:
             audio.save()
             logger.debug("Embedded cover art via mutagen into %s", self.final_fn)
         except Exception as e:
-            logger.debug("Could not embed cover art into output: %s", e)
+            logger.warning("Could not embed cover art into %s: %s", self.final_fn, e)
 
     def _gen_command(self):
         command = [
