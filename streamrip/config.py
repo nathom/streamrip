@@ -111,7 +111,7 @@ class ConversionConfig:
     # In Hz. Tracks are downsampled if their sampling rate is greater than this.
     # Value of 48000 is recommended to maximize quality and minimize space
     sampling_rate: int
-    # Only 16 and 24 are available. It is only applied when the bit depth is higher
+    # Only 16, 24, and 32 are available. It is only applied when the bit depth is higher
     # than this value.
     bit_depth: int
     # Only applicable for lossy codecs
@@ -174,7 +174,7 @@ class FilepathsConfig:
     # "container", "id", and "albumcomposer"
     folder_format: str
     # Available keys: "tracknumber", "artist", "albumartist", "composer", "title",
-    # and "albumcomposer"
+    # "albumcomposer", "id", and "explicit"
     track_format: str
     # Only allow printable ASCII characters in filenames.
     restrict_characters: bool
