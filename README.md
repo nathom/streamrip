@@ -33,7 +33,7 @@ pip3 install streamrip --upgrade
 If you run into issues, try installing directly from the `dev` branch:
 
 ```bash
-pip3 install git+https://github.com/nathom/streamrip.git@dev
+pip3 install git+https://github.com/berettavexee/streamrip.git@dev
 ```
 
 When you type
@@ -66,7 +66,7 @@ If you want to get access to the latest and greatest features without waiting fo
 from the `dev` branch with the following command
 
 ```bash
-pip3 install git+https://github.com/nathom/streamrip.git@dev
+pip3 install git+https://github.com/berettavexee/streamrip.git@dev
 ```
 
 ## Example Usage
