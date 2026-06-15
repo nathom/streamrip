@@ -305,6 +305,59 @@ class TidalDownloadable(Downloadable):
             dec_bytes = decryptor.decrypt(await enc_file.read())
             return dec_bytes
 
+class TidalDASHDownloadable(TidalDownloadable):
+    """Handles Tidal HI_RES_LOSSLESS tracks served as MPEG-DASH manifests."""
+
+    def __init__(
+        self,
+        session: aiohttp.ClientSession,
+        init_url: str,
+        segment_urls: list[str],
+        codec: str,
+        encryption_key: str | None = None,
+    ):
+        self.session = session
+        self.source = "tidal"
+        self.url = init_url
+        self.init_url = init_url
+        self.segment_urls = segment_urls
+        codec = codec.lower()
+        if codec in ("flac", "mqa"):
+            self.extension = "flac"
+        else:
+            self.extension = "m4a"
+        # Use a BasicDownloadable for the init segment so the base class
+        # size() and other machinery works correctly
+        self.downloadable = BasicDownloadable(session, init_url, self.extension, "tidal")
+
+    async def _download(self, path: str, callback):
+        # Download all segments into a temporary .mp4 file first
+        tmp_path = path + ".tmp.mp4"
+        async with aiofiles.open(tmp_path, "wb") as f:
+            async with self.session.get(self.init_url) as resp:
+                resp.raise_for_status()
+                chunk = await resp.read()
+                await f.write(chunk)
+                callback(len(chunk))
+            for url in self.segment_urls:
+                async with self.session.get(url) as resp:
+                    resp.raise_for_status()
+                    chunk = await resp.read()
+                    await f.write(chunk)
+                    callback(len(chunk))
+
+        # Remux from MP4 container to raw FLAC using ffmpeg
+        import asyncio
+        proc = await asyncio.create_subprocess_exec(
+            "ffmpeg", "-i", tmp_path, "-c", "copy", "-y", path,
+            stdout=asyncio.subprocess.DEVNULL,
+            stderr=asyncio.subprocess.DEVNULL,
+        )
+        await proc.communicate()
+
+        # Clean up the temp file
+        import os
+        os.remove(tmp_path)
 
 class SoundcloudDownloadable(Downloadable):
     def __init__(self, session, info: dict):
