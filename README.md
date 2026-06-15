@@ -7,6 +7,51 @@ A scriptable stream downloader for Qobuz, Tidal, Deezer and SoundCloud.
 
 ![downloading an album](https://github.com/nathom/streamrip/blob/dev/demo/download_album.png?raw=true)
 
+## Changes from upstream
+
+This fork adds support for Tidal's `HI_RES_LOSSLESS` quality tier, which the
+original streamrip does not handle correctly. Tidal serves hi-res lossless
+tracks as MPEG-DASH manifests (`application/dash+xml`) rather than the standard
+JSON manifest format (`application/vnd.tidal.bts`) used for lower quality tiers.
+The original code attempts to JSON-parse all manifests and silently falls back to
+a lower quality when parsing fails, meaning hi-res tracks were never actually
+downloaded at hi-res even with a Tidal HiFi subscription.
+
+### 🚨 What was changed 🚨
+
+**`streamrip/client/tidal.py`**
+- `get_downloadable()` now detects `application/dash+xml` manifests instead of
+  silently falling back to lower quality on `JSONDecodeError`
+- New `_get_downloadable_from_dash()` method parses the MPEG-DASH XML, extracts
+  the initialization URL, media segment URLs, codec, and sample rate, and returns
+  a `TidalDASHDownloadable` instance
+
+**`streamrip/client/downloadable.py`**
+- New `TidalDASHDownloadable` class handles downloading DASH-segmented audio
+- Downloads the initialization segment followed by all numbered media segments
+  in order, concatenating them into a single MP4 container
+- Remuxes the result from MP4 to FLAC using `ffmpeg -c copy` (lossless, no
+  re-encoding) since Tidal wraps FLAC audio inside an MP4/ISOBMFF container
+  even when the codec is FLAC
+- Inherits from `TidalDownloadable` to stay compatible with the existing
+  download pipeline, progress tracking, and size reporting
+
+### Requirements
+
+This fork requires `ffmpeg` to be installed and available on your `PATH`.
+On Debian/Ubuntu: `apt install ffmpeg`
+
+### Notes
+
+Some tracks on an album may still download as `.m4a` (AAC) rather than `.flac`.
+This is expected — Tidal's API returns different quality levels per track based
+on per-track licensing. Tracks the API reports as `HI_RES_LOSSLESS` will be
+downloaded as 24-bit FLAC; tracks reported as `HIGH` will be downloaded as AAC
+320kbps. This is a Tidal-side limitation and cannot be worked around from the
+client.
+
+### 🚨 End Fork Changes 🚨
+
 ## Features
 
 - Fast, concurrent downloads powered by `aiohttp`
