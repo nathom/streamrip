@@ -388,6 +388,11 @@ class DeezerClient(Client):
                     final_quality = q_level
                     break
             except deezer.WrongLicense:
+                if not self.config.lower_quality_if_not_available:
+                    raise NonStreamableError(
+                        f"Quality {q_level} is not available with your subscription "
+                        "and fallback is disabled."
+                    )
                 logger.warning("Quality %d not available for this account, trying lower", q_level)
                 continue
             except deezer.WrongGeolocation:

@@ -1,5 +1,6 @@
 import os
 import pytest
+import deezer
 from unittest.mock import Mock, patch
 from util import arun
 
@@ -103,25 +104,21 @@ def test_deezer_fallback_to_lowest_available_quality(mock_deezer_client):
         assert downloadable.quality == 0
 
 def test_deezer_no_fallback_when_disabled(mock_deezer_client):
-    """Unit test: no fallback when lower_quality_if_not_available is False"""
-    # Disable fallback
+    """Unit test: WrongLicense raises NonStreamableError when fallback is disabled."""
     mock_deezer_client.config.lower_quality_if_not_available = False
-    
-    # Mock track info where FLAC is unavailable
-    # quality_map: [(9, "MP3_128"), (3, "MP3_320"), (1, "FLAC")]
+
     mock_track_info = {
-        "FILESIZE_FLAC": 0,      # FLAC unavailable (quality 2)
-        "FILESIZE_MP3_320": 5000000, # MP3_320 available (quality 1)
-        "FILESIZE_MP3_128": 2000000, # MP3_128 available (quality 0)
-        "TRACK_TOKEN": "test_url"
+        "FILESIZE_FLAC": 25000000,
+        "FILESIZE_MP3_320": 5000000,
+        "FILESIZE_MP3_128": 2000000,
+        "TRACK_TOKEN": "test_token",
     }
-    
     mock_deezer_client.client.gw.get_track.return_value = mock_track_info
-    mock_deezer_client.client.get_track_url.return_value = "https://test.mp3"
-    
-    # Should raise an error when requested quality is unavailable and fallback is disabled
+    # Simulate the account not having FLAC rights
+    mock_deezer_client.client.get_track_url.side_effect = deezer.WrongLicense("FLAC")
+
     with patch.object(mock_deezer_client, 'get_session'):
-        with pytest.raises(NonStreamableError, match="The requested quality 2 is not available and fallback is disabled"):
+        with pytest.raises(NonStreamableError, match="fallback is disabled"):
             arun(mock_deezer_client.get_downloadable("123", quality=2))
 
 def test_deezer_album_cache(mock_deezer_client):
