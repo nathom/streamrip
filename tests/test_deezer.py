@@ -124,6 +124,23 @@ def test_deezer_no_fallback_when_disabled(mock_deezer_client):
         with pytest.raises(NonStreamableError, match="The requested quality 2 is not available and fallback is disabled"):
             arun(mock_deezer_client.get_downloadable("123", quality=2))
 
+def test_deezer_album_cache(mock_deezer_client):
+    """Unit test: verify get_album results are cached and retrieved on subsequent calls"""
+    mock_deezer_client.client.api.get_album.return_value = {"id": "album_123", "title": "Test Album", "genres": {"data": []}}
+    mock_deezer_client.client.api.get_album_tracks.return_value = {"data": []}
+    
+    # Call get_album twice
+    res1 = arun(mock_deezer_client.get_album("album_123"))
+    res2 = arun(mock_deezer_client.get_album("album_123"))
+    
+    # Assert return values are identical
+    assert res1 == res2
+    assert res1["title"] == "Test Album"
+    
+    # Assert api call was made exactly once
+    assert mock_deezer_client.client.api.get_album.call_count == 1
+    assert mock_deezer_client.client.api.get_album_tracks.call_count == 1
+
 # ===== INTEGRATION TEST =====
 
 @pytest.mark.skipif(
