@@ -39,6 +39,11 @@ class DeezerClient(Client):
     max_favorites = 10_000
 
     def __init__(self, config: Config):
+        """Initialize the DeezerClient.
+
+        Args:
+            config (Config): The application configuration object.
+        """
         self.global_config = config
         self.client = deezer.Deezer()
         self.logged_in = False
@@ -83,7 +88,18 @@ class DeezerClient(Client):
         self.logged_in = True
 
     async def get_metadata(self, item_id: str, media_type: str) -> dict:
-        """Dispatch metadata fetch by media type."""
+        """Fetch metadata for a given item, dispatching by media type.
+
+        Args:
+            item_id (str): The ID of the item to fetch.
+            media_type (str): One of "track", "album", "playlist", or "artist".
+
+        Returns:
+            dict: The metadata of the requested item.
+
+        Raises:
+            Exception: If the media type is not supported.
+        """
         # TODO: open asyncio PR to deezer py and integrate
         if media_type == "track":
             return await self.get_track(item_id)
@@ -97,10 +113,17 @@ class DeezerClient(Client):
             raise Exception(f"Media type {media_type} not available on deezer")
 
     async def get_track(self, item_id: str) -> dict:
-        """Fetch track metadata, including full album info.
+        """Fetch metadata for a track, including its full album info.
+
+        Args:
+            item_id (str): The Deezer track ID.
+
+        Returns:
+            dict: The track metadata dict with a nested "album" key containing
+                  the album metadata and its track list.
 
         Raises:
-            NonStreamableError: If the track API call fails.
+            NonStreamableError: If the track cannot be fetched from the API.
         """
         try:
             item = await asyncio.to_thread(self.client.api.get_track, item_id)
@@ -120,7 +143,20 @@ class DeezerClient(Client):
         return item
 
     async def get_album(self, item_id: str) -> dict:
-        """Fetch album metadata (tracks included). Results are cached in-process."""
+        """Fetch metadata for an album, including its full track list.
+
+        Results are cached in-process: subsequent calls with the same ID return
+        immediately without hitting the API.
+
+        Args:
+            item_id (str): The Deezer album ID.
+
+        Returns:
+            dict: The album metadata dict with "tracks" and "track_total" keys added.
+
+        Raises:
+            DataException: If the album is not found and no redirect can be resolved.
+        """
         if item_id in self._album_cache:
             logger.info("Deezer album cache hit for album ID: %s", item_id)
             return self._album_cache[item_id]
@@ -172,7 +208,16 @@ class DeezerClient(Client):
         return None
 
     async def get_playlist(self, item_id: str) -> dict:
-        """Fetch playlist metadata. Pass "favorites:{user_id}" for a user's loved tracks."""
+        """Fetch metadata for a playlist.
+
+        Args:
+            item_id (str): The playlist ID, or "favorites:{user_id}" to fetch
+                           a user's loved tracks as a playlist.
+
+        Returns:
+            dict: A dict with "title", "tracks" (list of {"id": ...} dicts),
+                  and "track_total" keys.
+        """
         if item_id.startswith("favorites:"):
             user_id = item_id[len("favorites:"):]
             return await self.get_user_favorites(user_id)
@@ -197,7 +242,14 @@ class DeezerClient(Client):
         }
 
     async def get_user_favorites(self, user_id: str) -> dict:
-        """Return a playlist-shaped dict of loved tracks for a Deezer user profile."""
+        """Fetch the loved tracks for a Deezer user profile.
+
+        Args:
+            user_id (str): The Deezer user ID (numeric string).
+
+        Returns:
+            dict: A playlist-shaped dict with "title", "tracks", and "track_total".
+        """
         # deezer-py silently drops the limit arg in get_user_tracks() when it detects
         # the own profile and re-routes to get_my_favorite_tracks(). Call the latter
         # directly so the limit is always honoured.
@@ -216,7 +268,18 @@ class DeezerClient(Client):
         }
 
     async def get_artist(self, item_id: str) -> dict:
-        """Fetch artist metadata including their album list."""
+        """Fetch metadata for an artist, including their album list.
+
+        Args:
+            item_id (str): The Deezer artist ID.
+
+        Returns:
+            dict: The artist metadata dict with an "albums" key containing
+                  the list of album dicts.
+
+        Raises:
+            DataException: If the artist is not found and no redirect can be resolved.
+        """
         try:
             artist, albums = await asyncio.gather(
                 asyncio.to_thread(self.client.api.get_artist, item_id),
@@ -232,8 +295,18 @@ class DeezerClient(Client):
         return artist
 
     async def search(self, media_type: str, query: str, limit: int = 200) -> list[dict]:
-        """Search Deezer. Pass media_type="featured" and a query matching an editorial
-        category (e.g. "releases") to fetch editorial content instead of search results."""
+        """Search for items on Deezer.
+
+        Args:
+            media_type (str): The type of media to search for (e.g. "track", "album",
+                              "artist"). Pass "featured" to fetch editorial content.
+            query (str): The search query. When media_type is "featured", this should
+                         match an editorial category name (e.g. "releases").
+            limit (int): Maximum number of results to return. Defaults to 200.
+
+        Returns:
+            list[dict]: A list containing the raw API response dict(s).
+        """
         if media_type == "featured":
             try:
                 if query:
@@ -261,13 +334,22 @@ class DeezerClient(Client):
     ) -> DeezerDownloadable:
         """Resolve the download URL for a track and return a DeezerDownloadable.
 
+        Tries qualities from the requested level down to 0 (MP3_128), falling back
+        automatically on WrongLicense. If the token API fails entirely, falls back
+        to the legacy AES-encrypted CDN URL.
+
         Args:
-            item_id: The track ID.
-            quality: Desired quality level (0=MP3_128, 1=MP3_320, 2=FLAC).
-            is_retry: True when called recursively for a geoblocking fallback ID.
+            item_id (str): The Deezer track ID.
+            quality (int): Desired quality level (0=MP3_128, 1=MP3_320, 2=FLAC).
+                           Clamped to [0, 2].
+            is_retry (bool): Internal flag — True when called recursively to try a
+                             geoblocking fallback ID.
+
+        Returns:
+            DeezerDownloadable: Ready-to-use downloadable object for the track.
 
         Raises:
-            NonStreamableError: If no download URL can be obtained.
+            NonStreamableError: If no download URL can be obtained for the track.
         """
         if item_id is None:
             raise NonStreamableError(
@@ -336,7 +418,16 @@ class DeezerClient(Client):
         track_hash: str,
         media_version: str,
     ) -> str:
-        """Build the legacy AES-ECB CDN URL used when the token API returns nothing."""
+        """Build the legacy AES-ECB CDN URL used when the token API returns nothing.
+
+        Args:
+            meta_id (str): The track metadata ID.
+            track_hash (str): The MD5 hash of the track origin URL.
+            media_version (str): The media version string from the GW track info.
+
+        Returns:
+            str: A signed CDN URL pointing to the encrypted audio file.
+        """
         logger.debug("Falling back to encrypted file URL for track %s", meta_id)
         format_number = 1
 
