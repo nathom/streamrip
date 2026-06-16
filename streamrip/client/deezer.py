@@ -50,6 +50,7 @@ class DeezerClient(Client):
         self.logged_in = False
         self.config = config.session.deezer
         self.logged_in_user_id: int | None = None
+        self._album_cache = {}
 
         # Increase the deezer-py requests session pool well above max_connections.
         # Each concurrent download spawns several API calls (metadata, track token,
@@ -153,6 +154,9 @@ class DeezerClient(Client):
         Returns:
             dict: The album metadata.
         """
+        if item_id in self._album_cache:
+            logger.info(f"Deezer album cache hit for album ID: {item_id}")
+            return self._album_cache[item_id]
         try:
             album_metadata, album_tracks = await asyncio.gather(
                 asyncio.to_thread(self.client.api.get_album, item_id),
@@ -161,11 +165,14 @@ class DeezerClient(Client):
         except DataException:
             new_id = await self._resolve_redirect("album", item_id)
             if new_id:
-                return await self.get_album(new_id)
+                metadata = await self.get_album(new_id)
+                self._album_cache[item_id] = metadata
+                return metadata
             raise
 
         album_metadata["tracks"] = album_tracks["data"]
         album_metadata["track_total"] = len(album_tracks["data"])
+        self._album_cache[item_id] = album_metadata
         return album_metadata
 
     async def _resolve_redirect(self, media_type: str, item_id: str) -> str | None:
