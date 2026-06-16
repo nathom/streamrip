@@ -16,7 +16,13 @@
     "picture": null
   },
   "artists": [
-    { "id": 132127, "name": "Fleetwood Mac", "roles": ["main-artist"] }
+    {
+      "id": 132127,
+      "name": "Fleetwood Mac",
+      "roles": [
+        "main-artist"
+      ]
+    }
   ],
   "upc": "0603497941032",
   "released_at": 223858800,
@@ -36,11 +42,14 @@
   "popularity": 0,
   "tracks_count": 11,
   "genre": {
-    "path": [112, 119],
+    "path": [
+      112,
+      119
+    ],
     "color": "#5eabc1",
-    "name": "Rock",
+    "name": "Pop/Rock",
     "id": 119,
-    "slug": "rock"
+    "slug": "pop-rock"
   },
   "maximum_channel_count": 2,
   "id": "0603497941032",
@@ -83,7 +92,10 @@
     "image": null
   },
   "created_at": 0,
-  "genres_list": ["Pop/Rock", "Pop/Rock\u2192Rock"],
+  "genres_list": [
+    "Pop/Rock",
+    "Pop/Rock\u2192Rock"
+  ],
   "period": null,
   "copyright": "\u00a9 1977 Warner Records Inc. \u2117 1977 Warner Records Inc. Marketed by Rhino Entertainment Company, A Warner Music Group Company.",
   "is_official": true,
@@ -95,7 +107,9 @@
   "product_url": "/fr-fr/album/rumours-fleetwood-mac/0603497941032",
   "recording_information": "",
   "relative_url": "/album/rumours-fleetwood-mac/0603497941032",
-  "release_tags": ["remaster"],
+  "release_tags": [
+    "remaster"
+  ],
   "release_type": "album",
   "slug": "rumours-fleetwood-mac",
   "subtitle": "Fleetwood Mac",
