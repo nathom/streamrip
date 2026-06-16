@@ -91,7 +91,7 @@ class DeezerClient(Client):
 
     async def get_album(self, item_id: str) -> dict:
         if item_id in self._album_cache:
-            logger.debug(f"Deezer album cache hit for album ID: {item_id}")
+            logger.info(f"Deezer album cache hit for album ID: {item_id}")
             return self._album_cache[item_id]
         album_metadata, album_tracks = await asyncio.gather(
             asyncio.to_thread(self.client.api.get_album, item_id),
