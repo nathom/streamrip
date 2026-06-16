@@ -5,6 +5,32 @@
 
 > **Note:** This is a personal fork of [nathom/streamrip](https://github.com/nathom/streamrip) used to test and integrate pending patches, primarily related to Deezer. It is not intended for general use — refer to the upstream project for stable releases.
 
+## Changes from upstream
+
+The following fixes and improvements are present in this fork on top of [`nathom/streamrip:dev`](https://github.com/nathom/streamrip/tree/dev):
+
+**Deezer**
+- Support for `link.deezer.com/s/` short URLs ([#887](https://github.com/nathom/streamrip/pull/887))
+- Download liked tracks from a user profile URL (`/profile/USER_ID/loved`)
+- Use the GW API for playlist fetching to avoid breakage on the public API ([#973](https://github.com/nathom/streamrip/pull/973))
+- Include all artists from the `contributors` array in track and album metadata ([#907](https://github.com/nathom/streamrip/pull/907))
+- Automatic redirect resolution for albums, playlists and artists (handles moved/deleted IDs)
+- In-memory album metadata cache — avoids redundant API calls when the same album is fetched multiple times in one session ([#1000](https://github.com/nathom/streamrip/pull/1000))
+- Connection pool sized to `max(max_connections × 4, 32)` to prevent urllib3 "pool full" warnings under concurrent downloads ([#997](https://github.com/nathom/streamrip/pull/997))
+- Quality fallback: if the requested quality is unavailable, silently falls back to a lower tier instead of crashing
+
+**Converter**
+- OGG/OPUS: cover art is embedded post-conversion via `mutagen` (`METADATA_BLOCK_PICTURE`), and `-vn` prevents an unwanted Theora video stream ([#992](https://github.com/nathom/streamrip/pull/992))
+- AAC: uses `libfdk_aac` when available, falls back to the native FFmpeg `aac` encoder ([#990](https://github.com/nathom/streamrip/pull/990))
+- `OPUS` exposed as a `-c`/`--codec` option in the CLI ([#989](https://github.com/nathom/streamrip/pull/989))
+- FFmpeg `stdin` redirected to `/dev/null` to prevent terminal echo/raw-mode corruption after a rip ([#996](https://github.com/nathom/streamrip/pull/996))
+
+**CLI / misc**
+- Version check is resilient to network errors and non-JSON responses (e.g. GitHub 504) ([#995](https://github.com/nathom/streamrip/pull/995))
+- Version comparison is numeric (`1.10 > 1.9`) rather than lexicographic
+
+---
+
 A scriptable stream downloader for Qobuz, Tidal, Deezer and SoundCloud.
 
 ![downloading an album](https://github.com/nathom/streamrip/blob/dev/demo/download_album.png?raw=true)
@@ -26,15 +52,13 @@ A scriptable stream downloader for Qobuz, Tidal, Deezer and SoundCloud.
 
 First, ensure [Python](https://www.python.org/downloads/) (version 3.10 or greater) and [pip](https://pip.pypa.io/en/stable/installing/) are installed. Then install `ffmpeg`. You may choose not to install this, but some functionality will be limited.
 
-```bash
-pip3 install streamrip --upgrade
-```
-
-If you run into issues, try installing directly from the `dev` branch:
+Install this fork directly from the `dev` branch:
 
 ```bash
 pip3 install git+https://github.com/berettavexee/streamrip.git@dev
 ```
+
+> **Note:** `pip3 install streamrip --upgrade` installs the upstream release from PyPI, not this fork. Use the command above to get the patches listed below.
 
 When you type
 
@@ -43,31 +67,6 @@ rip
 ```
 
 it should show the main help page. If you have no idea what these mean, or are having other issues installing, check out the [detailed installation instructions](https://github.com/nathom/streamrip/wiki#detailed-installation-instructions).
-
-For Arch Linux users, an AUR package exists. Make sure to install required packages from the AUR before using `makepkg` or use an AUR helper to automatically resolve them.
-```
-git clone https://aur.archlinux.org/streamrip.git
-cd streamrip
-makepkg -si
-```
- or
- ```
-paru -S streamrip
-```
-
-Alternatively, for users of Homebrew, you can install streamrip through brew.
-```
-brew install streamrip
-```
-
-### Streamrip beta
-
-If you want to get access to the latest and greatest features without waiting for a new release, install
-from the `dev` branch with the following command
-
-```bash
-pip3 install git+https://github.com/berettavexee/streamrip.git@dev
-```
 
 ## Example Usage
 
