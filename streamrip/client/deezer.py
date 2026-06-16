@@ -38,6 +38,13 @@ class DeezerClient(Client):
     max_quality = 2
     max_favorites = 10_000
 
+    # quality index → (gw format id, API format string)
+    _QUALITY_MAP: list[tuple[int, str]] = [
+        (9, "MP3_128"),  # quality 0
+        (3, "MP3_320"),  # quality 1
+        (1, "FLAC"),     # quality 2
+    ]
+
     def __init__(self, config: Config):
         """Initialize the DeezerClient.
 
@@ -49,7 +56,7 @@ class DeezerClient(Client):
         self.logged_in = False
         self.config = config.session.deezer
         self.logged_in_user_id: int | None = None
-        self._album_cache = {}
+        self._album_cache: dict[str, dict] = {}
 
         # Increase the deezer-py requests session pool well above max_connections.
         # Each concurrent download spawns several API calls (metadata, track token,
@@ -253,13 +260,14 @@ class DeezerClient(Client):
         # deezer-py silently drops the limit arg in get_user_tracks() when it detects
         # the own profile and re-routes to get_my_favorite_tracks(). Call the latter
         # directly so the limit is always honoured.
-        if int(user_id) == self.logged_in_user_id:
+        uid = int(user_id)
+        if uid == self.logged_in_user_id:
             tracks = await asyncio.to_thread(
                 self.client.gw.get_my_favorite_tracks, self.max_favorites
             )
         else:
             tracks = await asyncio.to_thread(
-                self.client.gw.get_user_tracks, int(user_id), self.max_favorites
+                self.client.gw.get_user_tracks, uid, self.max_favorites
             )
         return {
             "title": "Loved Tracks",
@@ -328,7 +336,7 @@ class DeezerClient(Client):
 
     async def get_downloadable(
         self,
-        item_id: str,
+        item_id: str | None,
         quality: int = 2,
         is_retry: bool = False,
     ) -> DeezerDownloadable:
@@ -339,7 +347,7 @@ class DeezerClient(Client):
         to the legacy AES-encrypted CDN URL.
 
         Args:
-            item_id (str): The Deezer track ID.
+            item_id (str | None): The Deezer track ID. None raises NonStreamableError.
             quality (int): Desired quality level (0=MP3_128, 1=MP3_320, 2=FLAC).
                            Clamped to [0, 2].
             is_retry (bool): Internal flag — True when called recursively to try a
@@ -362,17 +370,13 @@ class DeezerClient(Client):
         track_info = self.client.gw.get_track(item_id)
         fallback_id = track_info.get("FALLBACK", {}).get("SNG_ID")
 
-        # quality index → (gw format id, API format string)
-        quality_map = [
-            (9, "MP3_128"),  # quality 0
-            (3, "MP3_320"),  # quality 1
-            (1, "FLAC"),     # quality 2
-        ]
-
-        dl_info: dict = {"quality": quality, "id": item_id}
-        dl_info["quality_to_size"] = [
-            int(track_info.get(f"FILESIZE_{fmt}", 0)) for _, fmt in quality_map
-        ]
+        dl_info: dict = {
+            "quality": quality,
+            "id": item_id,
+            "quality_to_size": [
+                int(track_info.get(f"FILESIZE_{fmt}", 0)) for _, fmt in self._QUALITY_MAP
+            ],
+        }
 
         token = track_info["TRACK_TOKEN"]
         url = None
@@ -380,7 +384,7 @@ class DeezerClient(Client):
 
         # Try from the requested quality down to 0 (MP3_128), stopping at first success.
         for q_level in range(quality, -1, -1):
-            _, format_str = quality_map[q_level]
+            _, format_str = self._QUALITY_MAP[q_level]
             try:
                 logger.debug("Attempting quality %d (%s)", q_level, format_str)
                 url = self.client.get_track_url(token, format_str)
