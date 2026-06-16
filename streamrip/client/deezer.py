@@ -6,7 +6,7 @@ import re
 
 import deezer
 import requests
-from deezer.errors import DataException
+from deezer.errors import DataException, GWAPIError
 from Cryptodome.Cipher import AES
 
 from ..config import Config
@@ -108,16 +108,16 @@ class DeezerClient(Client):
             Exception: If the media type is not supported.
         """
         # TODO: open asyncio PR to deezer py and integrate
-        if media_type == "track":
-            return await self.get_track(item_id)
-        elif media_type == "album":
-            return await self.get_album(item_id)
-        elif media_type == "playlist":
-            return await self.get_playlist(item_id)
-        elif media_type == "artist":
-            return await self.get_artist(item_id)
-        else:
+        handlers = {
+            "track": self.get_track,
+            "album": self.get_album,
+            "playlist": self.get_playlist,
+            "artist": self.get_artist,
+        }
+        handler = handlers.get(media_type)
+        if handler is None:
             raise Exception(f"Media type {media_type} not available on deezer")
+        return await handler(item_id)
 
     async def get_track(self, item_id: str) -> dict:
         """Fetch metadata for a track, including its full album info.
@@ -234,7 +234,7 @@ class DeezerClient(Client):
                 asyncio.to_thread(self.client.gw.get_playlist, item_id),
                 asyncio.to_thread(self.client.gw.get_playlist_tracks, item_id),
             )
-        except Exception:
+        except GWAPIError:
             new_id = await self._resolve_redirect("playlist", item_id)
             if new_id:
                 return await self.get_playlist(new_id)
