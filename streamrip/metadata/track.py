@@ -55,11 +55,8 @@ class TrackMetadata:
         tracknumber = typed(resp.get("track_number", 1), int)
         discnumber = typed(resp.get("media_number", 1), int)
         artist = typed(
-            safe_get(
-                resp,
-                "performer",
-                "name",
-            ),
+            safe_get(resp, "performer", "name")
+            or safe_get(resp, "album", "artist", "name"),
             str,
         )
         track_id = str(resp["id"])
