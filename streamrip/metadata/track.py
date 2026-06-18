@@ -180,7 +180,7 @@ class TrackMetadata:
         tracknumber = typed(track.get("trackNumber", 1), int)
         discnumber = typed(track.get("volumeNumber", 1), int)
 
-        artists = track.get("artists")
+        artists = track.get("artists") or []
         if len(artists) > 0:
             artist = ", ".join(a["name"] for a in artists)
         else:
@@ -193,13 +193,11 @@ class TrackMetadata:
             "HIGH": 1,
             "LOSSLESS": 2,
             "HI_RES": 3,
+            "HI_RES_LOSSLESS": 3,  # renamed when Tidal dropped MQA
         }
 
         tidal_quality = track.get("audioQuality")
-        if tidal_quality is not None:
-            quality = quality_map[tidal_quality]
-        else:
-            quality = 0
+        quality = quality_map.get(tidal_quality, 0) if tidal_quality is not None else 0
 
         if quality >= 2:
             sampling_rate = 44100

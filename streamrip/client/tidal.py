@@ -194,6 +194,10 @@ class TidalClient(Client):
             try:
                 manifest = json.loads(base64.b64decode(manifest_b64).decode("utf-8"))
             except JSONDecodeError:
+                if quality <= 0:
+                    raise NonStreamableError(
+                        f"Tidal track {track_id} is not streamable at any quality."
+                    )
                 logger.warning(
                     f"Failed to decode BTS manifest for {track_id}. Retrying with lower quality."
                 )
@@ -245,6 +249,8 @@ class TidalClient(Client):
             raise Exception("No SegmentTemplate found in DASH manifest")
 
         media_template = segment_template.get("media")
+        if media_template is None:
+            raise Exception("No 'media' attribute in SegmentTemplate of DASH manifest")
         start_number = int(segment_template.get("startNumber", "0"))
 
         timeline = segment_template.find("mpd:SegmentTimeline", ns)
