@@ -54,11 +54,19 @@ async def fast_async_download(path, url, headers, callback):
                 allow_redirects=True,
                 stream=True,
             ) as resp:
+                resp.raise_for_status()
                 for chunk in resp.iter_content(chunk_size=chunk_size):
                     file.write(chunk)
                     callback(len(chunk))
 
-    await asyncio.to_thread(_sync_download)
+    try:
+        await asyncio.to_thread(_sync_download)
+    except Exception:
+        try:
+            os.remove(path)
+        except FileNotFoundError:
+            pass
+        raise
 
 
 @dataclass(slots=True)

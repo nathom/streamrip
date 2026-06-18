@@ -460,4 +460,6 @@ class QobuzClient(Client):
     @staticmethod
     def get_quality(quality: int):
         quality_map = (5, 6, 7, 27)
+        if not (1 <= quality <= 4):
+            raise NonStreamableError(f"Invalid Qobuz quality {quality} (must be 1–4)")
         return quality_map[quality - 1]
