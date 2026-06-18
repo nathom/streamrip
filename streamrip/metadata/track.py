@@ -33,6 +33,7 @@ class TrackMetadata:
     composer: str | None
     isrc: str | None = None
     lyrics: str | None = ""
+    bpm: int | None = None
 
     @classmethod
     def from_qobuz(cls, album: AlbumMetadata, resp: dict) -> TrackMetadata | None:
@@ -101,7 +102,20 @@ class TrackMetadata:
         ) or typed(resp["artist"]["name"], str)
         tracknumber = typed(resp["track_position"], int)
         discnumber = typed(resp["disk_number"], int)
-        composer = None
+
+        # composer is injected by DeezerClient.get_track from SNG_CONTRIBUTORS
+        # (not present in the public REST API response)
+        raw_composers = resp.get("composer")
+        if isinstance(raw_composers, list) and raw_composers:
+            composer: str | None = ", ".join(raw_composers)
+        elif isinstance(raw_composers, str):
+            composer = raw_composers
+        else:
+            composer = None
+
+        raw_bpm = resp.get("bpm")
+        bpm: int | None = int(raw_bpm) if raw_bpm else None
+
         info = TrackInfo(
             id=track_id,
             quality=album.info.quality,
@@ -119,6 +133,7 @@ class TrackMetadata:
             discnumber=discnumber,
             composer=composer,
             isrc=isrc,
+            bpm=bpm,
         )
 
     @classmethod

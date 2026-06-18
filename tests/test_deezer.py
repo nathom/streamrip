@@ -42,6 +42,14 @@ def mock_deezer_client():
     return client
 
 
+# ===== get_downloadable — guard =====
+
+def test_deezer_item_id_none(mock_deezer_client):
+    """get_downloadable raises NonStreamableError immediately when item_id is None."""
+    with pytest.raises(NonStreamableError):
+        arun(mock_deezer_client.get_downloadable(None, quality=2))
+
+
 # ===== get_downloadable — quality fallback =====
 
 def test_deezer_fallback_logic_with_mock_data(mock_deezer_client):
@@ -116,6 +124,32 @@ def test_deezer_no_fallback_when_disabled(mock_deezer_client):
 
     with pytest.raises(NonStreamableError, match="fallback is disabled"):
         arun(mock_deezer_client.get_downloadable("123", quality=2))
+
+
+def test_deezer_wrong_license_all_qualities(mock_deezer_client):
+    """WrongLicense on every quality level falls through to the encrypted CDN URL."""
+    mock_track_info = {
+        "FILESIZE_FLAC": 25_000_000,
+        "FILESIZE_MP3_320": 5_000_000,
+        "FILESIZE_MP3_128": 2_000_000,
+        "TRACK_TOKEN": "test_token",
+        "MD5_ORIGIN": "abc123def456abc123def456abc12345",
+        "MEDIA_VERSION": "1",
+    }
+    mock_deezer_client.client.gw.get_track.return_value = mock_track_info
+    mock_deezer_client.client.get_track_url.side_effect = deezer.WrongLicense("any")
+
+    with patch.object(
+        mock_deezer_client,
+        "_get_encrypted_file_url",
+        return_value="https://e-cdns-proxy-a.dzcdn.net/mobile/1/deadbeef",
+    ) as mock_encrypted:
+        downloadable = arun(mock_deezer_client.get_downloadable("123", quality=2))
+
+    mock_encrypted.assert_called_once_with(
+        "123", "abc123def456abc123def456abc12345", "1"
+    )
+    assert downloadable.url == "https://e-cdns-proxy-a.dzcdn.net/mobile/1/deadbeef"
 
 
 # ===== get_downloadable — geoblocking =====
@@ -260,12 +294,16 @@ def test_deezer_get_track(mock_deezer_client):
     mock_deezer_client.client.api.get_album_tracks.return_value = {
         "data": [{"id": "100"}]
     }
+    mock_deezer_client.client.gw.get_track.return_value = {
+        "SNG_CONTRIBUTORS": {"composer": ["Bach", "Handel"]},
+    }
 
     track = arun(mock_deezer_client.get_track("100"))
 
     assert track["title"] == "Test Track"
     assert track["album"]["title"] == "Test Album"
     assert track["album"]["track_total"] == 1
+    assert track["composer"] == ["Bach", "Handel"]
 
 
 # ===== get_playlist =====

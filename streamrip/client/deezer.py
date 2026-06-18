@@ -122,12 +122,16 @@ class DeezerClient(Client):
     async def get_track(self, item_id: str) -> dict:
         """Fetch metadata for a track, including its full album info.
 
+        Also fetches GW track info concurrently to enrich the REST response with
+        SNG_CONTRIBUTORS (composer/author fields absent from the public REST API).
+
         Args:
             item_id (str): The Deezer track ID.
 
         Returns:
             dict: The track metadata dict with a nested "album" key containing
-                  the album metadata and its track list.
+                  the album metadata and its track list. May include "composer"
+                  and "author" keys when SNG_CONTRIBUTORS data is available.
 
         Raises:
             NonStreamableError: If the track cannot be fetched from the API.
@@ -139,13 +143,24 @@ class DeezerClient(Client):
 
         album_id = item["album"]["id"]
         try:
-            # Use get_album so the result is cached and redirects are handled.
-            album_metadata = await self.get_album(str(album_id))
+            # Fetch album and GW track info concurrently.
+            # GW track info provides SNG_CONTRIBUTORS (composer/author) which
+            # is not available in the public REST API response.
+            album_metadata, gw_info = await asyncio.gather(
+                self.get_album(str(album_id)),
+                asyncio.to_thread(self.client.gw.get_track, item_id),
+            )
         except Exception as e:
             logger.error("Error fetching album of track %s: %s", item_id, e)
             return item
 
         item["album"] = album_metadata
+
+        contributors = gw_info.get("SNG_CONTRIBUTORS", {})
+        if "composer" in contributors:
+            item["composer"] = contributors["composer"]
+        if "author" in contributors:
+            item["author"] = contributors["author"]
 
         return item
 
