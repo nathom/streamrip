@@ -47,7 +47,7 @@ class PendingPlaylistTrack(Pending):
             logger.info(f"Track ({self.id}) already logged in database. Skipping.")
             return None
         try:
-            resp = await self.client.get_metadata(self.id, "track")
+            resp = await self.client.get_track_for_playlist(self.id)
         except NonStreamableError as e:
             logger.error(f"Could not stream track {self.id}: {e}")
             return None

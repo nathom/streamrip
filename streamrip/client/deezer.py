@@ -4,6 +4,7 @@ import hashlib
 import logging
 import re
 
+import aiolimiter
 import deezer
 import requests
 from deezer.errors import DataException, GWAPIError
@@ -59,6 +60,9 @@ class DeezerClient(Client):
         self.logged_in_user_id: int | None = None
         self._album_cache: dict[str, dict] = {}
         self._gw_track_cache: dict[str, dict] = {}
+        # Deezer's public REST API (api.deezer.com) throttles beyond ~10 req/sec
+        # and returns a 86-byte error JSON above that rate. Cap at 10/sec.
+        self._api_rate_limiter = aiolimiter.AsyncLimiter(10, 1)
 
         # Increase the deezer-py requests session pool well above max_connections.
         # Each concurrent download spawns several API calls (metadata, track token,
@@ -121,55 +125,77 @@ class DeezerClient(Client):
             raise Exception(f"Media type {media_type} not available on deezer")
         return await handler(item_id)
 
-    async def get_track(self, item_id: str) -> dict:
-        """Fetch metadata for a track, including its full album info.
+    async def get_track(self, item_id: str, fetch_album: bool = True) -> dict:
+        """Fetch metadata for a track, optionally including its full album info.
 
-        Also fetches GW track info concurrently to enrich the REST response with
-        SNG_CONTRIBUTORS (composer/author fields absent from the public REST API).
+        Also fetches GW track info to enrich the REST response with SNG_CONTRIBUTORS
+        (composer/author fields absent from the public REST API).
+
+        When fetch_album is True (the default), the album sub-object in the returned
+        dict is replaced with the full album metadata (genres, tracktotal, disctotal,
+        albumartist). When False, the minimal album stub from the REST track response
+        is kept — AlbumMetadata will fall back to from_incomplete_deezer_track_resp,
+        which gives tracktotal=1, disctotal=1, and empty genres.
 
         Args:
             item_id (str): The Deezer track ID.
+            fetch_album (bool): Whether to fetch the full album metadata. Set to
+                False for playlist tracks to save two REST API calls per track.
 
         Returns:
-            dict: The track metadata dict with a nested "album" key containing
-                  the album metadata and its track list. May include "composer"
-                  and "author" keys when SNG_CONTRIBUTORS data is available.
+            dict: The track metadata dict. May include "composer", "author", and
+                  "gain" keys when available from GW data.
 
         Raises:
             NonStreamableError: If the track cannot be fetched from the API.
         """
         try:
-            item = await asyncio.to_thread(self.client.api.get_track, item_id)
+            async with self._api_rate_limiter:
+                item = await asyncio.to_thread(self.client.api.get_track, item_id)
         except Exception as e:
             raise NonStreamableError(e)
 
-        album_id = item["album"]["id"]
         try:
-            # Fetch album and GW track info concurrently.
-            # GW track info provides SNG_CONTRIBUTORS (composer/author) which
-            # is not available in the public REST API response.
-            album_metadata, gw_info = await asyncio.gather(
-                self.get_album(str(album_id)),
-                asyncio.to_thread(self.client.gw.get_track, item_id),
-            )
-            self._gw_track_cache[item_id] = gw_info
+            if fetch_album:
+                # Fetch album and GW track info concurrently.
+                album_id = item["album"]["id"]
+                album_metadata, gw_info = await asyncio.gather(
+                    self.get_album(str(album_id)),
+                    asyncio.to_thread(self.client.gw.get_track, item_id),
+                )
+                item["album"] = album_metadata
+            else:
+                gw_info = await asyncio.to_thread(self.client.gw.get_track, item_id)
         except Exception as e:
             logger.error("Error fetching album of track %s: %s", item_id, e)
             return item
 
-        item["album"] = album_metadata
-
+        self._gw_track_cache[item_id] = gw_info
         contributors = gw_info.get("SNG_CONTRIBUTORS", {})
         if "composer" in contributors:
             item["composer"] = contributors["composer"]
         if "author" in contributors:
             item["author"] = contributors["author"]
-
         gain = gw_info.get("GAIN")
         if gain is not None:
             item["gain"] = gain
 
         return item
+
+    async def get_track_for_playlist(self, item_id: str) -> dict:
+        """Fetch track metadata for a playlist context, skipping the album fetch.
+
+        Saves two REST API calls per track (get_album + get_album_tracks) at the
+        cost of missing GENRE, TRACKTOTAL, and DISCTOTAL tags on the downloaded
+        file. AlbumMetadata will use from_incomplete_deezer_track_resp instead.
+
+        Args:
+            item_id (str): The Deezer track ID.
+
+        Returns:
+            dict: Track metadata dict without full album sub-object.
+        """
+        return await self.get_track(item_id, fetch_album=False)
 
     async def get_album(self, item_id: str) -> dict:
         """Fetch metadata for an album, including its full track list.
@@ -190,10 +216,10 @@ class DeezerClient(Client):
             logger.info("Deezer album cache hit for album ID: %s", item_id)
             return self._album_cache[item_id]
         try:
-            album_metadata, album_tracks = await asyncio.gather(
-                asyncio.to_thread(self.client.api.get_album, item_id),
-                asyncio.to_thread(self.client.api.get_album_tracks, item_id),
-            )
+            async with self._api_rate_limiter:
+                album_metadata = await asyncio.to_thread(self.client.api.get_album, item_id)
+            async with self._api_rate_limiter:
+                album_tracks = await asyncio.to_thread(self.client.api.get_album_tracks, item_id)
         except DataException:
             new_id = await self._resolve_redirect("album", item_id)
             if new_id:
@@ -311,10 +337,10 @@ class DeezerClient(Client):
             DataException: If the artist is not found and no redirect can be resolved.
         """
         try:
-            artist, albums = await asyncio.gather(
-                asyncio.to_thread(self.client.api.get_artist, item_id),
-                asyncio.to_thread(self.client.api.get_artist_albums, item_id),
-            )
+            async with self._api_rate_limiter:
+                artist = await asyncio.to_thread(self.client.api.get_artist, item_id)
+            async with self._api_rate_limiter:
+                albums = await asyncio.to_thread(self.client.api.get_artist_albums, item_id)
         except DataException:
             new_id = await self._resolve_redirect("artist", item_id)
             if new_id:

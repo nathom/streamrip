@@ -41,6 +41,22 @@ class Client(ABC):
     async def get_downloadable(self, item: str, quality: int) -> Downloadable:
         raise NotImplementedError
 
+    async def get_track_for_playlist(self, item_id: str) -> dict:
+        """Fetch track metadata for use in a playlist context.
+
+        Default implementation delegates to get_metadata. Override in subclasses
+        to skip expensive sub-fetches that are unnecessary for playlist tracks
+        (e.g. fetching the full album just to get TRACKTOTAL/GENRE tags).
+
+        Args:
+            item_id (str): The track ID on this service.
+
+        Returns:
+            dict: Track metadata dict suitable for building TrackMetadata and
+                  AlbumMetadata from a track response.
+        """
+        return await self.get_metadata(item_id, "track")
+
     @staticmethod
     def get_rate_limiter(
         requests_per_min: int,

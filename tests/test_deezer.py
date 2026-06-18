@@ -306,6 +306,30 @@ def test_deezer_get_track(mock_deezer_client):
     assert track["composer"] == ["Bach", "Handel"]
 
 
+def test_deezer_get_track_for_playlist(mock_deezer_client):
+    """get_track_for_playlist skips get_album and keeps the REST stub album object."""
+    mock_deezer_client.client.api.get_track.return_value = {
+        "id": "100",
+        "title": "Test Track",
+        "album": {"id": 200, "title": "Stub Album"},
+    }
+    mock_deezer_client.client.gw.get_track.return_value = {
+        "SNG_CONTRIBUTORS": {"author": ["Lennon"]},
+        "GAIN": "-6.0",
+    }
+
+    track = arun(mock_deezer_client.get_track_for_playlist("100"))
+
+    assert track["title"] == "Test Track"
+    # album sub-object is the minimal REST stub, not the full album fetch
+    assert track["album"] == {"id": 200, "title": "Stub Album"}
+    assert track["author"] == ["Lennon"]
+    assert track["gain"] == "-6.0"
+    # get_album must NOT have been called
+    mock_deezer_client.client.api.get_album.assert_not_called()
+    mock_deezer_client.client.api.get_album_tracks.assert_not_called()
+
+
 # ===== get_playlist =====
 
 def test_deezer_get_playlist(mock_deezer_client):
