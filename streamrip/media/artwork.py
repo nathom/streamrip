@@ -69,27 +69,32 @@ async def download_artwork(
     _, l_url, saved_cover_path = covers.largest()
     if saved_cover_path is None and save_artwork:
         saved_cover_path = os.path.join(folder, "cover.jpg")
-        assert l_url is not None
-        downloadables.append(
-            BasicDownloadable(session, l_url, "jpg").download(
-                saved_cover_path,
-                lambda _: None,
-            ),
-        )
+        if l_url is None:
+            logger.warning("No cover URL available for saving artwork; skipping")
+            saved_cover_path = None
+        else:
+            downloadables.append(
+                BasicDownloadable(session, l_url, "jpg").download(
+                    saved_cover_path,
+                    lambda _: None,
+                ),
+            )
 
     _, embed_url, embed_cover_path = covers.get_size(config.embed_size)
     if embed_cover_path is None and embed:
-        assert embed_url is not None
-        embed_dir = os.path.join(folder, "__artwork")
-        os.makedirs(embed_dir, exist_ok=True)
-        _artwork_tempdirs.add(embed_dir)
-        embed_cover_path = os.path.join(embed_dir, f"cover{hash(embed_url)}.jpg")
-        downloadables.append(
-            BasicDownloadable(session, embed_url, "jpg").download(
-                embed_cover_path,
-                lambda _: None,
-            ),
-        )
+        if embed_url is None:
+            logger.warning("No embed cover URL available; skipping artwork embedding")
+        else:
+            embed_dir = os.path.join(folder, "__artwork")
+            os.makedirs(embed_dir, exist_ok=True)
+            _artwork_tempdirs.add(embed_dir)
+            embed_cover_path = os.path.join(embed_dir, f"cover{hash(embed_url)}.jpg")
+            downloadables.append(
+                BasicDownloadable(session, embed_url, "jpg").download(
+                    embed_cover_path,
+                    lambda _: None,
+                ),
+            )
 
     if len(downloadables) == 0:
         return embed_cover_path, saved_cover_path

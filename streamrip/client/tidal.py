@@ -216,9 +216,12 @@ class TidalClient(Client):
                 return await self.get_downloadable(track_id, quality - 1)
 
         logger.debug(manifest)
+        urls = manifest.get("urls") or []
+        if not urls:
+            raise NonStreamableError(f"Tidal track {track_id}: manifest contains no stream URLs")
         return TidalDownloadable(
             self.session,
-            url=manifest["urls"][0],
+            url=urls[0],
             codec=manifest["codecs"],
             encryption_key=None,  # MQA encryption abandoned by Tidal
             restrictions=manifest.get("restrictions"),
@@ -304,7 +307,10 @@ class TidalClient(Client):
             f"videos/{video_id}/playbackinfopostpaywall", params=params
         )
         manifest = json.loads(base64.b64decode(resp["manifest"]).decode("utf-8"))
-        async with self.session.get(manifest["urls"][0]) as resp:
+        urls = manifest.get("urls") or []
+        if not urls:
+            raise NonStreamableError(f"Tidal video {video_id}: manifest contains no stream URLs")
+        async with self.session.get(urls[0]) as resp:
             available_urls = await resp.json()
         available_urls.encoding = "utf-8"
 

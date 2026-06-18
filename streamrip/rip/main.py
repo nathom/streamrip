@@ -244,7 +244,9 @@ class Main:
             return
 
         search_results = SearchResults.from_pages(source, media_type, pages)
-        assert len(search_results.results) > 0
+        if not search_results.results:
+            console.print(f"[red]No search results found for query {query}")
+            return
         first = search_results.results[0]
         await self.add_by_id(source, first.media_type(), first.id)
 

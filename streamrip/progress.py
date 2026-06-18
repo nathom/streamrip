@@ -61,7 +61,10 @@ class ProgressManager:
         self._text_cache = self.gen_title_text()
 
     def remove_title(self, title: str):
-        self.task_titles.remove(title.strip())
+        try:
+            self.task_titles.remove(title.strip())
+        except ValueError:
+            pass
         self._text_cache = self.gen_title_text()
 
     def gen_title_text(self) -> Rule:

@@ -393,7 +393,10 @@ class DeezerClient(Client):
         # downloaded directly by ID without a prior get_track call.
         track_info = self._gw_track_cache.pop(item_id, None)
         if track_info is None:
-            track_info = self.client.gw.get_track(item_id)
+            try:
+                track_info = self.client.gw.get_track(item_id)
+            except Exception as e:
+                raise NonStreamableError(f"Could not fetch GW track info for {item_id}: {e}")
         fallback_id = track_info.get("FALLBACK", {}).get("SNG_ID")
 
         dl_info: dict = {
@@ -404,7 +407,9 @@ class DeezerClient(Client):
             ],
         }
 
-        token = track_info["TRACK_TOKEN"]
+        token = track_info.get("TRACK_TOKEN")
+        if token is None:
+            raise NonStreamableError(f"Deezer track {item_id} has no TRACK_TOKEN (possibly unavailable in your region or account)")
         url = None
         final_quality = quality
 
@@ -433,11 +438,11 @@ class DeezerClient(Client):
 
         # Fall back to the legacy AES-encrypted CDN URL when the token API fails.
         if url is None:
-            url = self._get_encrypted_file_url(
-                item_id,
-                track_info["MD5_ORIGIN"],
-                track_info["MEDIA_VERSION"],
-            )
+            md5 = track_info.get("MD5_ORIGIN")
+            media_version = track_info.get("MEDIA_VERSION")
+            if not md5 or not media_version:
+                raise NonStreamableError(f"Deezer track {item_id}: token API failed and CDN fallback requires MD5_ORIGIN/MEDIA_VERSION which are missing")
+            url = self._get_encrypted_file_url(item_id, md5, media_version)
 
         if not url:
             raise NonStreamableError("Could not retrieve a download URL for track %s" % item_id)

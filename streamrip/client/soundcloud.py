@@ -275,13 +275,13 @@ class SoundcloudClient(Client):
         async with self.session.get(STOCK_URL) as resp:
             page_text = await resp.text(encoding="utf-8")
 
-        *_, client_id_url_match = re.finditer(
+        script_matches = list(re.finditer(
             r"<script\s+crossorigin\s+src=\"([^\"]+)\"",
             page_text,
-        )
-
-        if client_id_url_match is None:
-            raise Exception("Could not find client ID in %s" % STOCK_URL)
+        ))
+        if not script_matches:
+            raise Exception("Could not find client ID script tag in %s" % STOCK_URL)
+        client_id_url_match = script_matches[-1]
 
         client_id_url = client_id_url_match.group(1)
 
@@ -297,7 +297,8 @@ class SoundcloudClient(Client):
             page_text2 = await resp.text(encoding="utf-8")
 
         client_id_match = re.search(r'client_id:\s*"(\w+)"', page_text2)
-        assert client_id_match is not None
+        if client_id_match is None:
+            raise Exception("Could not find client_id in SoundCloud bundle JS")
         client_id = client_id_match.group(1)
 
         logger.debug(f"Refreshed soundcloud tokens as {client_id=} {app_version=}")

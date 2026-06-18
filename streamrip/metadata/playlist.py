@@ -30,7 +30,8 @@ def get_soundcloud_id(resp: dict) -> str:
             url = tc["url"]
             break
 
-    assert url is not None
+    if url is None:
+        return f"{item_id}|{NON_STREAMABLE}"
     return f"{item_id}|{url}"
 
 
