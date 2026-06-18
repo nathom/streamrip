@@ -58,6 +58,7 @@ class DeezerClient(Client):
         self.config = config.session.deezer
         self.logged_in_user_id: int | None = None
         self._album_cache: dict[str, dict] = {}
+        self._gw_track_cache: dict[str, dict] = {}
 
         # Increase the deezer-py requests session pool well above max_connections.
         # Each concurrent download spawns several API calls (metadata, track token,
@@ -151,6 +152,7 @@ class DeezerClient(Client):
                 self.get_album(str(album_id)),
                 asyncio.to_thread(self.client.gw.get_track, item_id),
             )
+            self._gw_track_cache[item_id] = gw_info
         except Exception as e:
             logger.error("Error fetching album of track %s: %s", item_id, e)
             return item
@@ -386,8 +388,12 @@ class DeezerClient(Client):
 
         quality = max(0, min(quality, 2))
 
-        # TODO: optimize such that all of the ids are requested at once
-        track_info = self.client.gw.get_track(item_id)
+        # Use GW info cached by get_track (called during metadata resolution) to
+        # avoid a redundant API call. Falls back to a live request for tracks
+        # downloaded directly by ID without a prior get_track call.
+        track_info = self._gw_track_cache.pop(item_id, None)
+        if track_info is None:
+            track_info = self.client.gw.get_track(item_id)
         fallback_id = track_info.get("FALLBACK", {}).get("SNG_ID")
 
         dl_info: dict = {

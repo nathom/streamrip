@@ -7,9 +7,14 @@ ALLOWED_CHARS = set(printable)
 
 # TODO: remove this when new pathvalidate release arrives with https://github.com/thombashi/pathvalidate/pull/48
 def truncate_str(text: str) -> str:
-    str_bytes = text.encode()
-    str_bytes = str_bytes[:255]
-    return str_bytes.decode(errors="ignore")
+    encoded = text.encode("utf-8")
+    if len(encoded) <= 255:
+        return text
+    # Cut at 255 bytes and decode back. errors="ignore" silently drops any
+    # incomplete multi-byte sequence that straddles the boundary (e.g. a CJK
+    # character whose lead byte is at position 254). The result is always
+    # valid UTF-8 and ≤ 255 bytes when re-encoded.
+    return encoded[:255].decode("utf-8", errors="ignore")
 
 
 def clean_filename(fn: str, restrict: bool = False) -> str:
