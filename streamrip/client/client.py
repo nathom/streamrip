@@ -1,5 +1,6 @@
 """The clients that interact with the streaming service APIs."""
 
+import asyncio
 import contextlib
 import logging
 from abc import ABC, abstractmethod
@@ -22,6 +23,7 @@ class Client(ABC):
     max_quality: int
     session: aiohttp.ClientSession
     logged_in: bool
+    _login_lock: asyncio.Lock
 
     @abstractmethod
     async def login(self):

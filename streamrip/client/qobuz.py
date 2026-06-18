@@ -147,6 +147,7 @@ class QobuzClient(Client):
 
     def __init__(self, config: Config):
         self.logged_in = False
+        self._login_lock = asyncio.Lock()
         self.config = config
         self.rate_limiter = self.get_rate_limiter(
             config.session.downloads.requests_per_minute,

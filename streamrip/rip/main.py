@@ -138,16 +138,17 @@ class Main:
             raise Exception(
                 f"No client named {source} available. Only have {self.clients.keys()}",
             )
-        if not client.logged_in:
-            prompter = get_prompter(client, self.config)
-            if not prompter.has_creds():
-                # Get credentials from user and log into client
-                await prompter.prompt_and_login()
-                prompter.save()
-            else:
-                with console.status(f"[cyan]Logging into {source}", spinner="dots"):
-                    # Log into client using credentials from config
-                    await client.login()
+        async with client._login_lock:
+            if not client.logged_in:
+                prompter = get_prompter(client, self.config)
+                if not prompter.has_creds():
+                    # Get credentials from user and log into client
+                    await prompter.prompt_and_login()
+                    prompter.save()
+                else:
+                    with console.status(f"[cyan]Logging into {source}", spinner="dots"):
+                        # Log into client using credentials from config
+                        await client.login()
 
         assert client.logged_in
         return client

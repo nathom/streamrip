@@ -54,6 +54,7 @@ class DeezerClient(Client):
         self.global_config = config
         self.client = deezer.Deezer()
         self.logged_in = False
+        self._login_lock = asyncio.Lock()
         self.config = config.session.deezer
         self.logged_in_user_id: int | None = None
         self._album_cache: dict[str, dict] = {}
