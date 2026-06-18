@@ -22,20 +22,20 @@ The following fixes and improvements are present in this fork on top of [`nathom
 - Lyricist/author tag sourced from `SNG_CONTRIBUTORS` → `LYRICIST` (FLAC), `TEXT` (MP3), iTunes freeform atom (MP4)
 - BPM tag written when available
 - ReplayGain track gain (`GAIN` field from GW API) written as `REPLAYGAIN_TRACK_GAIN` to FLAC, `TXXX:replaygain_track_gain` to MP3, and iTunes freeform atom to MP4
-- Fix `KeyError` when `disk_number` is absent from the last track in a Deezer album response
+- Fix `KeyError` when `disk_number` is absent from the last track in a Deezer album response ([#994](https://github.com/nathom/streamrip/pull/994))
 
 **Tidal**
-- MPEG-DASH manifest (`application/dash+xml`) support for `HI_RES_LOSSLESS` streams — required since Tidal dropped MQA
-- Updated quality tier name `HI_RES` → `HI_RES_LOSSLESS` throughout the quality maps
+- MPEG-DASH manifest (`application/dash+xml`) support for `HI_RES_LOSSLESS` streams — required since Tidal dropped MQA ([#974](https://github.com/nathom/streamrip/issues/974), [#981](https://github.com/nathom/streamrip/issues/981))
+- Updated quality tier name `HI_RES` → `HI_RES_LOSSLESS` throughout the quality maps ([#974](https://github.com/nathom/streamrip/issues/974))
 - Composer tag populated from the `/contributors` endpoint (fetched concurrently with lyrics)
 - Fix `AttributeError` when the DASH `SegmentTemplate` has no `media` attribute
-- Fix infinite recursion / `KeyError` when BTS manifest decode fails at quality 0
+- Fix infinite recursion / `KeyError` when BTS manifest decode fails at quality 0 ([#892](https://github.com/nathom/streamrip/issues/892))
 - Fix `TypeError: len(None)` when the `artists` field is absent from a track response
 - Fix `KeyError` when `audioQuality` returns an unknown value (e.g. new tiers)
 
 **Qobuz**
-- Fall back to `album.artist.name` when the track-level `performer` field is absent — fixes `AssertionError` on compilation albums
-- Replace `assert status == 200` guards with proper `NonStreamableError` exceptions (asserts are silently disabled by Python's `-O` flag)
+- Fall back to `album.artist.name` when the track-level `performer` field is absent — fixes `AssertionError` on compilation albums ([#610](https://github.com/nathom/streamrip/issues/610))
+- Replace `assert status == 200` guards with proper `NonStreamableError` exceptions (asserts are silently disabled by Python's `-O` flag) ([#780](https://github.com/nathom/streamrip/issues/780))
 
 **SoundCloud**
 - Replace `assert url is not None` with a graceful `NON_STREAMABLE` return when no HLS stream is found for a track
@@ -44,7 +44,7 @@ The following fixes and improvements are present in this fork on top of [`nathom
 - `asyncio.Lock` on each client prevents concurrent login races when multiple URLs from the same source are resolved in parallel
 
 **Downloads**
-- `fast_async_download` runs the `requests` HTTP call inside `asyncio.to_thread` so it no longer blocks the event loop during concurrent downloads
+- `fast_async_download` runs the `requests` HTTP call inside `asyncio.to_thread` so it no longer blocks the event loop during concurrent downloads ([#982](https://github.com/nathom/streamrip/pull/982))
 
 **Converter**
 - OGG/OPUS: cover art is embedded post-conversion via `mutagen` (`METADATA_BLOCK_PICTURE`), and `-vn` prevents an unwanted Theora video stream ([#992](https://github.com/nathom/streamrip/pull/992))
@@ -53,7 +53,7 @@ The following fixes and improvements are present in this fork on top of [`nathom
 - FFmpeg `stdin` redirected to `/dev/null` to prevent terminal echo/raw-mode corruption after a rip ([#996](https://github.com/nathom/streamrip/pull/996))
 
 **CLI / misc**
-- `-l`/`--log-file` option writes all log messages at DEBUG level to a file for post-mortem analysis
+- `-l`/`--log-file` option writes all log messages at DEBUG level to a file for post-mortem analysis ([#81](https://github.com/nathom/streamrip/issues/81))
 - Version check is resilient to network errors and non-JSON responses (e.g. GitHub 504) ([#995](https://github.com/nathom/streamrip/pull/995))
 - Version comparison is numeric (`1.10 > 1.9`) rather than lexicographic
 
