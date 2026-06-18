@@ -23,3 +23,4 @@ StreamripDownloads
 pyrightconfig.json
 .venv/
 dev-reinstall.sh
+CLAUDE.md
