@@ -5,6 +5,7 @@ import logging
 import re
 import time
 from json import JSONDecodeError
+from xml.etree import ElementTree as ET
 
 import aiohttp
 
@@ -28,10 +29,10 @@ STREAM_URL_REGEX = re.compile(
 )
 
 QUALITY_MAP = {
-    0: "LOW",  # AAC
-    1: "HIGH",  # AAC
-    2: "LOSSLESS",  # CD Quality
-    3: "HI_RES",  # MQA
+    0: "LOW",           # AAC 96kbps
+    1: "HIGH",          # AAC 320kbps
+    2: "LOSSLESS",      # 16/44.1 FLAC
+    3: "HI_RES_LOSSLESS",  # 24-bit FLAC (replaces legacy MQA)
 }
 
 
@@ -43,6 +44,7 @@ class TidalClient(Client):
 
     def __init__(self, config: Config):
         self.logged_in = False
+        self._login_lock = asyncio.Lock()
         self.global_config = config
         self.config = config.session.tidal
         self.rate_limiter = self.get_rate_limiter(
@@ -113,7 +115,7 @@ class TidalClient(Client):
         elif media_type == "track":
             try:
                 resp = await self._api_request(
-                    f"tracks/{item_id!s}/lyrics", base="https://tidal.com/v1"
+                    f"tracks/{item_id!s}/lyrics", base="https://listen.tidal.com/v1"
                 )
 
                 # Use unsynced lyrics for MP3, synced for others (FLAC, OPUS, etc)
@@ -152,6 +154,23 @@ class TidalClient(Client):
         return []
 
     async def get_downloadable(self, track_id: str, quality: int):
+        """Resolve the download URL for a Tidal track.
+
+        Handles both the legacy BTS JSON manifest (application/vnd.tidal.bts)
+        and the newer MPEG-DASH manifest (application/dash+xml) introduced when
+        Tidal dropped MQA in favour of HI_RES_LOSSLESS.
+
+        Args:
+            track_id (str): The Tidal track ID.
+            quality (int): Quality level (0=LOW, 1=HIGH, 2=LOSSLESS, 3=HI_RES_LOSSLESS).
+
+        Returns:
+            TidalDownloadable: Ready-to-use downloadable object.
+
+        Raises:
+            NonStreamableError: If the track cannot be streamed at any quality.
+            Exception: If manifest data is missing or malformed.
+        """
         params = {
             "audioquality": QUALITY_MAP[quality],
             "playbackmode": "STREAM",
@@ -161,27 +180,93 @@ class TidalClient(Client):
             f"tracks/{track_id}/playbackinfopostpaywall", params
         )
         logger.debug(resp)
+
         try:
-            manifest = json.loads(base64.b64decode(resp["manifest"]).decode("utf-8"))
+            manifest_b64 = resp["manifest"]
         except KeyError:
-            raise Exception(resp["userMessage"])
-        except JSONDecodeError:
-            logger.warning(
-                f"Failed to get manifest for {track_id}. Retrying with lower quality."
-            )
-            return await self.get_downloadable(track_id, quality - 1)
+            raise Exception(resp.get("userMessage", "Missing manifest in Tidal response"))
+
+        manifest_mime = resp.get("manifestMimeType", "application/vnd.tidal.bts")
+
+        if manifest_mime == "application/dash+xml":
+            manifest = self._parse_dash_manifest(manifest_b64)
+        else:
+            try:
+                manifest = json.loads(base64.b64decode(manifest_b64).decode("utf-8"))
+            except JSONDecodeError:
+                logger.warning(
+                    f"Failed to decode BTS manifest for {track_id}. Retrying with lower quality."
+                )
+                return await self.get_downloadable(track_id, quality - 1)
 
         logger.debug(manifest)
-        enc_key = manifest.get("keyId")
-        if manifest.get("encryptionType") == "NONE":
-            enc_key = None
         return TidalDownloadable(
             self.session,
             url=manifest["urls"][0],
             codec=manifest["codecs"],
-            encryption_key=enc_key,
+            encryption_key=None,  # MQA encryption abandoned by Tidal
             restrictions=manifest.get("restrictions"),
         )
+
+    def _parse_dash_manifest(self, manifest_b64: str) -> dict:
+        """Parse a base64-encoded MPEG-DASH XML manifest into BTS-compatible format.
+
+        Tidal switched from proprietary BTS JSON manifests to MPEG-DASH for
+        HI_RES_LOSSLESS streams when they dropped MQA. This method extracts
+        the segment URL list from the DASH SegmentTimeline so the rest of the
+        download pipeline can treat it like any other multi-URL stream.
+
+        Args:
+            manifest_b64 (str): Base64-encoded DASH XML string from the API response.
+
+        Returns:
+            dict: A manifest-shaped dict with "urls" (list of segment URLs),
+                  "codecs", and "encryptionType" keys.
+
+        Raises:
+            Exception: If the XML is malformed or required elements are missing.
+        """
+        try:
+            manifest_xml = base64.b64decode(manifest_b64).decode("utf-8")
+            root = ET.fromstring(manifest_xml)
+        except ET.ParseError as e:
+            raise Exception(f"Failed to parse DASH XML manifest: {e}")
+
+        ns = {"mpd": "urn:mpeg:dash:schema:mpd:2011"}
+
+        representation = root.find(".//mpd:Representation", ns)
+        if representation is None:
+            raise Exception("No Representation found in DASH manifest")
+
+        codecs = representation.get("codecs", "flac")
+
+        segment_template = representation.find(".//mpd:SegmentTemplate", ns)
+        if segment_template is None:
+            raise Exception("No SegmentTemplate found in DASH manifest")
+
+        media_template = segment_template.get("media")
+        start_number = int(segment_template.get("startNumber", "0"))
+
+        timeline = segment_template.find("mpd:SegmentTimeline", ns)
+        if timeline is None:
+            raise Exception("No SegmentTimeline found in DASH manifest")
+
+        segment_urls = []
+        segment_number = start_number
+        for seg in timeline.findall("mpd:S", ns):
+            repeat = int(seg.get("r", "0"))
+            # r=0 → 1 segment, r=N → N+1 segments, r=-1 → handled as 1
+            count = max(repeat + 1, 1)
+            for _ in range(count):
+                segment_urls.append(media_template.replace("$Number$", str(segment_number)))
+                segment_number += 1
+
+        return {
+            "urls": segment_urls,
+            "codecs": codecs,
+            "encryptionType": "NONE",
+            "mimeType": f"audio/{codecs}",
+        }
 
     async def get_video_file_url(self, video_id: str) -> str:
         """Get the HLS video stream url.
