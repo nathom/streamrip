@@ -37,15 +37,18 @@ The following fixes and improvements are present in this fork on top of [`nathom
 **Qobuz**
 - Fall back to `album.artist.name` when the track-level `performer` field is absent — fixes `AssertionError` on compilation albums ([#610](https://github.com/nathom/streamrip/issues/610))
 - Replace `assert status == 200` guards with proper `NonStreamableError` exceptions (asserts are silently disabled by Python's `-O` flag) ([#780](https://github.com/nathom/streamrip/issues/780))
+- Fix silent wrong-quality bug in `get_quality()`: passing `quality=0` would return the 24-bit format via Python's negative index instead of raising an error
 
 **SoundCloud**
 - Replace `assert url is not None` with a graceful `NON_STREAMABLE` return when no HLS stream is found for a track
+- Replace all remaining `assert status == 200` guards in `search`, `resolve_url`, `_get_track`, `_get_playlist`, and `get_downloadable` with `NonStreamableError` exceptions
 
 **All clients**
 - `asyncio.Lock` on each client prevents concurrent login races when multiple URLs from the same source are resolved in parallel
 
 **Downloads**
 - `fast_async_download` runs the `requests` HTTP call inside `asyncio.to_thread` so it no longer blocks the event loop during concurrent downloads ([#982](https://github.com/nathom/streamrip/pull/982))
+- `fast_async_download` now calls `raise_for_status()` so HTTP errors (4xx/5xx) surface as exceptions instead of silently writing the error body to disk; the partial file is removed on failure
 - Fix `truncate_str` to explicitly use UTF-8 encoding and skip the encode/decode round-trip when the filename is already within the 255-byte limit
 
 **Converter**
