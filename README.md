@@ -16,6 +16,7 @@ The following fixes and improvements are present in this fork on top of [`nathom
 - Include all artists from the `contributors` array in track and album metadata ([#907](https://github.com/nathom/streamrip/pull/907))
 - Automatic redirect resolution for albums, playlists and artists (handles moved/deleted IDs)
 - In-memory album metadata cache — avoids redundant API calls when the same album is fetched multiple times in one session ([#1000](https://github.com/nathom/streamrip/pull/1000))
+- In-memory GW track data cache — `get_track()` stores the GW response so that `get_downloadable()` can reuse it without a second `song.getData` call, halving GW API requests per album download
 - Connection pool sized to `max(max_connections × 4, 32)` to prevent urllib3 "pool full" warnings under concurrent downloads ([#997](https://github.com/nathom/streamrip/pull/997))
 - Quality fallback: if the requested quality is unavailable, silently falls back to a lower tier instead of crashing
 - Composer tag sourced from `SNG_CONTRIBUTORS` via the GW API (absent from the public REST API)
@@ -45,6 +46,7 @@ The following fixes and improvements are present in this fork on top of [`nathom
 
 **Downloads**
 - `fast_async_download` runs the `requests` HTTP call inside `asyncio.to_thread` so it no longer blocks the event loop during concurrent downloads ([#982](https://github.com/nathom/streamrip/pull/982))
+- Fix `truncate_str` to explicitly use UTF-8 encoding and skip the encode/decode round-trip when the filename is already within the 255-byte limit
 
 **Converter**
 - OGG/OPUS: cover art is embedded post-conversion via `mutagen` (`METADATA_BLOCK_PICTURE`), and `-vn` prevents an unwanted Theora video stream ([#992](https://github.com/nathom/streamrip/pull/992))
