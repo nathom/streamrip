@@ -88,7 +88,7 @@ def coro(f):
 @click.option(
     "-l",
     "--log-file",
-    help="Write all log messages (DEBUG level) to this file",
+    help="Write all log messages (INFO level and above) to this file",
     type=click.Path(dir_okay=False, writable=True),
     default=None,
 )
@@ -122,7 +122,7 @@ def rip(
 
     if log_file:
         fh = logging.FileHandler(log_file, encoding="utf-8")
-        fh.setLevel(logging.DEBUG)
+        fh.setLevel(logging.INFO)
         fh.setFormatter(
             logging.Formatter(
                 fmt="%(asctime)s %(levelname)-8s %(name)s: %(message)s",
@@ -131,8 +131,8 @@ def rip(
         )
         # Attach to the root logger so all modules are captured, not just "streamrip"
         logging.getLogger().addHandler(fh)
-        logging.getLogger().setLevel(logging.DEBUG)
-        logger.debug("Logging to file: %s", log_file)
+        logging.getLogger().setLevel(logging.INFO)
+        logger.info("Logging to file: %s", log_file)
 
     if not os.path.isfile(config_path):
         console.print(
