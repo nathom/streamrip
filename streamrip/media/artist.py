@@ -111,8 +111,7 @@ class Artist(Media):
         groups: dict[str, list[Album]] = {}
         for a in albums:
             match = cls._essence_re.match(a.meta.album)
-            assert match is not None
-            title = match.group(1).strip().lower()
+            title = match.group(1).strip().lower() if match else a.meta.album.strip().lower()
             items = groups.get(title, [])
             items.append(a)
             groups[title] = items

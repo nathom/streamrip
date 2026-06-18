@@ -173,7 +173,9 @@ def rip(
 
     if codec is not None:
         c.session.conversion.enabled = True
-        assert codec.upper() in ("ALAC", "FLAC", "OGG", "MP3", "AAC", "OPUS")
+        valid_codecs = ("ALAC", "FLAC", "OGG", "MP3", "AAC", "OPUS")
+        if codec.upper() not in valid_codecs:
+            raise click.BadParameter(f"codec must be one of {valid_codecs}", param_hint="'--codec'")
         c.session.conversion.codec = codec.upper()
 
     if no_progress:

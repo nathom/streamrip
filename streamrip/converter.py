@@ -283,7 +283,7 @@ class LAME(Converter):
     default_ffmpeg_arg = "-q:a 0"  # V0
 
     def get_quality_arg(self, rate):
-        return self._bitrate_map[rate]
+        return self._bitrate_map.get(rate, self.default_ffmpeg_arg)
 
 
 class ALAC(Converter):

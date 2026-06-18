@@ -113,9 +113,11 @@ class SoundcloudClient(Client):
 
         infos: list[str] = item_info.split("|")
         logger.debug(f"{infos=}")
-        assert len(infos) == 2, infos
+        if len(infos) != 2:
+            raise NonStreamableError(f"Malformed SoundCloud item ID: {item_info!r}")
         item_id, download_info = infos
-        assert re.match(r"\d+", item_id) is not None
+        if re.match(r"\d+", item_id) is None:
+            raise NonStreamableError(f"SoundCloud item ID is not numeric: {item_id!r}")
 
         if download_info == self.NON_STREAMABLE:
             raise NonStreamableError(item_info)
@@ -215,7 +217,8 @@ class SoundcloudClient(Client):
     @classmethod
     def _get_custom_id(cls, resp: dict) -> str:
         item_id = resp["id"]
-        assert "media" in resp, f"track {resp} should be resolved"
+        if "media" not in resp:
+            return f"{resp['id']}|{cls.NON_STREAMABLE}"
 
         if not resp["streamable"] or resp["policy"] == "BLOCK":
             return f"{item_id}|{cls.NON_STREAMABLE}"

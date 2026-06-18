@@ -432,12 +432,13 @@ async def concat_audio_files(paths: list[str], out: str, ext: str, max_files_ope
     # Create all processes concurrently
     processes = await asyncio.gather(*proc_futures)
 
-    # wait for all of them to finish
-    await asyncio.gather(*[p.communicate() for p in processes])
-    for proc in processes:
+    # wait for all of them to finish and capture output for error reporting
+    outputs = await asyncio.gather(*[p.communicate() for p in processes])
+    for proc, (stdout, stderr) in zip(processes, outputs):
         if proc.returncode != 0:
+            stderr_text = stderr.decode(errors="replace") if stderr else ""
             raise Exception(
-                f"FFMPEG returned with status code {proc.returncode} error: {proc.stderr} output: {proc.stdout}",
+                f"FFmpeg exited with status {proc.returncode}: {stderr_text}",
             )
 
     # Recurse on remaining batches
