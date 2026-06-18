@@ -113,21 +113,33 @@ class TidalClient(Client):
             item["albums"] = album_resp["items"]
             item["albums"].extend(ep_resp["items"])
         elif media_type == "track":
-            try:
-                resp = await self._api_request(
+            use_mp3 = (
+                self.global_config.session.conversion.enabled
+                and self.global_config.session.conversion.codec.upper() == "MP3"
+            )
+            lyrics_result, contributors_result = await asyncio.gather(
+                self._api_request(
                     f"tracks/{item_id!s}/lyrics", base="https://listen.tidal.com/v1"
-                )
+                ),
+                self._api_request(f"tracks/{item_id!s}/contributors"),
+                return_exceptions=True,
+            )
 
-                # Use unsynced lyrics for MP3, synced for others (FLAC, OPUS, etc)
-                if (
-                    self.global_config.session.conversion.enabled
-                    and self.global_config.session.conversion.codec.upper() == "MP3"
-                ):
-                    item["lyrics"] = resp.get("lyrics") or ""
+            if isinstance(lyrics_result, Exception):
+                logger.warning("Failed to get lyrics for %s: %s", item_id, lyrics_result)
+            else:
+                if use_mp3:
+                    item["lyrics"] = lyrics_result.get("lyrics") or ""
                 else:
-                    item["lyrics"] = resp.get("subtitles") or resp.get("lyrics") or ""
-            except TypeError as e:
-                logger.warning(f"Failed to get lyrics for {item_id}: {e}")
+                    item["lyrics"] = (
+                        lyrics_result.get("subtitles") or lyrics_result.get("lyrics") or ""
+                    )
+
+            if isinstance(contributors_result, Exception):
+                logger.debug("Could not fetch contributors for %s: %s", item_id, contributors_result)
+                item["contributors"] = []
+            else:
+                item["contributors"] = contributors_result.get("items", [])
 
         logger.debug(item)
         return item

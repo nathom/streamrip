@@ -163,6 +163,10 @@ class DeezerClient(Client):
         if "author" in contributors:
             item["author"] = contributors["author"]
 
+        gain = gw_info.get("GAIN")
+        if gain is not None:
+            item["gain"] = gain
+
         return item
 
     async def get_album(self, item_id: str) -> dict:

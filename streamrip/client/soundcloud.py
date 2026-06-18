@@ -223,7 +223,8 @@ class SoundcloudClient(Client):
                 url = tc["url"]
                 break
 
-        assert url is not None
+        if url is None:
+            return f"{item_id}|{cls.NON_STREAMABLE}"
         return f"{item_id}|{url}"
 
     async def _api_request(self, path, params=None, headers=None):

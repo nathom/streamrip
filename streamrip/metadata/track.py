@@ -34,6 +34,8 @@ class TrackMetadata:
     isrc: str | None = None
     lyrics: str | None = ""
     bpm: int | None = None
+    author: str | None = None
+    replaygain_track_gain: str | None = None
 
     @classmethod
     def from_qobuz(cls, album: AlbumMetadata, resp: dict) -> TrackMetadata | None:
@@ -110,8 +112,25 @@ class TrackMetadata:
         else:
             composer = None
 
+        raw_authors = resp.get("author")
+        if isinstance(raw_authors, list) and raw_authors:
+            author: str | None = ", ".join(raw_authors)
+        elif isinstance(raw_authors, str):
+            author = raw_authors
+        else:
+            author = None
+
         raw_bpm = resp.get("bpm")
         bpm: int | None = int(raw_bpm) if raw_bpm else None
+
+        raw_gain = resp.get("gain")
+        if raw_gain is not None:
+            try:
+                replaygain_track_gain: str | None = f"{float(raw_gain):.2f} dB"
+            except (ValueError, TypeError):
+                replaygain_track_gain = None
+        else:
+            replaygain_track_gain = None
 
         info = TrackInfo(
             id=track_id,
@@ -131,6 +150,8 @@ class TrackMetadata:
             composer=composer,
             isrc=isrc,
             bpm=bpm,
+            author=author,
+            replaygain_track_gain=replaygain_track_gain,
         )
 
     @classmethod
@@ -216,6 +237,10 @@ class TrackMetadata:
             sampling_rate=sampling_rate,
             work=None,
         )
+        contributors = track.get("contributors", [])
+        composers = [c["name"] for c in contributors if c.get("role") == "Composer"]
+        composer = ", ".join(composers) if composers else None
+
         return cls(
             info=info,
             title=title,
@@ -223,7 +248,7 @@ class TrackMetadata:
             artist=artist,
             tracknumber=tracknumber,
             discnumber=discnumber,
-            composer=None,
+            composer=composer,
             isrc=isrc,
             lyrics=lyrics,
         )

@@ -262,7 +262,8 @@ class QobuzClient(Client):
         }
         epoint = "label/get"
         status, label_resp = await self._api_request(epoint, params)
-        assert status == 200
+        if status != 200:
+            raise NonStreamableError(f"Error fetching Qobuz label. Status: {status}")
         albums_count = label_resp["albums_count"]
 
         if albums_count <= page_limit:
@@ -285,7 +286,8 @@ class QobuzClient(Client):
         results = await asyncio.gather(*requests)
         items = label_resp["albums"]["items"]
         for status, resp in results:
-            assert status == 200
+            if status != 200:
+                raise NonStreamableError(f"Error fetching Qobuz label page. Status: {status}")
             items.extend(resp["albums"]["items"])
 
         return label_resp
@@ -321,9 +323,13 @@ class QobuzClient(Client):
         return await self._paginate(epoint, {}, limit=limit)
 
     async def get_downloadable(self, item: str, quality: int) -> Downloadable:
-        assert self.secret is not None and self.logged_in and 1 <= quality <= 4
+        if self.secret is None or not self.logged_in:
+            raise Exception("Not logged in to Qobuz")
+        if not (1 <= quality <= 4):
+            raise NonStreamableError(f"Invalid Qobuz quality {quality} (must be 1–4)")
         status, resp_json = await self._request_file_url(item, quality, self.secret)
-        assert status == 200
+        if status != 200:
+            raise NonStreamableError(f"Error fetching Qobuz download URL. Status: {status}")
         stream_url = resp_json.get("url")
 
         if stream_url is None:
@@ -358,7 +364,8 @@ class QobuzClient(Client):
         """
         params.update({"limit": limit})
         status, page = await self._api_request(epoint, params)
-        assert status == 200, status
+        if status != 200:
+            raise NonStreamableError(f"Qobuz API error on {epoint}. Status: {status}")
         logger.debug("paginate: initial request made with status %d", status)
         # albums, tracks, etc.
         key = epoint.split("/")[0] + "s"
@@ -381,7 +388,6 @@ class QobuzClient(Client):
 
         pages = []
         requests = []
-        assert status == 200, status
         pages.append(page)
         while (offset + limit) < total:
             offset += limit
@@ -389,7 +395,8 @@ class QobuzClient(Client):
             requests.append(self._api_request(epoint, params.copy()))
 
         for status, resp in await asyncio.gather(*requests):
-            assert status == 200
+            if status != 200:
+                raise NonStreamableError(f"Qobuz API error on {epoint} (paginate). Status: {status}")
             pages.append(resp)
 
         return pages

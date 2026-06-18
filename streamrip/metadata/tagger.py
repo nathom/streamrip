@@ -24,6 +24,7 @@ MP4_KEYS = (
     "\xa9alb",
     r"aART",
     "\xa9day",
+    "----:com.apple.iTunes:LYRICIST",  # author — bytes, handled specially in _tag_mp4
     "\xa9day",
     "\xa9cmt",
     "desc",
@@ -41,6 +42,7 @@ MP4_KEYS = (
     None,
     "----:com.apple.iTunes:ISRC",
     "tmpo",  # BPM — integer, handled specially in _tag_mp4
+    "----:com.apple.iTunes:REPLAYGAIN_TRACK_GAIN",  # bytes, handled specially in _tag_mp4
 )
 
 MP3_KEYS = (
@@ -49,6 +51,7 @@ MP3_KEYS = (
     id3.TALB,  # type: ignore
     id3.TPE2,  # type: ignore
     id3.TCOM,  # type: ignore
+    id3.TEXT,  # type: ignore  # author — Lyricist/Text writer
     id3.TYER,  # type: ignore
     id3.COMM,  # type: ignore
     id3.TT1,  # type: ignore
@@ -66,6 +69,7 @@ MP3_KEYS = (
     None,
     id3.TSRC,
     id3.TBPM,  # type: ignore
+    None,  # replaygain_track_gain — handled specially via TXXX in _tag_mp3
 )
 
 METADATA_TYPES = (
@@ -74,6 +78,7 @@ METADATA_TYPES = (
     "album",
     "albumartist",
     "composer",
+    "author",
     "year",
     "comment",
     "description",
@@ -91,10 +96,12 @@ METADATA_TYPES = (
     "date",
     "isrc",
     "bpm",
+    "replaygain_track_gain",
 )
 
 
 FLAC_KEY = {v: v.upper() for v in METADATA_TYPES}
+FLAC_KEY["author"] = "LYRICIST"  # standard Vorbis comment tag for lyricist
 MP4_KEY = dict(zip(METADATA_TYPES, MP4_KEYS))
 MP3_KEY = dict(zip(METADATA_TYPES, MP3_KEYS))
 
@@ -150,6 +157,14 @@ class Container(Enum):
                 text = f"{meta.tracknumber}/{meta.album.tracktotal}"
             elif k == "discnumber":
                 text = f"{meta.discnumber}/{meta.album.disctotal}"
+            elif k == "replaygain_track_gain":
+                if meta.replaygain_track_gain is not None:
+                    out.append((
+                        "TXXX:replaygain_track_gain",
+                        id3.TXXX(encoding=3, desc="replaygain_track_gain",
+                                 text=[meta.replaygain_track_gain]),
+                    ))
+                continue
             else:
                 text = self._attr_from_meta(meta, k)
 
@@ -169,6 +184,14 @@ class Container(Enum):
                 # we have to pass in the actual bytes to mutagen
                 # See mutagen.MP4Tags.__render_freeform
                 text = meta.isrc.encode("utf-8")
+            elif k == "author":
+                if meta.author is None:
+                    continue
+                text = meta.author.encode("utf-8")
+            elif k == "replaygain_track_gain":
+                if meta.replaygain_track_gain is None:
+                    continue
+                text = meta.replaygain_track_gain.encode("utf-8")
             elif k == "bpm":
                 # tmpo requires a list of integers, not a string
                 if meta.bpm is None:
@@ -193,6 +216,8 @@ class Container(Enum):
             "isrc",
             "lyrics",
             "bpm",
+            "author",
+            "replaygain_track_gain",
         }
         if attr in in_trackmetadata:
             if attr == "album":

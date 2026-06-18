@@ -162,7 +162,7 @@ class AlbumMetadata:
     def from_deezer(cls, resp: dict) -> AlbumMetadata | None:
         album = resp.get("title", "Unknown Album")
         tracktotal = typed(resp.get("track_total", 0) or resp.get("nb_tracks", 0), int)
-        disctotal = typed(resp["tracks"][-1]["disk_number"], int) if resp["tracks"] else 1
+        disctotal = typed(resp["tracks"][-1].get("disk_number", 1), int) if resp["tracks"] else 1
         genres = [typed(g["name"], str) for g in resp["genres"]["data"]]
 
         date = typed(resp["release_date"], str)
@@ -325,10 +325,11 @@ class AlbumMetadata:
             "HIGH": 1,
             "LOSSLESS": 2,
             "HI_RES": 3,
+            "HI_RES_LOSSLESS": 3,  # renamed when Tidal dropped MQA
         }
 
         tidal_quality = resp.get("audioQuality", "LOW")
-        quality = quality_map[tidal_quality]
+        quality = quality_map.get(tidal_quality, 0)
         if quality >= 2:
             sampling_rate = 44100
             if quality == 3:
@@ -409,10 +410,11 @@ class AlbumMetadata:
             "HIGH": 1,
             "LOSSLESS": 2,
             "HI_RES": 3,
+            "HI_RES_LOSSLESS": 3,  # renamed when Tidal dropped MQA
         }
 
         tidal_quality = resp.get("audioQuality", "LOW")
-        quality = quality_map[tidal_quality]
+        quality = quality_map.get(tidal_quality, 0)
         if quality >= 2:
             sampling_rate = 44100
             if quality == 3:
