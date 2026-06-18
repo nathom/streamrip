@@ -85,9 +85,16 @@ def coro(f):
     help="Enable verbose output (debug mode)",
     is_flag=True,
 )
+@click.option(
+    "-l",
+    "--log-file",
+    help="Write all log messages (DEBUG level) to this file",
+    type=click.Path(dir_okay=False, writable=True),
+    default=None,
+)
 @click.pass_context
 def rip(
-    ctx, config_path, folder, no_db, quality, codec, no_progress, no_ssl_verify, verbose
+    ctx, config_path, folder, no_db, quality, codec, no_progress, no_ssl_verify, verbose, log_file
 ):
     """Streamrip: the all in one music downloader."""
     global logger
@@ -112,6 +119,20 @@ def rip(
     else:
         install(console=console, suppress=[click, asyncio], max_frames=1)
         logger.setLevel(logging.INFO)
+
+    if log_file:
+        fh = logging.FileHandler(log_file, encoding="utf-8")
+        fh.setLevel(logging.DEBUG)
+        fh.setFormatter(
+            logging.Formatter(
+                fmt="%(asctime)s %(levelname)-8s %(name)s: %(message)s",
+                datefmt="%Y-%m-%d %H:%M:%S",
+            )
+        )
+        # Attach to the root logger so all modules are captured, not just "streamrip"
+        logging.getLogger().addHandler(fh)
+        logging.getLogger().setLevel(logging.DEBUG)
+        logger.debug("Logging to file: %s", log_file)
 
     if not os.path.isfile(config_path):
         console.print(
