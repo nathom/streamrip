@@ -132,6 +132,9 @@ def rip(
         # Attach to the root logger so all modules are captured, not just "streamrip"
         logging.getLogger().addHandler(fh)
         logging.getLogger().setLevel(logging.DEBUG)
+        # The streamrip logger may be set to INFO (non-verbose mode); lower it to DEBUG
+        # so its messages propagate to the file handler above.
+        logger.setLevel(logging.DEBUG)
         logger.debug("Logging to file: %s", log_file)
 
     if not os.path.isfile(config_path):
