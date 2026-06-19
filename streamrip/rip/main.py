@@ -113,21 +113,22 @@ class Main:
 
     async def add_all(self, urls: list[str]):
         """Add multiple urls concurrently as pending items."""
-        parsed = [parse_url(url) for url in urls]
-        url_client_pairs = []
-        for i, p in enumerate(parsed):
+        parsed = []
+        for i, url in enumerate(urls):
+            p = parse_url(url)
             if p is None:
-                console.print(
-                    f"[red]Found invalid url [cyan]{urls[i]}[/cyan], skipping.",
-                )
-                continue
-            url_client_pairs.append((p, await self.get_logged_in_client(p.source)))
+                console.print(f"[red]Found invalid url [cyan]{url}[/cyan], skipping.")
+            else:
+                parsed.append(p)
+
+        unique_sources = {p.source for p in parsed}
+        logged_in = await asyncio.gather(
+            *[self.get_logged_in_client(s) for s in unique_sources]
+        )
+        clients = dict(zip(unique_sources, logged_in))
 
         pendings = await asyncio.gather(
-            *[
-                url.into_pending(client, self.config, self.database)
-                for url, client in url_client_pairs
-            ],
+            *[p.into_pending(clients[p.source], self.config, self.database) for p in parsed]
         )
         self.pending.extend(pendings)
 

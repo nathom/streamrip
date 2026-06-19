@@ -17,6 +17,29 @@ from ..media import (
 )
 
 logger = logging.getLogger("streamrip")
+
+_TYPE_MAP: dict[str, type[Pending]] = {
+    "track": PendingSingle,
+    "album": PendingAlbum,
+    "playlist": PendingPlaylist,
+    "artist": PendingArtist,
+    "label": PendingLabel,
+}
+
+
+def _pending_from_type(
+    media_type: str,
+    item_id: str,
+    client: Client,
+    config: Config,
+    db: Database,
+) -> Pending:
+    cls = _TYPE_MAP.get(media_type)
+    if cls is None:
+        raise NotImplementedError(f"Unsupported media type: {media_type!r}")
+    return cls(item_id, client, config, db)
+
+
 URL_REGEX = re.compile(
     r"https?://(?:www|open|play|listen)?\.?(qobuz|tidal|deezer)\.com?(?:(?:/(album|artist|track|playlist|video|label))|(?:\/[-\w]+?))+\/([-\w]+)",
 )
@@ -71,19 +94,9 @@ class GenericURL(URL):
         db: Database,
     ) -> Pending:
         source, media_type, item_id = self.match.groups()
-        assert client.source == source
-
-        if media_type == "track":
-            return PendingSingle(item_id, client, config, db)
-        elif media_type == "album":
-            return PendingAlbum(item_id, client, config, db)
-        elif media_type == "playlist":
-            return PendingPlaylist(item_id, client, config, db)
-        elif media_type == "artist":
-            return PendingArtist(item_id, client, config, db)
-        elif media_type == "label":
-            return PendingLabel(item_id, client, config, db)
-        raise NotImplementedError
+        if client.source != source:
+            raise ValueError(f"Client source {client.source!r} does not match URL source {source!r}")
+        return _pending_from_type(media_type, item_id, client, config, db)
 
 
 class QobuzInterpreterURL(URL):
@@ -180,17 +193,7 @@ class DeezerDynamicURL(URL):
     ) -> Pending:
         url = self.match.group(0)  # entire dynamic link
         media_type, item_id = await self._extract_info_from_dynamic_link(url, client)
-        if media_type == "track":
-            return PendingSingle(item_id, client, config, db)
-        elif media_type == "album":
-            return PendingAlbum(item_id, client, config, db)
-        elif media_type == "playlist":
-            return PendingPlaylist(item_id, client, config, db)
-        elif media_type == "artist":
-            return PendingArtist(item_id, client, config, db)
-        elif media_type == "label":
-            return PendingLabel(item_id, client, config, db)
-        raise NotImplementedError
+        return _pending_from_type(media_type, item_id, client, config, db)
 
     @classmethod
     async def _extract_info_from_dynamic_link(
