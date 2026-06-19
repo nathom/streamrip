@@ -377,7 +377,7 @@ class DeezerClient(Client):
             except AttributeError:
                 raise Exception(f"Invalid media type {media_type}")
 
-        response = search_function(query, limit=limit)  # type: ignore
+        response = await asyncio.to_thread(search_function, query, limit=limit)  # type: ignore
         if response["total"] > 0:
             return [response]
         return []
@@ -444,7 +444,7 @@ class DeezerClient(Client):
             _, format_str = self._QUALITY_MAP[q_level]
             try:
                 logger.debug("Attempting quality %d (%s)", q_level, format_str)
-                url = self.client.get_track_url(token, format_str)
+                url = await asyncio.to_thread(self.client.get_track_url, token, format_str)
                 if url:
                     final_quality = q_level
                     break
