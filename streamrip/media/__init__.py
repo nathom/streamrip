@@ -12,20 +12,20 @@ from .playlist import (
 from .track import PendingSingle, PendingTrack, Track
 
 __all__ = [
+    "Album",
+    "Artist",
+    "Label",
     "Media",
     "Pending",
-    "Album",
     "PendingAlbum",
-    "Artist",
     "PendingArtist",
-    "Label",
     "PendingLabel",
-    "Playlist",
-    "PendingPlaylist",
     "PendingLastfmPlaylist",
-    "Track",
-    "PendingTrack",
+    "PendingPlaylist",
     "PendingPlaylistTrack",
     "PendingSingle",
+    "PendingTrack",
+    "Playlist",
+    "Track",
     "remove_artwork_tempdirs",
 ]

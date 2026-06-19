@@ -114,7 +114,7 @@ class Converter:
             stderr=asyncio.subprocess.PIPE,
         )
         out, err = await process.communicate()
-        if process.returncode == 0 and os.path.isfile(self.tempfile):
+        if process.returncode == 0 and os.path.isfile(self.tempfile):  # noqa: ASYNC240
             if self.remove_source:
                 os.remove(self.filename)
                 logger.debug("Source removed: %s", self.filename)

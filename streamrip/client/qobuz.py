@@ -326,7 +326,7 @@ class QobuzClient(Client):
         if self.secret is None or not self.logged_in:
             raise Exception("Not logged in to Qobuz")
         if not (1 <= quality <= 4):
-            raise NonStreamableError(f"Invalid Qobuz quality {quality} (must be 1–4)")
+            raise NonStreamableError(f"Invalid Qobuz quality {quality} (must be 1-4)")
         status, resp_json = await self._request_file_url(item, quality, self.secret)
         if status != 200:
             raise NonStreamableError(f"Error fetching Qobuz download URL. Status: {status}")
@@ -461,5 +461,5 @@ class QobuzClient(Client):
     def get_quality(quality: int):
         quality_map = (5, 6, 7, 27)
         if not (1 <= quality <= 4):
-            raise NonStreamableError(f"Invalid Qobuz quality {quality} (must be 1–4)")
+            raise NonStreamableError(f"Invalid Qobuz quality {quality} (must be 1-4)")
         return quality_map[quality - 1]

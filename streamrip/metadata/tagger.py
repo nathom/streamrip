@@ -242,7 +242,7 @@ class Container(Enum):
 
     async def embed_cover(self, audio, cover_path):
         if self == Container.FLAC:
-            size = os.path.getsize(cover_path)
+            size = os.path.getsize(cover_path)  # noqa: ASYNC240
             if size > FLAC_MAX_BLOCKSIZE:
                 raise Exception("Cover art too big for FLAC")
             cover = Picture()

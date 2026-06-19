@@ -3,12 +3,13 @@ import binascii
 import hashlib
 import logging
 import re
+from typing import ClassVar
 
 import aiolimiter
 import deezer
 import requests
-from deezer.errors import DataException, GWAPIError
 from Cryptodome.Cipher import AES
+from deezer.errors import DataException, GWAPIError
 
 from ..config import Config
 from ..exceptions import (
@@ -40,7 +41,7 @@ class DeezerClient(Client):
     max_favorites = 10_000
 
     # quality index → (gw format id, API format string)
-    _QUALITY_MAP: list[tuple[int, str]] = [
+    _QUALITY_MAP: ClassVar[list[tuple[int, str]]] = [
         (9, "MP3_128"),  # quality 0
         (3, "MP3_320"),  # quality 1
         (1, "FLAC"),     # quality 2

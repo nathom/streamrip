@@ -1,9 +1,10 @@
 import asyncio
 import os
-import pytest
+from unittest.mock import AsyncMock, Mock, patch
+
 import deezer
+import pytest
 from deezer.errors import DataException
-from unittest.mock import Mock, AsyncMock, patch
 from util import arun
 
 from streamrip.client.deezer import DeezerClient

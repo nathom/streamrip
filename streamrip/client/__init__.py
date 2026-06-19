@@ -6,11 +6,11 @@ from .soundcloud import SoundcloudClient
 from .tidal import TidalClient
 
 __all__ = [
+    "BasicDownloadable",
     "Client",
     "DeezerClient",
-    "TidalClient",
+    "Downloadable",
     "QobuzClient",
     "SoundcloudClient",
-    "Downloadable",
-    "BasicDownloadable",
+    "TidalClient",
 ]
