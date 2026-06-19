@@ -189,9 +189,10 @@ class Converter:
         if self.show_progress:
             command.append("-stats")
 
-        if self.copy_art and type(self)._ffmpeg_supports_art:
+        supports_art = type(self)._ffmpeg_supports_art
+        if self.copy_art and supports_art:
             command.extend(["-c:v", "copy"])
-        elif not type(self)._ffmpeg_supports_art:
+        elif not supports_art:
             command.append("-vn")
 
         if self.ffmpeg_arg:

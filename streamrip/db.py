@@ -70,22 +70,27 @@ class DatabaseBase(DatabaseInterface):
             raise ValueError("path must not be empty")
 
         self.path = path
-
-        if not os.path.exists(self.path):
+        needs_create = not os.path.exists(self.path)
+        self._conn = sqlite3.connect(self.path)
+        if needs_create:
             self.create()
+
+    def __del__(self):
+        try:
+            self._conn.close()
+        except Exception:
+            pass
 
     def create(self):
         """Create a database."""
-        with sqlite3.connect(self.path) as conn:
-            params = ", ".join(
-                f"{key} {' '.join(map(str.upper, props))} NOT NULL"
-                for key, props in self.structure.items()
-            )
-            command = f"CREATE TABLE {self.name} ({params})"
-
-            logger.debug("executing %s", command)
-
-            conn.execute(command)
+        params = ", ".join(
+            f"{key} {' '.join(map(str.upper, props))} NOT NULL"
+            for key, props in self.structure.items()
+        )
+        command = f"CREATE TABLE {self.name} ({params})"
+        logger.debug("executing %s", command)
+        self._conn.execute(command)
+        self._conn.commit()
 
     def keys(self):
         """Get the column names of the table."""
@@ -103,14 +108,10 @@ class DatabaseBase(DatabaseInterface):
             raise ValueError(f"Invalid key(s): {invalid}. Valid keys: {allowed_keys}")
 
         items = {k: str(v) for k, v in items.items()}
-
-        with sqlite3.connect(self.path) as conn:
-            conditions = " AND ".join(f"{key}=?" for key in items.keys())
-            command = f"SELECT EXISTS(SELECT 1 FROM {self.name} WHERE {conditions})"
-
-            logger.debug("Executing %s", command)
-
-            return bool(conn.execute(command, tuple(items.values())).fetchone()[0])
+        conditions = " AND ".join(f"{key}=?" for key in items.keys())
+        command = f"SELECT EXISTS(SELECT 1 FROM {self.name} WHERE {conditions})"
+        logger.debug("Executing %s", command)
+        return bool(self._conn.execute(command, tuple(items.values())).fetchone()[0])
 
     def add(self, items: tuple[str]):
         """Add a row to the table.
@@ -118,21 +119,20 @@ class DatabaseBase(DatabaseInterface):
         :param items: Column-name + value. Values must be provided for all cols.
         :type items: Tuple[str]
         """
-        assert len(items) == len(self.structure)
+        if len(items) != len(self.structure):
+            raise ValueError(f"Expected {len(self.structure)} values, got {len(items)}")
 
         params = ", ".join(self.structure.keys())
         question_marks = ", ".join("?" for _ in items)
         command = f"INSERT INTO {self.name} ({params}) VALUES ({question_marks})"
-
         logger.debug("Executing %s", command)
         logger.debug("Items to add: %s", items)
-
-        with sqlite3.connect(self.path) as conn:
-            try:
-                conn.execute(command, tuple(items))
-            except sqlite3.IntegrityError as e:
-                # tried to insert an item that was already there
-                logger.debug(e)
+        try:
+            self._conn.execute(command, tuple(items))
+            self._conn.commit()
+        except sqlite3.IntegrityError as e:
+            # tried to insert an item that was already there
+            logger.debug(e)
 
     def remove(self, **items):
         """Remove items from a table.
@@ -143,18 +143,18 @@ class DatabaseBase(DatabaseInterface):
         """
         conditions = " AND ".join(f"{key}=?" for key in items.keys())
         command = f"DELETE FROM {self.name} WHERE {conditions}"
-
-        with sqlite3.connect(self.path) as conn:
-            logger.debug(command)
-            conn.execute(command, tuple(items.values()))
+        logger.debug(command)
+        self._conn.execute(command, tuple(items.values()))
+        self._conn.commit()
 
     def all(self):
         """Iterate through the rows of the table."""
-        with sqlite3.connect(self.path) as conn:
-            return list(conn.execute(f"SELECT * FROM {self.name}"))
+        return list(self._conn.execute(f"SELECT * FROM {self.name}"))
 
     def reset(self):
         """Delete the database file."""
+        self._conn.close()
+        self._conn = None
         try:
             os.remove(self.path)
         except FileNotFoundError:
