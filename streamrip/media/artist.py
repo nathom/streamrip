@@ -111,20 +111,13 @@ class Artist(Media):
 
         unique_albums: list[Album] = []
         for group in groups.values():
-            # Move explicit versions to the beginning
             group = sorted(
                 group,
-                key=lambda album: album.meta.info.explicit,
-                reverse=True,
-            )
-            group = sorted(
-                group,
-                key=lambda album: album.meta.info.sampling_rate or 0,
-                reverse=True,
-            )
-            group = sorted(
-                group,
-                key=lambda album: album.meta.info.bit_depth or 0,
+                key=lambda a: (
+                    a.meta.info.bit_depth or 0,
+                    a.meta.info.sampling_rate or 0,
+                    a.meta.info.explicit,
+                ),
                 reverse=True,
             )
             # group guaranteed to be nonempty

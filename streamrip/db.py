@@ -62,9 +62,12 @@ class DatabaseBase(DatabaseInterface):
 
         :param path: Path to the database file.
         """
-        assert self.structure != {}
-        assert self.name
-        assert path
+        if not self.structure:
+            raise ValueError(f"{type(self).__name__}.structure must not be empty")
+        if not self.name:
+            raise ValueError(f"{type(self).__name__}.name must not be empty")
+        if not path:
+            raise ValueError("path must not be empty")
 
         self.path = path
 
@@ -95,9 +98,9 @@ class DatabaseBase(DatabaseInterface):
         :rtype: bool
         """
         allowed_keys = set(self.structure.keys())
-        assert all(
-            key in allowed_keys for key in items.keys()
-        ), f"Invalid key. Valid keys: {allowed_keys}"
+        invalid = set(items.keys()) - allowed_keys
+        if invalid:
+            raise ValueError(f"Invalid key(s): {invalid}. Valid keys: {allowed_keys}")
 
         items = {k: str(v) for k, v in items.items()}
 

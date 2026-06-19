@@ -138,6 +138,8 @@ class Main:
             raise Exception(
                 f"No client named {source} available. Only have {self.clients.keys()}",
             )
+        if client.logged_in:
+            return client
         async with client._login_lock:
             if not client.logged_in:
                 prompter = get_prompter(client, self.config)
@@ -150,7 +152,8 @@ class Main:
                         # Log into client using credentials from config
                         await client.login()
 
-        assert client.logged_in
+        if not client.logged_in:
+            raise RuntimeError(f"Failed to log into {source}")
         return client
 
     async def resolve(self):
