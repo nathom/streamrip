@@ -63,14 +63,7 @@ class Artist(Media):
     async def _download_async(self, filters: QobuzDiscographyFilterConfig):
         async def _rip(item: PendingAlbum):
             album = await item.resolve()
-            # Skip if album doesn't pass the filter
-            if (
-                album is None
-                or (filters.extras and not self._extras(album))
-                or (filters.features and not self._features(album))
-                or (filters.non_studio_albums and not self._non_studio_albums(album))
-                or (filters.non_remaster and not self._non_remaster(album))
-            ):
+            if album is None or not self._apply_filters([album], filters):
                 return
             await album.rip()
 

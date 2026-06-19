@@ -69,19 +69,19 @@ async def fast_async_download(path, url, headers, callback):
         raise
 
 
-@dataclass(slots=True)
+@dataclass
 class Downloadable(ABC):
     session: aiohttp.ClientSession
     url: str
     extension: str
     source: str = "Unknown"
-    _size_base: Optional[int] = None
+    _size: Optional[int] = None
 
     async def download(self, path: str, callback: Callable[[int], Any]):
         await self._download(path, callback)
 
     async def size(self) -> int:
-        if hasattr(self, "_size") and self._size is not None:
+        if self._size is not None:
             return self._size
 
         async with self.session.head(self.url) as response:
@@ -89,14 +89,6 @@ class Downloadable(ABC):
             content_length = response.headers.get("Content-Length", 0)
             self._size = int(content_length)
             return self._size
-
-    @property
-    def _size(self):
-        return self._size_base
-
-    @_size.setter
-    def _size(self, v):
-        self._size_base = v
 
     @abstractmethod
     async def _download(self, path: str, callback: Callable[[int], None]):
@@ -332,6 +324,15 @@ class SoundcloudDownloadable(Downloadable):
         else:
             raise Exception(f"Invalid file type: {self.file_type}")
         self.url = info["url"]
+        self._segments = None
+
+    async def _get_segments(self):
+        if self._segments is None:
+            async with self.session.get(self.url) as resp:
+                content = await resp.text("utf-8")
+            self._segments = m3u8.loads(content).segments
+            self._size = len(self._segments)
+        return self._segments
 
     async def _download(self, path, callback):
         if self.file_type == "mp3":
@@ -350,15 +351,11 @@ class SoundcloudDownloadable(Downloadable):
 
     async def _download_mp3(self, path: str, callback):
         # TODO: make progress bar reflect bytes
-        async with self.session.get(self.url) as resp:
-            content = await resp.text("utf-8")
-
-        parsed_m3u = m3u8.loads(content)
-        self._size = len(parsed_m3u.segments)
-        segment_count = len(parsed_m3u.segments)
+        segments = await self._get_segments()
+        segment_count = len(segments)
         tasks = [
             asyncio.create_task(self._download_segment(i, segment.uri))
-            for i, segment in enumerate(parsed_m3u.segments)
+            for i, segment in enumerate(segments)
         ]
 
         segment_paths: dict[int, str] = {}
@@ -381,11 +378,7 @@ class SoundcloudDownloadable(Downloadable):
 
     async def size(self) -> int:
         if self.file_type == "mp3":
-            async with self.session.get(self.url) as resp:
-                content = await resp.text("utf-8")
-
-            parsed_m3u = m3u8.loads(content)
-            self._size = len(parsed_m3u.segments)
+            await self._get_segments()
         return await super().size()
 
 
