@@ -353,6 +353,36 @@ def test_deezer_get_track_for_playlist(mock_deezer_client):
     mock_deezer_client.client.api.get_album_tracks.assert_not_called()
 
 
+def test_deezer_gw_track_cache_reuse(mock_deezer_client):
+    """gw.get_track is called only once when get_track populates the cache before get_downloadable."""
+    mock_deezer_client.client.api.get_track.return_value = {
+        "id": "100",
+        "title": "Test Track",
+        "album": {"id": 200},
+    }
+    mock_deezer_client.client.api.get_album.return_value = {
+        "id": "200",
+        "title": "Test Album",
+    }
+    mock_deezer_client.client.api.get_album_tracks.return_value = {"data": [{"id": "100"}]}
+    gw_data = {
+        "FILESIZE_FLAC": 25_000_000,
+        "FILESIZE_MP3_320": 5_000_000,
+        "FILESIZE_MP3_128": 2_000_000,
+        "TRACK_TOKEN": "test_token",
+        "SNG_CONTRIBUTORS": {},
+    }
+    mock_deezer_client.client.gw.get_track.return_value = gw_data
+    mock_deezer_client.client.get_track_url.return_value = "https://test.flac"
+
+    arun(mock_deezer_client.get_track("100"))
+    assert mock_deezer_client.client.gw.get_track.call_count == 1
+
+    # get_downloadable must consume the cache — gw.get_track stays at 1 call total.
+    arun(mock_deezer_client.get_downloadable("100", quality=2))
+    assert mock_deezer_client.client.gw.get_track.call_count == 1
+
+
 # ===== get_playlist =====
 
 def test_deezer_get_playlist(mock_deezer_client):
@@ -431,12 +461,18 @@ def test_deezer_get_user_favorites_other_profile(mock_deezer_client):
 
 def test_deezer_get_metadata_dispatch(mock_deezer_client):
     """get_metadata dispatches to the correct handler for each media type."""
-    with patch.object(
-        mock_deezer_client, "get_album", return_value={"id": "1"}
-    ) as mock_get_album:
-        result = arun(mock_deezer_client.get_metadata("1", "album"))
-        mock_get_album.assert_called_once_with("1")
-        assert result == {"id": "1"}
+    handlers = {
+        "track": "get_track",
+        "album": "get_album",
+        "playlist": "get_playlist",
+        "artist": "get_artist",
+    }
+    for media_type, method_name in handlers.items():
+        expected = {"id": "1", "type": media_type}
+        with patch.object(mock_deezer_client, method_name, return_value=expected) as mock_handler:
+            result = arun(mock_deezer_client.get_metadata("1", media_type))
+            mock_handler.assert_called_once_with("1")
+            assert result == expected
 
 
 def test_deezer_get_metadata_invalid_type(mock_deezer_client):
