@@ -148,7 +148,6 @@ class DeezerDownloadable(Downloadable):
         self.id = str(info["id"])
 
     async def _download(self, path: str, callback):
-        # with requests.Session().get(self.url, allow_redirects=True) as resp:
         async with self.session.get(self.url, allow_redirects=True) as resp:
             resp.raise_for_status()
             self._size = int(resp.headers.get("Content-Length", 0))
@@ -166,9 +165,17 @@ class DeezerDownloadable(Downloadable):
 
             if self.is_encrypted.search(self.url) is None:
                 logger.debug(f"Deezer file at {self.url} not encrypted.")
-                await fast_async_download(
-                    path, self.url, self.session.headers, callback
-                )
+                try:
+                    async with aiofiles.open(path, "wb") as audio:
+                        async for chunk in resp.content.iter_chunked(2**17):
+                            await audio.write(chunk)
+                            callback(len(chunk))
+                except Exception:
+                    try:
+                        os.remove(path)
+                    except FileNotFoundError:
+                        pass
+                    raise
             else:
                 blowfish_key = self._generate_blowfish_key(self.id)
                 logger.debug(
