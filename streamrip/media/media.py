@@ -22,6 +22,13 @@ class Media(ABC):
         """Update database, run conversion, delete garbage files etc."""
         raise NotImplementedError
 
+    @staticmethod
+    def batch(iterable, n=1):
+        """Split iterable into consecutive chunks of at most n items."""
+        total = len(iterable)
+        for ndx in range(0, total, n):
+            yield iterable[ndx : min(ndx + n, total)]
+
 
 class Pending(ABC):
     """A request to download a `Media` whose metadata has not been fetched."""

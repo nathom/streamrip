@@ -19,13 +19,12 @@ from ..exceptions import NonStreamableError
 from ..filepath_utils import clean_filepath
 from ..metadata import (
     AlbumMetadata,
-    Covers,
     PlaylistMetadata,
     SearchResults,
     TrackMetadata,
 )
 from ..utils.ssl_utils import get_aiohttp_connector_kwargs
-from .artwork import download_artwork
+from .artwork import download_embed_cover
 from .media import Media, Pending
 from .track import Track
 
@@ -76,7 +75,10 @@ class PendingPlaylistTrack(Pending):
         quality = self.config.session.get_source(self.client.source).quality
         try:
             embedded_cover_path, downloadable = await asyncio.gather(
-                self._download_cover(album.covers, self.folder),
+                download_embed_cover(
+                    self.client.session, self.folder, album.covers,
+                    self.config.session.artwork, for_playlist=True,
+                ),
                 self.client.get_downloadable(self.id, quality),
             )
         except NonStreamableError as e:
@@ -92,16 +94,6 @@ class PendingPlaylistTrack(Pending):
             embedded_cover_path,
             self.db,
         )
-
-    async def _download_cover(self, covers: Covers, folder: str) -> str | None:
-        embed_path, _ = await download_artwork(
-            self.client.session,
-            folder,
-            covers,
-            self.config.session.artwork,
-            for_playlist=True,
-        )
-        return embed_path
 
 
 @dataclass(slots=True)
@@ -156,11 +148,6 @@ class Playlist(Media):
             await download_batch(resolved)
             resolved = await next_task if next_task is not None else []
 
-    @staticmethod
-    def batch(iterable, n=1):
-        total = len(iterable)
-        for ndx in range(0, total, n):
-            yield iterable[ndx : min(ndx + n, total)]
 
 
 @dataclass(slots=True)

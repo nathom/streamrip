@@ -9,9 +9,9 @@ from ..config import Config
 from ..db import Database
 from ..exceptions import NonStreamableError
 from ..filepath_utils import clean_filename
-from ..metadata import AlbumMetadata, Covers, TrackMetadata, tag_file
+from ..metadata import AlbumMetadata, TrackMetadata, tag_file
 from ..progress import add_title, get_progress_callback, remove_title
-from .artwork import download_artwork
+from .artwork import download_embed_cover
 from .media import Media, Pending
 from .semaphore import global_download_semaphore
 
@@ -235,7 +235,10 @@ class PendingSingle(Pending):
         os.makedirs(folder, exist_ok=True)
 
         embedded_cover_path, downloadable = await asyncio.gather(
-            self._download_cover(album.covers, folder),
+            download_embed_cover(
+                self.client.session, folder, album.covers,
+                self.config.session.artwork, for_playlist=False,
+            ),
             self.client.get_downloadable(self.id, quality),
         )
         return Track(
@@ -256,13 +259,3 @@ class PendingSingle(Pending):
             parent = os.path.join(parent, self.client.source.capitalize())
 
         return os.path.join(parent, meta.format_folder_path(formatter))
-
-    async def _download_cover(self, covers: Covers, folder: str) -> str | None:
-        embed_path, _ = await download_artwork(
-            self.client.session,
-            folder,
-            covers,
-            self.config.session.artwork,
-            for_playlist=False,
-        )
-        return embed_path

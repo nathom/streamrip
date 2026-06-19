@@ -40,13 +40,7 @@ class Album(Media):
             except Exception as e:
                 logger.error(f"Error downloading track: {e}")
 
-        results = await asyncio.gather(
-            *[_resolve_and_download(p) for p in self.tracks], return_exceptions=True
-        )
-
-        for result in results:
-            if isinstance(result, Exception):
-                logger.error(f"Album track processing error: {result}")
+        await asyncio.gather(*[_resolve_and_download(p) for p in self.tracks])
 
     async def postprocess(self):
         progress.remove_title(self.meta.album)

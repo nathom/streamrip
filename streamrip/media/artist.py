@@ -169,12 +169,6 @@ class Artist(Media):
         """Filter out singles."""
         return len(a.tracks) > 1
 
-    @staticmethod
-    def batch(iterable, n=1):
-        total = len(iterable)
-        for ndx in range(0, total, n):
-            yield iterable[ndx : min(ndx + n, total)]
-
 
 @dataclass(slots=True)
 class PendingArtist(Pending):

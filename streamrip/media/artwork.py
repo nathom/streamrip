@@ -119,6 +119,18 @@ async def download_artwork(
     return embed_cover_path, saved_cover_path
 
 
+async def download_embed_cover(
+    session: aiohttp.ClientSession,
+    folder: str,
+    covers: Covers,
+    config: ArtworkConfig,
+    for_playlist: bool,
+) -> str | None:
+    """Download and return the path of the cover to embed, discarding the hi-res path."""
+    embed_path, _ = await download_artwork(session, folder, covers, config, for_playlist)
+    return embed_path
+
+
 def downscale_image(input_image_path: str, max_dimension: int):
     """Downscale an image in place given a maximum allowed dimension.
 
