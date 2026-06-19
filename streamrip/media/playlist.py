@@ -119,27 +119,42 @@ class Playlist(Media):
 
     async def download(self):
         track_resolve_chunk_size = 20
+        batches = list(self.batch(self.tracks, track_resolve_chunk_size))
 
-        async def _resolve_download(item: PendingPlaylistTrack):
+        async def safe_resolve(item: PendingPlaylistTrack) -> Track | None:
             try:
-                track = await item.resolve()
-                if track is None:
-                    return
-                await track.rip()
+                return await item.resolve()
             except Exception as e:
-                logger.error(f"Error downloading track: {e}")
+                logger.error(f"Error resolving track {item.id}: {e}")
+                return None
 
-        batches = self.batch(
-            [_resolve_download(track) for track in self.tracks],
-            track_resolve_chunk_size,
-        )
+        async def resolve_batch(batch: list) -> list[Track]:
+            results = await asyncio.gather(*[safe_resolve(t) for t in batch])
+            return [r for r in results if r is not None]
 
-        for batch in batches:
-            results = await asyncio.gather(*batch, return_exceptions=True)
+        async def download_batch(tracks: list[Track]) -> None:
+            async def safe_rip(track: Track) -> None:
+                try:
+                    await track.rip()
+                except Exception as e:
+                    logger.error(f"Error downloading track: {e}")
 
-            for result in results:
-                if isinstance(result, Exception):
-                    logger.error(f"Batch processing error: {result}")
+            await asyncio.gather(*[safe_rip(t) for t in tracks])
+
+        if not batches:
+            return
+
+        resolved = await resolve_batch(batches[0])
+
+        for i in range(len(batches)):
+            # Kick off next batch resolution concurrently with current download.
+            next_task = (
+                asyncio.create_task(resolve_batch(batches[i + 1]))
+                if i + 1 < len(batches)
+                else None
+            )
+            await download_batch(resolved)
+            resolved = await next_task if next_task is not None else []
 
     @staticmethod
     def batch(iterable, n=1):
