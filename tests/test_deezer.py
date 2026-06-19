@@ -1,3 +1,4 @@
+import asyncio
 import os
 import pytest
 import deezer
@@ -246,6 +247,28 @@ def test_deezer_album_cache(mock_deezer_client):
 
     assert res1 == res2
     assert res1["title"] == "Test Album"
+    assert mock_deezer_client.client.api.get_album.call_count == 1
+    assert mock_deezer_client.client.api.get_album_tracks.call_count == 1
+
+
+def test_deezer_album_cache_concurrent(mock_deezer_client):
+    """Concurrent get_album calls for the same ID make only one pair of API calls."""
+    mock_deezer_client.client.api.get_album.return_value = {
+        "id": "album_123",
+        "title": "Test Album",
+        "genres": {"data": []},
+    }
+    mock_deezer_client.client.api.get_album_tracks.return_value = {"data": []}
+
+    async def run():
+        return await asyncio.gather(
+            mock_deezer_client.get_album("album_123"),
+            mock_deezer_client.get_album("album_123"),
+            mock_deezer_client.get_album("album_123"),
+        )
+
+    results = arun(run())
+    assert all(r["title"] == "Test Album" for r in results)
     assert mock_deezer_client.client.api.get_album.call_count == 1
     assert mock_deezer_client.client.api.get_album_tracks.call_count == 1
 

@@ -59,6 +59,7 @@ class DeezerClient(Client):
         self.config = config.session.deezer
         self.logged_in_user_id: int | None = None
         self._album_cache: dict[str, dict] = {}
+        self._album_tasks: dict[str, asyncio.Task] = {}
         self._gw_track_cache: dict[str, dict] = {}
         # Deezer's public REST API (api.deezer.com) throttles beyond ~10 req/sec
         # and returns a 86-byte error JSON above that rate. Cap at 10/sec.
@@ -167,7 +168,8 @@ class DeezerClient(Client):
             else:
                 gw_info = await asyncio.to_thread(self.client.gw.get_track, item_id)
         except Exception as e:
-            logger.error("Error fetching album of track %s: %s", item_id, e)
+            label = "album/GW data" if fetch_album else "GW data"
+            logger.error("Error fetching %s for track %s: %s", label, item_id, e)
             return item
 
         self._gw_track_cache[item_id] = gw_info
@@ -200,8 +202,9 @@ class DeezerClient(Client):
     async def get_album(self, item_id: str) -> dict:
         """Fetch metadata for an album, including its full track list.
 
-        Results are cached in-process: subsequent calls with the same ID return
-        immediately without hitting the API.
+        Concurrent calls for the same ID share a single in-flight Task so only
+        one pair of REST requests is ever made per album. Results are cached:
+        subsequent calls after the first completion return immediately.
 
         Args:
             item_id (str): The Deezer album ID.
@@ -213,8 +216,30 @@ class DeezerClient(Client):
             DataException: If the album is not found and no redirect can be resolved.
         """
         if item_id in self._album_cache:
-            logger.info("Deezer album cache hit for album ID: %s", item_id)
+            logger.debug("Deezer album cache hit for album ID: %s", item_id)
             return self._album_cache[item_id]
+        if item_id not in self._album_tasks:
+            self._album_tasks[item_id] = asyncio.create_task(self._fetch_album(item_id))
+        try:
+            return await self._album_tasks[item_id]
+        except Exception:
+            self._album_tasks.pop(item_id, None)
+            raise
+
+    async def _fetch_album(self, item_id: str) -> dict:
+        """Fetch album metadata and track list from the REST API, following redirects.
+
+        Called by get_album via an asyncio.Task; do not call directly.
+
+        Args:
+            item_id (str): The Deezer album ID.
+
+        Returns:
+            dict: Album metadata dict with "tracks" and "track_total" populated.
+
+        Raises:
+            DataException: If the album is not found and no redirect resolves.
+        """
         try:
             async with self._api_rate_limiter:
                 album_metadata = await asyncio.to_thread(self.client.api.get_album, item_id)
