@@ -186,15 +186,21 @@ async def test_latest_streamrip_version_creates_session():
         mock_get_kwargs.return_value = {"verify_ssl": False}
         mock_connector.return_value = MagicMock()
 
-        # Setup mock responses for API calls
+        # Setup mock responses for API calls.
+        # `async with ClientSession(...) as s:` gives s = await __aenter__(),
+        # so s is __aenter__.return_value, not the instance itself.
+        # aiohttp.ClientSession.get() is also a regular function (not a coroutine)
+        # returning an async context manager, so it must be a MagicMock.
         mock_session_instance = AsyncMock()
         mock_client_session.return_value = mock_session_instance
+        # Pin __aenter__ to return the instance so that s is mock_session_instance.
+        mock_session_instance.__aenter__.return_value = mock_session_instance
 
         mock_context_manager = AsyncMock()
-        mock_session_instance.get.return_value = mock_context_manager
         mock_context_manager.__aenter__.return_value.json.return_value = {
             "info": {"version": "1.0.0"}
         }
+        mock_session_instance.get = MagicMock(return_value=mock_context_manager)
 
         # Make sure the test doesn't actually wait
         with patch("streamrip.rip.cli.__version__", "1.0.0"):
