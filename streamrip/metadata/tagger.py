@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import os
 from enum import Enum
@@ -283,10 +284,10 @@ async def tag_file(path: str, meta: TrackMetadata, cover_path: str | None):
     else:
         raise Exception(f"Invalid extension {ext}")
 
-    audio = container.get_mutagen_class(path)
+    audio = await asyncio.to_thread(container.get_mutagen_class, path)
     tags = container.get_tag_pairs(meta)
     logger.debug("Tagging with %s", tags)
     container.tag_audio(audio, tags)
     if cover_path is not None:
         await container.embed_cover(audio, cover_path)
-    container.save_audio(audio, path)
+    await asyncio.to_thread(container.save_audio, audio, path)
