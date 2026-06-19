@@ -16,7 +16,7 @@ from ..config import Config
 from ..console import console
 from ..db import Database
 from ..exceptions import NonStreamableError
-from ..filepath_utils import clean_filepath
+from ..filepath_utils import clean_filename, clean_filepath
 from ..metadata import (
     AlbumMetadata,
     PlaylistMetadata,
@@ -173,7 +173,7 @@ class PendingPlaylist(Pending):
             return None
         name = meta.name
         parent = self.config.session.downloads.folder
-        folder = os.path.join(parent, clean_filepath(name))
+        folder = os.path.join(parent, clean_filepath(clean_filename(name)))
         tracks = [
             PendingPlaylistTrack(
                 id,
@@ -245,7 +245,7 @@ class PendingLastfmPlaylist(Pending):
             results: list[tuple[str | None, bool]] = await asyncio.gather(*requests)
 
         parent = self.config.session.downloads.folder
-        folder = os.path.join(parent, clean_filepath(playlist_title))
+        folder = os.path.join(parent, clean_filepath(clean_filename(playlist_title)))
 
         pending_tracks = []
         for pos, (id, from_fallback) in enumerate(results, start=1):
