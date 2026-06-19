@@ -319,7 +319,7 @@ class DeezerClient(Client):
             )
         return {
             "title": "Loved Tracks",
-            "tracks": tracks,
+            "tracks": [{"id": str(t["id"])} for t in tracks],
             "track_total": len(tracks),
         }
 

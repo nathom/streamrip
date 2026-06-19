@@ -353,15 +353,16 @@ def test_deezer_get_playlist_favorites_routing(mock_deezer_client):
     """get_playlist routes 'favorites:<user_id>' to get_user_favorites."""
     mock_deezer_client.logged_in_user_id = 42
     mock_deezer_client.client.gw.get_my_favorite_tracks.return_value = [
-        {"SNG_ID": "1"},
-        {"SNG_ID": "2"},
-        {"SNG_ID": "3"},
+        {"id": "1"},
+        {"id": "2"},
+        {"id": "3"},
     ]
 
     result = arun(mock_deezer_client.get_playlist("favorites:42"))
 
     assert result["title"] == "Loved Tracks"
     assert result["track_total"] == 3
+    assert result["tracks"] == [{"id": "1"}, {"id": "2"}, {"id": "3"}]
     mock_deezer_client.client.gw.get_my_favorite_tracks.assert_called_once()
     mock_deezer_client.client.gw.get_playlist.assert_not_called()
 
@@ -371,11 +372,13 @@ def test_deezer_get_playlist_favorites_routing(mock_deezer_client):
 def test_deezer_get_user_favorites_own_profile(mock_deezer_client):
     """Fetching own favorites calls get_my_favorite_tracks, never get_user_tracks."""
     mock_deezer_client.logged_in_user_id = 42
-    mock_deezer_client.client.gw.get_my_favorite_tracks.return_value = [{"SNG_ID": "1"}]
+    # get_my_favorite_tracks returns map_user_track() results, which have "id" not "SNG_ID"
+    mock_deezer_client.client.gw.get_my_favorite_tracks.return_value = [{"id": "1"}]
 
     result = arun(mock_deezer_client.get_user_favorites("42"))
 
     assert result["track_total"] == 1
+    assert result["tracks"] == [{"id": "1"}]
     mock_deezer_client.client.gw.get_my_favorite_tracks.assert_called_once_with(
         DeezerClient.max_favorites
     )
@@ -385,14 +388,16 @@ def test_deezer_get_user_favorites_own_profile(mock_deezer_client):
 def test_deezer_get_user_favorites_other_profile(mock_deezer_client):
     """Fetching another user's favorites calls get_user_tracks with the numeric UID."""
     mock_deezer_client.logged_in_user_id = 42
+    # get_user_tracks returns map_user_track() results, which have "id" not "SNG_ID"
     mock_deezer_client.client.gw.get_user_tracks.return_value = [
-        {"SNG_ID": "1"},
-        {"SNG_ID": "2"},
+        {"id": "1"},
+        {"id": "2"},
     ]
 
     result = arun(mock_deezer_client.get_user_favorites("99"))
 
     assert result["track_total"] == 2
+    assert result["tracks"] == [{"id": "1"}, {"id": "2"}]
     mock_deezer_client.client.gw.get_user_tracks.assert_called_once_with(
         99, DeezerClient.max_favorites
     )
