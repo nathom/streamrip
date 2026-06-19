@@ -49,6 +49,7 @@ The following fixes and improvements are present in this fork on top of [`nathom
 - `asyncio.Lock` on each client prevents concurrent login races when multiple URLs from the same source are resolved in parallel
 
 **Downloads**
+- Playlist downloads pipeline the resolve and download phases: while one batch of tracks is downloading, the next batch's metadata and URL resolution runs concurrently, eliminating the idle API time between batches (~2 s saved per additional batch of 20 tracks)
 - `fast_async_download` runs the `requests` HTTP call inside `asyncio.to_thread` so it no longer blocks the event loop during concurrent downloads ([#982](https://github.com/nathom/streamrip/pull/982))
 - `fast_async_download` now calls `raise_for_status()` so HTTP errors (4xx/5xx) surface as exceptions instead of silently writing the error body to disk; the partial file is removed on failure
 - Fix `truncate_str` to explicitly use UTF-8 encoding and skip the encode/decode round-trip when the filename is already within the 255-byte limit
