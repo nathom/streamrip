@@ -2,11 +2,10 @@ import asyncio
 import os
 import pytest
 import deezer
-from deezer.errors import DataException, GWAPIError
+from deezer.errors import DataException
 from unittest.mock import Mock, AsyncMock, patch
 from util import arun
 
-from streamrip.client.downloadable import DeezerDownloadable
 from streamrip.client.deezer import DeezerClient
 from streamrip.config import Config
 from streamrip.exceptions import NonStreamableError
