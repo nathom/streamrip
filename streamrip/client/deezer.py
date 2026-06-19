@@ -96,11 +96,15 @@ class DeezerClient(Client):
         arl = self.config.arl
         if not arl:
             raise MissingCredentialsError
+        logger.debug("Logging into Deezer")
         success = self.client.login_via_arl(arl)
         if not success:
             raise AuthenticationError
-        self.logged_in_user_id = self.client.gw.get_user_data()["USER"]["USER_ID"]
+        # login_via_arl already called getUserData internally; read the cached result
+        # instead of making a second network round-trip.
+        self.logged_in_user_id = self.client.current_user["id"]
         self.logged_in = True
+        logger.debug("Deezer login successful (user ID: %s)", self.logged_in_user_id)
 
     async def get_metadata(self, item_id: str, media_type: str) -> dict:
         """Fetch metadata for a given item, dispatching by media type.
@@ -125,6 +129,7 @@ class DeezerClient(Client):
         handler = handlers.get(media_type)
         if handler is None:
             raise Exception(f"Media type {media_type} not available on deezer")
+        logger.debug("Fetching Deezer %s %s", media_type, item_id)
         return await handler(item_id)
 
     async def get_track(self, item_id: str, fetch_album: bool = True) -> dict:
@@ -501,7 +506,11 @@ class DeezerClient(Client):
 
         dl_info["quality"] = final_quality
         dl_info["url"] = url
-        logger.debug("dz track info: %s", track_info)
+        _, format_str = self._QUALITY_MAP[final_quality]
+        logger.debug(
+            "Deezer track %s resolved at quality %d (%s)", item_id, final_quality, format_str
+        )
+        logger.debug("Deezer downloadable info: %s", dl_info)
         return DeezerDownloadable(self.session, dl_info)
 
     def _get_encrypted_file_url(
