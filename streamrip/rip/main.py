@@ -12,17 +12,12 @@ from ..console import console
 from ..media import (
     Media,
     Pending,
-    PendingAlbum,
-    PendingArtist,
-    PendingLabel,
     PendingLastfmPlaylist,
-    PendingPlaylist,
-    PendingSingle,
     remove_artwork_tempdirs,
 )
 from ..metadata import SearchResults
 from ..progress import clear_progress
-from .parse_url import parse_url
+from .parse_url import _pending_from_type, parse_url
 from .prompter import get_prompter
 
 logger = logging.getLogger("streamrip")
@@ -96,20 +91,9 @@ class Main:
             self._add_by_id_client(clients[source], media_type, id)
 
     def _add_by_id_client(self, client: Client, media_type: str, id: str):
-        if media_type == "track":
-            item = PendingSingle(id, client, self.config, self.database)
-        elif media_type == "album":
-            item = PendingAlbum(id, client, self.config, self.database)
-        elif media_type == "playlist":
-            item = PendingPlaylist(id, client, self.config, self.database)
-        elif media_type == "label":
-            item = PendingLabel(id, client, self.config, self.database)
-        elif media_type == "artist":
-            item = PendingArtist(id, client, self.config, self.database)
-        else:
-            raise Exception(media_type)
-
-        self.pending.append(item)
+        self.pending.append(
+            _pending_from_type(media_type, id, client, self.config, self.database)
+        )
 
     async def add_all(self, urls: list[str]):
         """Add multiple urls concurrently as pending items."""
