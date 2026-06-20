@@ -10,7 +10,7 @@ from ..db import Database
 from ..exceptions import NonStreamableError
 from ..metadata import ArtistMetadata
 from .album import Album, PendingAlbum
-from .media import Media, Pending
+from .media import DownloadStats, Media, Pending
 
 logger = logging.getLogger("streamrip")
 
@@ -32,20 +32,22 @@ class Artist(Media):
     async def preprocess(self):
         pass
 
-    async def download(self):
+    async def download(self, stats: DownloadStats | None = None):
         filter_conf = self.config.session.qobuz_filters
         if filter_conf.repeats:
             console.log(
                 "Resolving [purple]ALL[/purple] artist albums to detect repeats. This may take a while."
             )
-            await self._resolve_then_download(filter_conf)
+            await self._resolve_then_download(filter_conf, stats)
         else:
-            await self._download_async(filter_conf)
+            await self._download_async(filter_conf, stats)
 
     async def postprocess(self):
         pass
 
-    async def _resolve_then_download(self, filters: QobuzDiscographyFilterConfig):
+    async def _resolve_then_download(
+        self, filters: QobuzDiscographyFilterConfig, stats: DownloadStats | None = None
+    ):
         """Resolve all artist albums, then download.
 
         This is used if the repeat filter is turned on, since we need the titles
@@ -56,16 +58,18 @@ class Artist(Media):
         )
         resolved = [a for a in resolved_or_none if a is not None]
         filtered_albums = self._apply_filters(resolved, filters)
-        batches = self.batch([a.rip() for a in filtered_albums], RESOLVE_CHUNK_SIZE)
+        batches = self.batch([a.rip(stats) for a in filtered_albums], RESOLVE_CHUNK_SIZE)
         for batch in batches:
             await asyncio.gather(*batch)
 
-    async def _download_async(self, filters: QobuzDiscographyFilterConfig):
+    async def _download_async(
+        self, filters: QobuzDiscographyFilterConfig, stats: DownloadStats | None = None
+    ):
         async def _rip(item: PendingAlbum):
             album = await item.resolve()
             if album is None or not self._apply_filters([album], filters):
                 return
-            await album.rip()
+            await album.rip(stats)
 
         batches = self.batch(
             [_rip(album) for album in self.albums],

@@ -12,7 +12,7 @@ from ..filepath_utils import clean_filename
 from ..metadata import AlbumMetadata, TrackMetadata, tag_file
 from ..progress import add_title, get_progress_callback, remove_title
 from .artwork import download_embed_cover
-from .media import Media, Pending
+from .media import DownloadStats, Media, Pending
 from .semaphore import global_download_semaphore
 
 logger = logging.getLogger("streamrip")
@@ -31,13 +31,25 @@ class Track(Media):
     download_path: str = ""
     is_single: bool = False
 
+    async def rip(self, stats: DownloadStats | None = None) -> None:
+        try:
+            await self.preprocess()
+            await self.download()
+            await self.postprocess()
+            if stats is not None:
+                stats.record_success(self.download_path)
+        except Exception:
+            if stats is not None:
+                stats.record_failure()
+            raise
+
     async def preprocess(self):
         self._set_download_path()
         os.makedirs(self.folder, exist_ok=True)
         if self.is_single:
             add_title(self.meta.title)
 
-    async def download(self):
+    async def download(self, stats: DownloadStats | None = None):
         async with global_download_semaphore(self.config.session.downloads):
             for attempt in range(2):
                 suffix = " (retry)" if attempt else ""

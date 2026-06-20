@@ -9,7 +9,7 @@ from ..config import Config
 from ..db import Database
 from ..metadata import LabelMetadata
 from .album import PendingAlbum
-from .media import Media, Pending
+from .media import DownloadStats, Media, Pending
 
 logger = logging.getLogger("streamrip")
 
@@ -26,7 +26,7 @@ class Label(Media):
     async def preprocess(self):
         pass
 
-    async def download(self):
+    async def download(self, stats: DownloadStats | None = None):
         # Resolve only 3 albums at a time to avoid
         # initial latency of resolving ALL albums and tracks
         # before any downloads
@@ -36,7 +36,7 @@ class Label(Media):
             album = await item.resolve()
             if album is None:
                 return
-            await album.rip()
+            await album.rip(stats)
 
         batches = self.batch(
             [_resolve_download(album) for album in self.albums],

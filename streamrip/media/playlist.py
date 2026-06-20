@@ -25,7 +25,7 @@ from ..metadata import (
 )
 from ..utils.ssl_utils import get_aiohttp_connector_kwargs
 from .artwork import download_embed_cover
-from .media import Media, Pending
+from .media import DownloadStats, Media, Pending
 from .track import Track
 
 logger = logging.getLogger("streamrip")
@@ -109,7 +109,7 @@ class Playlist(Media):
     async def postprocess(self):
         progress.remove_title(self.name)
 
-    async def download(self):
+    async def download(self, stats: DownloadStats | None = None):
         track_resolve_chunk_size = 20
         batches = list(self.batch(self.tracks, track_resolve_chunk_size))
 
@@ -127,7 +127,7 @@ class Playlist(Media):
         async def download_batch(tracks: list[Track]) -> None:
             async def safe_rip(track: Track) -> None:
                 try:
-                    await track.rip()
+                    await track.rip(stats)
                 except Exception as e:
                     logger.error(f"Error downloading track: {e}")
 

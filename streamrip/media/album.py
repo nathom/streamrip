@@ -12,7 +12,7 @@ from ..filepath_utils import clean_filepath
 from ..metadata import AlbumMetadata
 from ..metadata.util import get_album_track_ids
 from .artwork import download_artwork
-from .media import Media, Pending
+from .media import DownloadStats, Media, Pending
 from .track import PendingTrack
 
 logger = logging.getLogger("streamrip")
@@ -30,13 +30,13 @@ class Album(Media):
     async def preprocess(self):
         progress.add_title(self.meta.album)
 
-    async def download(self):
+    async def download(self, stats: DownloadStats | None = None):
         async def _resolve_and_download(pending: Pending):
             try:
                 track = await pending.resolve()
                 if track is None:
                     return
-                await track.rip()
+                await track.rip(stats)
             except Exception as e:
                 logger.error(f"Error downloading track: {e}")
 

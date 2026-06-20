@@ -2,6 +2,7 @@ import asyncio
 import json
 import logging
 import platform
+import time
 
 import aiofiles
 
@@ -15,6 +16,7 @@ from ..media import (
     PendingLastfmPlaylist,
     remove_artwork_tempdirs,
 )
+from ..media.media import DownloadStats
 from ..metadata import SearchResults
 from ..progress import clear_progress
 from .parse_url import _pending_from_type, parse_url
@@ -153,22 +155,50 @@ class Main:
         self.pending.clear()
 
     async def rip(self):
-        """Download all resolved items."""
+        """Download all resolved items and print an end-of-session summary."""
+        stats = DownloadStats()
+        t0 = time.monotonic()
+
         results = await asyncio.gather(
-            *[item.rip() for item in self.media], return_exceptions=True
+            *[item.rip(stats) for item in self.media], return_exceptions=True
         )
 
-        failed_items = 0
+        elapsed = time.monotonic() - t0
+
         for result in results:
             if isinstance(result, Exception):
                 logger.error(f"Error processing media item: {result}")
-                failed_items += 1
 
-        if failed_items > 0:
-            total_items = len(self.media)
-            logger.info(
-                f"Download completed with {failed_items} failed items out of {total_items} total items."
-            )
+        console.print(self._format_summary(stats, elapsed))
+
+    @staticmethod
+    def _format_summary(stats: DownloadStats, elapsed: float) -> str:
+        """Build a Rich-markup summary line for the end of a rip session.
+
+        Args:
+            stats: Accumulated download metrics.
+            elapsed: Total wall-clock time in seconds.
+
+        Returns:
+            A Rich markup string ready to pass to console.print().
+        """
+        n = stats.bytes_downloaded
+        if n >= 1_000_000_000:
+            size_str = f"{n / 1_000_000_000:.2f} GB"
+        elif n >= 1_000_000:
+            size_str = f"{n / 1_000_000:.1f} MB"
+        else:
+            size_str = f"{n / 1_000:.0f} KB"
+
+        s = int(elapsed)
+        time_str = f"{s // 60}m {s % 60:02d}s" if s >= 60 else f"{s}s"
+
+        return (
+            f"[green]✔ {stats.tracks_downloaded} tracks[/green]  "
+            f"[red]✘ {stats.tracks_failed} errors[/red]  "
+            f"[blue]↓ {size_str}[/blue]  "
+            f"[yellow]⏱ {time_str}[/yellow]"
+        )
 
     async def search_interactive(self, source: str, media_type: str, query: str):
         client = await self.get_logged_in_client(source)
