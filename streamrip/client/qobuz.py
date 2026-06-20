@@ -154,65 +154,69 @@ class QobuzClient(Client):
         self.secret: Optional[str] = None
 
     async def login(self):
-        self.session = await self.get_session(
-            verify_ssl=self.config.session.downloads.verify_ssl
-        )
         """User credentials require either a user token OR a user email & password.
 
         A hash of the password is stored in self.config.qobuz.password_or_token.
         This data as well as the app_id is passed to self._get_user_auth_token() to get
         the actual credentials for the user.
         """
-        c = self.config.session.qobuz
-        if not c.email_or_userid or not c.password_or_token:
-            raise MissingCredentialsError
+        self.session = await self.get_session(
+            verify_ssl=self.config.session.downloads.verify_ssl
+        )
+        try:
+            c = self.config.session.qobuz
+            if not c.email_or_userid or not c.password_or_token:
+                raise MissingCredentialsError
 
-        assert not self.logged_in, "Already logged in"
+            assert not self.logged_in, "Already logged in"
 
-        if not c.app_id or not c.secrets:
-            logger.info("App id/secrets not found, fetching")
-            c.app_id, c.secrets = await self._get_app_id_and_secrets()
-            # write to file
-            f = self.config.file
-            f.qobuz.app_id = c.app_id
-            f.qobuz.secrets = c.secrets
-            f.set_modified()
+            if not c.app_id or not c.secrets:
+                logger.info("App id/secrets not found, fetching")
+                c.app_id, c.secrets = await self._get_app_id_and_secrets()
+                # write to file
+                f = self.config.file
+                f.qobuz.app_id = c.app_id
+                f.qobuz.secrets = c.secrets
+                f.set_modified()
 
-        self.session.headers.update({"X-App-Id": str(c.app_id)})
+            self.session.headers.update({"X-App-Id": str(c.app_id)})
 
-        if c.use_auth_token:
-            params = {
-                "user_id": c.email_or_userid,
-                "user_auth_token": c.password_or_token,
-                "app_id": str(c.app_id),
-            }
-        else:
-            params = {
-                "email": c.email_or_userid,
-                "password": c.password_or_token,
-                "app_id": str(c.app_id),
-            }
+            if c.use_auth_token:
+                params = {
+                    "user_id": c.email_or_userid,
+                    "user_auth_token": c.password_or_token,
+                    "app_id": str(c.app_id),
+                }
+            else:
+                params = {
+                    "email": c.email_or_userid,
+                    "password": c.password_or_token,
+                    "app_id": str(c.app_id),
+                }
 
-        logger.debug("Request params %s", params)
-        status, resp = await self._api_request("user/login", params)
-        logger.debug("Login resp: %s", resp)
+            logger.debug("Request params %s", params)
+            status, resp = await self._api_request("user/login", params)
+            logger.debug("Login resp: %s", resp)
 
-        if status == 401:
-            raise AuthenticationError(f"Invalid credentials from params {params}")
-        elif status == 400:
-            raise InvalidAppIdError(f"Invalid app id from params {params}")
+            if status == 401:
+                raise AuthenticationError(f"Invalid credentials from params {params}")
+            elif status == 400:
+                raise InvalidAppIdError(f"Invalid app id from params {params}")
 
-        logger.debug("Logged in to Qobuz")
+            logger.debug("Logged in to Qobuz")
 
-        if not resp["user"]["credential"]["parameters"]:
-            raise IneligibleError("Free accounts are not eligible to download tracks.")
+            if not resp["user"]["credential"]["parameters"]:
+                raise IneligibleError("Free accounts are not eligible to download tracks.")
 
-        uat = resp["user_auth_token"]
-        self.session.headers.update({"X-User-Auth-Token": uat})
+            uat = resp["user_auth_token"]
+            self.session.headers.update({"X-User-Auth-Token": uat})
 
-        self.secret = await self._get_valid_secret(c.secrets)
+            self.secret = await self._get_valid_secret(c.secrets)
 
-        self.logged_in = True
+            self.logged_in = True
+        except Exception:
+            await self.session.close()
+            raise
 
     async def get_metadata(self, item: str, media_type: str):
         if media_type == "label":
