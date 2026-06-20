@@ -352,7 +352,7 @@ class ConfigData:
         res = d.get(source)
         if res is None:
             raise Exception(f"Invalid source {source}")
-        return res
+        return res  # type: ignore[return-value]
 
 
 def update_toml_section_from_config(toml_section, config):
@@ -388,7 +388,7 @@ class Config:
         with open(old_path) as old_conf:
             old_toml = parse(old_conf.read())
 
-        update_config(old_toml, new_toml)
+        update_config(old_toml, new_toml)  # type: ignore[arg-type]
 
         with open(old_path, "w") as f:
             f.write(dumps(new_toml))
@@ -434,7 +434,7 @@ def _get_dict_keys_r(d: dict) -> set[tuple]:
     See tests/test_config.py for example.
     """
     keys = d.keys()
-    ret = set()
+    ret: set[tuple] = set()
     for cur in keys:
         val = d[cur]
         if isinstance(val, dict):

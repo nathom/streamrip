@@ -117,7 +117,9 @@ class TidalClient(Client):
                 self.global_config.session.conversion.enabled
                 and self.global_config.session.conversion.codec.upper() == "MP3"
             )
-            lyrics_result, contributors_result = await asyncio.gather(
+            lyrics_result: dict | BaseException
+            contributors_result: dict | BaseException
+            lyrics_result, contributors_result = await asyncio.gather(  # type: ignore[assignment]
                 self._api_request(
                     f"tracks/{item_id!s}/lyrics", base="https://listen.tidal.com/v1"
                 ),
@@ -129,17 +131,17 @@ class TidalClient(Client):
                 logger.warning("Failed to get lyrics for %s: %s", item_id, lyrics_result)
             else:
                 if use_mp3:
-                    item["lyrics"] = lyrics_result.get("lyrics") or ""
+                    item["lyrics"] = lyrics_result.get("lyrics") or ""  # type: ignore[union-attr]
                 else:
                     item["lyrics"] = (
-                        lyrics_result.get("subtitles") or lyrics_result.get("lyrics") or ""
+                        lyrics_result.get("subtitles") or lyrics_result.get("lyrics") or ""  # type: ignore[union-attr]
                     )
 
             if isinstance(contributors_result, Exception):
                 logger.debug("Could not fetch contributors for %s: %s", item_id, contributors_result)
                 item["contributors"] = []
             else:
-                item["contributors"] = contributors_result.get("items", [])
+                item["contributors"] = contributors_result.get("items", [])  # type: ignore[union-attr]
 
         logger.debug(item)
         return item
@@ -310,8 +312,8 @@ class TidalClient(Client):
         urls = manifest.get("urls") or []
         if not urls:
             raise NonStreamableError(f"Tidal video {video_id}: manifest contains no stream URLs")
-        async with self.session.get(urls[0]) as resp:
-            available_urls = await resp.json()
+        async with self.session.get(urls[0]) as stream_resp:
+            available_urls = await stream_resp.json()
         available_urls.encoding = "utf-8"
 
         # Highest resolution is last

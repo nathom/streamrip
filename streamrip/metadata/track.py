@@ -46,14 +46,14 @@ class TrackMetadata:
         if not streamable:
             return None
 
-        version = typed(resp.get("version"), str | None)
-        work = typed(resp.get("work"), str | None)
+        version = typed(resp.get("version"), str | None)  # type: ignore[arg-type]
+        work = typed(resp.get("work"), str | None)  # type: ignore[arg-type]
         if version is not None and version not in title:
             title = f"{title} ({version})"
         if work is not None and work not in title:
             title = f"{work}: {title}"
 
-        composer = typed(resp.get("composer", {}).get("name"), str | None)
+        composer = typed(resp.get("composer", {}).get("name"), str | None)  # type: ignore[arg-type]
         tracknumber = typed(resp.get("track_number", 1), int)
         discnumber = typed(resp.get("media_number", 1), int)
         artist = typed(
@@ -62,8 +62,8 @@ class TrackMetadata:
             str,
         )
         track_id = str(resp["id"])
-        bit_depth = typed(resp.get("maximum_bit_depth"), int | None)
-        sampling_rate = typed(resp.get("maximum_sampling_rate"), int | float | None)
+        bit_depth = typed(resp.get("maximum_bit_depth"), int | None)  # type: ignore[arg-type]
+        sampling_rate = typed(resp.get("maximum_sampling_rate"), int | float | None)  # type: ignore[arg-type]
         # Is the info included?
         explicit = False
 
@@ -158,7 +158,7 @@ class TrackMetadata:
     def from_soundcloud(cls, album: AlbumMetadata, resp: dict) -> TrackMetadata:
         track = resp
         track_id = track["id"]
-        isrc = typed(safe_get(track, "publisher_metadata", "isrc"), str | None)
+        isrc = typed(safe_get(track, "publisher_metadata", "isrc"), str | None)  # type: ignore[arg-type]
         bit_depth, sampling_rate = None, None
         explicit = typed(
             safe_get(track, "publisher_metadata", "explicit", default=False),
@@ -227,7 +227,7 @@ class TrackMetadata:
             else:
                 bit_depth = 16
         else:
-            sampling_rate = bit_depth = None
+            sampling_rate = bit_depth = None  # type: ignore[assignment]
 
         info = TrackInfo(
             id=item_id,

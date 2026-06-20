@@ -165,7 +165,7 @@ class Converter:
                 audio = OggVorbis(self.final_fn)
             elif out_ext == ".opus":
                 from mutagen.oggopus import OggOpus
-                audio = OggOpus(self.final_fn)
+                audio = OggOpus(self.final_fn)  # type: ignore[assignment]
             else:
                 return
             audio["metadata_block_picture"] = [encoded]

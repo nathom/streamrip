@@ -25,7 +25,7 @@ from .prompter import get_prompter
 logger = logging.getLogger("streamrip")
 
 if platform.system() == "Windows":
-    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())  # type: ignore[attr-defined]
 
 
 class Main:
@@ -55,11 +55,13 @@ class Main:
         self.database: db.Database
 
         c = self.config.session.database
+        downloads_db: db.DatabaseInterface
         if c.downloads_enabled:
             downloads_db = db.Downloads(c.downloads_path)
         else:
             downloads_db = db.Dummy()
 
+        failed_downloads_db: db.DatabaseInterface
         if c.failed_downloads_enabled:
             failed_downloads_db = db.Failed(c.failed_downloads_path)
         else:

@@ -101,7 +101,7 @@ class AlbumMetadata:
         else:
             container = self.info.container
             bit_depth = self.info.bit_depth
-            sampling_rate = self.info.sampling_rate
+            sampling_rate = self.info.sampling_rate  # type: ignore[assignment]
 
         info: dict[str, str | int | float] = {
             "albumartist": clean_filename(self.albumartist),
@@ -152,10 +152,10 @@ class AlbumMetadata:
         cover_urls = Covers.from_qobuz(resp)
 
         bit_depth = typed(resp.get("maximum_bit_depth", -1), int)
-        sampling_rate = typed(resp.get("maximum_sampling_rate", -1.0), int | float)
+        sampling_rate = typed(resp.get("maximum_sampling_rate", -1.0), int | float)  # type: ignore[arg-type]
         quality = get_quality_id(bit_depth, sampling_rate)
         # Make sure it is non-empty list
-        booklets = typed(resp.get("goodies", None) or None, list | None)
+        booklets = typed(resp.get("goodies", None) or None, list | None)  # type: ignore[arg-type]
         item_id = str(resp.get("qobuz_id"))
 
         if sampling_rate and bit_depth:
@@ -171,7 +171,7 @@ class AlbumMetadata:
             explicit=explicit,
             sampling_rate=sampling_rate,
             bit_depth=bit_depth,
-            booklets=booklets,
+            booklets=booklets,  # type: ignore[arg-type]
         )
         return AlbumMetadata(
             info,
@@ -266,21 +266,21 @@ class AlbumMetadata:
             safe_get(track, "publisher_metadata", "explicit", default=False),
             bool,
         )
-        genre = typed(track.get("genre"), str | None)
+        genre = typed(track.get("genre"), str | None)  # type: ignore[arg-type]
         genres = [genre] if genre is not None else []
-        artist = typed(safe_get(track, "publisher_metadata", "artist"), str | None)
+        artist = typed(safe_get(track, "publisher_metadata", "artist"), str | None)  # type: ignore[arg-type]
         artist = artist or typed(track["user"]["username"], str)
         albumartist = artist
         date = typed(track.get("created_at"), str)
         year = date[:4]
-        label = typed(track.get("label_name"), str | None)
-        description = typed(track.get("description"), str | None)
+        label = typed(track.get("label_name"), str | None)  # type: ignore[arg-type]
+        description = typed(track.get("description"), str | None)  # type: ignore[arg-type]
         album_title = typed(
             safe_get(track, "publisher_metadata", "album_title"),
-            str | None,
+            str | None,  # type: ignore[arg-type]
         )
         album_title = album_title or "Unknown album"
-        copyright = typed(safe_get(track, "publisher_metadata", "p_line"), str | None)
+        copyright = typed(safe_get(track, "publisher_metadata", "p_line"), str | None)  # type: ignore[arg-type]
         tracktotal = 1
         disctotal = 1
         quality = 0
@@ -418,7 +418,7 @@ class AlbumMetadata:
         album = typed(album_resp.get("title", "Unknown Album"), str)
         tracktotal = 1
         # genre not returned by API
-        date = typed(resp.get("streamStartDate"), str | None)
+        date = typed(resp.get("streamStartDate"), str | None)  # type: ignore[arg-type]
         if date is not None:
             year = date[:4]
         else:

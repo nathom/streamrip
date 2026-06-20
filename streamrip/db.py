@@ -5,7 +5,7 @@ import os
 import sqlite3
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Final
+from typing import ClassVar, Final
 
 logger = logging.getLogger("streamrip")
 
@@ -54,8 +54,8 @@ class Dummy(DatabaseInterface):
 class DatabaseBase(DatabaseInterface):
     """A wrapper for an sqlite database."""
 
-    structure: dict
-    name: str
+    structure: ClassVar[dict]
+    name: ClassVar[str]
 
     def __init__(self, path: str):
         """Create a Database instance.
@@ -165,7 +165,7 @@ class Downloads(DatabaseBase):
     """A table that stores the downloaded IDs."""
 
     name = "downloads"
-    structure: Final[dict] = {
+    structure: ClassVar[dict] = {
         "id": ["text", "unique"],
     }
 
@@ -174,7 +174,7 @@ class Failed(DatabaseBase):
     """A table that stores information about failed downloads."""
 
     name = "failed_downloads"
-    structure: Final[dict] = {
+    structure: ClassVar[dict] = {
         "source": ["text"],
         "media_type": ["text"],
         "id": ["text", "unique"],

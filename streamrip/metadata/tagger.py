@@ -167,10 +167,10 @@ class Container(Enum):
                     ))
                 continue
             else:
-                text = self._attr_from_meta(meta, k)
+                text = self._attr_from_meta(meta, k)  # type: ignore[assignment]
 
             if text is not None and v is not None:
-                out.append((v.__name__, v(encoding=3, text=text)))
+                out.append((v.__name__, v(encoding=3, text=text)))  # type: ignore[arg-type]
         return out
 
     def _tag_mp4(self, meta: TrackMetadata):
@@ -184,22 +184,22 @@ class Container(Enum):
                 # because ISRC is an mp4 freeform value (not supported natively)
                 # we have to pass in the actual bytes to mutagen
                 # See mutagen.MP4Tags.__render_freeform
-                text = meta.isrc.encode("utf-8")
+                text = meta.isrc.encode("utf-8")  # type: ignore[assignment]
             elif k == "author":
                 if meta.author is None:
                     continue
-                text = meta.author.encode("utf-8")
+                text = meta.author.encode("utf-8")  # type: ignore[assignment]
             elif k == "replaygain_track_gain":
                 if meta.replaygain_track_gain is None:
                     continue
-                text = meta.replaygain_track_gain.encode("utf-8")
+                text = meta.replaygain_track_gain.encode("utf-8")  # type: ignore[assignment]
             elif k == "bpm":
                 # tmpo requires a list of integers, not a string
                 if meta.bpm is None:
                     continue
-                text = [int(meta.bpm)]
+                text = [int(meta.bpm)]  # type: ignore[list-item]
             else:
-                text = self._attr_from_meta(meta, k)
+                text = self._attr_from_meta(meta, k)  # type: ignore[assignment]
 
             if v is not None and text is not None:
                 out.append((v, text))

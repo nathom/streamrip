@@ -233,6 +233,7 @@ class SearchResults:
 
     @classmethod
     def from_pages(cls, source: str, media_type: str, pages: list[dict]):
+        summary_type: type[Summary]
         if media_type == "track":
             summary_type = TrackSummary
         elif media_type == "album":

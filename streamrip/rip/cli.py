@@ -22,6 +22,8 @@ from ..console import console
 from ..utils.ssl_utils import get_aiohttp_connector_kwargs
 from .main import Main
 
+logger = logging.getLogger("streamrip")
+
 
 def coro(f):
     @wraps(f)

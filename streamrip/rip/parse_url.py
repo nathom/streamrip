@@ -37,7 +37,7 @@ def _pending_from_type(
     cls = _TYPE_MAP.get(media_type)
     if cls is None:
         raise NotImplementedError(f"Unsupported media type: {media_type!r}")
-    return cls(item_id, client, config, db)
+    return cls(item_id, client, config, db)  # type: ignore[call-arg]
 
 
 URL_REGEX = re.compile(
@@ -220,7 +220,7 @@ class SoundcloudURL(URL):
     def __init__(self, url: str):
         self.url = url
 
-    async def into_pending(
+    async def into_pending(  # type: ignore[override]
         self,
         client: SoundcloudClient,
         config: Config,

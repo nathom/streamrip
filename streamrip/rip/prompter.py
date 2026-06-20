@@ -215,4 +215,4 @@ PROMPTERS = {
 def get_prompter(client: Client, config: Config) -> CredentialPrompter:
     """Return an instance of a prompter."""
     p = PROMPTERS[client.source]
-    return p(config, client)
+    return p(config, client)  # type: ignore[abstract]

@@ -85,13 +85,13 @@ class Artist(Media):
         if filt.repeats:
             _albums = self._filter_repeats(_albums)
         if filt.extras:
-            _albums = filter(self._extras, _albums)
+            _albums = list(filter(self._extras, _albums))
         if filt.features:
-            _albums = filter(self._features, _albums)
+            _albums = list(filter(self._features, _albums))
         if filt.non_studio_albums:
-            _albums = filter(self._non_studio_albums, _albums)
+            _albums = list(filter(self._non_studio_albums, _albums))
         if filt.non_remaster:
-            _albums = filter(self._non_remaster, _albums)
+            _albums = list(filter(self._non_remaster, _albums))
         return list(_albums)
 
     # Will not fail on any nonempty string

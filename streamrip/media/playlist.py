@@ -242,7 +242,7 @@ class PendingLastfmPlaylist(Pending):
 
             for title, artist in titles_artists:
                 requests.append(self._make_query(f"{title} {artist}", s, callback))
-            results: list[tuple[str | None, bool]] = await asyncio.gather(*requests)
+            results = await asyncio.gather(*requests)
 
         parent = self.config.session.downloads.folder
         folder = os.path.join(parent, clean_filepath(clean_filename(playlist_title)))

@@ -186,7 +186,7 @@ class DeezerDownloadable(Downloadable):
                 async with aiofiles.open(path, "wb") as audio:
                     buflen = len(buf)
                     for i in range(0, buflen, encrypt_chunk_size):
-                        data = buf[i : min(i + encrypt_chunk_size, buflen)]
+                        data = buf[i : min(i + encrypt_chunk_size, buflen)]  # type: ignore[assignment]
                         if len(data) >= 2048:
                             decrypted_chunk = (
                                 self._decrypt_chunk(blowfish_key, data[:2048])
@@ -345,7 +345,7 @@ class SoundcloudDownloadable(Downloadable):
             self.session, self.url, "flac", source="soundcloud"
         )
         await downloader.download(path, callback)
-        self.size = downloader.size
+        self._size = downloader._size
         engine = converter.FLAC(path)
         await engine.convert(path)
 
