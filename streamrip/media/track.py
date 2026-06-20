@@ -248,5 +248,6 @@ class PendingSingle(Pending):
         formatter = c.filepaths.folder_format
         if c.downloads.source_subdirectories:
             parent = os.path.join(parent, self.client.source.capitalize())
-
-        return os.path.join(parent, meta.format_folder_path(formatter))
+        configured_quality = c.get_source(self.client.source).quality
+        effective_quality = min(configured_quality, meta.info.quality)
+        return os.path.join(parent, meta.format_folder_path(formatter, effective_quality))

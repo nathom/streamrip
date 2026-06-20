@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 import re
 from dataclasses import dataclass
-from typing import Optional
+from typing import ClassVar, Optional
 
 from ..filepath_utils import clean_filename, clean_filepath
 from .covers import Covers
@@ -62,20 +62,56 @@ class AlbumMetadata:
         _copyright = re.sub(r"(?i)\(C\)", COPYRIGHT, _copyright)
         return _copyright
 
-    def format_folder_path(self, formatter: str) -> str:
-        # Available keys: "albumartist", "title", "year", "bit_depth", "sampling_rate",
-        # "id", and "albumcomposer",
+    # Maps quality level → (container, bit_depth, sampling_rate) used for folder naming
+    # when the effective quality is lower than the album's maximum available quality.
+    _QUALITY_FOLDER_PARAMS: ClassVar[dict[int, tuple[str, int | None, int | None]]] = {
+        0: ("MP3", None, None),
+        1: ("MP3", None, None),
+        2: ("FLAC", 16, 44100),
+        3: ("FLAC", 24, 96),
+        4: ("FLAC", 24, 192),
+    }
 
+    def format_folder_path(self, formatter: str, effective_quality: int | None = None) -> str:
+        """Format the folder path for this album using the given template.
+
+        Args:
+            formatter: A Python format string whose keys are drawn from
+                ``albumartist``, ``albumcomposer``, ``bit_depth``, ``id``,
+                ``sampling_rate``, ``title``, ``year``, and ``container``.
+            effective_quality: When provided and lower than the album's maximum
+                available quality, the container/bit_depth/sampling_rate tokens
+                reflect this quality level instead of the album maximum.  Pass
+                ``min(configured_quality, album.info.quality)`` from call sites
+                so the folder name matches what is actually downloaded.
+
+        Returns:
+            A sanitized relative path suitable for use as a download folder name.
+        """
         none_str = "Unknown"
+
+        if (
+            effective_quality is not None
+            and effective_quality < self.info.quality
+            and effective_quality in self._QUALITY_FOLDER_PARAMS
+        ):
+            container, bit_depth, sampling_rate = self._QUALITY_FOLDER_PARAMS[
+                effective_quality
+            ]
+        else:
+            container = self.info.container
+            bit_depth = self.info.bit_depth
+            sampling_rate = self.info.sampling_rate
+
         info: dict[str, str | int | float] = {
             "albumartist": clean_filename(self.albumartist),
             "albumcomposer": clean_filename(self.albumcomposer or "") or none_str,
-            "bit_depth": self.info.bit_depth or none_str,
+            "bit_depth": bit_depth or none_str,
             "id": self.info.id,
-            "sampling_rate": self.info.sampling_rate or none_str,
+            "sampling_rate": sampling_rate or none_str,
             "title": clean_filename(self.album),
             "year": self.year,
-            "container": self.info.container,
+            "container": container,
         }
 
         return clean_filepath(formatter.format(**info))
