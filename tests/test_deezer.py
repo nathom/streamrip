@@ -1,5 +1,6 @@
 import asyncio
 import os
+import tomllib
 from unittest.mock import AsyncMock, Mock, patch
 
 import deezer
@@ -12,11 +13,23 @@ from streamrip.config import Config
 from streamrip.exceptions import NonStreamableError
 
 
+def _get_arl() -> str:
+    """Return ARL from DEEZER_ARL env var, falling back to ~/.config/streamrip/config.toml."""
+    if arl := os.environ.get("DEEZER_ARL", ""):
+        return arl
+    cfg_path = os.path.expanduser("~/.config/streamrip/config.toml")
+    try:
+        with open(cfg_path, "rb") as f:
+            return tomllib.load(f).get("deezer", {}).get("arl", "")
+    except OSError:
+        return ""
+
+
 @pytest.fixture(scope="session")
 def deezer_client():
-    """Integration test fixture — requires DEEZER_ARL environment variable."""
+    """Integration test fixture — requires DEEZER_ARL env var or ~/.config/streamrip/config.toml."""
     config = Config.defaults()
-    config.session.deezer.arl = os.environ.get("DEEZER_ARL", "")
+    config.session.deezer.arl = _get_arl()
     config.session.deezer.quality = 2
     config.session.deezer.lower_quality_if_not_available = True
     client = DeezerClient(config)
@@ -510,9 +523,7 @@ def test_deezer_search_no_results(mock_deezer_client):
 
 # ===== Integration test =====
 
-@pytest.mark.skipif(
-    "DEEZER_ARL" not in os.environ, reason="Deezer ARL not found in env."
-)
+@pytest.mark.skipif(not _get_arl(), reason="Deezer ARL not found in env or config.")
 def test_deezer_fallback_actually_occurred(deezer_client):
     """Integration: track 77874822 has no FLAC — verify fallback to MP3_320."""
     downloadable = arun(deezer_client.get_downloadable("77874822", quality=2))
