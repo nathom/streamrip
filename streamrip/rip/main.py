@@ -193,12 +193,11 @@ class Main:
         s = int(elapsed)
         time_str = f"{s // 60}m {s % 60:02d}s" if s >= 60 else f"{s}s"
 
-        return (
-            f"[green]✔ {stats.tracks_downloaded} tracks[/green]  "
-            f"[red]✘ {stats.tracks_failed} errors[/red]  "
-            f"[blue]↓ {size_str}[/blue]  "
-            f"[yellow]⏱ {time_str}[/yellow]"
-        )
+        parts = [f"[green]✔ {stats.tracks_downloaded} tracks[/green]"]
+        if stats.tracks_failed:
+            parts.append(f"[red]✘ {stats.tracks_failed} errors[/red]")
+        parts += [f"[blue]↓ {size_str}[/blue]", f"[yellow]⏱ {time_str}[/yellow]"]
+        return "  ".join(parts)
 
     async def search_interactive(self, source: str, media_type: str, query: str):
         client = await self.get_logged_in_client(source)
