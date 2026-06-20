@@ -6,8 +6,10 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from streamrip.config import Config
-from streamrip.exceptions import AuthenticationError, MissingCredentialsError, NonStreamableError
-
+from streamrip.exceptions import (
+    AuthenticationError,
+    MissingCredentialsError,
+)
 
 # ── Client.get_track_for_playlist default ────────────────────────────────────
 
@@ -191,12 +193,14 @@ class TestClientConstructors:
 class TestGetRateLimiter:
     def test_zero_returns_nullcontext(self):
         import contextlib
+
         from streamrip.client.client import Client
         result = Client.get_rate_limiter(0)
         assert isinstance(result, contextlib.nullcontext)
 
     def test_nonzero_returns_limiter(self):
         import aiolimiter
+
         from streamrip.client.client import Client
         result = Client.get_rate_limiter(60)
         assert isinstance(result, aiolimiter.AsyncLimiter)

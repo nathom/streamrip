@@ -1,7 +1,5 @@
 from unittest.mock import MagicMock
 
-import pytest
-
 from streamrip.media.artist import Artist
 
 

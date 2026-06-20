@@ -3,7 +3,6 @@ import pytest
 from streamrip.metadata.artist import ArtistMetadata
 from streamrip.metadata.label import LabelMetadata
 
-
 # ---- ArtistMetadata ----
 
 class TestArtistMetadataFromResp:

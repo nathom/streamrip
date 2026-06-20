@@ -1,8 +1,6 @@
 import os
 import tempfile
 
-import pytest
-
 from streamrip.media.media import DownloadStats
 from streamrip.rip.main import Main
 

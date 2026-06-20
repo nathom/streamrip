@@ -13,7 +13,6 @@ from streamrip.client.downloadable import (
 )
 from streamrip.exceptions import NonStreamableError
 
-
 # ── generate_temp_path ───────────────────────────────────────────────────────
 
 class TestGenerateTempPath:
@@ -158,7 +157,7 @@ class TestTidalDownloadable:
 
     def test_url_none_with_restrictions_raises(self):
         restrictions = [{"code": "PremiumRequired"}]
-        with pytest.raises(NonStreamableError, match="(?i)premium"):
+        with pytest.raises(NonStreamableError, match=r"(?i)premium"):
             TidalDownloadable(MagicMock(), None, "flac", None, restrictions)
 
     def test_url_none_without_restrictions_raises(self):

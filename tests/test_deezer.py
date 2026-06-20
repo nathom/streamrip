@@ -1,10 +1,10 @@
 import asyncio
 import os
-import tomllib
 from unittest.mock import AsyncMock, Mock, patch
 
 import deezer
 import pytest
+import tomllib
 from deezer.errors import DataException
 from util import arun
 

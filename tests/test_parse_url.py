@@ -166,6 +166,7 @@ class TestDeezerFavoriteURL(unittest.TestCase):
 
     def test_into_pending_creates_playlist(self):
         import asyncio
+
         from streamrip.rip.parse_url import DeezerFavoriteURL
 
         async def run():
@@ -194,6 +195,7 @@ class TestQobuzInterpreterURL(unittest.TestCase):
 
     def test_into_pending_with_digit_id(self):
         import asyncio
+
         from streamrip.rip.parse_url import QobuzInterpreterURL
 
         async def run():

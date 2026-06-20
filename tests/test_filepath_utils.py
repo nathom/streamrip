@@ -1,4 +1,3 @@
-import pytest
 
 from streamrip.filepath_utils import clean_filename, clean_filepath, truncate_str
 
@@ -62,13 +61,13 @@ class TestTruncateStr:
         assert len(result.encode("utf-8")) == 255
 
     def test_multibyte_boundary_valid_utf8(self):
-        # 3-byte CJK char: 3 × 85 = 255 bytes exactly — should pass through unchanged
+        # 3-byte CJK char: 3 x 85 = 255 bytes exactly — should pass through unchanged
         s = "中" * 85
         assert len(s.encode("utf-8")) == 255
         assert truncate_str(s) == s
 
     def test_multibyte_boundary_truncates_cleanly(self):
-        # 3-byte char × 86 = 258 bytes — truncate must drop the last partial char
+        # 3-byte char x 86 = 258 bytes — truncate must drop the last partial char
         s = "中" * 86
         result = truncate_str(s)
         encoded = result.encode("utf-8")

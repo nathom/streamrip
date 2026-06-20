@@ -1,4 +1,3 @@
-import pytest
 
 from streamrip.metadata.album import AlbumInfo, AlbumMetadata
 from streamrip.metadata.covers import Covers
