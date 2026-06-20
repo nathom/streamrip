@@ -150,5 +150,100 @@ class TestDeezerDynamicURL(unittest.TestCase):
         asyncio.run(run_test())
 
 
+class TestDeezerFavoriteURL(unittest.TestCase):
+    def test_from_str_matches(self):
+        from streamrip.rip.parse_url import DeezerFavoriteURL
+
+        url = "https://www.deezer.com/fr/profile/123456789/loved"
+        result = DeezerFavoriteURL.from_str(url)
+        self.assertIsNotNone(result)
+        self.assertEqual(result.source, "deezer")
+
+    def test_from_str_no_match(self):
+        from streamrip.rip.parse_url import DeezerFavoriteURL
+
+        self.assertIsNone(DeezerFavoriteURL.from_str("https://www.deezer.com/fr/album/123"))
+
+    def test_into_pending_creates_playlist(self):
+        import asyncio
+        from streamrip.rip.parse_url import DeezerFavoriteURL
+
+        async def run():
+            url = "https://www.deezer.com/fr/profile/123456789/loved"
+            result = DeezerFavoriteURL.from_str(url)
+            pending = await result.into_pending(AsyncMock(), AsyncMock(), AsyncMock())
+            self.assertEqual(pending.__class__.__name__, "PendingPlaylist")
+            self.assertEqual(pending.id, "favorites:123456789")
+
+        asyncio.run(run())
+
+
+class TestQobuzInterpreterURL(unittest.TestCase):
+    def test_from_str_matches(self):
+        from streamrip.rip.parse_url import QobuzInterpreterURL
+
+        url = "https://www.qobuz.com/us-en/interpreter/pink-floyd/1234567"
+        result = QobuzInterpreterURL.from_str(url)
+        self.assertIsNotNone(result)
+        self.assertEqual(result.source, "qobuz")
+
+    def test_from_str_no_match(self):
+        from streamrip.rip.parse_url import QobuzInterpreterURL
+
+        self.assertIsNone(QobuzInterpreterURL.from_str("https://www.qobuz.com/fr-fr/album/test/123"))
+
+    def test_into_pending_with_digit_id(self):
+        import asyncio
+        from streamrip.rip.parse_url import QobuzInterpreterURL
+
+        async def run():
+            url = "https://www.qobuz.com/us-en/interpreter/pink-floyd/1234567"
+            result = QobuzInterpreterURL.from_str(url)
+            mock_client = AsyncMock()
+            mock_client.source = "qobuz"
+            pending = await result.into_pending(mock_client, AsyncMock(), AsyncMock())
+            self.assertEqual(pending.__class__.__name__, "PendingArtist")
+            self.assertEqual(pending.id, "1234567")
+
+        asyncio.run(run())
+
+
+class TestPendingFromType(unittest.TestCase):
+    def test_invalid_type_raises(self):
+        from streamrip.rip.parse_url import _pending_from_type
+
+        with self.assertRaises(NotImplementedError):
+            _pending_from_type("video", "123", AsyncMock(), AsyncMock(), AsyncMock())
+
+    def test_valid_types(self):
+        from streamrip.rip.parse_url import _pending_from_type
+
+        for media_type in ("track", "album", "playlist", "artist", "label"):
+            pending = _pending_from_type(media_type, "42", AsyncMock(), AsyncMock(), AsyncMock())
+            self.assertIsNotNone(pending)
+
+
+class TestParseUrlFavoriteAndInterpreter(unittest.TestCase):
+    def test_favorite_url_parsed(self):
+        from streamrip.rip.parse_url import DeezerFavoriteURL
+
+        result = parse_url("https://www.deezer.com/fr/profile/123/loved")
+        self.assertIsInstance(result, DeezerFavoriteURL)
+
+    def test_interpreter_url_fallback_to_generic(self):
+        # /interpreter/artist/ID — "artist" is a valid GenericURL media type, so GenericURL wins
+        result = parse_url("https://www.qobuz.com/us-en/interpreter/artist/9876543")
+        self.assertIsInstance(result, GenericURL)
+        self.assertEqual(result.match.group(2), "artist")
+
+    def test_interpreter_url_no_known_media_type_uses_interpreter_class(self):
+        from streamrip.rip.parse_url import QobuzInterpreterURL
+
+        # Path doesn't contain a known media-type word → GenericURL returns None
+        url = "https://www.qobuz.com/us-en/interpreter/pink-floyd/download-streaming-albums"
+        result = parse_url(url)
+        self.assertIsInstance(result, QobuzInterpreterURL)
+
+
 if __name__ == "__main__":
     unittest.main()
