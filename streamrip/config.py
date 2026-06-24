@@ -106,7 +106,7 @@ class DatabaseConfig:
 @dataclass(slots=True)
 class ConversionConfig:
     enabled: bool
-    # FLAC, ALAC, OPUS, MP3, VORBIS, or AAC
+    # FLAC, ALAC, AIFF, OPUS, MP3, VORBIS, or AAC
     codec: str
     # In Hz. Tracks are downsampled if their sampling rate is greater than this.
     # Value of 48000 is recommended to maximize quality and minimize space
