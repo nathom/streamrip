@@ -93,6 +93,13 @@ class Track(Media):
         )
         await engine.convert()
         self.download_path = engine.final_fn  # because the extension changed
+        # Re-tag the converted file: ffmpeg does not reliably carry over all
+        # metadata (and some containers, e.g. AIFF, are not tagged at all).
+        # Only formats that tag_file understands are re-tagged; others (opus,
+        # ogg, ...) keep the metadata ffmpeg copied during conversion.
+        ext = self.download_path.split(".")[-1].lower()
+        if ext in ("flac", "m4a", "mp3", "aiff", "aif"):
+            await tag_file(self.download_path, self.meta, self.cover_path)
 
     def _set_download_path(self):
         c = self.config.session.filepaths
