@@ -103,7 +103,7 @@ failed_downloads_path = ""
 # Convert tracks to a codec after downloading them.
 [conversion]
 enabled = false
-# FLAC, ALAC, OPUS, MP3, VORBIS, or AAC
+# FLAC, ALAC, AIFF, OPUS, MP3, VORBIS, or AAC
 codec = "ALAC"
 # In Hz. Tracks are downsampled if their sampling rate is greater than this. 
 # Value of 48000 is recommended to maximize quality and minimize space

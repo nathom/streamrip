@@ -4,6 +4,7 @@ from enum import Enum
 
 import aiofiles
 from mutagen import id3
+from mutagen.aiff import AIFF
 from mutagen.flac import FLAC, Picture
 from mutagen.id3 import (
     APIC,  # type: ignore
@@ -100,12 +101,18 @@ class Container(Enum):
     FLAC = 1
     AAC = 2
     MP3 = 3
+    AIFF = 4
 
     def get_mutagen_class(self, path: str):
         if self == Container.FLAC:
             return FLAC(path)
         elif self == Container.AAC:
             return MP4(path)
+        elif self == Container.AIFF:
+            audio = AIFF(path)
+            if audio.tags is None:
+                audio.add_tags()
+            return audio.tags
         elif self == Container.MP3:
             try:
                 return ID3(path)
@@ -117,7 +124,7 @@ class Container(Enum):
     def get_tag_pairs(self, meta) -> list[tuple]:
         if self == Container.FLAC:
             return self._tag_flac(meta)
-        elif self == Container.MP3:
+        elif self == Container.MP3 or self == Container.AIFF:
             return self._tag_mp3(meta)
         elif self == Container.AAC:
             return self._tag_mp4(meta)
@@ -217,7 +224,7 @@ class Container(Enum):
             async with aiofiles.open(cover_path, "rb") as img:
                 cover.data = await img.read()
             audio.add_picture(cover)
-        elif self == Container.MP3:
+        elif self == Container.MP3 or self == Container.AIFF:
             cover = APIC()
             cover.type = 3
             cover.mime = "image/jpeg"
@@ -236,6 +243,10 @@ class Container(Enum):
             audio.save()
         elif self == Container.MP3:
             audio.save(path, "v2_version=3")
+        elif self == Container.AIFF:
+            # AIFF uses an _IFFID3 tag object whose save() signature differs
+            # from MP3's ID3.save(); call it with defaults (v2_version=4).
+            audio.save(path)
 
 
 async def tag_file(path: str, meta: TrackMetadata, cover_path: str | None):
@@ -246,6 +257,8 @@ async def tag_file(path: str, meta: TrackMetadata, cover_path: str | None):
         container = Container.AAC
     elif ext == "mp3":
         container = Container.MP3
+    elif ext in ("aiff", "aif"):
+        container = Container.AIFF
     else:
         raise Exception(f"Invalid extension {ext}")
 
