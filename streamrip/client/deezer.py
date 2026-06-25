@@ -28,17 +28,21 @@ class DeezerClient(Client):
         logged_in: True if logged in
         config: deezer local config
         session: aiohttp.ClientSession, used only for track downloads not API requests
+        logged_in_user_id: USER_ID of the authenticated account, set during login
+        max_favorites: upper bound for favorites pagination
 
     """
 
     source = "deezer"
     max_quality = 2
+    max_favorites = 10_000
 
     def __init__(self, config: Config):
         self.global_config = config
         self.client = deezer.Deezer()
         self.logged_in = False
         self.config = config.session.deezer
+        self.logged_in_user_id: int | None = None
 
     async def login(self):
         # Used for track downloads
@@ -52,6 +56,8 @@ class DeezerClient(Client):
         if not success:
             raise AuthenticationError
         self.logged_in = True
+        user_data = await asyncio.to_thread(self.client.gw.get_user_data)
+        self.logged_in_user_id = user_data.get("USER", {}).get("USER_ID")
 
     async def get_metadata(self, item_id: str, media_type: str) -> dict:
         # TODO: open asyncio PR to deezer py and integrate
@@ -98,6 +104,9 @@ class DeezerClient(Client):
         return album_metadata
 
     async def get_playlist(self, item_id: str) -> dict:
+        if item_id.startswith("favorites:"):
+            user_id = item_id.removeprefix("favorites:")
+            return await self.get_user_favorites(user_id)
         pl_metadata, pl_tracks = await asyncio.gather(
             asyncio.to_thread(self.client.api.get_playlist, item_id),
             asyncio.to_thread(self.client.api.get_playlist_tracks, item_id),
@@ -105,6 +114,48 @@ class DeezerClient(Client):
         pl_metadata["tracks"] = pl_tracks["data"]
         pl_metadata["track_total"] = len(pl_tracks["data"])
         return pl_metadata
+
+    async def get_user_favorites(self, user_id: str) -> dict:
+        """Fetch the loved tracks for the authenticated Deezer account.
+
+        ``song.getFavoriteIds`` silently caps responses at roughly 25 entries per
+        call regardless of the ``nb`` parameter; the ``start`` parameter must be
+        advanced by the actual count returned to paginate through all favorites.
+
+        ``song.getFavoriteIds`` carries no ``user_id`` parameter — it always
+        returns the authenticated user's favorites.  Comparing ``user_id`` against
+        ``logged_in_user_id`` to detect "other user" is unreliable for family
+        accounts: ``change_account()`` shifts ``current_user`` to a child profile
+        whose id differs from the main account's USER_ID that authenticated the
+        ARL.  The ``user_id`` argument is accepted for URL-routing compatibility
+        but is not forwarded to the GW call.
+
+        Args:
+            user_id: The Deezer user ID from the profile URL. Accepted for
+                routing compatibility; the GW call always uses the authenticated
+                account.
+
+        Returns:
+            Playlist-shaped dict with "title", "tracks", and "track_total".
+        """
+        page_size = 100
+        all_entries: list[dict] = []
+        start = 0
+        while len(all_entries) < self.max_favorites:
+            response = await asyncio.to_thread(
+                self.client.gw.get_user_favorite_ids, limit=page_size, start=start
+            )
+            entries: list[dict] = response.get("data", [])
+            if not entries:
+                break
+            all_entries.extend(entries)
+            start += len(entries)
+
+        return {
+            "title": "Loved Tracks",
+            "tracks": [{"id": str(entry["SNG_ID"])} for entry in all_entries],
+            "track_total": len(all_entries),
+        }
 
     async def get_artist(self, item_id: str) -> dict:
         artist, albums = await asyncio.gather(

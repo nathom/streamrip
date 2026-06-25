@@ -187,6 +187,33 @@ class DeezerDynamicURL(URL):
         raise Exception("Unable to extract Deezer dynamic link.")
 
 
+class DeezerFavoriteURL(URL):
+    """Matches Deezer liked-tracks profile URLs.
+
+    Example: https://www.deezer.com/fr/profile/1234567/loved
+    """
+
+    favorite_re = re.compile(
+        r"https://(?:www\.)?deezer\.com/[a-z]{2}/profile/(\d+)/loved"
+    )
+
+    @classmethod
+    def from_str(cls, url: str) -> URL | None:
+        match = cls.favorite_re.match(url)
+        if match is None:
+            return None
+        return cls(match, "deezer")
+
+    async def into_pending(
+        self,
+        client: Client,
+        config: Config,
+        db: Database,
+    ) -> Pending:
+        user_id = self.match.group(1)
+        return PendingPlaylist(f"favorites:{user_id}", client, config, db)
+
+
 class SoundcloudURL(URL):
     source = "soundcloud"
 
@@ -232,6 +259,7 @@ def parse_url(url: str) -> URL | None:
         QobuzInterpreterURL.from_str(url),
         SoundcloudURL.from_str(url),
         DeezerDynamicURL.from_str(url),
+        DeezerFavoriteURL.from_str(url),
         # TODO: the rest of the url types
     ]
     return next((u for u in parsed_urls if u is not None), None)
