@@ -12,7 +12,6 @@ import aiohttp
 from ..config import Config
 from ..exceptions import (
     AuthenticationError,
-    IneligibleError,
     InvalidAppIdError,
     InvalidAppSecretError,
     MissingCredentialsError,
@@ -152,6 +151,10 @@ class QobuzClient(Client):
             config.session.downloads.requests_per_minute,
         )
         self.secret: Optional[str] = None
+        # True for a free account (no streaming subscription) that can still
+        # download content it has *purchased* from the Qobuz download store.
+        # When set, file-url requests use intent=download instead of stream.
+        self.download_only: bool = False
 
     async def login(self):
         self.session = await self.get_session(
@@ -204,8 +207,20 @@ class QobuzClient(Client):
 
         logger.debug("Logged in to Qobuz")
 
+        # An empty credential.parameters means the account has no active
+        # streaming subscription. Such a (free) account cannot stream, but it
+        # CAN still download albums it has purchased from the Qobuz download
+        # store. Rather than refusing outright, flag the client as
+        # download-only so _request_file_url() requests intent=download.
+        # Genuine auth failures (401/400) are already handled above; this only
+        # reclassifies the free-but-owns-content case and never swallows them.
         if not resp["user"]["credential"]["parameters"]:
-            raise IneligibleError("Free accounts are not eligible to download tracks.")
+            self.download_only = True
+            logger.warning(
+                "Free Qobuz account detected (no streaming subscription): "
+                "streaming is unavailable. Only purchased download-store "
+                "content can be downloaded (intent=download)."
+            )
 
         uat = resp["user_auth_token"]
         self.session.headers.update({"X-User-Auth-Token": uat})
@@ -328,8 +343,27 @@ class QobuzClient(Client):
         if stream_url is None:
             restrictions = resp_json["restrictions"]
             if restrictions:
+                code = restrictions[0]["code"]
+                # Purchased (download-only) content is sold in exactly one
+                # format and Qobuz offers NO automatic fallback: requesting a
+                # higher tier than the purchased one fails with
+                # FormatRestrictedByFormatAvailability. Clamp by retrying one
+                # quality tier down until we hit the format the account owns.
+                if (
+                    self.download_only
+                    and quality > 1
+                    and code == "FormatRestrictedByFormatAvailability"
+                ):
+                    logger.warning(
+                        "Quality %d unavailable for purchased track %s; "
+                        "retrying one tier down at quality %d.",
+                        quality,
+                        item,
+                        quality - 1,
+                    )
+                    return await self.get_downloadable(item, quality - 1)
                 # Turn CamelCase code into a readable sentence
-                words = re.findall(r"([A-Z][a-z]+)", restrictions[0]["code"])
+                words = re.findall(r"([A-Z][a-z]+)", code)
                 raise NonStreamableError(
                     words[0] + " " + " ".join(map(str.lower, words[1:])) + ".",
                 )
@@ -426,7 +460,11 @@ class QobuzClient(Client):
     ) -> tuple[int, dict]:
         quality = self.get_quality(quality)
         unix_ts = time.time()
-        r_sig = f"trackgetFileUrlformat_id{quality}intentstreamtrack_id{track_id}{unix_ts}{secret}"
+        # Owned-only (free) accounts must request intent=download; streaming
+        # accounts use intent=stream. The signed preimage and the params dict
+        # MUST agree on the value or Qobuz rejects the request with HTTP 400.
+        intent = "download" if self.download_only else "stream"
+        r_sig = f"trackgetFileUrlformat_id{quality}intent{intent}track_id{track_id}{unix_ts}{secret}"
         logger.debug("Raw request signature: %s", r_sig)
         r_sig_hashed = hashlib.md5(r_sig.encode("utf-8")).hexdigest()
         logger.debug("Hashed request signature: %s", r_sig_hashed)
@@ -435,7 +473,7 @@ class QobuzClient(Client):
             "request_sig": r_sig_hashed,
             "track_id": track_id,
             "format_id": quality,
-            "intent": "stream",
+            "intent": intent,
         }
         return await self._api_request("track/getFileUrl", params)
 
