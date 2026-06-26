@@ -43,17 +43,36 @@ async def fast_async_download(path, url, headers, callback):
     Using aiofiles/aiohttp resulted in a yield to the event loop for every 1KB,
     which made file downloads CPU-bound. This resulted in a ~10MB max total download
     speed. This fixes the issue by only yielding to the event loop for every 1MB read.
+
+    Supports resuming interrupted downloads via the Range header.
     """
     chunk_size: int = 2**17  # 131 KB
     counter = 0
     yield_every = 8  # 1 MB
-    with open(path, "wb") as file:  # noqa: ASYNC101
-        with requests.get(  # noqa: ASYNC100
-            url,
-            headers=headers,
-            allow_redirects=True,
-            stream=True,
-        ) as resp:
+
+    resume_pos = os.path.getsize(path) if os.path.exists(path) else 0
+    req_headers = dict(headers)
+    if resume_pos > 0:
+        req_headers["Range"] = f"bytes={resume_pos}-"
+
+    with requests.get(  # noqa: ASYNC100
+        url,
+        headers=req_headers,
+        allow_redirects=True,
+        stream=True,
+    ) as resp:
+        # 416 = Range Not Satisfiable → file already complete
+        if resume_pos > 0 and resp.status_code == 416:
+            return
+        resp.raise_for_status()
+        # Only append if the server honored our Range request (206). If it
+        # returned 200, it's sending the whole file from the start, so we must
+        # overwrite — otherwise the existing partial bytes would be duplicated.
+        if resume_pos > 0 and resp.status_code == 206:
+            open_mode = "ab"
+        else:
+            open_mode = "wb"
+        with open(path, open_mode) as file:  # noqa: ASYNC101
             for chunk in resp.iter_content(chunk_size=chunk_size):
                 file.write(chunk)
                 callback(len(chunk))
