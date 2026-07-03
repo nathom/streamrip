@@ -3,7 +3,6 @@ import pytest
 from unittest.mock import Mock, patch
 from util import arun
 
-from streamrip.client.downloadable import DeezerDownloadable
 from streamrip.client.deezer import DeezerClient
 from streamrip.config import Config
 from streamrip.exceptions import NonStreamableError
