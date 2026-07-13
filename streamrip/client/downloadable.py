@@ -54,6 +54,7 @@ def _do_download(path, url, headers, callback, loop):
             allow_redirects=True,
             stream=True,
         ) as resp:
+            resp.raise_for_status()
             for chunk in resp.iter_content(chunk_size=chunk_size):
                 file.write(chunk)
                 loop.call_soon_threadsafe(callback, len(chunk))

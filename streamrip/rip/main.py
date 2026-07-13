@@ -131,6 +131,48 @@ class Main:
         )
         self.pending.extend(pendings)
 
+    async def rip_urls(self, urls: list[str]):
+        """Resolve and rip URLs as soon as each one is ready."""
+        parsed_urls = []
+        for i, parsed in enumerate(parse_url(url) for url in urls):
+            if parsed is None:
+                console.print(
+                    f"[red]Found invalid url [cyan]{urls[i]}[/cyan], skipping.",
+                )
+                continue
+            parsed_urls.append((urls[i], parsed))
+
+        clients = {
+            source: await self.get_logged_in_client(source)
+            for source in {parsed.source for _, parsed in parsed_urls}
+        }
+
+        async def _resolve_and_rip(raw_url: str, parsed):
+            try:
+                pending = await parsed.into_pending(
+                    clients[parsed.source], self.config, self.database
+                )
+                media = await pending.resolve()
+                if media is None:
+                    return None
+                await media.rip()
+            except Exception as e:
+                logger.error("Error processing url %s: %s", raw_url, e)
+                return e
+
+        results = await asyncio.gather(
+            *[_resolve_and_rip(raw_url, parsed) for raw_url, parsed in parsed_urls],
+            return_exceptions=True,
+        )
+
+        failed_items = sum(1 for result in results if isinstance(result, Exception))
+        if failed_items > 0:
+            logger.info(
+                "Download completed with %s failed URLs out of %s total URLs.",
+                failed_items,
+                len(parsed_urls),
+            )
+
     async def get_logged_in_client(self, source: str):
         """Return a functioning client instance for `source`."""
         client = self.clients.get(source)
