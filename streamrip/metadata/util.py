@@ -3,6 +3,10 @@ from typing import Optional, Type, TypeVar
 
 
 def get_album_track_ids(source: str, resp) -> list[str]:
+    if source == "qobuz" and "tracks" not in resp:
+        # Qobuz's album/get stopped inlining "tracks" (July 2026); the client
+        # requests extra=track_ids instead.
+        return resp["track_ids"]
     tracklist = resp["tracks"]
     if source == "qobuz":
         tracklist = tracklist["items"]
