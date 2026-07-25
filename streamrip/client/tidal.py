@@ -18,9 +18,9 @@ logger = logging.getLogger("streamrip")
 BASE = "https://api.tidalhifi.com/v1"
 AUTH_URL = "https://auth.tidal.com/v1/oauth2"
 
-CLIENT_ID = base64.b64decode("ZlgySnhkbW50WldLMGl4VA==").decode("iso-8859-1")
+CLIENT_ID = base64.b64decode("NE4zbjZRMXg5NUxMNUs3cA==").decode("iso-8859-1")
 CLIENT_SECRET = base64.b64decode(
-    "MU5tNUFmREFqeHJnSkZKYktOV0xlQXlLR1ZHbUlOdVhQUExIVlhBdnhBZz0=",
+    "b0tPWGZKVzM3MWNYNnhhWjBQeWhnR05CZE5MbEJaZDRBS0tZb3VnTWppaz0=",
 ).decode("iso-8859-1")
 AUTH = aiohttp.BasicAuth(login=CLIENT_ID, password=CLIENT_SECRET)
 STREAM_URL_REGEX = re.compile(
