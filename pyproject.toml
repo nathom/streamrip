@@ -46,7 +46,7 @@ certifi = { version = "^2025.1.31", optional = true }
 types-click = "^7.1.2"
 types-Pillow = "^8.3.1"
 ruff = "^0.1"
-black = "^24"
+black = "^26"
 isort = "^5.9.3"
 flake8 = "^3.9.2"
 setuptools = "^67.4.0"
