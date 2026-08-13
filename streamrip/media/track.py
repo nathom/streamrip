@@ -7,7 +7,7 @@ from .. import converter
 from ..client import Client, Downloadable
 from ..config import Config
 from ..db import Database
-from ..exceptions import NonStreamableError
+from ..exceptions import NonStreamableError, TrackDownloadFailedError
 from ..filepath_utils import clean_filename
 from ..metadata import AlbumMetadata, Covers, TrackMetadata, tag_file
 from ..progress import add_title, get_progress_callback, remove_title
@@ -71,6 +71,16 @@ class Track(Media):
                     self.db.set_failed(
                         self.downloadable.source, "track", self.meta.info.id
                     )
+                    if os.path.isfile(self.download_path):
+                        os.remove(self.download_path)
+                    # postprocess() normally does this, but raising below
+                    # skips it, which would leave a phantom title in the
+                    # progress display for the rest of the run.
+                    if self.is_single:
+                        remove_title(self.meta.title)
+                    raise TrackDownloadFailedError(
+                        f"{self.meta.title} ({self.meta.info.id})"
+                    ) from e
 
     async def postprocess(self):
         if self.is_single:

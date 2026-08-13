@@ -68,3 +68,11 @@ class NonStreamableError(Exception):
 
 class ConversionError(Exception):
     """ConversionError."""
+
+
+class TrackDownloadFailedError(Exception):
+    """Raised when a track fails to download after retrying.
+
+    Signals to Media.rip() that postprocess (tagging, marking downloaded)
+    must not run for this track.
+    """
