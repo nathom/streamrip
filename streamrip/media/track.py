@@ -139,16 +139,22 @@ class PendingTrack(Pending):
             return None
 
         source = self.client.source
+        # Every failure below has to be recorded, not just logged. An unlogged
+        # failure leaves no trace anywhere: no file, no downloads.db row, and
+        # nothing in the failed db for `rip repair` to retry -- the track just
+        # silently goes missing from the album.
         try:
             resp = await self.client.get_metadata(self.id, "track")
         except NonStreamableError as e:
             logger.error(f"Track {self.id} not available for stream on {source}: {e}")
+            self.db.set_failed(source, "track", self.id)
             return None
 
         try:
             meta = TrackMetadata.from_resp(self.album, source, resp)
         except Exception as e:
             logger.error(f"Error building track metadata for {self.id}: {e}")
+            self.db.set_failed(source, "track", self.id)
             return None
 
         if meta is None:
@@ -163,6 +169,7 @@ class PendingTrack(Pending):
             logger.error(
                 f"Error getting downloadable data for track {meta.tracknumber} [{self.id}]: {e}"
             )
+            self.db.set_failed(source, "track", self.id)
             return None
 
         downloads_config = self.config.session.downloads
@@ -201,16 +208,20 @@ class PendingSingle(Pending):
             )
             return None
 
+        # As in PendingTrack.resolve: record every failure, so a track that
+        # dies here is retryable by `rip repair` instead of vanishing.
         try:
             resp = await self.client.get_metadata(self.id, "track")
         except NonStreamableError as e:
             logger.error(f"Error fetching track {self.id}: {e}")
+            self.db.set_failed(self.client.source, "track", self.id)
             return None
         # Patch for soundcloud
         try:
             album = AlbumMetadata.from_track_resp(resp, self.client.source)
         except Exception as e:
             logger.error(f"Error building album metadata for track {id=}: {e}")
+            self.db.set_failed(self.client.source, "track", self.id)
             return None
 
         if album is None:
@@ -224,6 +235,7 @@ class PendingSingle(Pending):
             meta = TrackMetadata.from_resp(album, self.client.source, resp)
         except Exception as e:
             logger.error(f"Error building track metadata for track {id=}: {e}")
+            self.db.set_failed(self.client.source, "track", self.id)
             return None
 
         if meta is None:
