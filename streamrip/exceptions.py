@@ -66,5 +66,14 @@ class NonStreamableError(Exception):
         return " ".join(base_msg)
 
 
+class ItemNotFoundError(NonStreamableError):
+    """The API returned 404 for an item.
+
+    A subclass of NonStreamableError so existing handlers are unaffected, but
+    distinguishable for callers fetching something optional -- "this does not
+    exist" and "this failed to download" deserve different log levels.
+    """
+
+
 class ConversionError(Exception):
     """ConversionError."""

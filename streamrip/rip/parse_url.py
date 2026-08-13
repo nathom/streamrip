@@ -20,6 +20,7 @@ logger = logging.getLogger("streamrip")
 URL_REGEX = re.compile(
     r"https?://(?:www|open|play|listen)?\.?(qobuz|tidal|deezer)\.com?(?:(?:/(album|artist|track|playlist|video|label))|(?:\/[-\w]+?))+\/([-\w]+)",
 )
+TIDAL_SHARE_SUFFIX_REGEX = re.compile(r"^(https?://[^/]*tidal\.com/.+?)/u/?$")
 SOUNDCLOUD_URL_REGEX = re.compile(r"https://soundcloud.com/[-\w:/]+")
 LASTFM_URL_REGEX = re.compile(r"https://www.last.fm/user/\w+/playlists/\w+")
 QOBUZ_INTERPRETER_URL_REGEX = re.compile(
@@ -54,6 +55,12 @@ class URL(ABC):
 class GenericURL(URL):
     @classmethod
     def from_str(cls, url: str) -> URL | None:
+        # Tidal's share sheet produces links ending in "/u". URL_REGEX takes
+        # the last path segment as the item id -- it has to, because Qobuz
+        # album urls look like /<locale>/album/<slug>/<id> -- so that suffix
+        # would be parsed as an id of "u" and the API would 404.
+        url = TIDAL_SHARE_SUFFIX_REGEX.sub(r"\1", url)
+
         generic_url = URL_REGEX.match(url)
         if generic_url is None:
             return None

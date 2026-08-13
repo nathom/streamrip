@@ -51,6 +51,28 @@ class TestParseURL(unittest.TestCase):
         self.assertEqual(groups[1], "track")  # media_type
         self.assertEqual(groups[2], "3083287")  # item_id
 
+    def test_tidal_share_url_with_u_suffix(self):
+        """Test that Tidal share links ending in /u parse to the real item id.
+
+        The share sheet appends "/u", which would otherwise be taken as the
+        item id and 404 against the API.
+        """
+        for url in (
+            "https://tidal.com/album/152697662/u",
+            "https://tidal.com/album/152697662/u/",
+            "https://tidal.com/browse/album/152697662/u",
+        ):
+            with self.subTest(url=url):
+                result = parse_url(url)
+
+                self.assertIsNotNone(result)
+                self.assertIsInstance(result, GenericURL)
+                self.assertEqual(result.source, "tidal")
+
+                groups = result.match.groups()
+                self.assertEqual(groups[1], "album")  # media_type
+                self.assertEqual(groups[2], "152697662")  # item_id
+
     def test_deezer_track_url(self):
         """Test that Deezer track URLs are matched correctly."""
         url = "https://www.deezer.com/track/4195713"
