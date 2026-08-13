@@ -9,7 +9,7 @@ from json import JSONDecodeError
 import aiohttp
 
 from ..config import Config
-from ..exceptions import NonStreamableError
+from ..exceptions import ItemNotFoundError, NonStreamableError
 from .client import Client
 from .downloadable import TidalDownloadable
 
@@ -124,12 +124,13 @@ class TidalClient(Client):
                     item["lyrics"] = resp.get("lyrics") or ""
                 else:
                     item["lyrics"] = resp.get("subtitles") or resp.get("lyrics") or ""
+            except ItemNotFoundError:
+                # Most tracks simply have no lyrics. That is the expected
+                # answer, not a problem worth reporting.
+                logger.debug("No lyrics available for track %s", item_id)
             except (NonStreamableError, TypeError) as e:
-                # Lyrics are optional. The endpoint 404s for any track that
-                # has none, which _api_request turns into NonStreamableError
-                # -- previously that escaped get_metadata() and the caller
-                # dropped the track as unstreamable, so a track was skipped
-                # for the sole reason that nobody had written lyrics for it.
+                # Lyrics that should have been there but could not be
+                # fetched -- worth knowing about.
                 logger.warning(f"Failed to get lyrics for {item_id}: {e}")
 
         logger.debug(item)
@@ -358,7 +359,10 @@ class TidalClient(Client):
         async with self.rate_limiter:
             async with self.session.get(f"{base}/{path}", params=params) as resp:
                 if resp.status == 404:
-                    logger.warning("TIDAL: item not found (404): %s", resp.url)
-                    raise NonStreamableError("TIDAL: Track not found")
+                    # Logged at debug, not warning: some callers ask for
+                    # optional things (lyrics) where a 404 is the normal
+                    # answer. Callers that do care log it themselves.
+                    logger.debug("TIDAL: item not found (404): %s", resp.url)
+                    raise ItemNotFoundError(f"TIDAL: item not found: {resp.url}")
                 resp.raise_for_status()
                 return await resp.json()
