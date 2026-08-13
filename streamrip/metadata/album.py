@@ -50,6 +50,8 @@ class AlbumMetadata:
     grouping: str | None = None
     lyrics: str | None = None
     purchase_date: str | None = None
+    # Edition name, e.g. "Deluxe Edition". Only some sources provide one.
+    version: str | None = None
 
     def get_genres(self) -> str:
         return ", ".join(self.genre)
@@ -64,7 +66,11 @@ class AlbumMetadata:
 
     def format_folder_path(self, formatter: str) -> str:
         # Available keys: "albumartist", "title", "year", "bit_depth", "sampling_rate",
-        # "id", and "albumcomposer",
+        # "id", "albumcomposer", "container", "tracktotal", and "version".
+        #
+        # Two different editions of the same album can otherwise render to the
+        # same folder and get merged together -- "tracktotal" and "version"
+        # give a readable way to tell them apart without resorting to "id".
 
         none_str = "Unknown"
         info: dict[str, str | int | float] = {
@@ -76,6 +82,8 @@ class AlbumMetadata:
             "title": clean_filename(self.album),
             "year": self.year,
             "container": self.info.container,
+            "tracktotal": self.tracktotal,
+            "version": clean_filename(self.version or "") or none_str,
         }
 
         return clean_filepath(formatter.format(**info))
@@ -83,6 +91,13 @@ class AlbumMetadata:
     @classmethod
     def from_qobuz(cls, resp: dict) -> AlbumMetadata:
         album = resp.get("title", "Unknown Album")
+        version = resp.get("version")
+        # The edition is part of what the album *is* -- a standard and a deluxe
+        # release otherwise share a title, so they tag identically and collide
+        # in the same download folder. Fold it into the title (unless the title
+        # already says it) and keep it in `version` for tagging as well.
+        if version and version.lower() not in album.lower():
+            album = f"{album} ({version})"
         tracktotal = resp.get("tracks_count", 1)
         genre = [safe_get(resp, "genre", "name")] or resp.get("genre") or []
         genres = list(set(genre_clean.findall("/".join(genre))))
@@ -156,6 +171,7 @@ class AlbumMetadata:
             lyrics=None,
             purchase_date=None,
             tracktotal=tracktotal,
+            version=resp.get("version"),
         )
 
     @classmethod
