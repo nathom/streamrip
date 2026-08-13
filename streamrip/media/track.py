@@ -227,17 +227,34 @@ class PendingSingle(Pending):
         quality = getattr(config, self.client.source).quality
         assert isinstance(quality, int)
         parent = config.downloads.folder
-        if config.filepaths.add_singles_to_folder:
-            folder = self._format_folder(album)
+        in_album_folder = config.filepaths.add_singles_to_folder
+        if in_album_folder:
+            album_folder = self._format_folder(album)
         else:
-            folder = parent
+            album_folder = parent
 
-        os.makedirs(folder, exist_ok=True)
+        os.makedirs(album_folder, exist_ok=True)
 
         embedded_cover_path, downloadable = await asyncio.gather(
-            self._download_cover(album.covers, folder),
+            self._download_cover(album.covers, album_folder),
             self.client.get_downloadable(self.id, quality),
         )
+
+        # Mirror PendingTrack: a track belonging to a multi-disc album lives in
+        # that album's disc subfolder. Without this, downloading one track of a
+        # multi-disc album (`rip repair`, or any single-track URL) drops it
+        # beside the Disc folders rather than into the one it belongs to.
+        # Only meaningful when we're actually building the album's folder --
+        # otherwise this would create a bare "Disc N" in the download root.
+        folder = album_folder
+        if (
+            in_album_folder
+            and config.downloads.disc_subdirectories
+            and album.disctotal > 1
+        ):
+            folder = os.path.join(album_folder, f"Disc {meta.discnumber}")
+            os.makedirs(folder, exist_ok=True)
+
         return Track(
             meta,
             downloadable,
