@@ -124,7 +124,12 @@ class TidalClient(Client):
                     item["lyrics"] = resp.get("lyrics") or ""
                 else:
                     item["lyrics"] = resp.get("subtitles") or resp.get("lyrics") or ""
-            except TypeError as e:
+            except (NonStreamableError, TypeError) as e:
+                # Lyrics are optional. The endpoint 404s for any track that
+                # has none, which _api_request turns into NonStreamableError
+                # -- previously that escaped get_metadata() and the caller
+                # dropped the track as unstreamable, so a track was skipped
+                # for the sole reason that nobody had written lyrics for it.
                 logger.warning(f"Failed to get lyrics for {item_id}: {e}")
 
         logger.debug(item)
