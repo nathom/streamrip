@@ -21,6 +21,7 @@ from .. import __version__, db
 from ..config import DEFAULT_CONFIG_PATH, Config, OutdatedConfigError, set_user_defaults
 from ..console import console
 from ..utils.ssl_utils import get_aiohttp_connector_kwargs
+from ..media.artist import Artist
 from .main import Main
 
 
@@ -199,16 +200,33 @@ def rip(
 
 @rip.command()
 @click.argument("urls", nargs=-1, required=True)
+@click.option(
+    "--no-confirm",
+    is_flag=True,
+    help="For artist urls, take every album instead of asking which ones.",
+)
+@click.option(
+    "--sort",
+    "sort_by",
+    type=click.Choice(["type", "date"]),
+    default=None,
+    help="Order the artist album list. Overrides cli.artist_album_sort.",
+)
 @click.pass_context
 @coro
-async def url(ctx, urls):
+async def url(ctx, urls, no_confirm, sort_by):
     """Download content from URLs."""
     if ctx.obj["config"] is None:
         return
 
+    if no_confirm:
+        Artist.confirm_selection = False
+
     try:
         with ctx.obj["config"] as cfg:
             cfg: Config
+            # The flag wins for this run; otherwise take the configured order.
+            Artist.sort_by = sort_by or cfg.session.cli.artist_album_sort
             updates = cfg.session.misc.check_for_updates
             if updates:
                 # Run in background

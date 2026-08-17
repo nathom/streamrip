@@ -9,6 +9,7 @@ from .. import db
 from ..client import Client, DeezerClient, QobuzClient, SoundcloudClient, TidalClient
 from ..config import Config
 from ..console import console
+from ..utils import menu
 from ..media import (
     Media,
     Pending,
@@ -191,47 +192,21 @@ class Main:
                 return
             search_results = SearchResults.from_pages(source, media_type, pages)
 
-        if platform.system() == "Windows":  # simple term menu not supported for windows
-            from pick import pick
-
-            choices = pick(
-                search_results.results,
-                title=(
-                    f"{source.capitalize()} {media_type} search.\n"
-                    "Press SPACE to select, RETURN to download, CTRL-C to exit."
-                ),
-                multiselect=True,
-                min_selection_count=1,
-            )
-            assert isinstance(choices, list)
-
-            await self.add_all_by_id(
-                [(source, media_type, item.id) for item, _ in choices],
-            )
-
+        chosen_ind = menu.multi_select(
+            search_results.summaries(),
+            title=(
+                f"Results for {media_type} '{query}' from {source.capitalize()}\n"
+                "SPACE - select, ENTER - download, ESC - exit"
+            ),
+            previews=[r.preview() for r in search_results.results],
+        )
+        if not chosen_ind:
+            menu.announce_nothing_chosen()
         else:
-            from simple_term_menu import TerminalMenu
-
-            menu = TerminalMenu(
-                search_results.summaries(),
-                preview_command=search_results.preview,
-                preview_size=0.5,
-                title=(
-                    f"Results for {media_type} '{query}' from {source.capitalize()}\n"
-                    "SPACE - select, ENTER - download, ESC - exit"
-                ),
-                cycle_cursor=True,
-                clear_screen=True,
-                multi_select=True,
+            choices = search_results.get_choices(tuple(chosen_ind))
+            await self.add_all_by_id(
+                [(source, item.media_type(), item.id) for item in choices],
             )
-            chosen_ind = menu.show()
-            if chosen_ind is None:
-                console.print("[yellow]No items chosen. Exiting.")
-            else:
-                choices = search_results.get_choices(chosen_ind)
-                await self.add_all_by_id(
-                    [(source, item.media_type(), item.id) for item in choices],
-                )
 
     async def search_take_first(self, source: str, media_type: str, query: str):
         client = await self.get_logged_in_client(source)

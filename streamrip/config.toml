@@ -190,6 +190,13 @@ text_output = true
 progress_bars = true
 # The maximum number of search results to show in the interactive menu
 max_search_results = 100
+# Order of the album list shown for an artist url.
+#   "type"  albums first, then EPs, then singles; each oldest first
+#   "date"  one chronological list, oldest first
+# Sources that do not report a release type (Qobuz) behave the same either
+# way. Ties break on title, then quality, then id, so the order does not
+# change between runs. Override for one run with `rip url --sort date`.
+artist_album_sort = "type"
 
 [misc]
 # Metadata to identify this config file. Do not change.

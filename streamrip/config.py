@@ -222,6 +222,12 @@ class CliConfig:
     progress_bars: bool
     # The maximum number of search results to show in the interactive menu
     max_search_results: int
+    # How to order the album list shown for an artist url.
+    # "type": albums first, then EPs, then singles, each oldest first.
+    #         Sources that do not report a release type fall back to "date".
+    # "date": one chronological list.
+    # Defaulted so configs written before this existed still load.
+    artist_album_sort: str = "type"
 
 
 @dataclass(slots=True)

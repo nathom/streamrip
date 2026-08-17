@@ -115,6 +115,15 @@ class AlbumSummary(Summary):
     artist: str
     num_tracks: str
     date_released: str | None
+    # Best quality the source lists for this release, where it says. Tidal
+    # routinely lists the same album twice, once lossless and once hi-res,
+    # which is otherwise impossible to tell apart in a list.
+    quality: str = ""
+    # "album", "ep" or "single" where the source says so, otherwise empty.
+    # Tidal populates it; Qobuz leaves release_type null on every album, and
+    # guessing from the track count would put wrong labels on screen -- a
+    # four-track release is not reliably an EP.
+    release_type: str = ""
 
     def media_type(self):
         return "album"
@@ -123,14 +132,23 @@ class AlbumSummary(Summary):
         return f"{clean(self.name)} by {clean(self.artist)}"
 
     def preview(self) -> str:
-        return f"Date released:\n{self.date_released}\n\n{self.num_tracks} Tracks\n\nID: {self.id}"
+        quality = f"\n\n{self.quality}" if self.quality else ""
+        return (
+            f"Date released:\n{self.date_released}\n\n"
+            f"{self.num_tracks} Tracks{quality}\n\nID: {self.id}"
+        )
 
     @classmethod
     def from_item(cls, item: dict):
         id = str(item["id"])
         title = (item.get("title") or "").strip()
         version = (item.get("version") or "").strip()
-        name = title + (" (" + version + ")" if version else "")
+        # Sources often already have the edition in the title, which gave
+        # "Please Please Me (Remastered) (Remastered)".
+        if version and version.lower() not in title.lower():
+            name = f"{title} ({version})"
+        else:
+            name = title
         artist = (
             item.get("performer", {}).get("name")
             or item.get("artist", {}).get("name")
@@ -158,7 +176,22 @@ class AlbumSummary(Summary):
             or item.get("year")
             or "Unknown"
         )
-        return cls(id, name, artist, str(num_tracks), date_released)
+        tags = (item.get("mediaMetadata") or {}).get("tags") or []
+        if "HIRES_LOSSLESS" in tags:
+            quality = "hi-res"
+        elif tags:
+            quality = "lossless"
+        elif item.get("maximum_bit_depth") and item.get("maximum_sampling_rate"):
+            quality = f"{item['maximum_bit_depth']}bit/{item['maximum_sampling_rate']}kHz"
+        else:
+            quality = ""
+
+        declared = str(item.get("type") or item.get("release_type") or "").lower()
+        release_type = declared if declared in ("album", "ep", "single") else ""
+
+        return cls(
+            id, name, artist, str(num_tracks), date_released, quality, release_type
+        )
 
 
 @dataclass(slots=True)
