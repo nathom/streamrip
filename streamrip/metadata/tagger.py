@@ -88,6 +88,11 @@ METADATA_TYPES = (
     "disctotal",
     "date",
     "isrc",
+    # Keep "version" last: MP3_KEY/MP4_KEY zip this tuple against their own
+    # positional key tuples, so a trailing entry with no counterpart is simply
+    # dropped for those formats. FLAC_KEY is built by comprehension and picks
+    # it up as the standard Vorbis VERSION field.
+    "version",
 )
 
 
