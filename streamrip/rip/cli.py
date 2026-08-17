@@ -3,6 +3,7 @@ import json
 import logging
 import os
 import shutil
+import signal
 import subprocess
 from functools import wraps
 from typing import Any
@@ -20,13 +21,46 @@ from .. import __version__, db
 from ..config import DEFAULT_CONFIG_PATH, Config, OutdatedConfigError, set_user_defaults
 from ..console import console
 from ..utils.ssl_utils import get_aiohttp_connector_kwargs
+from ..media.artist import Artist
 from .main import Main
 
 
 def coro(f):
     @wraps(f)
     def wrapper(*args, **kwargs):
-        return asyncio.run(f(*args, **kwargs))
+        async def run():
+            # Ctrl-C used to be ignored until whatever was in flight finished,
+            # so people force-killed it -- which skips the cleanup in
+            # Main.__aexit__ and strews __artwork directories through the
+            # library. Cancel the task instead, so the `async with Main(...)`
+            # blocks unwind normally and clean up after themselves.
+            task = asyncio.current_task()
+            loop = asyncio.get_running_loop()
+
+            def stop():
+                console.print(
+                    "\n[yellow]Stopping after the current downloads finish... "
+                    "(Ctrl-C again to force)"
+                )
+                if task is not None:
+                    task.cancel()
+
+            try:
+                loop.add_signal_handler(signal.SIGINT, stop)
+            except (NotImplementedError, RuntimeError):
+                # Windows, or no running loop to attach to; fall back to the
+                # default KeyboardInterrupt behaviour.
+                pass
+
+            return await f(*args, **kwargs)
+
+        try:
+            return asyncio.run(run())
+        except (asyncio.CancelledError, KeyboardInterrupt):
+            console.print("[green]Stopped. Partly-downloaded tracks were left")
+            console.print(
+                "[green]resumable -- re-run the same command to continue."
+            )
 
     return wrapper
 
@@ -166,16 +200,33 @@ def rip(
 
 @rip.command()
 @click.argument("urls", nargs=-1, required=True)
+@click.option(
+    "--no-confirm",
+    is_flag=True,
+    help="For artist urls, take every album instead of asking which ones.",
+)
+@click.option(
+    "--sort",
+    "sort_by",
+    type=click.Choice(["type", "date"]),
+    default=None,
+    help="Order the artist album list. Overrides cli.artist_album_sort.",
+)
 @click.pass_context
 @coro
-async def url(ctx, urls):
+async def url(ctx, urls, no_confirm, sort_by):
     """Download content from URLs."""
     if ctx.obj["config"] is None:
         return
 
+    if no_confirm:
+        Artist.confirm_selection = False
+
     try:
         with ctx.obj["config"] as cfg:
             cfg: Config
+            # The flag wins for this run; otherwise take the configured order.
+            Artist.sort_by = sort_by or cfg.session.cli.artist_album_sort
             updates = cfg.session.misc.check_for_updates
             if updates:
                 # Run in background
