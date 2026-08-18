@@ -102,6 +102,49 @@ def test_deezer_fallback_to_lowest_available_quality(mock_deezer_client):
         # Should have fallen back to quality 0 (MP3_128) since higher qualities unavailable
         assert downloadable.quality == 0
 
+def test_deezer_no_url_raises_instead_of_building_legacy_cdn_url(mock_deezer_client):
+    """Unit test: a missing download URL fails immediately.
+
+    get_track_url returning None used to fall back to a generated
+    e-cdns-proxy-<c>.dzcdn.net URL. Deezer retired that CDN, so the URL was
+    guaranteed to fail at download time.
+    """
+    mock_track_info = {
+        "FILESIZE_FLAC": 25000000,
+        "FILESIZE_MP3_320": 5000000,
+        "FILESIZE_MP3_128": 2000000,
+        "TRACK_TOKEN": "test_token",
+        "MD5_ORIGIN": "abc123def456abc123def456abc12345",
+        "MEDIA_VERSION": "1",
+    }
+
+    mock_deezer_client.client.gw.get_track.return_value = mock_track_info
+    mock_deezer_client.client.get_track_url.return_value = None
+
+    with patch.object(mock_deezer_client, 'get_session'):
+        with pytest.raises(NonStreamableError, match="legacy CDN"):
+            arun(mock_deezer_client.get_downloadable("123", quality=2))
+
+def test_deezer_no_url_error_does_not_leak_a_cdn_url(mock_deezer_client):
+    """Unit test: no code path may still produce an e-cdns-proxy URL."""
+    mock_track_info = {
+        "FILESIZE_FLAC": 25000000,
+        "FILESIZE_MP3_320": 5000000,
+        "FILESIZE_MP3_128": 2000000,
+        "TRACK_TOKEN": "test_token",
+        "MD5_ORIGIN": "abc123def456abc123def456abc12345",
+        "MEDIA_VERSION": "1",
+    }
+
+    mock_deezer_client.client.gw.get_track.return_value = mock_track_info
+    mock_deezer_client.client.get_track_url.return_value = None
+
+    with patch.object(mock_deezer_client, 'get_session'):
+        with pytest.raises(NonStreamableError) as excinfo:
+            arun(mock_deezer_client.get_downloadable("123", quality=2))
+
+    assert "e-cdns-proxy" not in str(excinfo.value)
+
 def test_deezer_no_fallback_when_disabled(mock_deezer_client):
     """Unit test: no fallback when lower_quality_if_not_available is False"""
     # Disable fallback

@@ -1,10 +1,7 @@
 import asyncio
-import binascii
-import hashlib
 import logging
 
 import deezer
-from Cryptodome.Cipher import AES
 
 from ..config import Config
 from ..exceptions import (
@@ -202,45 +199,16 @@ class DeezerClient(Client):
             )
 
         if url is None:
-            url = self._get_encrypted_file_url(
-                item_id,
-                track_info["MD5_ORIGIN"],
-                track_info["MEDIA_VERSION"],
+            # This used to fall back to the legacy AES-ECB CDN at
+            # e-cdns-proxy-<c>.dzcdn.net. Deezer has retired those hosts and
+            # none of the sixteen resolve any more, so the generated URL could
+            # only ever fail at download time with a DNS error pointing at the
+            # wrong culprit. Fail here instead, while we can still say why.
+            raise NonStreamableError(
+                "Deezer returned no download URL for this track, and the "
+                "legacy CDN that used to serve as a fallback has been retired.",
             )
 
         dl_info["url"] = url
         logger.debug("dz track info: %s", track_info)
         return DeezerDownloadable(self.session, dl_info)
-
-    def _get_encrypted_file_url(
-        self,
-        meta_id: str,
-        track_hash: str,
-        media_version: str,
-    ):
-        logger.debug("Unable to fetch URL. Trying encryption method.")
-        format_number = 1
-
-        url_bytes = b"\xa4".join(
-            (
-                track_hash.encode(),
-                str(format_number).encode(),
-                str(meta_id).encode(),
-                str(media_version).encode(),
-            ),
-        )
-        url_hash = hashlib.md5(url_bytes).hexdigest()
-        info_bytes = bytearray(url_hash.encode())
-        info_bytes.extend(b"\xa4")
-        info_bytes.extend(url_bytes)
-        info_bytes.extend(b"\xa4")
-        # Pad the bytes so that len(info_bytes) % 16 == 0
-        padding_len = 16 - (len(info_bytes) % 16)
-        info_bytes.extend(b"." * padding_len)
-
-        path = binascii.hexlify(
-            AES.new(b"jo6aey6haid2Teih", AES.MODE_ECB).encrypt(info_bytes),
-        ).decode("utf-8")
-        url = f"https://e-cdns-proxy-{track_hash[0]}.dzcdn.net/mobile/1/{path}"
-        logger.debug("Encrypted file path %s", url)
-        return url
