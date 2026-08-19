@@ -361,6 +361,137 @@ def database_browse(ctx, table):
         )
 
 
+async def _albums_for(main, failed_items):
+    """Map failed tracks onto the albums that contain them.
+
+    Returns (album targets, items to retry as they are). Anything whose album
+    cannot be determined is passed through untouched rather than dropped.
+    """
+    targets: list[tuple[str, str, str]] = []
+    unresolved: list[tuple[str, str, str]] = []
+    seen: set[tuple[str, str]] = set()
+
+    for source, media_type, item_id in failed_items:
+        if media_type != "track":
+            targets.append((source, media_type, item_id))
+            continue
+        try:
+            client = await main.get_logged_in_client(source)
+            resp = await client.get_metadata(item_id, "track")
+            album_id = str((resp.get("album") or {}).get("id") or "")
+        except Exception as e:
+            logger.debug("Could not find the album for %s: %s", item_id, e)
+            album_id = ""
+
+        if not album_id:
+            unresolved.append((source, media_type, item_id))
+            continue
+        if (source, album_id) not in seen:
+            seen.add((source, album_id))
+            targets.append((source, "album", album_id))
+
+    return targets, unresolved
+
+
+@rip.command()
+@click.option("-y", "--yes", help="Don't ask for confirmation.", is_flag=True)
+@click.option(
+    "--flat",
+    help="Put repaired tracks straight in the download folder instead of "
+    "their album folder.",
+    is_flag=True,
+)
+@click.pass_context
+@coro
+async def repair(ctx, yes, flat):
+    """Retry downloads that previously failed.
+
+    Reads the failed downloads database, retries each item, and clears it
+    from the failed database on success. Items that fail again stay logged
+    so they can be retried later.
+
+    Failed tracks are retried individually, but are placed in their album's
+    folder so they rejoin the album they were originally missing from. Pass
+    --flat to put them in the download folder instead.
+    """
+    if ctx.obj["config"] is None:
+        return
+
+    with ctx.obj["config"] as cfg:
+        cfg: Config
+        # A repaired track is nearly always a track missing from an album that
+        # was otherwise downloaded, so it needs to land in that album's folder
+        # rather than loose in the download root. This only touches the
+        # in-memory session copy, so config.toml is left alone.
+        if not flat:
+            cfg.session.filepaths.add_singles_to_folder = True
+        failed_db = db.Failed(cfg.session.database.failed_downloads_path)
+        downloads_db = db.Downloads(cfg.session.database.downloads_path)
+        failed_items = failed_db.all()
+
+        if not failed_items:
+            console.print("[green]No failed downloads to repair!")
+            return
+
+        console.print(
+            f"Found [yellow]{len(failed_items)}[/yellow] failed download(s)."
+        )
+        if not yes and not Confirm.ask("Retry them now?"):
+            console.print("[green]Repair aborted")
+            return
+
+        # A failed item should never also be logged as downloaded, but older
+        # versions of streamrip could mark one downloaded even after it
+        # failed. Clear that stale state so the retry below isn't skipped.
+        for _source, _media_type, item_id in failed_items:
+            downloads_db.remove(id=item_id)
+
+        async with Main(cfg) as main:
+            # Retry through the album rather than track by track. Resolving a
+            # single track builds its album metadata from the track response,
+            # which on Tidal carries only an id, title and cover -- no track
+            # count, and the track's artists in place of the album artist. The
+            # folder that produces differs from the album's own in both, so
+            # repaired tracks land in a separate folder instead of rejoining
+            # the album.
+            #
+            # Going through the album gets the real metadata, the right
+            # folder, disc subfolders and cover art, and costs nothing extra:
+            # tracks already in the downloads db are skipped, so only what is
+            # missing gets fetched.
+            targets, unresolved = await _albums_for(main, failed_items)
+            if unresolved:
+                console.print(
+                    f"[yellow]{len(unresolved)} item(s) had no album to retry "
+                    "through; fetching them individually."
+                )
+            await main.add_all_by_id(targets + unresolved)
+            await main.resolve()
+            await main.rip()
+
+        # Nothing in the download pipeline removes rows from the failed db, so
+        # success can't be detected by diffing it. Instead rely on the
+        # invariant this patch establishes: set_downloaded() is only reached
+        # via postprocess(), which a failed download never gets to. So an item
+        # present in the downloads db now is one that just succeeded.
+        repaired = [
+            item_id
+            for _, _, item_id in failed_items
+            if downloads_db.contains(id=item_id)
+        ]
+        for item_id in repaired:
+            failed_db.remove(id=item_id)
+
+        console.print(
+            f"[green]Repaired {len(repaired)}/{len(failed_items)} item(s).[/green]"
+        )
+        if len(repaired) < len(failed_items):
+            console.print(
+                f"[yellow]{len(failed_items) - len(repaired)} item(s) failed again "
+                "and are still logged. Run [bold]rip repair[/bold] to try again."
+            )
+
+
 @rip.command()
 @click.option(
     "-f",

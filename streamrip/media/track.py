@@ -7,7 +7,7 @@ from .. import converter
 from ..client import Client, Downloadable
 from ..config import Config
 from ..db import Database
-from ..exceptions import NonStreamableError
+from ..exceptions import NonStreamableError, TrackDownloadFailedError
 from ..filepath_utils import clean_filename
 from ..metadata import AlbumMetadata, Covers, TrackMetadata, tag_file
 from ..progress import add_title, get_progress_callback, remove_title
@@ -71,6 +71,16 @@ class Track(Media):
                     self.db.set_failed(
                         self.downloadable.source, "track", self.meta.info.id
                     )
+                    if os.path.isfile(self.download_path):
+                        os.remove(self.download_path)
+                    # postprocess() normally does this, but raising below
+                    # skips it, which would leave a phantom title in the
+                    # progress display for the rest of the run.
+                    if self.is_single:
+                        remove_title(self.meta.title)
+                    raise TrackDownloadFailedError(
+                        f"{self.meta.title} ({self.meta.info.id})"
+                    ) from e
 
     async def postprocess(self):
         if self.is_single:
@@ -129,16 +139,22 @@ class PendingTrack(Pending):
             return None
 
         source = self.client.source
+        # Every failure below has to be recorded, not just logged. An unlogged
+        # failure leaves no trace anywhere: no file, no downloads.db row, and
+        # nothing in the failed db for `rip repair` to retry -- the track just
+        # silently goes missing from the album.
         try:
             resp = await self.client.get_metadata(self.id, "track")
         except NonStreamableError as e:
             logger.error(f"Track {self.id} not available for stream on {source}: {e}")
+            self.db.set_failed(source, "track", self.id)
             return None
 
         try:
             meta = TrackMetadata.from_resp(self.album, source, resp)
         except Exception as e:
             logger.error(f"Error building track metadata for {self.id}: {e}")
+            self.db.set_failed(source, "track", self.id)
             return None
 
         if meta is None:
@@ -153,6 +169,7 @@ class PendingTrack(Pending):
             logger.error(
                 f"Error getting downloadable data for track {meta.tracknumber} [{self.id}]: {e}"
             )
+            self.db.set_failed(source, "track", self.id)
             return None
 
         downloads_config = self.config.session.downloads
@@ -191,16 +208,20 @@ class PendingSingle(Pending):
             )
             return None
 
+        # As in PendingTrack.resolve: record every failure, so a track that
+        # dies here is retryable by `rip repair` instead of vanishing.
         try:
             resp = await self.client.get_metadata(self.id, "track")
         except NonStreamableError as e:
             logger.error(f"Error fetching track {self.id}: {e}")
+            self.db.set_failed(self.client.source, "track", self.id)
             return None
         # Patch for soundcloud
         try:
             album = AlbumMetadata.from_track_resp(resp, self.client.source)
         except Exception as e:
             logger.error(f"Error building album metadata for track {id=}: {e}")
+            self.db.set_failed(self.client.source, "track", self.id)
             return None
 
         if album is None:
@@ -214,6 +235,7 @@ class PendingSingle(Pending):
             meta = TrackMetadata.from_resp(album, self.client.source, resp)
         except Exception as e:
             logger.error(f"Error building track metadata for track {id=}: {e}")
+            self.db.set_failed(self.client.source, "track", self.id)
             return None
 
         if meta is None:
