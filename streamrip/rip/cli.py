@@ -361,6 +361,38 @@ def database_browse(ctx, table):
         )
 
 
+async def _albums_for(main, failed_items):
+    """Map failed tracks onto the albums that contain them.
+
+    Returns (album targets, items to retry as they are). Anything whose album
+    cannot be determined is passed through untouched rather than dropped.
+    """
+    targets: list[tuple[str, str, str]] = []
+    unresolved: list[tuple[str, str, str]] = []
+    seen: set[tuple[str, str]] = set()
+
+    for source, media_type, item_id in failed_items:
+        if media_type != "track":
+            targets.append((source, media_type, item_id))
+            continue
+        try:
+            client = await main.get_logged_in_client(source)
+            resp = await client.get_metadata(item_id, "track")
+            album_id = str((resp.get("album") or {}).get("id") or "")
+        except Exception as e:
+            logger.debug("Could not find the album for %s: %s", item_id, e)
+            album_id = ""
+
+        if not album_id:
+            unresolved.append((source, media_type, item_id))
+            continue
+        if (source, album_id) not in seen:
+            seen.add((source, album_id))
+            targets.append((source, "album", album_id))
+
+    return targets, unresolved
+
+
 @rip.command()
 @click.option("-y", "--yes", help="Don't ask for confirmation.", is_flag=True)
 @click.option(
@@ -415,7 +447,25 @@ async def repair(ctx, yes, flat):
             downloads_db.remove(id=item_id)
 
         async with Main(cfg) as main:
-            await main.add_all_by_id(failed_items)
+            # Retry through the album rather than track by track. Resolving a
+            # single track builds its album metadata from the track response,
+            # which on Tidal carries only an id, title and cover -- no track
+            # count, and the track's artists in place of the album artist. The
+            # folder that produces differs from the album's own in both, so
+            # repaired tracks land in a separate folder instead of rejoining
+            # the album.
+            #
+            # Going through the album gets the real metadata, the right
+            # folder, disc subfolders and cover art, and costs nothing extra:
+            # tracks already in the downloads db are skipped, so only what is
+            # missing gets fetched.
+            targets, unresolved = await _albums_for(main, failed_items)
+            if unresolved:
+                console.print(
+                    f"[yellow]{len(unresolved)} item(s) had no album to retry "
+                    "through; fetching them individually."
+                )
+            await main.add_all_by_id(targets + unresolved)
             await main.resolve()
             await main.rip()
 
