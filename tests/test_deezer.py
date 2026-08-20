@@ -145,6 +145,66 @@ def test_deezer_no_url_error_does_not_leak_a_cdn_url(mock_deezer_client):
 
     assert "e-cdns-proxy" not in str(excinfo.value)
 
+def test_deezer_no_url_follows_fallback_track(mock_deezer_client):
+    """Unit test: a delisted track is recovered through FALLBACK.SNG_ID.
+
+    Old-catalog tracks report FILESIZE_* = 0 for every tier and get no URL at
+    any quality -- they have been superseded rather than made unavailable, and
+    Deezer names the superseding release in FALLBACK. These are exactly the
+    tracks that used to reach the retired CDN.
+    """
+    def gw_get_track(track_id):
+        if track_id == "123":
+            return {
+                "FILESIZE_FLAC": 0,
+                "FILESIZE_MP3_320": 0,
+                "FILESIZE_MP3_128": 0,
+                "TRACK_TOKEN": "token_123",
+                "FALLBACK": {"SNG_ID": "456"},
+            }
+        return {
+            "FILESIZE_FLAC": 25000000,
+            "FILESIZE_MP3_320": 5000000,
+            "FILESIZE_MP3_128": 2000000,
+            "TRACK_TOKEN": "token_456",
+        }
+
+    mock_deezer_client.client.gw.get_track.side_effect = gw_get_track
+    mock_deezer_client.client.get_track_url.side_effect = (
+        lambda token, fmt: None if token == "token_123" else "https://test.flac"
+    )
+
+    with patch.object(mock_deezer_client, 'get_session'):
+        downloadable = arun(mock_deezer_client.get_downloadable("123", quality=2))
+
+    # The bytes are the fallback track's, so the id -- from which the Blowfish
+    # key is derived -- must follow it, not the originally requested track.
+    assert downloadable.id == "456"
+    # The fallback is asked for at the requested quality, not at the one the
+    # zeroed FILESIZEs of the delisted track downgraded to.
+    assert downloadable.quality == 2
+
+def test_deezer_fallback_is_not_followed_twice(mock_deezer_client):
+    """Unit test: a fallback that itself resolves nowhere raises, not recurses.
+
+    Deezer's FALLBACK chains can point at another dead entry.
+    """
+    mock_deezer_client.client.gw.get_track.return_value = {
+        "FILESIZE_FLAC": 25000000,
+        "FILESIZE_MP3_320": 5000000,
+        "FILESIZE_MP3_128": 2000000,
+        "TRACK_TOKEN": "test_token",
+        "FALLBACK": {"SNG_ID": "456"},
+    }
+    mock_deezer_client.client.get_track_url.return_value = None
+
+    with patch.object(mock_deezer_client, 'get_session'):
+        with pytest.raises(NonStreamableError, match="delisted"):
+            arun(mock_deezer_client.get_downloadable("123", quality=2))
+
+    # Once for the requested track, once for the fallback - never a third time.
+    assert mock_deezer_client.client.gw.get_track.call_count == 2
+
 def test_deezer_no_fallback_when_disabled(mock_deezer_client):
     """Unit test: no fallback when lower_quality_if_not_available is False"""
     # Disable fallback

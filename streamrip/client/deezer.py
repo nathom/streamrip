@@ -149,6 +149,12 @@ class DeezerClient(Client):
 
         fallback_id = track_info.get("FALLBACK", {}).get("SNG_ID")
 
+        # Preserved across the FILESIZE-based downgrade below. A fallback track
+        # is a different release with its own metadata, so it should be asked
+        # for at the quality the caller wanted -- not at one lowered by the
+        # zeroed FILESIZEs of the track being replaced.
+        requested_quality = quality
+
         quality_map = [
             (9, "MP3_128"),  # quality 0
             (3, "MP3_320"),  # quality 1
@@ -199,14 +205,31 @@ class DeezerClient(Client):
             )
 
         if url is None:
+            # No URL at any quality is the signature of a delisted old-catalog
+            # track: it has been superseded by another release, and Deezer
+            # names that release in FALLBACK.SNG_ID. Follow it, exactly as the
+            # geoblock branch above does -- there the API says "not here", here
+            # it says nothing at all. Recursing passes the fallback id as
+            # item_id, so dl_info["id"] follows the track actually served.
+            if not is_retry and fallback_id:
+                logger.debug(
+                    "No download URL for track %s; retrying with fallback ID %s",
+                    item_id,
+                    fallback_id,
+                )
+                return await self.get_downloadable(
+                    fallback_id, requested_quality, is_retry=True
+                )
+
             # This used to fall back to the legacy AES-ECB CDN at
             # e-cdns-proxy-<c>.dzcdn.net. Deezer has retired those hosts and
             # none of the sixteen resolve any more, so the generated URL could
             # only ever fail at download time with a DNS error pointing at the
             # wrong culprit. Fail here instead, while we can still say why.
             raise NonStreamableError(
-                "Deezer returned no download URL for this track, and the "
-                "legacy CDN that used to serve as a fallback has been retired.",
+                "Deezer returned no download URL for this track at any quality, "
+                "and it has no fallback track (delisted?). The legacy CDN that "
+                "used to serve as a fallback has been retired.",
             )
 
         dl_info["url"] = url
