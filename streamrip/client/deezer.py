@@ -1,10 +1,7 @@
 import asyncio
-import binascii
-import hashlib
 import logging
 
 import deezer
-from Cryptodome.Cipher import AES
 
 from ..config import Config
 from ..exceptions import (
@@ -152,6 +149,12 @@ class DeezerClient(Client):
 
         fallback_id = track_info.get("FALLBACK", {}).get("SNG_ID")
 
+        # Preserved across the FILESIZE-based downgrade below. A fallback track
+        # is a different release with its own metadata, so it should be asked
+        # for at the quality the caller wanted -- not at one lowered by the
+        # zeroed FILESIZEs of the track being replaced.
+        requested_quality = quality
+
         quality_map = [
             (9, "MP3_128"),  # quality 0
             (3, "MP3_320"),  # quality 1
@@ -202,45 +205,33 @@ class DeezerClient(Client):
             )
 
         if url is None:
-            url = self._get_encrypted_file_url(
-                item_id,
-                track_info["MD5_ORIGIN"],
-                track_info["MEDIA_VERSION"],
+            # No URL at any quality is the signature of a delisted old-catalog
+            # track: it has been superseded by another release, and Deezer
+            # names that release in FALLBACK.SNG_ID. Follow it, exactly as the
+            # geoblock branch above does -- there the API says "not here", here
+            # it says nothing at all. Recursing passes the fallback id as
+            # item_id, so dl_info["id"] follows the track actually served.
+            if not is_retry and fallback_id:
+                logger.debug(
+                    "No download URL for track %s; retrying with fallback ID %s",
+                    item_id,
+                    fallback_id,
+                )
+                return await self.get_downloadable(
+                    fallback_id, requested_quality, is_retry=True
+                )
+
+            # This used to fall back to the legacy AES-ECB CDN at
+            # e-cdns-proxy-<c>.dzcdn.net. Deezer has retired those hosts and
+            # none of the sixteen resolve any more, so the generated URL could
+            # only ever fail at download time with a DNS error pointing at the
+            # wrong culprit. Fail here instead, while we can still say why.
+            raise NonStreamableError(
+                "Deezer returned no download URL for this track at any quality, "
+                "and it has no fallback track (delisted?). The legacy CDN that "
+                "used to serve as a fallback has been retired.",
             )
 
         dl_info["url"] = url
         logger.debug("dz track info: %s", track_info)
         return DeezerDownloadable(self.session, dl_info)
-
-    def _get_encrypted_file_url(
-        self,
-        meta_id: str,
-        track_hash: str,
-        media_version: str,
-    ):
-        logger.debug("Unable to fetch URL. Trying encryption method.")
-        format_number = 1
-
-        url_bytes = b"\xa4".join(
-            (
-                track_hash.encode(),
-                str(format_number).encode(),
-                str(meta_id).encode(),
-                str(media_version).encode(),
-            ),
-        )
-        url_hash = hashlib.md5(url_bytes).hexdigest()
-        info_bytes = bytearray(url_hash.encode())
-        info_bytes.extend(b"\xa4")
-        info_bytes.extend(url_bytes)
-        info_bytes.extend(b"\xa4")
-        # Pad the bytes so that len(info_bytes) % 16 == 0
-        padding_len = 16 - (len(info_bytes) % 16)
-        info_bytes.extend(b"." * padding_len)
-
-        path = binascii.hexlify(
-            AES.new(b"jo6aey6haid2Teih", AES.MODE_ECB).encrypt(info_bytes),
-        ).decode("utf-8")
-        url = f"https://e-cdns-proxy-{track_hash[0]}.dzcdn.net/mobile/1/{path}"
-        logger.debug("Encrypted file path %s", url)
-        return url
