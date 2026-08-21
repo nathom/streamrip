@@ -40,37 +40,40 @@ class Track(Media):
     async def download(self):
         # TODO: progress bar description
         async with global_download_semaphore(self.config.session.downloads):
-            with get_progress_callback(
-                self.config.session.cli.progress_bars,
-                await self.downloadable.size(),
-                f"Track {self.meta.tracknumber}",
-            ) as callback:
-                try:
+            try:
+                with get_progress_callback(
+                    self.config.session.cli.progress_bars,
+                    await self.downloadable.size(),
+                    f"Track {self.meta.tracknumber}",
+                ) as callback:
                     await self.downloadable.download(self.download_path, callback)
-                    retry = False
-                except Exception as e:
-                    logger.error(
-                        f"Error downloading track '{self.meta.title}', retrying: {e}"
-                    )
-                    retry = True
+                    return
+            except Exception as e:
+                logger.error(
+                    "Error downloading track '%s', retrying: %s\nDownload URL: %s",
+                    self.meta.title,
+                    e,
+                    self.downloadable.url,
+                )
 
-            if not retry:
-                return
-
-            with get_progress_callback(
-                self.config.session.cli.progress_bars,
-                await self.downloadable.size(),
-                f"Track {self.meta.tracknumber} (retry)",
-            ) as callback:
-                try:
+            try:
+                with get_progress_callback(
+                    self.config.session.cli.progress_bars,
+                    await self.downloadable.size(),
+                    f"Track {self.meta.tracknumber} (retry)",
+                ) as callback:
                     await self.downloadable.download(self.download_path, callback)
-                except Exception as e:
-                    logger.error(
-                        f"Persistent error downloading track '{self.meta.title}', skipping: {e}"
-                    )
-                    self.db.set_failed(
-                        self.downloadable.source, "track", self.meta.info.id
-                    )
+            except Exception as e:
+                logger.error(
+                    "Persistent error downloading track '%s', skipping: %s\nDownload URL: %s",
+                    self.meta.title,
+                    e,
+                    self.downloadable.url,
+                )
+                self.db.set_failed(
+                    self.downloadable.source, "track", self.meta.info.id
+                )
+                raise
 
     async def postprocess(self):
         if self.is_single:

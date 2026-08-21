@@ -37,29 +37,37 @@ def generate_temp_path(url: str):
     )
 
 
-async def fast_async_download(path, url, headers, callback):
-    """Synchronous download with yield for every 1MB read.
+def _do_download(path, url, headers, callback, loop):
+    """Blocking download using requests. Runs in a thread pool via fast_async_download.
 
-    Using aiofiles/aiohttp resulted in a yield to the event loop for every 1KB,
-    which made file downloads CPU-bound. This resulted in a ~10MB max total download
-    speed. This fixes the issue by only yielding to the event loop for every 1MB read.
+    Large chunk size avoids the CPU-bound problem caused by yielding to the event loop
+    on every small read (the original aiohttp/aiofiles approach capped total speed at ~10MB/s).
+
+    callback is dispatched back onto the event loop (thread-safe) since rich's Live
+    display must only be updated from the main thread.
     """
     chunk_size: int = 2**17  # 131 KB
-    counter = 0
-    yield_every = 8  # 1 MB
-    with open(path, "wb") as file:  # noqa: ASYNC101
-        with requests.get(  # noqa: ASYNC100
+    with open(path, "wb") as file:
+        with requests.get(
             url,
             headers=headers,
             allow_redirects=True,
             stream=True,
         ) as resp:
+            resp.raise_for_status()
             for chunk in resp.iter_content(chunk_size=chunk_size):
                 file.write(chunk)
-                callback(len(chunk))
-                if counter % yield_every == 0:
-                    await asyncio.sleep(0)
-                counter += 1
+                loop.call_soon_threadsafe(callback, len(chunk))
+
+
+async def fast_async_download(path, url, headers, callback):
+    """Run the blocking download in a thread pool so the event loop stays free.
+
+    Keeping requests + large chunks for throughput, but offloading to a thread
+    so concurrent downloads are not frozen while one connection is active.
+    """
+    loop = asyncio.get_event_loop()
+    await loop.run_in_executor(None, _do_download, path, url, headers, callback, loop)
 
 
 @dataclass(slots=True)

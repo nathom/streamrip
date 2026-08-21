@@ -188,9 +188,7 @@ async def url(ctx, urls):
                 version_coro = None
 
             async with Main(cfg) as main:
-                await main.add_all(urls)
-                await main.resolve()
-                await main.rip()
+                await main.rip_urls(urls)
 
             if version_coro is not None:
                 latest_version, notes = await version_coro
@@ -253,7 +251,8 @@ async def file(ctx, path):
                     console.print(
                         f"Detected list of urls. Loading [yellow]{len(items)}[/yellow] items"
                     )
-                    await main.add_all(items)
+                    await main.rip_urls(items)
+                    return
 
                 await main.resolve()
                 await main.rip()
