@@ -1,4 +1,3 @@
-import asyncio
 import logging
 import os
 from dataclasses import dataclass
@@ -12,7 +11,7 @@ from ..filepath_utils import clean_filepath
 from ..metadata import AlbumMetadata
 from ..metadata.util import get_album_track_ids
 from .artwork import download_artwork
-from .media import Media, Pending
+from .media import Media, Pending, rip_pending_items_in_order
 from .track import PendingTrack
 
 logger = logging.getLogger("streamrip")
@@ -31,22 +30,7 @@ class Album(Media):
         progress.add_title(self.meta.album)
 
     async def download(self):
-        async def _resolve_and_download(pending: Pending):
-            try:
-                track = await pending.resolve()
-                if track is None:
-                    return
-                await track.rip()
-            except Exception as e:
-                logger.error(f"Error downloading track: {e}")
-
-        results = await asyncio.gather(
-            *[_resolve_and_download(p) for p in self.tracks], return_exceptions=True
-        )
-
-        for result in results:
-            if isinstance(result, Exception):
-                logger.error(f"Album track processing error: {result}")
+        await rip_pending_items_in_order(self.tracks, self.config, logger)
 
     async def postprocess(self):
         progress.remove_title(self.meta.album)

@@ -74,6 +74,49 @@ class TestErrorHandling:
         mock_track_failure.resolve.assert_called_once()
 
     @pytest.mark.asyncio
+    async def test_album_starts_parallel_downloads_in_track_order(self):
+        events = []
+        mock_config = MagicMock()
+        mock_config.session.downloads.concurrency = True
+        mock_config.session.downloads.max_connections = 2
+        mock_db = MagicMock()
+        mock_meta = MagicMock()
+
+        class ResolvedTrack:
+            def __init__(self, name):
+                self.name = name
+
+            async def rip(self):
+                events.append(f"rip {self.name}")
+                await asyncio.sleep(0)
+
+        class PendingTrack:
+            def __init__(self, name, delay):
+                self.name = name
+                self.delay = delay
+
+            async def resolve(self):
+                events.append(f"resolve {self.name}")
+                await asyncio.sleep(self.delay)
+                return ResolvedTrack(self.name)
+
+        album = Album(
+            meta=mock_meta,
+            config=mock_config,
+            tracks=[
+                PendingTrack("01", 0.01),
+                PendingTrack("02", 0),
+            ],
+            folder="/test/folder",
+            db=mock_db,
+        )
+
+        await album.download()
+
+        assert events.index("rip 01") < events.index("resolve 02")
+        assert events.index("rip 01") < events.index("rip 02")
+
+    @pytest.mark.asyncio
     async def test_main_rip_handles_failed_media(self):
         """Test that the Main.rip method handles failed media items."""
         from streamrip.rip.main import Main
