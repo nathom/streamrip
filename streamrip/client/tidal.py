@@ -9,7 +9,11 @@ from json import JSONDecodeError
 import aiohttp
 
 from ..config import Config
-from ..exceptions import NonStreamableError
+from ..exceptions import (
+    AuthenticationError,
+    MissingCredentialsError,
+    NonStreamableError,
+)
 from .client import Client
 from .downloadable import TidalDownloadable
 
@@ -55,7 +59,9 @@ class TidalClient(Client):
         )
         c = self.config
         if not c.access_token:
-            raise Exception("Access token not found in config.")
+            raise MissingCredentialsError(
+                "No Tidal access token in config -- Tidal has not been set up yet."
+            )
 
         self.token_expiry = float(c.token_expiry)
         self.refresh_token = c.refresh_token
@@ -300,7 +306,13 @@ class TidalClient(Client):
         resp = await self._api_post(f"{AUTH_URL}/token", data, AUTH)
 
         if resp.get("status", 200) != 200:
-            raise Exception("Refresh failed")
+            # The refresh token itself has lapsed or been revoked, so there is
+            # nothing left to refresh from and only a fresh device login will
+            # help. Typed so the caller can offer that instead of dying with a
+            # traceback.
+            raise AuthenticationError(
+                "Tidal refresh token has expired or been revoked."
+            )
 
         c = self.config
         c.access_token = resp["access_token"]
