@@ -2,13 +2,16 @@ import asyncio
 import json
 import logging
 import platform
+import sys
 
 import aiofiles
+from rich.prompt import Confirm
 
 from .. import db
 from ..client import Client, DeezerClient, QobuzClient, SoundcloudClient, TidalClient
 from ..config import Config
 from ..console import console
+from ..exceptions import AuthenticationError, MissingCredentialsError
 from ..media import (
     Media,
     Pending,
@@ -145,12 +148,41 @@ class Main:
                 await prompter.prompt_and_login()
                 prompter.save()
             else:
-                with console.status(f"[cyan]Logging into {source}", spinner="dots"):
-                    # Log into client using credentials from config
-                    await client.login()
+                try:
+                    with console.status(
+                        f"[cyan]Logging into {source}", spinner="dots"
+                    ):
+                        # Log into client using credentials from config
+                        await client.login()
+                except (AuthenticationError, MissingCredentialsError) as e:
+                    # has_creds() only checks that something is *stored*, not
+                    # that it still works. Saved tokens expire, so the usual
+                    # way to discover a lapsed login is a failure here -- which
+                    # used to be a bare traceback, even though the prompter
+                    # that fixes it is already built and sitting right there.
+                    await self._reauthenticate(source, prompter, e)
 
         assert client.logged_in
         return client
+
+    async def _reauthenticate(self, source: str, prompter, cause: Exception):
+        """Offer a fresh login after stored credentials stop working."""
+        console.print(f"[yellow]{source.title()} login failed: {cause}")
+
+        # Never block on a prompt nobody is there to answer: rip is run from
+        # cron and from scripts, where a hidden y/n means hanging forever
+        # rather than failing.
+        if not sys.stdin.isatty():
+            raise AuthenticationError(
+                f"{source} needs authorising again. Re-run this from an "
+                f"interactive terminal and you will be prompted to log in."
+            ) from cause
+
+        if not Confirm.ask(f"Log into {source} again now?"):
+            raise cause
+
+        await prompter.prompt_and_login()
+        prompter.save()
 
     async def resolve(self):
         """Resolve all currently pending items."""
