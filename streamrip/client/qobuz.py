@@ -171,13 +171,33 @@ class QobuzClient(Client):
 
         if not c.app_id or not c.secrets:
             logger.info("App id/secrets not found, fetching")
-            c.app_id, c.secrets = await self._get_app_id_and_secrets()
-            # write to file
-            f = self.config.file
-            f.qobuz.app_id = c.app_id
-            f.qobuz.secrets = c.secrets
-            f.set_modified()
+            await self._refresh_app_id_and_secrets()
 
+        # A stale app_id/secret pair (e.g. hardcoded in the config after Qobuz
+        # rotated its app secret) fails with InvalidAppIdError or
+        # InvalidAppSecretError. Re-fetch a fresh pair from the bundle and retry
+        # once before giving up.
+        try:
+            await self._attempt_login()
+        except (InvalidAppIdError, InvalidAppSecretError) as e:
+            logger.warning("Login failed with %s, refetching app id/secrets", e)
+            self.session.headers.pop("X-User-Auth-Token", None)
+            await self._refresh_app_id_and_secrets()
+            await self._attempt_login()
+
+        self.logged_in = True
+
+    async def _refresh_app_id_and_secrets(self):
+        c = self.config.session.qobuz
+        c.app_id, c.secrets = await self._get_app_id_and_secrets()
+        # write to file
+        f = self.config.file
+        f.qobuz.app_id = c.app_id
+        f.qobuz.secrets = c.secrets
+        f.set_modified()
+
+    async def _attempt_login(self):
+        c = self.config.session.qobuz
         self.session.headers.update({"X-App-Id": str(c.app_id)})
 
         if c.use_auth_token:
@@ -211,8 +231,6 @@ class QobuzClient(Client):
         self.session.headers.update({"X-User-Auth-Token": uat})
 
         self.secret = await self._get_valid_secret(c.secrets)
-
-        self.logged_in = True
 
     async def get_metadata(self, item: str, media_type: str):
         if media_type == "label":
