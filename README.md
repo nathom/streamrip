@@ -7,6 +7,16 @@ A scriptable stream downloader for Qobuz, Tidal, Deezer and SoundCloud.
 
 ![downloading an album](https://github.com/nathom/streamrip/blob/dev/demo/download_album.png?raw=true)
 
+## Changes from upstream
+
+This fork adds support for Tidal's `HI_RES_LOSSLESS` quality tier, which the
+original streamrip does not handle correctly. Tidal serves hi-res lossless
+tracks as MPEG-DASH manifests (`application/dash+xml`) rather than the standard
+JSON manifest format (`application/vnd.tidal.bts`) used for lower quality tiers.
+The original code attempts to JSON-parse all manifests and silently falls back to
+a lower quality when parsing fails, meaning hi-res tracks were never actually
+downloaded at hi-res even with a Tidal HiFi subscription.
+
 ## Features
 
 - Fast, concurrent downloads powered by `aiohttp`

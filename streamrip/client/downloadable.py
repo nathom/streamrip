@@ -305,6 +305,108 @@ class TidalDownloadable(Downloadable):
             dec_bytes = decryptor.decrypt(await enc_file.read())
             return dec_bytes
 
+class TidalDASHDownloadable(TidalDownloadable):
+    """Handles Tidal HI_RES_LOSSLESS tracks served as MPEG-DASH manifests."""
+
+    def __init__(
+        self,
+        session: aiohttp.ClientSession,
+        init_url: str,
+        segment_urls: list[str],
+        codec: str,
+        encryption_key: str | None = None,
+    ):
+        self.session = session
+        self.source = "tidal"
+        self.url = init_url
+        self.init_url = init_url
+        self.segment_urls = segment_urls
+        codec = codec.lower()
+        if codec in ("flac", "mqa"):
+            self.extension = "flac"
+        else:
+            self.extension = "m4a"
+        # Used for the init segment; size() below accounts for the rest.
+        self.downloadable = BasicDownloadable(session, init_url, self.extension, "tidal")
+
+    async def size(self) -> int:
+        """Total size of the init segment plus every media segment.
+
+        The inherited size() HEADs self.url, which for a DASH track is only
+        the init segment -- a few hundred bytes against a track of tens of
+        MB. The progress bar's total was therefore tiny, so the first chunk
+        took it past 100% and every track appeared to start finished, with
+        no rate and no time remaining.
+        """
+        if self._size is not None:
+            return self._size
+
+        urls = [self.init_url, *self.segment_urls]
+        # Bounded on purpose: issuing one request per segment at once gets a
+        # large share of them refused, and counting a refusal as zero bytes
+        # reports roughly half the real size.
+        sem = asyncio.Semaphore(8)
+
+        async def content_length(url: str) -> int | None:
+            async with sem:
+                try:
+                    async with self.session.head(url) as resp:
+                        resp.raise_for_status()
+                        return int(resp.headers.get("Content-Length", 0))
+                except Exception:
+                    return None
+
+        sizes = await asyncio.gather(*(content_length(u) for u in urls))
+
+        known = [s for s in sizes if s]
+        if not known:
+            self._size = await super().size()
+            return self._size
+
+        # Segments are near-uniform, so stand in for any that did not answer
+        # rather than dropping them and under-reporting the total.
+        average = sum(known) // len(known)
+        missing = len(sizes) - len(known)
+        self._size = sum(known) + missing * average
+        return self._size
+
+    async def _download(self, path: str, callback):
+        # Download all segments into a temporary .mp4 file first
+        tmp_path = path + ".tmp.mp4"
+        async with aiofiles.open(tmp_path, "wb") as f:
+            async with self.session.get(self.init_url) as resp:
+                resp.raise_for_status()
+                chunk = await resp.read()
+                await f.write(chunk)
+                callback(len(chunk))
+            for url in self.segment_urls:
+                async with self.session.get(url) as resp:
+                    resp.raise_for_status()
+                    chunk = await resp.read()
+                    await f.write(chunk)
+                    callback(len(chunk))
+
+        # Remux the MP4 container to FLAC. "-c copy" is a stream copy, so the
+        # audio is bit-identical -- only the container changes.
+        proc = await asyncio.create_subprocess_exec(
+            "ffmpeg", "-i", tmp_path, "-c", "copy", "-y", path,
+            stdout=asyncio.subprocess.DEVNULL,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        _, stderr = await proc.communicate()
+
+        if proc.returncode != 0 or not os.path.isfile(path):
+            # Without this a failed remux is silent: the temp file is removed,
+            # no output is written, and the caller treats the download as
+            # successful -- on current dev that records the track as
+            # downloaded, so it is skipped on every future run.
+            os.remove(tmp_path)
+            raise NonStreamableError(
+                f"ffmpeg failed to remux Tidal DASH stream "
+                f"(exit {proc.returncode}): {stderr.decode(errors='replace')[-300:]}"
+            )
+
+        os.remove(tmp_path)
 
 class SoundcloudDownloadable(Downloadable):
     def __init__(self, session, info: dict):
