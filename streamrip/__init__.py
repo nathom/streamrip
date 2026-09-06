@@ -1,3 +1,8 @@
+import http.client
+
+# Prevent failures on CDNs (like Qobuz/Akamai) that send >100 response headers
+http.client._MAXHEADERS = 1000
+
 from . import converter, db, exceptions, media, metadata
 from .config import Config
 
