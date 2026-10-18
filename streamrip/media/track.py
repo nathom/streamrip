@@ -234,10 +234,17 @@ class PendingSingle(Pending):
 
         os.makedirs(folder, exist_ok=True)
 
-        embedded_cover_path, downloadable = await asyncio.gather(
-            self._download_cover(album.covers, folder),
-            self.client.get_downloadable(self.id, quality),
-        )
+        try:
+            embedded_cover_path, downloadable = await asyncio.gather(
+                self._download_cover(album.covers, folder),
+                self.client.get_downloadable(self.id, quality),
+            )
+        except NonStreamableError as e:
+            logger.error(
+                f"Error getting downloadable data for track [{self.id}]: {e}"
+            )
+            return None
+
         return Track(
             meta,
             downloadable,
