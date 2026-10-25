@@ -4,6 +4,7 @@ import json
 import logging
 import re
 import time
+import xml.etree.ElementTree as ET
 from json import JSONDecodeError
 
 import aiohttp
@@ -11,7 +12,7 @@ import aiohttp
 from ..config import Config
 from ..exceptions import NonStreamableError
 from .client import Client
-from .downloadable import TidalDownloadable
+from .downloadable import TidalDashDownloadable, TidalDownloadable
 
 logger = logging.getLogger("streamrip")
 
@@ -162,9 +163,16 @@ class TidalClient(Client):
         )
         logger.debug(resp)
         try:
-            manifest = json.loads(base64.b64decode(resp["manifest"]).decode("utf-8"))
+            raw_manifest = base64.b64decode(resp["manifest"]).decode("utf-8")
         except KeyError:
             raise Exception(resp["userMessage"])
+
+        # Max (HI_RES_LOSSLESS) is served as an MPEG-DASH manifest, not JSON.
+        if "dash+xml" in resp.get("manifestMimeType", ""):
+            return TidalDashDownloadable(self.session, **self._parse_mpd(raw_manifest))
+
+        try:
+            manifest = json.loads(raw_manifest)
         except JSONDecodeError:
             logger.warning(
                 f"Failed to get manifest for {track_id}. Retrying with lower quality."
@@ -182,6 +190,38 @@ class TidalClient(Client):
             encryption_key=enc_key,
             restrictions=manifest.get("restrictions"),
         )
+
+    @staticmethod
+    def _parse_mpd(mpd: str) -> dict:
+        """Read the segment layout from a Tidal DASH manifest.
+
+        Tidal sends a single audio Representation with a $Number$-based
+        SegmentTemplate. Anything else fails loudly instead of silently
+        downloading the wrong thing.
+        """
+        ns = "{urn:mpeg:dash:schema:mpd:2011}"
+        root = ET.fromstring(mpd)
+        rep = root.find(f".//{ns}Representation")
+        template = root.find(f".//{ns}SegmentTemplate")
+        timeline = root.find(f".//{ns}SegmentTimeline")
+        if rep is None or template is None or timeline is None:
+            raise NonStreamableError("Unrecognized Tidal DASH manifest")
+
+        initialization = template.get("initialization")
+        media = template.get("media")
+        if not initialization or not media or "$Number$" not in media:
+            raise NonStreamableError("Unsupported Tidal DASH segment template")
+
+        segments_count = sum(
+            int(s.get("r", 0)) + 1 for s in timeline.findall(f"{ns}S")
+        )
+        return {
+            "initialization": initialization,
+            "media_template": media,
+            "start_number": int(template.get("startNumber", 1)),
+            "segments_count": segments_count,
+            "codec": rep.get("codecs", "flac"),
+        }
 
     async def get_video_file_url(self, video_id: str) -> str:
         """Get the HLS video stream url.

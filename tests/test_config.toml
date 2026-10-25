@@ -43,6 +43,9 @@ secrets = ['secret1', 'secret2']
 quality = 3
 # This will download videos included in Video Albums.
 download_videos = true
+# Convert tracks that Tidal only delivers as AAC (.m4a) to 16-bit FLAC with
+# ffmpeg. This does not restore quality lost to AAC; it only gives a FLAC file.
+convert_aac_to_flac = false
 
 # Do not change any of the fields below
 user_id = "userid"

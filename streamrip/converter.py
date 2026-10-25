@@ -4,6 +4,7 @@ import asyncio
 import logging
 import os
 import shutil
+import subprocess
 from tempfile import gettempdir
 from typing import Final, Optional
 
@@ -12,6 +13,21 @@ from .exceptions import ConversionError
 logger = logging.getLogger("streamrip")
 
 SAMPLING_RATES = {44100, 48000, 88200, 96000, 176400, 192000}
+
+
+async def run_ffmpeg(command: list[str]) -> subprocess.CompletedProcess:
+    """Run an ffmpeg command without blocking the event loop.
+
+    asyncio subprocesses are not supported by the WindowsSelectorEventLoop
+    that streamrip uses on Windows (they raise NotImplementedError), so the
+    process is run in a worker thread instead.
+    """
+    return await asyncio.to_thread(
+        subprocess.run,
+        command,
+        stdin=subprocess.DEVNULL,
+        capture_output=True,
+    )
 
 
 class Converter:
@@ -84,11 +100,8 @@ class Converter:
         self.command = self._gen_command()
         logger.debug("Generated conversion command: %s", self.command)
 
-        process = await asyncio.create_subprocess_exec(
-            *self.command,
-            stderr=asyncio.subprocess.PIPE,
-        )
-        out, err = await process.communicate()
+        process = await run_ffmpeg(self.command)
+        out, err = process.stdout, process.stderr
         if process.returncode == 0 and os.path.isfile(self.tempfile):
             if self.remove_source:
                 os.remove(self.filename)

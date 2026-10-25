@@ -76,11 +76,32 @@ class Track(Media):
         if self.is_single:
             remove_title(self.meta.title)
 
+        if self._should_convert_aac_to_flac():
+            await self._convert_aac_to_flac()
+
         await tag_file(self.download_path, self.meta, self.cover_path)
         if self.config.session.conversion.enabled:
             await self._convert()
 
         self.db.set_downloaded(self.meta.info.id)
+
+    def _should_convert_aac_to_flac(self) -> bool:
+        # The general [conversion] setting takes precedence when it is enabled.
+        return (
+            self.downloadable.source == "tidal"
+            and self.downloadable.extension == "m4a"
+            and self.config.session.tidal.convert_aac_to_flac
+            and not self.config.session.conversion.enabled
+        )
+
+    async def _convert_aac_to_flac(self):
+        # Runs before tagging so the tags and cover are written natively to
+        # the FLAC file. AAC is decoded to 16-bit, there is nothing above that.
+        engine = converter.FLAC(
+            filename=self.download_path, bit_depth=16, remove_source=True
+        )
+        await engine.convert()
+        self.download_path = engine.final_fn
 
     async def _convert(self):
         c = self.config.session.conversion

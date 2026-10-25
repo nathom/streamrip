@@ -68,6 +68,12 @@ def coro(f):
     help="Convert the downloaded files to an audio codec (ALAC, FLAC, MP3, AAC, or OGG)",
 )
 @click.option(
+    "--aac-to-flac",
+    help="Convert Tidal tracks that are only available as AAC to FLAC",
+    is_flag=True,
+    default=False,
+)
+@click.option(
     "--no-progress",
     help="Do not show progress bars",
     is_flag=True,
@@ -87,7 +93,16 @@ def coro(f):
 )
 @click.pass_context
 def rip(
-    ctx, config_path, folder, no_db, quality, codec, no_progress, no_ssl_verify, verbose
+    ctx,
+    config_path,
+    folder,
+    no_db,
+    quality,
+    codec,
+    aac_to_flac,
+    no_progress,
+    no_ssl_verify,
+    verbose,
 ):
     """Streamrip: the all in one music downloader."""
     global logger
@@ -154,6 +169,9 @@ def rip(
         c.session.conversion.enabled = True
         assert codec.upper() in ("ALAC", "FLAC", "OGG", "MP3", "AAC")
         c.session.conversion.codec = codec.upper()
+
+    if aac_to_flac:
+        c.session.tidal.convert_aac_to_flac = True
 
     if no_progress:
         c.session.cli.progress_bars = False

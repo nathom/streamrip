@@ -54,6 +54,9 @@ class TidalConfig:
     quality: int
     # This will download videos included in Video Albums.
     download_videos: bool
+    # Convert tracks that Tidal only delivers as AAC (.m4a) to 16-bit FLAC.
+    # Defaults to False so configs without this key keep working.
+    convert_aac_to_flac: bool = False
 
 
 @dataclass(slots=True)

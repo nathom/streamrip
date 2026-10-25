@@ -306,6 +306,90 @@ class TidalDownloadable(Downloadable):
             return dec_bytes
 
 
+TIDAL_DASH_CONCURRENCY = 16
+
+
+class TidalDashDownloadable(Downloadable):
+    """Tidal track served as an MPEG-DASH manifest (HI_RES_LOSSLESS / Max).
+
+    The audio comes as an initialization segment plus numbered fragmented-MP4
+    segments. They are fetched concurrently, joined in order and remuxed into
+    a plain FLAC file with ffmpeg (no re-encoding).
+    """
+
+    def __init__(
+        self,
+        session: aiohttp.ClientSession,
+        initialization: str,
+        media_template: str,
+        start_number: int,
+        segments_count: int,
+        codec: str,
+    ):
+        self.session = session
+        self.source = "tidal"
+        self.url = initialization
+        self.segment_urls = [initialization] + [
+            media_template.replace("$Number$", str(n))
+            for n in range(start_number, start_number + segments_count)
+        ]
+        self.extension = "flac" if "flac" in codec.lower() else "m4a"
+        self._size = len(self.segment_urls)  # progress is counted in segments
+
+    async def _download(self, path: str, callback):
+        semaphore = asyncio.Semaphore(TIDAL_DASH_CONCURRENCY)
+
+        async def fetch(url: str) -> str:
+            tmp = generate_temp_path(url)
+            async with semaphore:
+                async with self.session.get(url) as resp:
+                    resp.raise_for_status()
+                    async with aiofiles.open(tmp, "wb") as f:
+                        async for chunk in resp.content.iter_chunked(64 * 1024):
+                            await f.write(chunk)
+            callback(1)
+            return tmp
+
+        # gather keeps the results in segment order.
+        segment_paths = await asyncio.gather(*(fetch(u) for u in self.segment_urls))
+        await remux_dash_segments(segment_paths, path)
+
+
+async def remux_dash_segments(paths: list[str], out: str):
+    """Join fragmented-MP4 segments (init segment first) and remux to `out`.
+
+    The pieces are only a valid MP4 once concatenated byte for byte, so
+    ffmpeg's concat protocol (which demuxes every input on its own) can't be
+    used here.
+    """
+    if shutil.which("ffmpeg") is None:
+        raise Exception("FFmpeg must be installed to download Tidal Max quality.")
+
+    joined = generate_temp_path(out) + ".mp4"
+    try:
+        with open(joined, "wb") as dst:
+            for p in paths:
+                with open(p, "rb") as src:
+                    shutil.copyfileobj(src, dst)
+
+        command = [
+            "ffmpeg", "-y", "-loglevel", "error",
+            "-i", joined, "-map", "0:a", "-c:a", "copy", out,
+        ]
+        proc = await converter.run_ffmpeg(command)
+        if proc.returncode != 0:
+            raise Exception(
+                "FFmpeg could not remux the Tidal DASH stream: "
+                + proc.stderr.decode(errors="replace")
+            )
+    finally:
+        for p in (joined, *paths):
+            try:
+                os.remove(p)
+            except FileNotFoundError:
+                pass
+
+
 class SoundcloudDownloadable(Downloadable):
     def __init__(self, session, info: dict):
         self.session = session
@@ -409,7 +493,7 @@ async def concat_audio_files(paths: list[str], out: str, ext: str, max_files_ope
 
     proc_futures = []
     for i in range(num_batches):
-        command = (
+        command = [
             "ffmpeg",
             "-i",
             f"concat:{'|'.join(itertools.islice(it, max_files_open))}",
@@ -418,15 +502,11 @@ async def concat_audio_files(paths: list[str], out: str, ext: str, max_files_ope
             "-loglevel",
             "warning",
             outpaths[i],
-        )
-        fut = asyncio.create_subprocess_exec(*command, stderr=asyncio.subprocess.PIPE)
-        proc_futures.append(fut)
+        ]
+        proc_futures.append(converter.run_ffmpeg(command))
 
-    # Create all processes concurrently
+    # Run all processes concurrently and wait for them to finish
     processes = await asyncio.gather(*proc_futures)
-
-    # wait for all of them to finish
-    await asyncio.gather(*[p.communicate() for p in processes])
     for proc in processes:
         if proc.returncode != 0:
             raise Exception(
