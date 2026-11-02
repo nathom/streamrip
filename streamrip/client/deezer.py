@@ -195,6 +195,24 @@ class DeezerClient(Client):
                 "quality allowed is 1.",
             )
         except deezer.WrongGeolocation:
+            # A geolocation error usually only affects the lossless master:
+            # the MP3 formats of the same track are often still available in
+            # the user's country. Retry at a lower quality before giving up.
+            if quality > 0 and self.config.lower_quality_if_not_available:
+                logger.warning(
+                    "Track %s is not available in your country at quality %s (%s). "
+                    "Falling back to quality %s (%s).",
+                    item_id,
+                    quality,
+                    format_str,
+                    quality - 1,
+                    quality_map[quality - 1][1],
+                )
+                return await self.get_downloadable(
+                    item_id,
+                    quality - 1,
+                    is_retry=is_retry,
+                )
             if not is_retry and fallback_id:
                 return await self.get_downloadable(fallback_id, quality, is_retry=True)
             raise NonStreamableError(
