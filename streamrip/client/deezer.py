@@ -98,13 +98,30 @@ class DeezerClient(Client):
         return album_metadata
 
     async def get_playlist(self, item_id: str) -> dict:
-        pl_metadata, pl_tracks = await asyncio.gather(
-            asyncio.to_thread(self.client.api.get_playlist, item_id),
-            asyncio.to_thread(self.client.api.get_playlist_tracks, item_id),
-        )
-        pl_metadata["tracks"] = pl_tracks["data"]
-        pl_metadata["track_total"] = len(pl_tracks["data"])
-        return pl_metadata
+        try:
+            pl_metadata, pl_tracks = await asyncio.gather(
+                asyncio.to_thread(self.client.api.get_playlist, item_id),
+                asyncio.to_thread(self.client.api.get_playlist_tracks, item_id),
+            )
+            pl_metadata["tracks"] = pl_tracks["data"]
+            pl_metadata["track_total"] = len(pl_tracks["data"])
+            return pl_metadata
+        except deezer.errors.PermissionException:
+            logger.debug(
+                "Public API permission error for playlist %s; falling back to GW API.",
+                item_id,
+            )
+            gw_page, gw_tracks = await asyncio.gather(
+                asyncio.to_thread(self.client.gw.get_playlist_page, item_id),
+                asyncio.to_thread(self.client.gw.get_playlist_tracks, item_id),
+            )
+            title = gw_page.get("DATA", {}).get("TITLE", f"Deezer Playlist {item_id}")
+            tracks = [{"id": t["SNG_ID"], **t} for t in gw_tracks]
+            return {
+                "title": title,
+                "tracks": tracks,
+                "track_total": len(tracks),
+            }
 
     async def get_artist(self, item_id: str) -> dict:
         artist, albums = await asyncio.gather(
