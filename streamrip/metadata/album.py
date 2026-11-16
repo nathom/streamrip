@@ -301,7 +301,7 @@ class AlbumMetadata:
         # genre not returned by API
         date = typed(resp.get("releaseDate"), str)
         year = date[:4]
-        _copyright = typed(resp.get("copyright", ""), str)
+        _copyright = typed(resp.get("copyright") or "", str)
 
         artists = typed(resp.get("artists", []), list)
         albumartist = ", ".join(a["name"] for a in artists)
@@ -384,7 +384,7 @@ class AlbumMetadata:
         else:
             year = "Unknown Year"
 
-        _copyright = typed(resp.get("copyright", ""), str)
+        _copyright = typed(resp.get("copyright") or "", str)
         artists = typed(resp.get("artists", []), list)
         albumartist = ", ".join(a["name"] for a in artists)
         if not albumartist:
