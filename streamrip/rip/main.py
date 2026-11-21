@@ -60,15 +60,17 @@ class Main:
         c = self.config.session.database
         if c.downloads_enabled:
             downloads_db = db.Downloads(c.downloads_path)
+            replacements_db = db.Replacements(c.downloads_path)
         else:
             downloads_db = db.Dummy()
+            replacements_db = db.Dummy()
 
         if c.failed_downloads_enabled:
             failed_downloads_db = db.Failed(c.failed_downloads_path)
         else:
             failed_downloads_db = db.Dummy()
 
-        self.database = db.Database(downloads_db, failed_downloads_db)
+        self.database = db.Database(downloads_db, failed_downloads_db, replacements_db)
 
     async def add(self, url: str):
         """Add url as a pending item.

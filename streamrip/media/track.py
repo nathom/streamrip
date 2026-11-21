@@ -28,6 +28,8 @@ class Track(Media):
     # Is None if a cover doesn't exist for the track
     cover_path: str | None
     db: Database
+    # Original id that was queued (may differ from meta.info.id if resolved)
+    original_id: str | None = None
     # change?
     download_path: str = ""
     is_single: bool = False
@@ -88,6 +90,18 @@ class Track(Media):
                 )
 
             self.db.set_downloaded(self.meta.info.id, self.download_path)
+            # If this item was queued under a different original id, record the replacement mapping
+            try:
+                if self.original_id and self.original_id != self.meta.info.id:
+                    self.db.set_replacement(self.original_id, self.meta.info.id)
+                    logger.debug(
+                        "Recorded replacement mapping %s -> %s",
+                        self.original_id,
+                        self.meta.info.id,
+                    )
+            except Exception:
+                logger.debug("Failed to set replacement mapping %s -> %s", self.original_id, self.meta.info.id)
+
             if self.m3u8:
                 try:
                     with open(self.m3u8, 'a+') as f: # noqa: ASYNC230
@@ -147,11 +161,19 @@ class PendingTrack(Pending):
             return None
 
         source = self.client.source
+        original_id = self.id
         try:
             resp = await self.client.get_metadata(self.id, "track")
         except NonStreamableError as e:
             logger.error(f"Track {self.id} not available for stream on {source}: {e}")
             return None
+        if self.id != resp.get("id"):
+            self.id = resp["id"]
+            if self.db.downloaded(self.id):
+                logger.info(
+                    f"Skipping track {self.id}. Marked as downloaded in the database.",
+                )
+                return None
 
         try:
             meta = TrackMetadata.from_resp(self.album, source, resp)
@@ -187,6 +209,7 @@ class PendingTrack(Pending):
             m3u8=self.m3u8,
             cover_path=self.cover_path,
             db=self.db,
+            original_id=original_id if original_id != self.id else None,
         )
 
 
@@ -210,11 +233,19 @@ class PendingSingle(Pending):
             )
             return None
 
+        original_id = self.id
         try:
             resp = await self.client.get_metadata(self.id, "track")
         except NonStreamableError as e:
             logger.error(f"Error fetching track {self.id}: {e}")
             return None
+        if self.id != resp.get("id"):
+            self.id = resp["id"]
+            if self.db.downloaded(self.id):
+                logger.info(
+                    f"Skipping track {self.id}. Marked as downloaded in the database.",
+                )
+                return None
         # Patch for soundcloud
         try:
             album = AlbumMetadata.from_track_resp(resp, self.client.source)
@@ -265,6 +296,7 @@ class PendingSingle(Pending):
             m3u8="",
             cover_path=embedded_cover_path,
             db=self.db,
+            original_id=original_id if original_id != self.id else None,
             is_single=True,
         )
 

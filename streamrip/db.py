@@ -191,6 +191,55 @@ class Downloads(DatabaseBase):
                 return ""
 
 
+class Replacements(DatabaseBase):
+    """A table that stores replacement IDs for original IDs."""
+
+    name = "replacements"
+    structure: Final[dict] = {
+        "original_id": ["text", "unique"],
+        "replacement_id": ["text"],
+    }
+
+    def __init__(self, path: str):
+        # Ensure DB file exists (may be same file as downloads). Call parent's init
+        # which will create file if missing. Then ensure the replacements table
+        # exists in the database using IF NOT EXISTS to support existing DB files.
+        self.path = path
+        # Ensure file exists so sqlite can open it
+        if not os.path.exists(self.path):
+            # create an empty database file
+            open(self.path, "a").close()
+
+        # Create the replacements table if it doesn't exist
+        with sqlite3.connect(self.path) as conn:
+            params = ", ".join(
+                f"{key} {' '.join(map(str.upper, props))} NOT NULL" for key, props in self.structure.items()
+            )
+            command = f"CREATE TABLE IF NOT EXISTS {self.name} ({params})"
+            logger.debug("executing %s", command)
+            conn.execute(command)
+
+    def get_replacement(self, original_id: str) -> str:
+        """Return the replacement id for an original id, or empty string if none."""
+        with sqlite3.connect(self.path) as conn:
+            command = f"SELECT replacement_id FROM {self.name} WHERE original_id=?"
+            logger.debug("Executing %s", command)
+            row = conn.execute(command, (str(original_id),)).fetchone()
+            if row:
+                return row[0]
+            else:
+                return ""
+
+    def set_replacement(self, original_id: str, replacement_id: str):
+        """Store a mapping from original_id -> replacement_id. Ignore duplicates."""
+        try:
+            self.add((original_id, replacement_id))
+            logger.debug("Inserted replacement mapping %s -> %s", original_id, replacement_id)
+        except Exception:
+            # Ignore any integrity errors or others — mapping may already exist
+            logger.debug("Could not insert replacement %s -> %s", original_id, replacement_id)
+
+
 class Failed(DatabaseBase):
     """A table that stores information about failed downloads."""
 
@@ -206,9 +255,28 @@ class Failed(DatabaseBase):
 class Database:
     downloads: Downloads
     failed: Failed
+    replacements: Replacements
 
     def downloaded(self, item_id: str) -> str:
-        return self.downloads.get_path(id=item_id)
+        # Check direct download first.
+        # If the requested id was an old or invalid identifier, consult the
+        # replacements table to find a mapped replacement id and return the
+        # filepath for that replacement if it has already been downloaded.
+        path = self.downloads.get_path(id=item_id)
+        if path:
+            return path
+        # If not found, check replacements mapping
+        rep = self.replacements.get_replacement(item_id)
+        if rep:
+            path = self.downloads.get_path(id=rep)
+            if path:
+                logger.info(
+                    "Using replacement id %s for original id %s",
+                    rep,
+                    item_id,
+                )
+            return path
+        return ""
 
     def set_downloaded(self, item_id, filepath: str):
         self.downloads.add((item_id,filepath,))
@@ -218,3 +286,9 @@ class Database:
 
     def set_failed(self, source: str, media_type: str, id: str):
         self.failed.add((source, media_type, id))
+
+    def get_replacement(self, original_id: str) -> str:
+        return self.replacements.get_replacement(original_id)
+
+    def set_replacement(self, original_id: str, replacement_id: str):
+        self.replacements.set_replacement(original_id, replacement_id)

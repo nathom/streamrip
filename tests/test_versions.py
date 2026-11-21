@@ -5,7 +5,7 @@ import pytest
 from streamrip import __version__ as init_version
 from streamrip.config import CURRENT_CONFIG_VERSION
 
-toml_version_re = re.compile(r'version\s*\=\s*"([\d\.]+)"')
+toml_version_re = re.compile(r'version\s*=\s*"([\d.]+(?:-[A-Za-z0-9.-]+)?)"')
 
 
 @pytest.fixture

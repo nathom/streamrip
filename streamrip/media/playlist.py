@@ -44,7 +44,7 @@ class PendingPlaylistTrack(Pending):
     db: Database
 
     async def resolve(self) -> Track | None:
-        if self._check_downloaded():
+        if self._check_downloaded(self.id):
             return None
             
         try:
@@ -53,10 +53,11 @@ class PendingPlaylistTrack(Pending):
             logger.error(f"Could not stream track {self.id}: {e}")
             return None
 
+        original_id = self.id
         # In case of alternative song downloaded, update track id and re-do the self.db.downloaded test
-        if self.id != resp["id"] :
+        if self.id != resp["id"]:
             self.id = resp["id"]
-            if self._check_downloaded():
+            if self._check_downloaded(original_id):
                 return None
 
         album = AlbumMetadata.from_track_resp(resp, self.client.source)
@@ -99,11 +100,14 @@ class PendingPlaylistTrack(Pending):
             m3u8=self.m3u8,
             cover_path=embedded_cover_path,
             db=self.db,
+            original_id=original_id if original_id != self.id else None,
         )
 
-    def _check_downloaded(self) -> bool:
+    def _check_downloaded(self, original_id: str) -> bool:
         already_downloaded = self.db.downloaded(self.id)
         if already_downloaded:
+            if original_id != self.id:
+                self.db.set_replacement(original_id, self.id)
             logger.info(f"Track ({self.id}) already logged in database, stored in {already_downloaded}. Skipping.")
             if self.m3u8:
                 with open(self.m3u8, 'a+') as f:

@@ -75,17 +75,36 @@ class DeezerClient(Client):
         if not item["readable"]:
             try:
                 if ("alternative" in item):
-                    logger.warning(f"Original track id {item_id} not readable, using alternative {item['d']}")
+                    logger.warning(
+                        "Original track id %s not readable for %s - %s, using alternative %s",
+                        item_id,
+                        item["artist"]["name"],
+                        item["title"],
+                        item["id"],
+                    )
                     item = item["alternative"]
                     item_id = item["id"]
                 else:
                     altitem = self.find_alternative_track(artist=item["artist"]["name"], album=item["album"]["title"], track=item["title"])
                     if len(altitem) == 0:
-                        logger.warning(f"Track id {item_id} not readable, no precise alternative found, doing a wild guess with artist and track title")
+                        logger.warning(
+                            "Track id %s not readable for %s - %s, no precise alternative found, doing a wild guess",
+                            item_id,
+                            item["artist"]["name"],
+                            item["title"],
+                        )
                         altitem = self.find_alternative_track(artist=item["artist"]["name"], track=item["title"])
                         if len(altitem) == 0:
-                            raise Exception(f"Track {item_id} non readable, and no alternative found")
-                    logger.warning(f"Original track id {item_id} not readable, replacing with search result {altitem['id']}")
+                            raise Exception(
+                                f"Track {item_id} non readable, and no alternative found for {item['artist']['name']} - {item['title']}"
+                            )
+                    logger.warning(
+                        "Original track id %s not readable for %s - %s, replacing with search result %s",
+                        item_id,
+                        item["artist"]["name"],
+                        item["title"],
+                        altitem["id"],
+                    )
                     item_id = altitem["id"]
                     item = await asyncio.to_thread(self.client.api.get_track, item_id)
             except Exception as e:

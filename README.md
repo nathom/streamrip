@@ -14,6 +14,7 @@ A scriptable stream downloader for Qobuz, Tidal, Deezer and SoundCloud.
 - Supports downloads of Spotify and Apple Music playlists through [last.fm](https://www.last.fm)
 - Automatically converts files to a preferred format
 - Has a database that stores the downloaded tracks' IDs so that repeats are avoided
+- Tracks with old or replaced IDs are resolved through a replacement table so known downloads still skip
 - Concurrency and rate limiting
 - Interactive search for all sources
 - Highly customizable through the config file

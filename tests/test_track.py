@@ -19,7 +19,7 @@ def test_pending_resolve(qobuz_client: QobuzClient):
         "19512574",
         qobuz_client,
         qobuz_client.config,
-        db.Database(db.Dummy(), db.Dummy()),
+        db.Database(db.Dummy(), db.Dummy(), db.Dummy()),
     )
     t = arun(p.resolve())
     dir = "tests/tests/Fleetwood Mac - Rumours (1977) [FLAC] [24B-96kHz]"
