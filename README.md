@@ -139,6 +139,37 @@ rip url --help
 
 ![example_help_page.png](https://github.com/nathom/streamrip/blob/dev/demo/example_help_page.png?raw=true)
 
+## What this fork adds
+
+This fork keeps streamrip's familiar commands and adds a few options for
+organizing and tracking downloads:
+
+- **Playlist folders and M3U playlists:** For service playlists, choose the
+  folder name with `playlist_format` and the optional `.m3u8` filename with
+  `m3u8_format`. Both support `{playlist}` and `{owner}`; the owner value may
+  be a name or an ID depending on the service. Set `m3u8_format = ""` to turn
+  off `.m3u8` files. Last.fm playlist searches use the playlist title for the
+  M3U filename and do not use `playlist_format`.
+- **More naming control:** Track filenames can include `{albumtitle}` in
+  `track_format`.
+- **Fewer missed repeats on Deezer:** If a requested Deezer track is
+  unavailable, streamrip can try an alternative track. New downloads record
+  their file paths, and replacement IDs are remembered to help skip the same
+  track when its ID changes.
+- **Docker support:** The container uses `/music` for downloads and `/config`
+  for configuration, and supports `PUID` and `PGID` settings for file
+  ownership. New configurations also use `/music` as the default download
+  folder.
+
+For example, the playlist settings live in the `[filepaths]` section of your
+config:
+
+```toml
+[filepaths]
+playlist_format = "{playlist}"
+m3u8_format = "{owner} - {playlist}"
+```
+
 ## Other information
 
 For more in-depth information about `streamrip`, see the help pages and the [wiki](https://github.com/nathom/streamrip/wiki/).
