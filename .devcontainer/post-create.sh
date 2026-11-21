@@ -2,6 +2,9 @@
 #pip3 install -r requirements.txt
 #pip3 install -r requirements-dev.txt
 
+# Ripgrep to TODO extension and for copilot
+sudo apt install ripgrep
+
 # setup streamrip dependencies and install rip command
 pip install poetry
 poetry install
@@ -14,4 +17,5 @@ echo -e "\nalias venv=\"source \\\$(poetry env info -p)/bin/activate\"" >> ~/.ba
 # install Docker cli part, to build and push images
 sudo apt update && sudo apt --assume-yes upgrade && sudo apt --assume-yes install docker-cli
 
-./install-gh-copilot.sh
+# Install copilot with adhd and superpowers
+./.devcontainer/install-gh-copilot.sh
