@@ -138,5 +138,5 @@ folder_format = "old_{albumartist} - {title} ({year}) [{container}] [{bit_depth}
 
 [misc]
 # Metadata to identify this config file. Do not change.
-version = "0.0.1"
+version = "2.2.0"
 check_for_updates = true
