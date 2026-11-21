@@ -13,3 +13,5 @@ echo -e "\nalias venv=\"source \\\$(poetry env info -p)/bin/activate\"" >> ~/.ba
 
 # install Docker cli part, to build and push images
 sudo apt update && sudo apt --assume-yes upgrade && sudo apt --assume-yes install docker-cli
+
+./install-gh-copilot.sh
