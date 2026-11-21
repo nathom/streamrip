@@ -1,6 +1,10 @@
 import os
+import sqlite3
 import tempfile
 from types import SimpleNamespace
+from typing import Final
+
+import pytest
 
 import streamrip.db as db
 from streamrip.media.track import Track
@@ -72,3 +76,69 @@ def test_replacements_table_persists_in_same_database_file():
         # Re-open the same database file and verify the replacement was stored
         replacements = db.Replacements(db_path)
         assert replacements.get_replacement("original") == "replacement"
+
+
+def test_legacy_downloads_table_adds_filepath_and_migration_is_idempotent():
+    with tempfile.TemporaryDirectory() as tempdir:
+        db_path = os.path.join(tempdir, "downloads.db")
+        with sqlite3.connect(db_path) as conn:
+            conn.execute("CREATE TABLE downloads (id TEXT UNIQUE NOT NULL)")
+            conn.execute("INSERT INTO downloads (id) VALUES (?)", ("existing-id",))
+
+        downloads = db.Downloads(db_path)
+
+        assert downloads.all() == [("existing-id", "")]
+
+        reopened = db.Downloads(db_path)
+        assert reopened.all() == [("existing-id", "")]
+
+        with sqlite3.connect(db_path) as conn:
+            columns = [row[1] for row in conn.execute("PRAGMA table_info(downloads)")]
+        assert columns == ["id", "filepath"]
+
+
+def test_download_table_is_created_when_database_file_already_exists():
+    with tempfile.TemporaryDirectory() as tempdir:
+        db_path = os.path.join(tempdir, "downloads.db")
+        sqlite3.connect(db_path).close()
+
+        downloads = db.Downloads(db_path)
+
+        assert downloads.all() == []
+
+
+def test_failed_table_adds_missing_column_using_shared_migration():
+    with tempfile.TemporaryDirectory() as tempdir:
+        db_path = os.path.join(tempdir, "failed.db")
+        with sqlite3.connect(db_path) as conn:
+            conn.execute(
+                "CREATE TABLE failed_downloads "
+                "(source TEXT NOT NULL, id TEXT UNIQUE NOT NULL)"
+            )
+            conn.execute(
+                "INSERT INTO failed_downloads (source, id) VALUES (?, ?)",
+                ("qobuz", "track-id"),
+            )
+
+        failed = db.Failed(db_path)
+
+        assert failed.all() == [("qobuz", "", "track-id")]
+
+
+def test_missing_column_without_migration_default_fails_visibly():
+    class CustomTable(db.DatabaseBase):
+        name = "custom"
+        structure: Final[dict] = {"id": ["text", "unique"], "label": ["text"]}
+
+    with tempfile.TemporaryDirectory() as tempdir:
+        db_path = os.path.join(tempdir, "custom.db")
+        with sqlite3.connect(db_path) as conn:
+            conn.execute("CREATE TABLE custom (id TEXT UNIQUE NOT NULL)")
+            conn.execute("INSERT INTO custom (id) VALUES (?)", ("existing-id",))
+
+        with pytest.raises(ValueError, match="migration default"):
+            CustomTable(db_path)
+
+        with sqlite3.connect(db_path) as conn:
+            rows = list(conn.execute("SELECT id FROM custom"))
+        assert rows == [("existing-id",)]

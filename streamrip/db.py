@@ -5,7 +5,7 @@ import os
 import sqlite3
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Final
+from typing import ClassVar, Final
 
 logger = logging.getLogger("streamrip")
 
@@ -56,6 +56,7 @@ class DatabaseBase(DatabaseInterface):
 
     structure: dict
     name: str
+    migration_defaults: ClassVar[dict[str, str]] = {}
 
     def __init__(self, path: str):
         """Create a Database instance.
@@ -67,22 +68,43 @@ class DatabaseBase(DatabaseInterface):
         assert path
 
         self.path = path
-
-        if not os.path.exists(self.path):
-            self.create()
+        self.create()
 
     def create(self):
-        """Create a database."""
+        """Create the table if needed and add missing columns."""
         with sqlite3.connect(self.path) as conn:
             params = ", ".join(
                 f"{key} {' '.join(map(str.upper, props))} NOT NULL"
                 for key, props in self.structure.items()
             )
-            command = f"CREATE TABLE {self.name} ({params})"
+            command = f"CREATE TABLE IF NOT EXISTS {self.name} ({params})"
 
             logger.debug("executing %s", command)
-
             conn.execute(command)
+
+            columns = {
+                row[1] for row in conn.execute(f"PRAGMA table_info({self.name})")
+            }
+            for key, props in self.structure.items():
+                if key in columns:
+                    continue
+                if key not in self.migration_defaults:
+                    raise ValueError(
+                        f"No migration default configured for {self.name}.{key}"
+                    )
+                if "UNIQUE" in {prop.upper() for prop in props}:
+                    raise ValueError(
+                        f"Cannot add unique column {self.name}.{key} without rebuilding the table"
+                    )
+
+                default = self.migration_defaults[key].replace("'", "''")
+                definition = " ".join(map(str.upper, props))
+                command = (
+                    f"ALTER TABLE {self.name} ADD COLUMN {key} "
+                    f"{definition} NOT NULL DEFAULT '{default}'"
+                )
+                logger.debug("executing %s", command)
+                conn.execute(command)
 
     def keys(self):
         """Get the column names of the table."""
@@ -148,7 +170,8 @@ class DatabaseBase(DatabaseInterface):
     def all(self):
         """Iterate through the rows of the table."""
         with sqlite3.connect(self.path) as conn:
-            return list(conn.execute(f"SELECT * FROM {self.name}"))
+            columns = ", ".join(self.structure)
+            return list(conn.execute(f"SELECT {columns} FROM {self.name}"))
 
     def reset(self):
         """Delete the database file."""
@@ -166,6 +189,7 @@ class Downloads(DatabaseBase):
         "id": ["text", "unique"],
         "filepath": ["text"],
     }
+    migration_defaults: ClassVar[dict[str, str]] = {"filepath": ""}
 
     def get_path(self, **items) -> str:
         """Check whether items matches an entry in the table, return associated filepath
@@ -200,25 +224,6 @@ class Replacements(DatabaseBase):
         "replacement_id": ["text"],
     }
 
-    def __init__(self, path: str):
-        # Ensure DB file exists (may be same file as downloads). Call parent's init
-        # which will create file if missing. Then ensure the replacements table
-        # exists in the database using IF NOT EXISTS to support existing DB files.
-        self.path = path
-        # Ensure file exists so sqlite can open it
-        if not os.path.exists(self.path):
-            # create an empty database file
-            open(self.path, "a").close()
-
-        # Create the replacements table if it doesn't exist
-        with sqlite3.connect(self.path) as conn:
-            params = ", ".join(
-                f"{key} {' '.join(map(str.upper, props))} NOT NULL" for key, props in self.structure.items()
-            )
-            command = f"CREATE TABLE IF NOT EXISTS {self.name} ({params})"
-            logger.debug("executing %s", command)
-            conn.execute(command)
-
     def get_replacement(self, original_id: str) -> str:
         """Return the replacement id for an original id, or empty string if none."""
         with sqlite3.connect(self.path) as conn:
@@ -249,6 +254,7 @@ class Failed(DatabaseBase):
         "media_type": ["text"],
         "id": ["text", "unique"],
     }
+    migration_defaults: ClassVar[dict[str, str]] = {"media_type": ""}
 
 
 @dataclass(slots=True)
